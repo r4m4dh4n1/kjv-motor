@@ -130,15 +130,20 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         .from('penjualans')
         .select(`
           id,
+          pembelian_id,
           harga_beli,
           harga_jual,
           keuntungan,
           status,
           tanggal,
+          tahun,
+          warna,
+          kilometer,
           cabang:cabang_id(nama),
           divisi,
           brands(name),
-          jenis_motor(jenis_motor)
+          jenis_motor(jenis_motor),
+          pembelian:pembelian_id(harga_final, harga_beli)
         `)
         .eq('status', 'selesai')
         .gte('tanggal', dateRange.start.toISOString())
@@ -235,16 +240,23 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       if (operasionalResult.error) throw operasionalResult.error;
 
       // Format data keuntungan
-      const formattedData = keuntunganResult.data?.map(item => ({
-        id: item.id,
-        nama_motor: `${item.brands?.name || ''} ${item.jenis_motor?.jenis_motor || ''}`,
-        modal: item.harga_beli || 0,
-        harga_jual: item.harga_jual || 0,
-        profit: item.keuntungan || 0,
-        tanggal_jual: item.tanggal,
-        cabang: item.cabang?.nama || '',
-        divisi: item.divisi || ''
-      })) || [];
+      const formattedData = keuntunganResult.data?.map(item => {
+        // Get harga_beli from pembelian table - prioritas harga_final, fallback ke harga_beli
+        const modalValue = item.pembelian 
+          ? (item.pembelian.harga_final || item.pembelian.harga_beli || 0)
+          : (item.harga_beli || 0);
+        
+        return {
+          id: item.id,
+          nama_motor: `${item.brands?.name || ''} ${item.jenis_motor?.jenis_motor || ''} ${item.tahun || ''}  ${item.warna || ''} ${item.kilometer ? Number(item.kilometer).toLocaleString('id-ID') : '0'}`,
+          modal: modalValue,
+          harga_jual: item.harga_jual || 0,
+          profit: item.keuntungan || 0,
+          tanggal_jual: item.tanggal,
+          cabang: item.cabang?.nama || '',
+          divisi: item.divisi || ''
+        };
+      }) || [];
 
       setKeuntunganData(formattedData);
 
@@ -318,7 +330,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
   };
 
   const handleExportCSV = () => {
-    const headers = ['Nama Motor', 'Modal', 'Harga Jual', 'Profit', 'Tanggal Jual', 'Cabang', 'Divisi'];
+    const headers = ['Nama Motor', 'Modal', 'Harga Jual', 'Keuntungan', 'Tanggal Jual', 'Cabang', 'Divisi'];
     const csvContent = [
       headers.join(','),
       ...keuntunganData.map(row => [
@@ -610,13 +622,11 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Tanggal</TableHead>
                     <TableHead>Nama Motor</TableHead>
                     <TableHead>Modal</TableHead>
                     <TableHead>Harga Jual</TableHead>
-                    <TableHead>Profit</TableHead>
-                    <TableHead>Tanggal Jual</TableHead>
-                    <TableHead>Cabang</TableHead>
-                    <TableHead>Divisi</TableHead>
+                    <TableHead>Keuntungan</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -629,17 +639,15 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
                   ) : (
                     keuntunganData.map((item) => (
                       <TableRow key={item.id}>
+                        <TableCell>
+                          {new Date(item.tanggal_jual).toLocaleDateString('id-ID')}
+                        </TableCell>
                         <TableCell className="font-medium">{item.nama_motor}</TableCell>
                         <TableCell>{formatCurrency(item.modal)}</TableCell>
                         <TableCell>{formatCurrency(item.harga_jual)}</TableCell>
                         <TableCell className="text-green-600 font-medium">
                           {formatCurrency(item.profit)}
                         </TableCell>
-                        <TableCell>
-                          {new Date(item.tanggal_jual).toLocaleDateString('id-ID')}
-                        </TableCell>
-                        <TableCell>{item.cabang}</TableCell>
-                        <TableCell>{item.divisi}</TableCell>
                       </TableRow>
                     ))
                   )}

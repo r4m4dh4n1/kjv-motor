@@ -5,8 +5,10 @@ import { supabase } from '@/integrations/supabase/client';
 interface AuthContextType {
   user: User | null;
   session: Session | null;
+  userProfile: any | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  checkUserApproval: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,7 +24,49 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [userProfile, setUserProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select(`
+          *,
+          user_roles!inner(
+            role_id,
+            roles!inner(role_name, description)
+          )
+        `)
+        .eq('id', userId)
+        .single();
+      
+      setUserProfile(profile);
+      return profile;
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      return null;
+    }
+  };
+
+  const checkUserApproval = async (): Promise<boolean> => {
+    if (!user) return false;
+    
+    try {
+      const { data, error } = await supabase
+        .rpc('is_user_approved', { user_id: user.id });
+      
+      if (error) {
+        console.error('Error checking approval:', error);
+        return false;
+      }
+      
+      return data || false;
+    } catch (error) {
+      console.error('Error checking approval:', error);
+      return false;
+    }
+  };
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -30,6 +74,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        
+        // Fetch user profile when user logs in
+        if (session?.user) {
+          setTimeout(() => {
+            fetchUserProfile(session.user.id);
+          }, 0);
+        } else {
+          setUserProfile(null);
+        }
+        
         setLoading(false);
       }
     );
@@ -38,6 +92,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        fetchUserProfile(session.user.id);
+      }
+      
       setLoading(false);
     });
 
@@ -48,14 +107,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error('Error signing out:', error);
+    } else {
+      setUserProfile(null);
     }
   };
 
   const value = {
     user,
     session,
+    userProfile,
     loading,
     signOut,
+    checkUserApproval,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

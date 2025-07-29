@@ -11,24 +11,26 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UserRole {
-  user_id: number;
+  user_id: string;
   role_id: number;
   created_at: string;
-  users?: {
-    username: string;
+  profiles?: {
+    username: string | null;
+    full_name: string | null;
     employees?: {
       first_name: string;
       last_name: string;
-    };
-  };
+    } | null;
+  } | null;
   roles?: {
     role_name: string;
   };
 }
 
-interface User {
-  user_id: number;
+interface Profile {
+  id: string;
   username: string;
+  full_name: string;
   employees?: {
     first_name: string;
     last_name: string;
@@ -42,7 +44,7 @@ interface Role {
 
 const UserRolesPage = () => {
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [filteredUserRoles, setFilteredUserRoles] = useState<UserRole[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -56,7 +58,7 @@ const UserRolesPage = () => {
 
   useEffect(() => {
     fetchUserRoles();
-    fetchUsers();
+    fetchProfiles();
     fetchRoles();
   }, []);
 
@@ -66,26 +68,49 @@ const UserRolesPage = () => {
 
   const fetchUserRoles = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: userRolesData, error: userRolesError } = await supabase
         .from("user_roles")
         .select(`
           *,
-          users (
-            username,
-            employees (
-              first_name,
-              last_name
-            )
-          ),
           roles (
             role_name
           )
         `)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setUserRoles(data || []);
+      if (userRolesError) throw userRolesError;
+
+      // Fetch profiles separately and match manually
+      const userIds = userRolesData?.map(ur => ur.user_id) || [];
+      
+      if (userIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from("profiles")
+          .select(`
+            id,
+            username,
+            full_name,
+            employees (
+              first_name,
+              last_name
+            )
+          `)
+          .in("id", userIds);
+
+        if (profilesError) throw profilesError;
+
+        // Combine the data manually
+        const combinedData = userRolesData?.map(ur => ({
+          ...ur,
+          profiles: profilesData?.find(p => p.id === ur.user_id) || null
+        })) || [];
+
+        setUserRoles(combinedData);
+      } else {
+        setUserRoles([]);
+      }
     } catch (error) {
+      console.error("Error fetching user roles:", error);
       toast({
         title: "Error",
         description: "Failed to fetch user roles",
@@ -96,24 +121,26 @@ const UserRolesPage = () => {
     }
   };
 
-  const fetchUsers = async () => {
+  const fetchProfiles = async () => {
     try {
       const { data, error } = await supabase
-        .from("users")
+        .from("profiles")
         .select(`
-          user_id,
+          id,
           username,
+          full_name,
           employees (
             first_name,
             last_name
           )
         `)
+        .eq("is_approved", true)
         .order("username");
 
       if (error) throw error;
-      setUsers(data || []);
+      setProfiles(data || []);
     } catch (error) {
-      console.error("Failed to fetch users:", error);
+      console.error("Failed to fetch profiles:", error);
     }
   };
 
@@ -134,10 +161,11 @@ const UserRolesPage = () => {
   const filterUserRoles = () => {
     const filtered = userRoles.filter(
       (ur) =>
-        (ur.users && ur.users.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (ur.users?.employees && 
-          (ur.users.employees.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           ur.users.employees.last_name.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+        (ur.profiles && ur.profiles.username?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (ur.profiles && ur.profiles.full_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (ur.profiles?.employees && 
+          (ur.profiles.employees.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           ur.profiles.employees.last_name.toLowerCase().includes(searchTerm.toLowerCase()))) ||
         (ur.roles && ur.roles.role_name.toLowerCase().includes(searchTerm.toLowerCase()))
     );
     setFilteredUserRoles(filtered);
@@ -150,7 +178,7 @@ const UserRolesPage = () => {
       const { error } = await supabase
         .from("user_roles")
         .insert([{
-          user_id: parseInt(formData.user_id),
+          user_id: formData.user_id,
           role_id: parseInt(formData.role_id),
         }]);
 
@@ -173,7 +201,7 @@ const UserRolesPage = () => {
     }
   };
 
-  const handleDelete = async (userId: number, roleId: number) => {
+  const handleDelete = async (userId: string, roleId: number) => {
     try {
       const { error } = await supabase
         .from("user_roles")
@@ -239,9 +267,9 @@ const UserRolesPage = () => {
                     <SelectValue placeholder="Pilih User" />
                   </SelectTrigger>
                   <SelectContent>
-                    {users.map((user) => (
-                      <SelectItem key={user.user_id} value={user.user_id.toString()}>
-                        {user.username} {user.employees && `(${user.employees.first_name} ${user.employees.last_name})`}
+                    {profiles.map((profile) => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.username || profile.full_name} {profile.employees && `(${profile.employees.first_name} ${profile.employees.last_name})`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -301,11 +329,11 @@ const UserRolesPage = () => {
           <TableBody>
             {filteredUserRoles.map((ur) => (
               <TableRow key={`${ur.user_id}-${ur.role_id}`}>
-                <TableCell>{ur.users?.username || '-'}</TableCell>
+                <TableCell>{ur.profiles?.username || ur.profiles?.full_name || '-'}</TableCell>
                 <TableCell>
-                  {ur.users?.employees ? 
-                    `${ur.users.employees.first_name} ${ur.users.employees.last_name}` : 
-                    '-'
+                  {ur.profiles?.employees ? 
+                    `${ur.profiles.employees.first_name} ${ur.profiles.employees.last_name}` : 
+                    ur.profiles?.full_name || '-'
                   }
                 </TableCell>
                 <TableCell>{ur.roles?.role_name || '-'}</TableCell>
@@ -321,7 +349,7 @@ const UserRolesPage = () => {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Remove Role</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Apakah Anda yakin ingin menghapus role {ur.roles?.role_name} dari user {ur.users?.username}?
+                          Apakah Anda yakin ingin menghapus role {ur.roles?.role_name} dari user {ur.profiles?.username || ur.profiles?.full_name}?
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

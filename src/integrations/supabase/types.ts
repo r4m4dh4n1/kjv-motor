@@ -1631,6 +1631,103 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          created_at: string | null
+          employee_id: number | null
+          full_name: string | null
+          id: string
+          is_approved: boolean | null
+          updated_at: string | null
+          username: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          employee_id?: number | null
+          full_name?: string | null
+          id: string
+          is_approved?: boolean | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          employee_id?: number | null
+          full_name?: string | null
+          id?: string
+          is_approved?: boolean | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["employee_id"]
+          },
+        ]
+      }
+      profit_distribution: {
+        Row: {
+          bulan: number
+          company_id: number | null
+          created_at: string | null
+          divisi: string
+          id: number
+          jumlah_diambil: number
+          jumlah_ke_perusahaan: number
+          keterangan: string | null
+          status: string
+          tahun: number
+          tanggal: string
+          tipe_keuntungan: string
+          total_keuntungan: number
+          updated_at: string | null
+        }
+        Insert: {
+          bulan: number
+          company_id?: number | null
+          created_at?: string | null
+          divisi: string
+          id?: number
+          jumlah_diambil?: number
+          jumlah_ke_perusahaan?: number
+          keterangan?: string | null
+          status?: string
+          tahun: number
+          tanggal?: string
+          tipe_keuntungan: string
+          total_keuntungan?: number
+          updated_at?: string | null
+        }
+        Update: {
+          bulan?: number
+          company_id?: number | null
+          created_at?: string | null
+          divisi?: string
+          id?: number
+          jumlah_diambil?: number
+          jumlah_ke_perusahaan?: number
+          keterangan?: string | null
+          status?: string
+          tahun?: number
+          tanggal?: string
+          tipe_keuntungan?: string
+          total_keuntungan?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profit_distribution_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       qc_history: {
         Row: {
           created_at: string | null
@@ -1735,18 +1832,21 @@ export type Database = {
       user_roles: {
         Row: {
           created_at: string | null
+          id: string
           role_id: number
-          user_id: number
+          user_id: string
         }
         Insert: {
           created_at?: string | null
+          id?: string
           role_id: number
-          user_id: number
+          user_id: string
         }
         Update: {
           created_at?: string | null
+          id?: string
           role_id?: number
-          user_id?: number
+          user_id?: string
         }
         Relationships: [
           {
@@ -1755,57 +1855,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "roles"
             referencedColumns: ["role_id"]
-          },
-          {
-            foreignKeyName: "user_roles_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["user_id"]
-          },
-        ]
-      }
-      users: {
-        Row: {
-          created_at: string | null
-          email: string
-          employee_id: number
-          is_active: boolean | null
-          last_login: string | null
-          password_hash: string
-          updated_at: string | null
-          user_id: number
-          username: string
-        }
-        Insert: {
-          created_at?: string | null
-          email: string
-          employee_id: number
-          is_active?: boolean | null
-          last_login?: string | null
-          password_hash: string
-          updated_at?: string | null
-          user_id?: number
-          username: string
-        }
-        Update: {
-          created_at?: string | null
-          email?: string
-          employee_id?: number
-          is_active?: boolean | null
-          last_login?: string | null
-          password_hash?: string
-          updated_at?: string | null
-          user_id?: number
-          username?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "users_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: true
-            referencedRelation: "employees"
-            referencedColumns: ["employee_id"]
           },
         ]
       }
@@ -1833,9 +1882,17 @@ export type Database = {
           description: string
         }[]
       }
+      get_user_role: {
+        Args: { user_id: string }
+        Returns: string
+      }
       increment_qty: {
         Args: { jenis_motor_id: number }
         Returns: undefined
+      }
+      is_user_approved: {
+        Args: { user_id: string }
+        Returns: boolean
       }
       update_company_modal: {
         Args: { company_id: number; amount: number }

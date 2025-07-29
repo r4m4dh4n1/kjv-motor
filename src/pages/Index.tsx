@@ -9,7 +9,7 @@ import CompanyPage from "@/components/master/CompanyPage";
 import AssetPage from "@/components/master/AssetPage";
 import CabangPage from "@/components/master/CabangPage";
 import EmployeesPage from "@/components/master/EmployeesPage";
-import UsersPage from "@/components/master/UsersPage";
+import UserApprovalPage from "@/components/master/UserApprovalPage";
 import PembelianPageEnhanced from "../components/transaction/PembelianPageEnhanced";
 import PenjualanPage from "@/components/transaction/PenjualanPage";
 import CicilanPageEnhanced from '../components/transaction/CicilanPageEnhanced';
@@ -27,6 +27,7 @@ import KeuntunganMotorPage from "@/components/finance/KeuntunganMotorPage";
 import PenjualanBookedPageEnhanced from "@/components/transaction/PenjualanBookedPageEnhanced";
 import PenjualanSoldPageEnhanced from "@/components/transaction/PenjualanSoldPageEnhanced";
 import CloseMonthPage from "@/components/finance/CloseMonthPage";
+import { ProfitDistributionPage } from "@/components/finance/ProfitDistributionPage";
 
 
 const Index = () => {
@@ -53,7 +54,7 @@ const Index = () => {
       case "employees":
         return <EmployeesPage />;
       case "users":
-        return <UsersPage />;
+        return <UserApprovalPage />;
       case "pembelian":
       return <PembelianPageEnhanced selectedDivision={selectedDivision} />;
         case "penjualan-booked":
@@ -84,6 +85,8 @@ case 'fee-penjualan':
         return <BreakdownPercabangPage selectedDivision={selectedDivision} />;
         case "keuntungan-motor":
           return <KeuntunganMotorPage selectedDivision={selectedDivision} />;
+        case "profit-distribution":
+          return <ProfitDistributionPage selectedDivision={selectedDivision} />;
         case "close-month":
           return <CloseMonthPage />;
         default:

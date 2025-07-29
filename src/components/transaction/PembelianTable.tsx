@@ -1,10 +1,8 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Pencil, Trash2, Eye, DollarSign, CheckCircle, History, TrendingUp, MoreHorizontal } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { Badge } from "@/components/ui/badge";
+import { Pencil, Trash2, Eye, DollarSign, CheckCircle, History, TrendingUp, Car, Calendar } from "lucide-react";
+import { EnhancedTable, CurrencyCell, DateCell, StatusBadge } from "./EnhancedTable";
 
 interface PembelianTableProps {
   pembelianData: any[];
@@ -27,177 +25,177 @@ const PembelianTable = ({
   handleViewPriceHistory,
   deleteMutation 
 }: PembelianTableProps) => {
-  const isMobile = useIsMobile();
   
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(value);
-  };
-
-  const formatNumber = (value: number) => {
-    return new Intl.NumberFormat("id-ID").format(value);
-  };
-
-  const renderActionButtons = (pembelian: any) => {
-    if (isMobile) {
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleView(pembelian)}>
-              <Eye className="w-4 h-4 mr-2" />
-              Lihat Detail
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleViewQcHistory(pembelian)}>
-              <History className="w-4 h-4 mr-2" />
-              History QC
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleViewPriceHistory(pembelian)}>
-              <TrendingUp className="w-4 h-4 mr-2" />
-              History Harga
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleEdit(pembelian)}>
-              <Pencil className="w-4 h-4 mr-2" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleUpdateHarga(pembelian)}>
-              <DollarSign className="w-4 h-4 mr-2" />
-              Update Harga
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleQC(pembelian)}>
-              <CheckCircle className="w-4 h-4 mr-2" />
-              Quality Control
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => deleteMutation.mutate(pembelian.id)}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Hapus
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
+  const columns = [
+    {
+      key: "tanggal_pembelian",
+      header: "Tanggal",
+      width: "w-32",
+      render: (value: string) => <DateCell date={value} />
+    },
+    {
+      key: "divisi",
+      header: "Divisi",
+      width: "w-20",
+      render: (value: string) => (
+        <Badge variant="outline" className="capitalize">
+          {value}
+        </Badge>
+      )
+    },
+    {
+      key: "cabang",
+      header: "Cabang",
+      width: "w-28",
+      render: (value: any) => value?.nama || "-"
+    },
+    {
+      key: "motor_info",
+      header: "Informasi Motor",
+      width: "w-64",
+      render: (value: any, row: any) => (
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Car className="w-4 h-4 text-primary" />
+            <span className="font-medium text-sm">
+              {row.brands?.name} - {row.jenis_motor?.jenis_motor}
+            </span>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Tahun: {row.tahun} | Warna: {row.warna}
+          </div>
+        </div>
+      )
+    },
+    {
+      key: "plat_nomor",
+      header: "Plat Nomor",
+      width: "w-24",
+      render: (value: string) => (
+        <Badge variant="secondary" className="font-mono">
+          {value}
+        </Badge>
+      )
+    },
+    {
+      key: "tanggal_pajak",
+      header: "Pajak",
+      width: "w-28",
+      render: (value: string) => (
+        <div className="flex items-center gap-1">
+          <Calendar className="w-3 h-3 text-muted-foreground" />
+          <DateCell date={value} className="text-xs" />
+        </div>
+      )
+    },
+    {
+      key: "harga_beli",
+      header: "Harga Beli",
+      width: "w-32",
+      className: "text-right",
+      render: (value: number) => (
+        <CurrencyCell amount={value} className="text-blue-600" />
+      )
+    },
+    {
+      key: "harga_final",
+      header: "Harga Final",
+      width: "w-32",
+      className: "text-right",
+      render: (value: number, row: any) => (
+        <CurrencyCell 
+          amount={value || row.harga_beli} 
+          className="text-green-600 font-semibold" 
+        />
+      )
+    },
+    {
+      key: "status",
+      header: "Status",
+      width: "w-24",
+      render: (value: string) => {
+        const statusConfig = {
+          ready: { variant: "default" as const, color: "bg-green-100 text-green-800" },
+          sold: { variant: "secondary" as const, color: "bg-blue-100 text-blue-800" },
+          draft: { variant: "outline" as const, color: "bg-yellow-100 text-yellow-800" }
+        };
+        
+        const config = statusConfig[value as keyof typeof statusConfig] || statusConfig.ready;
+        
+        return (
+          <StatusBadge 
+            status={value} 
+            variant={config.variant}
+            className={config.color}
+          />
+        );
+      }
     }
+  ];
 
-    return (
-      <div className="flex gap-1 flex-wrap">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleView(pembelian)}
-          title="Lihat Detail"
-          className="text-blue-600 hover:text-blue-800"
-        >
-          <Eye className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleViewQcHistory(pembelian)}
-          title="History QC"
-          className="text-indigo-600 hover:text-indigo-800"
-        >
-          <History className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleViewPriceHistory(pembelian)}
-          title="History Update Harga"
-          className="text-amber-600 hover:text-amber-800"
-        >
-          <TrendingUp className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleEdit(pembelian)}
-          title="Edit"
-          className="text-green-600 hover:text-green-800"
-        >
-          <Pencil className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleUpdateHarga(pembelian)}
-          title="Update Harga"
-          className="text-orange-600 hover:text-orange-800"
-        >
-          <DollarSign className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleQC(pembelian)}
-          title="Quality Control"
-          className="text-purple-600 hover:text-purple-800"
-        >
-          <CheckCircle className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => deleteMutation.mutate(pembelian.id)}
-          title="Hapus"
-          className="text-red-600 hover:text-red-800"
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
-      </div>
-    );
-  };
+  const actions = [
+    {
+      label: "Lihat Detail",
+      icon: Eye,
+      onClick: handleView,
+      variant: "outline" as const,
+      className: "hover:bg-blue-50 hover:text-blue-600"
+    },
+    {
+      label: "History QC",
+      icon: History,
+      onClick: handleViewQcHistory,
+      variant: "outline" as const,
+      className: "hover:bg-indigo-50 hover:text-indigo-600"
+    },
+    {
+      label: "History Harga",
+      icon: TrendingUp,
+      onClick: handleViewPriceHistory,
+      variant: "outline" as const,
+      className: "hover:bg-amber-50 hover:text-amber-600"
+    },
+    {
+      label: "Edit",
+      icon: Pencil,
+      onClick: handleEdit,
+      variant: "outline" as const,
+      className: "hover:bg-green-50 hover:text-green-600"
+    },
+    {
+      label: "Update Harga",
+      icon: DollarSign,
+      onClick: handleUpdateHarga,
+      variant: "outline" as const,
+      className: "hover:bg-orange-50 hover:text-orange-600"
+    },
+    {
+      label: "Quality Control",
+      icon: CheckCircle,
+      onClick: handleQC,
+      variant: "outline" as const,
+      className: "hover:bg-purple-50 hover:text-purple-600"
+    },
+    {
+      label: "Hapus",
+      icon: Trash2,
+      onClick: (row: any) => deleteMutation.mutate(row.id),
+      variant: "destructive" as const,
+      className: "hover:bg-red-50"
+    }
+  ];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Daftar Pembelian</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tanggal</TableHead>
-                <TableHead>Divisi</TableHead>
-                <TableHead>Cabang</TableHead>
-                <TableHead>Jenis Motor</TableHead>
-                <TableHead>Plat</TableHead>
-                <TableHead>Tgl Pajak</TableHead>
-                <TableHead>Harga</TableHead>
-                <TableHead>Harga Final</TableHead>
-                <TableHead>Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pembelianData.map((pembelian: any) => (
-                <TableRow key={pembelian.id}>
-                  <TableCell>{new Date(pembelian.tanggal_pembelian).toLocaleDateString('id-ID')}</TableCell>
-                  <TableCell>{pembelian.divisi}</TableCell>
-                  <TableCell>{pembelian.cabang?.nama}</TableCell>
-                  <TableCell>{pembelian.jenis_motor?.jenis_motor}</TableCell>
-                  <TableCell>{pembelian.plat_nomor}</TableCell>
-                  <TableCell>{new Date(pembelian.tanggal_pajak).toLocaleDateString('id-ID')}</TableCell>
-                  <TableCell>{formatCurrency(pembelian.harga_beli)}</TableCell>
-                  <TableCell>{formatCurrency(pembelian.harga_final)}</TableCell>
-                  <TableCell>
-                    {renderActionButtons(pembelian)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+    <EnhancedTable
+      title="Data Pembelian Motor"
+      subtitle={`Menampilkan ${pembelianData.length} data pembelian`}
+      icon={Car}
+      data={pembelianData}
+      columns={columns}
+      actions={actions}
+      emptyMessage="Belum ada data pembelian motor"
+      headerColor="bg-gradient-to-r from-blue-50 to-indigo-50"
+    />
   );
 };
 

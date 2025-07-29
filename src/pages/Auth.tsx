@@ -76,7 +76,7 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       });
@@ -95,12 +95,26 @@ const Auth = () => {
             variant: "destructive",
           });
         }
-      } else {
-        toast({
-          title: "Welcome Back!",
-          description: "You have successfully logged in.",
-        });
-        navigate('/');
+      } else if (data.user) {
+        // Check if user is approved
+        const { data: isApproved } = await supabase
+          .rpc('is_user_approved', { user_id: data.user.id });
+        
+        if (!isApproved) {
+          // Sign out the user if not approved
+          await supabase.auth.signOut();
+          toast({
+            title: "Account Pending Approval",
+            description: "Your account needs to be approved by an administrator before you can access the system.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Welcome Back!",
+            description: "You have successfully logged in.",
+          });
+          navigate('/');
+        }
       }
     } catch (error) {
       toast({

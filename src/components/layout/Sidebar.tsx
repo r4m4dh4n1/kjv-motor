@@ -31,11 +31,11 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
     { id: "company", label: "Company", icon: Briefcase },
     { id: "asset", label: "Asset", icon: Package },
     { id: "cabang", label: "Cabang", icon: MapPin },
-    { id: "employees", label: "Pegawai", icon: Users },
-    { id: "users", label: "User", icon: UserCog },
   ];
 
   const rbacMenuItems = [
+    { id: "employees", label: "Pegawai", icon: Users },
+    { id: "users", label: "User", icon: UserCog },
     { id: "roles", label: "Roles", icon: Shield },
     { id: "permissions", label: "Permissions", icon: Settings },
     { id: "role-permissions", label: "Role Permissions", icon: Cog },
@@ -64,6 +64,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
     { id: "breakdown-percabang", label: "Breakdown Percabang", icon: TrendingUp },
     { id: "keuntungan-motor", label: "Pembukuan", icon: DollarSign },
     { id: "reports", label: "Analisis Motor", icon: FileText },
+    { id: "profit-distribution", label: "Distribusi Profit", icon: DollarSign },
     { id: "close-month", label: "Close Month", icon: Calendar },
   ];
 

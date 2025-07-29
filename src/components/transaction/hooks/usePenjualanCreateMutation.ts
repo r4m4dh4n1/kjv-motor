@@ -15,7 +15,12 @@ export const usePenjualanCreate = () => {
       
       // Calculate keuntungan
       const hargaJual = parseFormattedNumber(formData.harga_jual);
-      const hargaBeli = parseFormattedNumber(formData.harga_beli);
+      // Get selected motor data
+      const selectedMotor = pembelianData.find(p => p.id === parseInt(formData.selected_motor_id));
+      // Use harga_final if available and > 0, otherwise use harga_beli
+      const hargaBeli = selectedMotor?.harga_final && selectedMotor.harga_final > 0 
+        ? selectedMotor.harga_final 
+        : (selectedMotor?.harga_beli || parseFormattedNumber(formData.harga_beli));
       const keuntungan = hargaJual - hargaBeli;
       
       // Auto update status based on payment
@@ -65,7 +70,6 @@ export const usePenjualanCreate = () => {
       }
 
       // 4. Insert into pembukuan table
-      const selectedMotor = pembelianData.find(p => p.id === parseInt(formData.selected_motor_id));
       const pembukuanEntries = createPembukuanEntries(submitData, formData, selectedMotor);
       
       if (pembukuanEntries.length > 0) {

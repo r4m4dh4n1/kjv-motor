@@ -5,6 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { LogOut, User, Settings, Bell, Menu } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 
 interface HeaderProps {
@@ -14,6 +15,7 @@ interface HeaderProps {
 
 const Header = ({ onMenuToggle, isMobile }: HeaderProps) => {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const handleSignOut = async () => {
     try {
@@ -29,6 +31,14 @@ const Header = ({ onMenuToggle, isMobile }: HeaderProps) => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleProfile = () => {
+    navigate('/profile');
+  };
+
+  const handleSettings = () => {
+    navigate('/settings');
   };
 
   const getUserDisplayName = () => {
@@ -88,11 +98,11 @@ const Header = ({ onMenuToggle, isMobile }: HeaderProps) => {
                   {user?.email}
                 </p>
               </div>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleProfile}>
                 <User className="mr-2 h-4 w-4" />
                 <span>Profile</span>
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSettings}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
               </DropdownMenuItem>

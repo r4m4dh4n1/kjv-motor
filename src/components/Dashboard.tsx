@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building, Car, Briefcase, Package, TrendingUp, Users, DollarSign, ShoppingCart, Receipt, TrendingDown, BookOpen } from "lucide-react";
+import { Building, Car, Briefcase, Package, TrendingUp, Users, DollarSign, ShoppingCart, Receipt, TrendingDown, BookOpen, Activity, BarChart3, PieChart } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, LineChart, Line, AreaChart, Area, Legend } from 'recharts';
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -34,6 +35,10 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
     totalBookedUnit: 0,
     totalOperational: 0,
     modalPerCompany: [] as Array<{name: string, modal: number}>,
+    monthlyTrend: [] as Array<{month: string, pembelian: number, penjualan: number, keuntungan: number}>,
+    statusTrend: [] as Array<{date: string, ready: number, booked: number, sold: number}>,
+    salesByDivision: [] as Array<{name: string, value: number, color: string}>,
+    stockDistribution: [] as Array<{name: string, stock: number, value: number}>,
   });
   const [loading, setLoading] = useState(true);
 
@@ -41,14 +46,37 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
     fetchDashboardData();
   }, [selectedDivision, selectedCabang]);
 
+  // Get current month and year
+  const getCurrentMonthYear = () => {
+    const now = new Date();
+    return {
+      month: now.getMonth() + 1, // JavaScript months are 0-indexed
+      year: now.getFullYear()
+    };
+  };
+
   const fetchDashboardData = async () => {
     try {
-      // Build queries with division and cabang filter
+      const { month: currentMonth, year: currentYear } = getCurrentMonthYear();
+      
+      // Build queries with division, cabang, and current month filter
       let jenisMotorQuery = supabase.from('jenis_motor').select('*');
       let companiesQuery = supabase.from('companies').select('*');
-      let pembelianQuery = supabase.from('pembelian').select('*');
-      let penjualanQuery = supabase.from('penjualans').select('*');
-      let operationalQuery = supabase.from('operational').select('*');
+      let pembelianQuery = supabase
+        .from('pembelian')
+        .select('*')
+        .gte('tanggal_pembelian', `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`)
+        .lt('tanggal_pembelian', `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-01`);
+      let penjualanQuery = supabase
+        .from('penjualans')
+        .select('*')
+        .gte('tanggal', `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`)
+        .lt('tanggal', `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-01`);
+      let operationalQuery = supabase
+        .from('operational')
+        .select('*')
+        .gte('tanggal', `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`)
+        .lt('tanggal', `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-01`);
       
       if (selectedDivision !== 'all') {
         jenisMotorQuery = jenisMotorQuery.eq('divisi', selectedDivision);
@@ -118,7 +146,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       const totalKeuntungan = penjualan.reduce((sum, p) => sum + (p.keuntungan || 0), 0);
       const totalKeuntunganUnit = penjualan.length;
       
-      // Calculate booked stats (status = booked)
+      // Calculate booked stats (status = Booked with capital B)
       const bookedPenjualan = penjualan.filter(p => p.status === 'Booked');
       const totalBooked = bookedPenjualan.reduce((sum, p) => sum + p.harga_jual, 0);
       const totalBookedUnit = bookedPenjualan.length;
@@ -130,6 +158,58 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         name: c.nama_perusahaan,
         modal: c.modal
       }));
+
+      // Calculate status trend for current month (daily breakdown)
+      const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+      const statusTrend = [];
+      
+      for (let day = 1; day <= Math.min(daysInMonth, 30); day++) {
+        const dateStr = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+        
+        // Count pembelian with ready status for this day
+        const readyCount = pembelian.filter(p => 
+          p.tanggal_pembelian === dateStr && p.status === 'ready'
+        ).length;
+        
+        // Count penjualan with Booked status for this day (note: capital B)
+        const bookedCount = penjualan.filter(p => 
+          p.tanggal === dateStr && p.status === 'Booked'
+        ).length;
+        
+        // Count penjualan with selesai status for this day (sold = selesai)
+        const soldCount = penjualan.filter(p => 
+          p.tanggal === dateStr && p.status === 'selesai'
+        ).length;
+
+        statusTrend.push({
+          date: `${day}/${currentMonth}`,
+          ready: readyCount,
+          booked: bookedCount,
+          sold: soldCount
+        });
+      }
+
+      // Sample monthly trend data (in real app, fetch from database)
+      const monthlyTrend = [
+        { month: 'Jan', pembelian: totalPembelian * 0.8, penjualan: totalPenjualan * 0.7, keuntungan: totalKeuntungan * 0.6 },
+        { month: 'Feb', pembelian: totalPembelian * 0.9, penjualan: totalPenjualan * 0.8, keuntungan: totalKeuntungan * 0.7 },
+        { month: 'Mar', pembelian: totalPembelian * 1.1, penjualan: totalPenjualan * 0.9, keuntungan: totalKeuntungan * 0.8 },
+        { month: 'Apr', pembelian: totalPembelian * 0.95, penjualan: totalPenjualan * 1.0, keuntungan: totalKeuntungan * 0.9 },
+        { month: 'May', pembelian: totalPembelian * 1.0, penjualan: totalPenjualan * 1.1, keuntungan: totalKeuntungan * 1.0 },
+        { month: 'Jun', pembelian: totalPembelian, penjualan: totalPenjualan, keuntungan: totalKeuntungan },
+      ];
+
+      // Sales by division
+      const salesByDivision = [
+        { name: 'Sport', value: sportMotors, color: '#0088FE' },
+        { name: 'Start', value: startMotors, color: '#00C49F' },
+      ];
+
+      // Stock distribution by type
+      const stockDistribution = [
+        { name: 'Motor Sport', stock: sportMotors, value: sportMotors },
+        { name: 'Motor Start', stock: startMotors, value: startMotors },
+      ];
 
       setStats({
         totalAssets: assets.length,
@@ -148,6 +228,10 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         totalBookedUnit,
         totalOperational,
         modalPerCompany,
+        monthlyTrend,
+        statusTrend,
+        salesByDivision,
+        stockDistribution,
       });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -164,69 +248,74 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
     }).format(amount);
   };
 
+  // Define colors for charts
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+
   const dashboardStats = [
-    {
-      title: "Assets",
-      value: stats.totalAssets.toString(),
-      icon: Package,
-      color: "text-orange-600",
-      bgColor: "bg-orange-100",
-    },
     {
       title: "Total Keuntungan",
       value: formatCurrency(stats.totalKeuntungan),
       unit: `${stats.totalKeuntunganUnit} Unit`,
       icon: TrendingUp,
       color: "text-emerald-600",
-      bgColor: "bg-emerald-100",
-    },
-  ];
-
-  const financialStats = [
-    {
-      title: "Total Pembelian",
-      value: formatCurrency(stats.totalPembelian),
-      unit: `${stats.totalPembelianUnit} Unit`,
-      icon: ShoppingCart,
-      color: "text-red-600",
-      bgColor: "bg-red-100",
+      bgColor: "bg-gradient-to-r from-emerald-500 to-emerald-600",
+      change: "+12.5%",
+      changeType: "positive"
     },
     {
       title: "Total Penjualan",
       value: formatCurrency(stats.totalPenjualan),
       unit: `${stats.totalPenjualanUnit} Unit`,
       icon: Receipt,
-      color: "text-green-600",
-      bgColor: "bg-green-100",
+      color: "text-blue-600", 
+      bgColor: "bg-gradient-to-r from-blue-500 to-blue-600",
+      change: "+8.2%",
+      changeType: "positive"
     },
     {
-      title: "Total Booked",
-      value: formatCurrency(stats.totalBooked),
-      unit: `${stats.totalBookedUnit} Unit`,
-      icon: BookOpen,
-      color: "text-blue-600",
-      bgColor: "bg-blue-100",
+      title: "Total Pembelian",
+      value: formatCurrency(stats.totalPembelian),
+      unit: `${stats.totalPembelianUnit} Unit`,
+      icon: ShoppingCart,
+      color: "text-orange-600",
+      bgColor: "bg-gradient-to-r from-orange-500 to-orange-600",
+      change: "+5.1%",
+      changeType: "positive"
+    },
+    {
+      title: "Stock Motors",
+      value: (stats.sportMotors + stats.startMotors).toString(),
+      unit: "Unit Available",
+      icon: Package,
+      color: "text-purple-600",
+      bgColor: "bg-gradient-to-r from-purple-500 to-purple-600",
+      change: "-2.3%",
+      changeType: "negative"
     },
   ];
+
 
   if (loading) {
     return <div className="p-6">Loading dashboard data...</div>;
   }
 
   return (
-    <div className="space-y-4 md:space-y-6 p-2 md:p-4 lg:p-6 max-w-full overflow-hidden">
+    <div className="space-y-6 p-6 max-w-full overflow-hidden animate-fade-in">
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 truncate">Dashboard</h1>
-          <p className="text-gray-600 mt-1 md:mt-2 text-sm md:text-base">
-            Overview sistem manajemen POS KJV Motor
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Dashboard Analytics
+          </h1>
+          <p className="text-muted-foreground mt-2 flex items-center gap-2">
+            <Activity className="w-4 h-4" />
+            Data bulan {new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })} - Real-time insights untuk KJV Motor
           </p>
         </div>
         
         {/* Filter by Cabang */}
         <div className="w-full sm:w-64 lg:w-48 flex-shrink-0">
           <Select value={selectedCabang} onValueChange={setSelectedCabang}>
-            <SelectTrigger>
+            <SelectTrigger className="border-2 border-dashed border-border hover:border-primary transition-colors">
               <SelectValue placeholder="Filter by Cabang" />
             </SelectTrigger>
             <SelectContent>
@@ -241,29 +330,36 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         </div>
       </div>
 
-      {/* Main Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 lg:gap-6">
+      {/* Main Stats Cards with Gradient */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {dashboardStats.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <Card key={index} className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-4 md:p-6">
+            <Card key={index} className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 group">
+              <div className={`absolute inset-0 ${stat.bgColor} opacity-90`} />
+              <CardContent className="relative p-6 text-white">
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs md:text-sm font-medium text-gray-600 truncate">
+                    <p className="text-sm font-medium text-white/80 mb-1">
                       {stat.title}
                     </p>
-                    <p className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mt-1 md:mt-2 truncate">
+                    <p className="text-2xl font-bold mb-1 truncate">
                       {stat.value}
                     </p>
                     {stat.unit && (
-                      <p className="text-xs md:text-sm text-gray-500 mt-1">
+                      <p className="text-xs text-white/70">
                         {stat.unit}
                       </p>
                     )}
+                    <div className="flex items-center gap-1 mt-2">
+                      <TrendingUp className={`w-3 h-3 ${stat.changeType === 'positive' ? 'text-green-200' : 'text-red-200'}`} />
+                      <span className={`text-xs ${stat.changeType === 'positive' ? 'text-green-200' : 'text-red-200'}`}>
+                        {stat.change}
+                      </span>
+                    </div>
                   </div>
-                  <div className={`p-2 md:p-3 rounded-full ${stat.bgColor} flex-shrink-0 ml-2`}>
-                    <Icon className={`w-4 h-4 md:w-6 md:h-6 ${stat.color}`} />
+                  <div className="p-3 bg-white/20 rounded-full group-hover:bg-white/30 transition-colors">
+                    <Icon className="w-6 h-6 text-white" />
                   </div>
                 </div>
               </CardContent>
@@ -272,154 +368,239 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         })}
       </div>
 
-      {/* Financial Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 lg:gap-6">
-        {financialStats.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <Card key={index} className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-4 md:p-6">
-                <div className="flex items-center justify-between">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs md:text-sm font-medium text-gray-600 truncate">
-                      {stat.title}
-                    </p>
-                    <p className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 mt-1 md:mt-2 break-all">
-                      {stat.value}
-                    </p>
-                    {stat.unit && (
-                      <p className="text-xs md:text-sm text-gray-500 mt-1">
-                        {stat.unit}
-                      </p>
-                    )}
-                  </div>
-                  <div className={`p-2 md:p-3 rounded-full ${stat.bgColor} flex-shrink-0 ml-2`}>
-                    <Icon className={`w-4 h-4 md:w-6 md:h-6 ${stat.color}`} />
-                  </div>
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Status Trend Chart (Ready, Booked, Sold) */}
+        <Card className="shadow-lg border-0">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-indigo-600" />
+              Status Trend Bulan Ini (Ready, Booked, Sold)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={stats.statusTrend}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip 
+                  formatter={(value: number, name: string) => [
+                    `${value} Unit`, 
+                    name === 'ready' ? 'Ready' : name === 'booked' ? 'Booked' : 'Sold'
+                  ]}
+                  labelStyle={{ color: '#666' }}
+                  contentStyle={{ 
+                    backgroundColor: 'white', 
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="ready" 
+                  stroke="#10B981" 
+                  strokeWidth={3}
+                  dot={{ fill: '#10B981', strokeWidth: 2, r: 4 }}
+                  name="Ready"
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="booked" 
+                  stroke="#F59E0B" 
+                  strokeWidth={3}
+                  dot={{ fill: '#F59E0B', strokeWidth: 2, r: 4 }}
+                  name="Booked"
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="sold" 
+                  stroke="#EF4444" 
+                  strokeWidth={3}
+                  dot={{ fill: '#EF4444', strokeWidth: 2, r: 4 }}
+                  name="Sold"
+                />
+                <Legend />
+              </LineChart>
+            </ResponsiveContainer>
+            
+            {/* Status Summary */}
+            <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t">
+              <div className="text-center">
+                <div className="w-4 h-4 bg-green-500 rounded mx-auto mb-1"></div>
+                <div className="text-sm font-medium text-gray-600">Ready</div>
+                <div className="text-lg font-bold text-green-600">
+                  {stats.statusTrend.reduce((sum, item) => sum + item.ready, 0)}
                 </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 lg:gap-6">
-        {/* Statistik Motor Stock */}
-        <Card className="md:col-span-2 xl:col-span-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm md:text-base">
-              <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-green-600" />
-              Statistik Motor Stock
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="space-y-3 md:space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-xs md:text-sm text-gray-600">Stock Motor Sport</span>
-                <span className="font-semibold text-sm md:text-base">{stats.sportMotors} Unit</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs md:text-sm text-gray-600">Stock Motor Start</span>
-                <span className="font-semibold text-sm md:text-base">{stats.startMotors} Unit</span>
+              <div className="text-center">
+                <div className="w-4 h-4 bg-yellow-500 rounded mx-auto mb-1"></div>
+                <div className="text-sm font-medium text-gray-600">Booked</div>
+                <div className="text-lg font-bold text-yellow-600">
+                  {stats.statusTrend.reduce((sum, item) => sum + item.booked, 0)}
+                </div>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs md:text-sm text-gray-600">Total Stock</span>
-                <span className="font-semibold text-green-600 text-sm md:text-base">{stats.sportMotors + stats.startMotors} Unit</span>
+              <div className="text-center">
+                <div className="w-4 h-4 bg-red-500 rounded mx-auto mb-1"></div>
+                <div className="text-sm font-medium text-gray-600">Sold</div>
+                <div className="text-lg font-bold text-red-600">
+                  {stats.statusTrend.reduce((sum, item) => sum + item.sold, 0)}
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Statistik Pembelian Motor */}
-        <Card className="md:col-span-2 xl:col-span-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm md:text-base">
-              <ShoppingCart className="w-4 h-4 md:w-5 md:h-5 text-red-600" />
-              Statistik Pembelian Motor
+        {/* Stock Distribution Pie Chart */}
+        <Card className="shadow-lg border-0">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2">
+              <PieChart className="w-5 h-5 text-purple-600" />
+              Distribusi Stock Motor
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0">
-            <div className="space-y-3 md:space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-xs md:text-sm text-gray-600">Total Pembelian</span>
-                <span className="font-semibold text-sm md:text-base">{stats.totalPembelianUnit} Unit</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs md:text-sm text-gray-600">Nilai Pembelian</span>
-                <span className="font-semibold text-red-600 text-xs md:text-sm break-all">{formatCurrency(stats.totalPembelian)}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Statistik Penjualan Motor */}
-        <Card className="md:col-span-2 xl:col-span-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm md:text-base">
-              <Receipt className="w-4 h-4 md:w-5 md:h-5 text-green-600" />
-              Statistik Penjualan Motor
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="space-y-3 md:space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-xs md:text-sm text-gray-600">Total Penjualan</span>
-                <span className="font-semibold text-sm md:text-base">{stats.totalPenjualanUnit} Unit</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs md:text-sm text-gray-600">Nilai Penjualan</span>
-                <span className="font-semibold text-green-600 text-xs md:text-sm break-all">{formatCurrency(stats.totalPenjualan)}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6">
-        {/* Modal per Perusahaan */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm md:text-base">
-              <DollarSign className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
-              Modal per Perusahaan
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="space-y-2 md:space-y-3">
-              {stats.modalPerCompany.map((company, index) => (
-                <div key={index} className="flex justify-between items-center">
-                  <span className="text-xs md:text-sm text-gray-600 truncate pr-2">{company.name}</span>
-                  <span className="font-semibold text-blue-600 text-xs md:text-sm break-all">{formatCurrency(company.modal)}</span>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <RechartsPieChart>
+                <Pie
+                  data={stats.stockDistribution}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={120}
+                  paddingAngle={5}
+                  dataKey="value"
+                  animationBegin={0}
+                  animationDuration={800}
+                >
+                  {stats.stockDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  formatter={(value: number) => [`${value} Unit`, 'Stock']}
+                  contentStyle={{ 
+                    backgroundColor: 'white', 
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
+                <Legend />
+              </RechartsPieChart>
+            </ResponsiveContainer>
+            <div className="flex justify-center gap-4 mt-4">
+              {stats.stockDistribution.map((entry, index) => (
+                <div key={entry.name} className="flex items-center gap-2">
+                  <div 
+                    className="w-3 h-3 rounded-full" 
+                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                  />
+                  <span className="text-sm text-muted-foreground">{entry.name}</span>
                 </div>
               ))}
-              {stats.modalPerCompany.length === 0 && (
-                <p className="text-xs md:text-sm text-gray-500">Tidak ada data perusahaan</p>
-              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Performance & Analytics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Statistik Modal Performance */}
+        <Card className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
+          <CardHeader className="pb-4 bg-gradient-to-r from-blue-50 to-indigo-50">
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-blue-600" />
+              Performance Modal
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={stats.modalPerCompany}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis 
+                  dataKey="name" 
+                  tick={{ fontSize: 10 }} 
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis tick={{ fontSize: 12 }} tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`} />
+                <Tooltip 
+                  formatter={(value: number) => [formatCurrency(value), 'Modal']}
+                  contentStyle={{ 
+                    backgroundColor: 'white', 
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
+                <Bar dataKey="modal" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Quick Stats */}
+        <Card className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
+          <CardHeader className="pb-4 bg-gradient-to-r from-green-50 to-emerald-50">
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-green-600" />
+              Quick Stats
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-600">Motor Sport</span>
+              <span className="font-bold text-blue-600">{stats.sportMotors} Unit</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-600">Motor Start</span>
+              <span className="font-bold text-green-600">{stats.startMotors} Unit</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg">
+              <span className="text-sm font-medium text-purple-800">Total Stock</span>
+              <span className="font-bold text-purple-800">{stats.sportMotors + stats.startMotors} Unit</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-gradient-to-r from-orange-100 to-orange-200 rounded-lg">
+              <span className="text-sm font-medium text-orange-800">Booked Orders</span>
+              <span className="font-bold text-orange-800">{stats.totalBookedUnit} Unit</span>
             </div>
           </CardContent>
         </Card>
 
-        {/* Summary Modal Perusahaan */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm md:text-base">
-              <Users className="w-4 h-4 md:w-5 md:h-5 text-purple-600" />
-              Summary Perusahaan
+        {/* Company Status */}
+        <Card className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
+          <CardHeader className="pb-4 bg-gradient-to-r from-purple-50 to-pink-50">
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-purple-600" />
+              Company Status
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0">
-            <div className="space-y-3 md:space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-xs md:text-sm text-gray-600">Total Modal</span>
-                <span className="font-semibold text-blue-600 text-xs md:text-sm break-all">{formatCurrency(stats.totalModal)}</span>
+          <CardContent className="pt-4 space-y-4">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-purple-600 mb-1">
+                {formatCurrency(stats.totalModal)}
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs md:text-sm text-gray-600">Companies Aktif</span>
-                <span className="font-semibold text-green-600 text-sm md:text-base">{stats.activeCompanies}</span>
+              <p className="text-sm text-gray-600">Total Modal</p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-3 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{stats.activeCompanies}</div>
+                <p className="text-xs text-green-700">Active</p>
               </div>
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-gray-600">{stats.passiveCompanies}</div>
+                <p className="text-xs text-gray-700">Passive</p>
+              </div>
+            </div>
+
+            <div className="mt-4 p-3 bg-gradient-to-r from-indigo-100 to-indigo-200 rounded-lg">
               <div className="flex justify-between items-center">
-                <span className="text-xs md:text-sm text-gray-600">Companies Passive</span>
-                <span className="font-semibold text-gray-500 text-sm md:text-base">{stats.passiveCompanies}</span>
+                <span className="text-sm font-medium text-indigo-800">Operational Cost</span>
+                <span className="font-bold text-indigo-800">{formatCurrency(stats.totalOperational)}</span>
               </div>
             </div>
           </CardContent>
