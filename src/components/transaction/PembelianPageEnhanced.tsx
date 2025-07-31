@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Textarea } from "@/components/ui/textarea";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subWeeks, subMonths, subYears, addDays } from "date-fns";
 import { Search, Filter, ShoppingCart, CheckCircle, DollarSign } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import HistoryTab from "./HistoryTab";
 import PembelianForm from "./PembelianForm";
 import PembelianTable from "./PembelianTable";
 import PriceHistoryModal from "./PriceHistoryModal";
@@ -611,8 +613,16 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
         />
       </div>
 
-      {/* Filter Section */}
-      <Card>
+      {/* Tabs untuk Data Aktif dan History */}
+      <Tabs defaultValue="active" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="active">Data Aktif</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="active" className="space-y-6">
+          {/* Filter Section */}
+          <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="w-5 h-5" />
@@ -1138,6 +1148,13 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
           )}
         </DialogContent>
       </Dialog>
+        
+        </TabsContent>
+        
+        <TabsContent value="history" className="space-y-6">
+          <HistoryTab type="pembelian" selectedDivision={selectedDivision} />
+        </TabsContent>
+      </Tabs>
 
       {/* Price History Modal */}
       <PriceHistoryModal

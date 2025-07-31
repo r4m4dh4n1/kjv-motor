@@ -22,7 +22,7 @@ interface UserRole {
       last_name: string;
     } | null;
   } | null;
-  roles?: {
+  roles: {
     role_name: string;
   };
 }
@@ -68,23 +68,25 @@ const UserRolesPage = () => {
 
   const fetchUserRoles = async () => {
     try {
+      // Fetch user roles data only
       const { data: userRolesData, error: userRolesError } = await supabase
         .from("user_roles")
-        .select(`
-          *,
-          roles (
-            role_name
-          )
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
 
       if (userRolesError) throw userRolesError;
 
+      if (!userRolesData || userRolesData.length === 0) {
+        setUserRoles([]);
+        return;
+      }
+
       // Fetch profiles separately and match manually
-      const userIds = userRolesData?.map(ur => ur.user_id) || [];
+      const userIds = userRolesData.map(ur => ur.user_id);
+      const roleIds = userRolesData.map(ur => ur.role_id);
       
-      if (userIds.length > 0) {
-        const { data: profilesData, error: profilesError } = await supabase
+      const [profilesResult, rolesResult] = await Promise.all([
+        supabase
           .from("profiles")
           .select(`
             id,
@@ -95,20 +97,24 @@ const UserRolesPage = () => {
               last_name
             )
           `)
-          .in("id", userIds);
+          .in("id", userIds),
+        supabase
+          .from("roles")
+          .select("role_id, role_name")
+          .in("role_id", roleIds)
+      ]);
 
-        if (profilesError) throw profilesError;
+      if (profilesResult.error) throw profilesResult.error;
+      if (rolesResult.error) throw rolesResult.error;
 
-        // Combine the data manually
-        const combinedData = userRolesData?.map(ur => ({
-          ...ur,
-          profiles: profilesData?.find(p => p.id === ur.user_id) || null
-        })) || [];
+      // Combine the data manually
+      const combinedData = userRolesData.map(ur => ({
+        ...ur,
+        profiles: profilesResult.data?.find(p => p.id === ur.user_id) || null,
+        roles: rolesResult.data?.find(r => r.role_id === ur.role_id) || { role_name: 'Unknown' }
+      }));
 
-        setUserRoles(combinedData);
-      } else {
-        setUserRoles([]);
-      }
+      setUserRoles(combinedData);
     } catch (error) {
       console.error("Error fetching user roles:", error);
       toast({

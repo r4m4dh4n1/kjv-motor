@@ -13,6 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatNumber, parseFormattedNumber } from "@/utils/formatUtils";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import CicilanHistoryTable from "./CicilanHistoryTable";
 
 interface CicilanPageEnhancedProps {
   selectedDivision: string;
@@ -655,6 +657,13 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
         </Dialog>
       </div>
 
+      <Tabs defaultValue="active" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="active">Data Aktif</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="active" className="space-y-6">
       {/* Filter yang Ditingkatkan */}
       <Card>
         <CardHeader>
@@ -981,6 +990,22 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+        
+        <TabsContent value="history" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>History Cicilan</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Data cicilan yang sudah ditutup dalam proses close month
+              </p>
+            </CardHeader>
+            <CardContent>
+              <CicilanHistoryTable selectedDivision={selectedDivision} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

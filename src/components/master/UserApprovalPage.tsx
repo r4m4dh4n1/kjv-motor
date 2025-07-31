@@ -50,44 +50,68 @@ const UserApprovalPage = () => {
 
   const handleApprovalChange = async (userId: string, approve: boolean) => {
     try {
-      const { error } = await supabase
+      console.log('Starting approval change for user:', userId, 'approve:', approve);
+      
+      const { data: updateData, error: updateError } = await supabase
         .from('profiles')
         .update({ is_approved: approve })
-        .eq('id', userId);
+        .eq('id', userId)
+        .select();
 
-      if (error) {
+      console.log('Update result:', { updateData, updateError });
+
+      if (updateError) {
+        console.error('Update error:', updateError);
         toast({
           title: "Error",
-          description: `Failed to ${approve ? 'approve' : 'reject'} user.`,
+          description: `Failed to ${approve ? 'approve' : 'reject'} user: ${updateError.message}`,
           variant: "destructive",
         });
-      } else {
-        toast({
-          title: "Success",
-          description: `User ${approve ? 'approved' : 'rejected'} successfully.`,
-        });
-        
-        // Assign default user role when approving
-        if (approve) {
-          const { data: roles } = await supabase
-            .from('roles')
-            .select('role_id')
-            .eq('role_name', 'user')
-            .single();
+        return;
+      }
+
+      console.log('Profile updated successfully');
+      
+      // Assign default user role when approving
+      if (approve) {
+        console.log('Assigning default role...');
+        const { data: roles, error: roleError } = await supabase
+          .from('roles')
+          .select('role_id')
+          .eq('role_name', 'user')
+          .single();
+          
+        console.log('Role query result:', { roles, roleError });
+          
+        if (roleError) {
+          console.error('Role query error:', roleError);
+        } else if (roles) {
+          const { data: insertData, error: insertError } = await supabase
+            .from('user_roles')
+            .insert({
+              user_id: userId,
+              role_id: roles.role_id
+            })
+            .select();
             
-          if (roles) {
-            await supabase
-              .from('user_roles')
-              .insert({
-                user_id: userId,
-                role_id: roles.role_id
-              });
+          console.log('User role insert result:', { insertData, insertError });
+          
+          if (insertError) {
+            console.error('User role insert error:', insertError);
           }
         }
-        
-        fetchPendingUsers();
       }
+      
+      toast({
+        title: "Success",
+        description: `User ${approve ? 'approved' : 'rejected'} successfully.`,
+      });
+      
+      // Refetch data
+      await fetchPendingUsers();
+      
     } catch (error) {
+      console.error('Unexpected error in handleApprovalChange:', error);
       toast({
         title: "Error",
         description: "An unexpected error occurred.",

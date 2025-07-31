@@ -8,14 +8,16 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Lock, AlertTriangle } from 'lucide-react';
+import { Calendar, Lock, AlertTriangle, RotateCcw } from 'lucide-react';
 
 const CloseMonthPage = () => {
   const [targetMonth, setTargetMonth] = useState('');
   const [targetYear, setTargetYear] = useState('');
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [restoreResult, setRestoreResult] = useState<any>(null);
   const { toast } = useToast();
 
   const handleCloseMonth = async () => {
@@ -39,6 +41,7 @@ const CloseMonthPage = () => {
       if (error) throw error;
 
       setResult(data);
+      setRestoreResult(null); // Clear restore result when closing
       toast({
         title: "Sukses",
         description: `Berhasil menutup bulan ${targetMonth}/${targetYear}`,
@@ -51,6 +54,42 @@ const CloseMonthPage = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRestoreMonth = async () => {
+    if (!targetMonth || !targetYear) {
+      toast({
+        title: "Error",
+        description: "Silakan masukkan bulan dan tahun yang valid",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsRestoring(true);
+    try {
+      const { data, error } = await supabase.rpc('restore_month', {
+        target_month: parseInt(targetMonth),
+        target_year: parseInt(targetYear)
+      });
+
+      if (error) throw error;
+
+      setRestoreResult(data);
+      setResult(null); // Clear close result when restoring
+      toast({
+        title: "Sukses",
+        description: `Berhasil mengembalikan bulan ${targetMonth}/${targetYear}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Terjadi kesalahan saat mengembalikan bulan",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRestoring(false);
     }
   };
 
@@ -122,33 +161,65 @@ const CloseMonthPage = () => {
             />
           </div>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button 
-                className="w-full" 
-                disabled={isLoading || !targetMonth || !targetYear}
-              >
-                {isLoading ? "Memproses..." : "Tutup Bulan"}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Konfirmasi Close Month</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Anda akan menutup bulan <strong>{targetMonth}/{targetYear}</strong>. 
-                  Proses ini akan memindahkan semua data transaksi yang sudah selesai ke tabel history.
-                  <br /><br />
-                  <strong>Proses ini tidak dapat dibatalkan!</strong>
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Batal</AlertDialogCancel>
-                <AlertDialogAction onClick={handleCloseMonth}>
-                  Ya, Tutup Bulan
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  className="w-full" 
+                  disabled={isLoading || !targetMonth || !targetYear}
+                >
+                  {isLoading ? "Memproses..." : "Tutup Bulan"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Konfirmasi Close Month</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Anda akan menutup bulan <strong>{targetMonth}/{targetYear}</strong>. 
+                    Proses ini akan memindahkan semua data transaksi yang sudah selesai ke tabel history.
+                    <br /><br />
+                    <strong>Proses ini tidak dapat dibatalkan!</strong>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleCloseMonth}>
+                    Ya, Tutup Bulan
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="outline"
+                  className="w-full flex items-center gap-2" 
+                  disabled={isRestoring || !targetMonth || !targetYear}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  {isRestoring ? "Mengembalikan..." : "Kembalikan Bulan"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Konfirmasi Restore Month</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Anda akan mengembalikan bulan <strong>{targetMonth}/{targetYear}</strong> dari history. 
+                    Proses ini akan memindahkan semua data dari tabel history kembali ke tabel aktif.
+                    <br /><br />
+                    <strong>Pastikan bulan tersebut sudah ditutup sebelumnya!</strong>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleRestoreMonth}>
+                    Ya, Kembalikan Bulan
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </CardContent>
       </Card>
 
@@ -192,6 +263,53 @@ const CloseMonthPage = () => {
                 <div className="bg-teal-50 p-3 rounded-lg">
                   <p className="text-sm text-gray-600">Assets</p>
                   <p className="text-lg font-semibold">{result.records_moved.assets}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {restoreResult && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-blue-700">Hasil Restore Month</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <p><strong>Bulan/Tahun:</strong> {restoreResult.month}/{restoreResult.year}</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <p className="text-sm text-gray-600">Pembelian</p>
+                  <p className="text-lg font-semibold">{restoreResult.records_restored.pembelian}</p>
+                </div>
+                <div className="bg-green-50 p-3 rounded-lg">
+                  <p className="text-sm text-gray-600">Penjualan</p>
+                  <p className="text-lg font-semibold">{restoreResult.records_restored.penjualan}</p>
+                </div>
+                <div className="bg-purple-50 p-3 rounded-lg">
+                  <p className="text-sm text-gray-600">Pembukuan</p>
+                  <p className="text-lg font-semibold">{restoreResult.records_restored.pembukuan}</p>
+                </div>
+                <div className="bg-orange-50 p-3 rounded-lg">
+                  <p className="text-sm text-gray-600">Cicilan</p>
+                  <p className="text-lg font-semibold">{restoreResult.records_restored.cicilan}</p>
+                </div>
+                <div className="bg-red-50 p-3 rounded-lg">
+                  <p className="text-sm text-gray-600">Fee</p>
+                  <p className="text-lg font-semibold">{restoreResult.records_restored.fee_penjualan}</p>
+                </div>
+                <div className="bg-yellow-50 p-3 rounded-lg">
+                  <p className="text-sm text-gray-600">Operational</p>
+                  <p className="text-lg font-semibold">{restoreResult.records_restored.operational}</p>
+                </div>
+                <div className="bg-indigo-50 p-3 rounded-lg">
+                  <p className="text-sm text-gray-600">Biro Jasa</p>
+                  <p className="text-lg font-semibold">{restoreResult.records_restored.biro_jasa}</p>
+                </div>
+                <div className="bg-teal-50 p-3 rounded-lg">
+                  <p className="text-sm text-gray-600">Assets</p>
+                  <p className="text-lg font-semibold">{restoreResult.records_restored.assets}</p>
                 </div>
               </div>
             </div>

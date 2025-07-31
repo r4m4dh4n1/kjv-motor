@@ -12,6 +12,8 @@ import { BiroJasaForm } from "./biro-jasa/BiroJasaForm";
 import { BiroJasaTableEnhanced } from "./biro-jasa/BiroJasaTableEnhanced";
 import { formatCurrency } from "./biro-jasa/utils";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import BiroJasaHistoryTable from "./BiroJasaHistoryTable";
 
 const BiroJasaPageEnhanced = ({ selectedDivision }: { selectedDivision: string }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -200,8 +202,40 @@ const BiroJasaPageEnhanced = ({ selectedDivision }: { selectedDivision: string }
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Biro Jasa</h1>
-        {/* ... existing dialog code ... */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={handleOpenDialog}>
+              <Plus className="mr-2 h-4 w-4" />
+              Tambah Biro Jasa
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingBiroJasa ? "Edit Biro Jasa" : "Tambah Biro Jasa"}
+              </DialogTitle>
+            </DialogHeader>
+            <BiroJasaForm
+              formData={formData}
+              setFormData={setFormData}
+              brandsData={brandsData}
+              companiesData={companiesData}
+              jenisMotorData={jenisMotorData}
+              onSubmit={handleSubmit}
+              onCancel={handleCancel}
+              isEditing={!!editingBiroJasa}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
+
+      <Tabs defaultValue="active" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="active">Data Aktif</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="active" className="space-y-6">
 
       {/* Enhanced Filters */}
       <Card>
@@ -408,6 +442,22 @@ const BiroJasaPageEnhanced = ({ selectedDivision }: { selectedDivision: string }
         onPageChange={setCurrentPage}
         onItemsPerPageChange={setItemsPerPage}
       />
+        </TabsContent>
+        
+        <TabsContent value="history" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>History Biro Jasa</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Data biro jasa yang sudah ditutup dalam proses close month
+              </p>
+            </CardHeader>
+            <CardContent>
+              <BiroJasaHistoryTable selectedDivision={selectedDivision} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

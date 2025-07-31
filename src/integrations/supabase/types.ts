@@ -1850,6 +1850,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_user_roles_role_id"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["role_id"]
+          },
+          {
+            foreignKeyName: "fk_user_roles_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "user_roles_role_id_fkey"
             columns: ["role_id"]
             isOneToOne: false
@@ -1860,7 +1874,120 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      assets_combined: {
+        Row: {
+          closed_month: number | null
+          closed_year: number | null
+          created_at: string | null
+          data_source: string | null
+          harga_asset: number | null
+          harga_jual: number | null
+          id: number | null
+          jenis_asset: string | null
+          keuntungan: number | null
+          status: string | null
+          tanggal_jual: string | null
+          tanggal_perolehan: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      pembelian_combined: {
+        Row: {
+          brand_id: number | null
+          cabang_id: number | null
+          closed_month: number | null
+          closed_year: number | null
+          created_at: string | null
+          data_source: string | null
+          divisi: string | null
+          harga_beli: number | null
+          harga_final: number | null
+          id: number | null
+          jenis_motor_id: number | null
+          jenis_pembelian: string | null
+          keterangan: string | null
+          kilometer: number | null
+          nominal_dana_1: number | null
+          nominal_dana_2: number | null
+          plat_nomor: string | null
+          status: string | null
+          sumber_dana_1_id: number | null
+          sumber_dana_2_id: number | null
+          tahun: number | null
+          tanggal_pajak: string | null
+          tanggal_pembelian: string | null
+          updated_at: string | null
+          warna: string | null
+        }
+        Relationships: []
+      }
+      pembukuan_combined: {
+        Row: {
+          cabang_id: number | null
+          closed_month: number | null
+          closed_year: number | null
+          company_id: number | null
+          created_at: string | null
+          data_source: string | null
+          debit: number | null
+          divisi: string | null
+          id: number | null
+          keterangan: string | null
+          kredit: number | null
+          pembelian_id: number | null
+          saldo: number | null
+          tanggal: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      penjualans_combined: {
+        Row: {
+          biaya_lain_lain: number | null
+          biaya_pajak: number | null
+          biaya_qc: number | null
+          brand_id: number | null
+          cabang_id: number | null
+          catatan: string | null
+          cicilan: boolean | null
+          closed_month: number | null
+          closed_year: number | null
+          company_id: number | null
+          company_id_2: number | null
+          created_at: string | null
+          data_source: string | null
+          divisi: string | null
+          dp: number | null
+          harga_bayar: number | null
+          harga_beli: number | null
+          harga_jual: number | null
+          id: number | null
+          jenis_id: number | null
+          jenis_pembayaran: string | null
+          keterangan_biaya_lain: string | null
+          keuntungan: number | null
+          kilometer: number | null
+          nominal_dana_1: number | null
+          nominal_dana_2: number | null
+          ongkir_dibayar: boolean | null
+          pajak: string | null
+          pembelian_id: number | null
+          plat: string | null
+          reason_update_harga: string | null
+          sisa_bayar: number | null
+          sisa_ongkir: number | null
+          status: string | null
+          tahun: number | null
+          tanggal: string | null
+          titip_ongkir: number | null
+          total_ongkir: number | null
+          tt: string | null
+          updated_at: string | null
+          warna: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       assign_user_role: {
@@ -1874,6 +2001,10 @@ export type Database = {
       decrement_qty: {
         Args: { jenis_motor_id: number }
         Returns: undefined
+      }
+      get_monthly_data: {
+        Args: { target_month: number; target_year: number }
+        Returns: Json
       }
       get_user_permissions: {
         Args: { user_id_param: number }
@@ -1893,6 +2024,14 @@ export type Database = {
       is_user_approved: {
         Args: { user_id: string }
         Returns: boolean
+      }
+      restore_month: {
+        Args: { target_month: number; target_year: number }
+        Returns: Json
+      }
+      test_restore_assets_only: {
+        Args: { target_month: number; target_year: number }
+        Returns: Json
       }
       update_company_modal: {
         Args: { company_id: number; amount: number }

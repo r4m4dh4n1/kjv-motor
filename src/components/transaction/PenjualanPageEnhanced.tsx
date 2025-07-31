@@ -9,6 +9,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subWeeks, subMonths, subYears, addDays } from "date-fns";
 import { Search, Filter, Download } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import HistoryTab from "./HistoryTab";
 import PenjualanForm from "./PenjualanForm";
 import PenjualanTable from "./PenjualanTable";
 import UpdateHargaModal from "./UpdateHargaModal";
@@ -221,7 +223,7 @@ const PenjualanPageEnhanced = ({ selectedDivision }: PenjualanPageEnhancedProps)
     resetPage();
   };
 
-  return (
+    return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Data Penjualan</h1>
@@ -240,8 +242,16 @@ const PenjualanPageEnhanced = ({ selectedDivision }: PenjualanPageEnhancedProps)
         />
       </div>
 
-      {/* Filter Section */}
-      <Card>
+      {/* Tabs untuk Data Aktif dan History */}
+      <Tabs defaultValue="active" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="active">Data Aktif</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="active" className="space-y-6">
+          {/* Filter Section */}
+          <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="w-5 h-5" />
@@ -489,6 +499,13 @@ const PenjualanPageEnhanced = ({ selectedDivision }: PenjualanPageEnhancedProps)
         }}
         penjualan={selectedPenjualanForHistory}
       />
+        
+        </TabsContent>
+        
+        <TabsContent value="history" className="space-y-6">
+          <HistoryTab type="penjualans" selectedDivision={selectedDivision} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
