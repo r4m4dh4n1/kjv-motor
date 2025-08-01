@@ -39,17 +39,6 @@ export const BiroJasaForm = ({
   const [tanggalOpen, setTanggalOpen] = useState(false);
   const [estimasiTanggalOpen, setEstimasiTanggalOpen] = useState(false);
 
-  // Filter jenis motor based on selected brand
-  const filteredJenisMotor = jenisMotorData.filter(
-    jm => formData.brand_id ? jm.brand_id === parseInt(formData.brand_id) : false
-  );
-
-  // Check if "Other Brands" is selected - perbaiki pengecekan
-  const selectedBrand = brandsData.find(b => b.id.toString() === formData.brand_id);
-  const isOtherBrand = selectedBrand?.name?.toLowerCase().includes('other') || 
-                      selectedBrand?.name?.toLowerCase().includes('lain') ||
-                      selectedBrand?.name === "Others Brand" ||
-                      selectedBrand?.name === "Other Brands";
 
   const handleCurrencyChange = (field: keyof BiroJasaFormData, value: string) => {
     const formattedValue = handleCurrencyInput(value);
@@ -89,15 +78,6 @@ export const BiroJasaForm = ({
     setEstimasiTanggalOpen(false);
   };
 
-  // Handler untuk perubahan brand
-  const handleBrandChange = (value: string) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      brand_id: value, 
-      jenis_motor_id: "",
-      jenis_motor: "" // Reset jenis_motor ketika brand berubah
-    }));
-  };
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -133,61 +113,34 @@ export const BiroJasaForm = ({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="brand_id">Brand</Label>
-          <Select
-            value={formData.brand_id}
-            onValueChange={handleBrandChange}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Pilih Brand" />
-            </SelectTrigger>
-            <SelectContent>
-              {brandsData.map((brand) => (
-                <SelectItem key={brand.id} value={brand.id.toString()}>
-                  {brand.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Input
+            id="brand_id"
+            type="text"
+            value={formData.brand_name || ''}
+            onChange={(e) => setFormData(prev => ({ 
+              ...prev, 
+              brand_name: e.target.value,
+              brand_id: "",
+              jenis_motor_id: ""
+            }))}
+            placeholder="Masukkan brand secara manual"
+            className="w-full"
+          />
         </div>
         <div>
           <Label htmlFor="jenis_motor">Jenis Motor</Label>
-          {isOtherBrand ? (
-            // Tampilkan input freetext untuk Other Brands
-            <Input
-              id="jenis_motor"
-              type="text"
-              value={formData.jenis_motor || ''}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                jenis_motor: e.target.value,
-                jenis_motor_id: "" // Clear jenis_motor_id ketika menggunakan freetext
-              }))}
-              placeholder="Masukkan jenis motor secara manual"
-              className="w-full"
-            />
-          ) : (
-            // Tampilkan dropdown untuk brand lainnya
-            <Select
-              value={formData.jenis_motor_id}
-              onValueChange={(value) => setFormData(prev => ({ 
-                ...prev, 
-                jenis_motor_id: value,
-                jenis_motor: "" // Clear jenis_motor ketika menggunakan dropdown
-              }))}
-              disabled={!formData.brand_id}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={!formData.brand_id ? "Pilih Brand dulu" : "Pilih Jenis Motor"} />
-              </SelectTrigger>
-              <SelectContent>
-                {filteredJenisMotor.map((jenis) => (
-                  <SelectItem key={jenis.id} value={jenis.id.toString()}>
-                    {jenis.jenis_motor}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <Input
+            id="jenis_motor"
+            type="text"
+            value={formData.jenis_motor || ''}
+            onChange={(e) => setFormData(prev => ({ 
+              ...prev, 
+              jenis_motor: e.target.value,
+              jenis_motor_id: ""
+            }))}
+            placeholder="Masukkan jenis motor secara manual"
+            className="w-full"
+          />
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 export interface BiroJasaFormData {
   tanggal: string;
   brand_id: string;
+  brand_name?: string;
   jenis_motor_id: string;
   jenis_motor?: string;
   warna: string;
@@ -20,6 +21,7 @@ export interface BiroJasaItem {
   id: number;
   tanggal: string;
   brand_id?: number;
+  brand_name?: string;
   jenis_motor_id?: number;
   warna?: string;
   plat_nomor?: string;

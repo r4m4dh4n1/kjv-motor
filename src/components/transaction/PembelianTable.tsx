@@ -84,7 +84,7 @@ const PembelianTable = ({
       render: (value: string) => (
         <div className="flex items-center gap-1">
           <Calendar className="w-3 h-3 text-muted-foreground" />
-          <DateCell date={value} className="text-xs" />
+          <DateCell date={value} className="text-xs" checkOverdue={true} />
         </div>
       )
     },

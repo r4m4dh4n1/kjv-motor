@@ -40,6 +40,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
   const [totalBooked, setTotalBooked] = useState(0);
   const [totalOperasional, setTotalOperasional] = useState(0);
   const [totalPembelianGabungan, setTotalPembelianGabungan] = useState(0);
+  const [totalModalKalkulasi, setTotalModalKalkulasi] = useState(0);
 
   const getDateRange = (period: string) => {
     const now = new Date();
@@ -225,12 +226,40 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         operasionalQuery = operasionalQuery.eq('divisi', selectedDivision);
       }
 
-      const [keuntunganResult, bookedResult, bookedHargaBeliResult, pembelianReadyResult, operasionalResult] = await Promise.all([
+      // Query untuk modal perusahaan
+      let companiesQuery = supabase
+        .from('companies')
+        .select('modal, divisi');
+
+      // Filter berdasarkan divisi jika bukan 'all'
+      if (selectedDivision !== 'all') {
+        companiesQuery = companiesQuery.eq('divisi', selectedDivision);
+      }
+
+      // Query untuk pencatatan asset
+      let pencatatanAssetQuery = (supabase as any)
+        .from('pencatatan_asset')
+        .select('nominal, divisi')
+        .gte('tanggal', dateRange.start.toISOString())
+        .lte('tanggal', dateRange.end.toISOString());
+
+      if (selectedCabang !== 'all') {
+        pencatatanAssetQuery = pencatatanAssetQuery.eq('cabang_id', parseInt(selectedCabang));
+      }
+
+      // Filter berdasarkan divisi jika bukan 'all'
+      if (selectedDivision !== 'all') {
+        pencatatanAssetQuery = pencatatanAssetQuery.eq('divisi', selectedDivision);
+      }
+
+      const [keuntunganResult, bookedResult, bookedHargaBeliResult, pembelianReadyResult, operasionalResult, companiesResult, pencatatanAssetResult] = await Promise.all([
         keuntunganQuery,
         bookedQuery,
         bookedHargaBeliQuery,
         pembelianReadyQuery,
-        operasionalQuery
+        operasionalQuery,
+        companiesQuery,
+        pencatatanAssetQuery
       ]);
 
       if (keuntunganResult.error) throw keuntunganResult.error;
@@ -238,6 +267,8 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       if (bookedHargaBeliResult.error) throw bookedHargaBeliResult.error;
       if (pembelianReadyResult.error) throw pembelianReadyResult.error;
       if (operasionalResult.error) throw operasionalResult.error;
+      if (companiesResult.error) throw companiesResult.error;
+      if (pencatatanAssetResult.error) throw pencatatanAssetResult.error;
 
       // Format data keuntungan
       const formattedData = keuntunganResult.data?.map(item => {
@@ -278,6 +309,16 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       // 3. Total gabungan untuk card Total Pembelian
       const totalGabungan = totalPembelianReady + totalBookedHargaBeli;
       setTotalPembelianGabungan(totalGabungan);
+
+      // Hitung total modal perusahaan
+      const totalModalPerusahaan = companiesResult.data?.reduce((sum, item) => sum + (item.modal || 0), 0) || 0;
+
+      // Hitung total pencatatan asset
+      const totalPencatatanAsset = pencatatanAssetResult.data?.reduce((sum, item) => sum + (item.nominal || 0), 0) || 0;
+
+      // Set total modal kalkulasi dengan rumus baru
+      const totalModalKalkulasiBaru = totalModalPerusahaan + totalPencatatanAsset + totalPembelianReady + totalBookedHargaBeli + totalProfit - totalOperasionalAmount;
+      setTotalModalKalkulasi(totalModalKalkulasiBaru);
 
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -323,7 +364,6 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
   const grossProfitMargin = totalProfit - totalOperasional;
   const workingCapital = totalPembelianGabungan;
   const netBusinessValue = totalProfit + totalBooked - totalOperasional;
-    const totalModalKalkulasi = totalPembelianGabungan + totalBooked - totalOperasional;
 
   const handlePrint = () => {
     window.print();

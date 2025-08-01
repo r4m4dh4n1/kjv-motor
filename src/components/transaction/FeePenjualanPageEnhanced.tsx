@@ -26,6 +26,8 @@ interface FeePenjualan {
   penjualans?: {
     id: number;
     plat: string;
+    warna: string;
+    kilometer: number;
     cabang_id: number;
     brand_id: number;
     jenis_id: number;
@@ -46,11 +48,14 @@ interface FeePenjualan {
 interface Penjualan {
   id: number;
   plat: string;
+  warna: string;
+  kilometer: number;
   cabang_id: number;
   brand_id: number;
   jenis_id: number;
   harga_jual: number;
   tanggal: string;
+  status: string;
   cabangs?: {
     nama: string;
   };
@@ -114,6 +119,8 @@ const FeePenjualanPageEnhanced: React.FC<FeePenjualanPageEnhancedProps> = ({ sel
           penjualans!inner(
             id,
             plat,
+            warna,
+            kilometer,
             cabang_id,
             brand_id,
             jenis_id,
@@ -156,15 +163,19 @@ const FeePenjualanPageEnhanced: React.FC<FeePenjualanPageEnhancedProps> = ({ sel
         .select(`
           id,
           plat,
+          warna,
+          kilometer,
           cabang_id,
           brand_id,
           jenis_id,
           harga_jual,
           tanggal,
+          status,
           cabangs:cabang_id(nama),
           brands(name),
           jenis_motor:jenis_id(jenis_motor)
         `)
+        .eq('status', 'selesai')
         .order('tanggal', { ascending: false });
 
       if (error) {
@@ -482,7 +493,7 @@ const FeePenjualanPageEnhanced: React.FC<FeePenjualanPageEnhancedProps> = ({ sel
                   <SelectContent>
                     {penjualanData.map((penjualan) => (
                       <SelectItem key={penjualan.id} value={penjualan.id.toString()}>
-                        {penjualan.plat} - {penjualan.brands?.name} - {formatCurrency(penjualan.harga_jual)}
+                        {penjualan.brands?.name} - {penjualan.jenis_motor?.jenis_motor} - {penjualan.plat} - {penjualan.warna} - {penjualan.kilometer?.toLocaleString()} km - {formatCurrency(penjualan.harga_jual)}
                       </SelectItem>
                     ))}
                   </SelectContent>

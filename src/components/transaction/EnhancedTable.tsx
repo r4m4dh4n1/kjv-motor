@@ -292,15 +292,25 @@ export const CurrencyCell = ({
 
 export const DateCell = ({ 
   date, 
-  className 
+  className,
+  checkOverdue = false
 }: { 
   date: string;
   className?: string;
-}) => (
-  <span className={cn("text-sm", className)}>
-    {new Date(date).toLocaleDateString('id-ID')}
-  </span>
-);
+  checkOverdue?: boolean;
+}) => {
+  const isOverdue = checkOverdue && new Date(date) < new Date();
+  
+  return (
+    <span className={cn(
+      "text-sm", 
+      isOverdue && "text-red-600 font-medium",
+      className
+    )}>
+      {new Date(date).toLocaleDateString('id-ID')}
+    </span>
+  );
+};
 
 export const AvatarCell = ({ 
   name, 
@@ -323,5 +333,29 @@ export const AvatarCell = ({
         <div className="text-xs text-muted-foreground">{subtitle}</div>
       )}
     </div>
+  </div>
+);
+
+export const TextCell = ({ 
+  text, 
+  className 
+}: { 
+  text: string;
+  className?: string;
+}) => (
+  <span className={cn("text-sm", className)}>
+    {text}
+  </span>
+);
+
+export const ActionCell = ({ 
+  children, 
+  className 
+}: { 
+  children: React.ReactNode;
+  className?: string;
+}) => (
+  <div className={cn("flex items-center gap-2", className)}>
+    {children}
   </div>
 );

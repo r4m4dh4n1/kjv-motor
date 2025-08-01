@@ -28,6 +28,7 @@ import PenjualanBookedPageEnhanced from "@/components/transaction/PenjualanBooke
 import PenjualanSoldPageEnhanced from "@/components/transaction/PenjualanSoldPageEnhanced";
 import CloseMonthPage from "@/components/finance/CloseMonthPage";
 import { ProfitDistributionPage } from "@/components/finance/ProfitDistributionPage";
+import { PencatatanAssetPage } from "@/components/transaction/PencatatanAssetPage";
 
 
 const Index = () => {
@@ -89,6 +90,8 @@ case 'fee-penjualan':
           return <ProfitDistributionPage selectedDivision={selectedDivision} />;
         case "close-month":
           return <CloseMonthPage />;
+        case "pencatatan-asset":
+          return <PencatatanAssetPage selectedDivision={selectedDivision} />;
         default:
         return <Dashboard selectedDivision={selectedDivision} />;
     }

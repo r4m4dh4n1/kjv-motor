@@ -260,23 +260,41 @@ const PenjualanFormFields = ({
                     ? 'border-blue-500 bg-blue-50' 
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
-                onClick={() => setFormData({
-                  ...formData,
-                  selected_motor_id: motor.id.toString(),
-                  pembelian_id: motor.id.toString(),
-                  tahun: motor.tahun.toString(),
-                  warna: motor.warna,
-                  kilometer: motor.kilometer.toString(),
-                  plat_nomor: motor.plat_nomor,
-                  harga_beli: motor.harga_beli.toString()
-                })}
+                onClick={() => {
+                  // Use harga_final if available and not 0, otherwise use harga_beli
+                  const hargaBeli = motor.harga_final && motor.harga_final > 0 ? motor.harga_final : motor.harga_beli;
+                  
+                  setFormData({
+                    ...formData,
+                    selected_motor_id: motor.id.toString(),
+                    pembelian_id: motor.id.toString(),
+                    tahun: motor.tahun.toString(),
+                    warna: motor.warna,
+                    kilometer: motor.kilometer.toString(),
+                    plat_nomor: motor.plat_nomor,
+                    harga_beli: hargaBeli.toString()
+                  });
+                }}
               >
-                <div className="grid grid-cols-5 gap-2 text-sm">
+                <div className="grid grid-cols-6 gap-2 text-sm">
                   <div><strong>Tahun:</strong> {motor.tahun}</div>
                   <div><strong>Warna:</strong> {motor.warna}</div>
                   <div><strong>KM:</strong> {formatNumber(motor.kilometer)}</div>
                   <div><strong>Plat:</strong> {motor.plat_nomor}</div>
-                  <div><strong>Harga Beli:</strong> Rp {formatNumber(motor.harga_beli)}</div>
+                  <div>
+                    <strong>Harga Beli:</strong> Rp {formatNumber(motor.harga_beli)}
+                    {motor.harga_final && motor.harga_final > 0 && (
+                      <div className="text-xs text-blue-600 mt-1">
+                        <strong>Harga Final:</strong> Rp {formatNumber(motor.harga_final)}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <strong>Harga yang dipakai:</strong> 
+                    <span className="text-green-600 font-medium">
+                      Rp {formatNumber(motor.harga_final && motor.harga_final > 0 ? motor.harga_final : motor.harga_beli)}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}

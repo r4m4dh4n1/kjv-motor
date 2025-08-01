@@ -97,6 +97,32 @@ export const usePenjualanCreate = () => {
         }
       }
 
+      // 5. TAMBAHAN: Jika status penjualan 'selesai', tambah modal perusahaan dengan keuntungan
+      if (status === 'selesai' && submitData.company_id && keuntungan > 0) {
+        try {
+          const { error: modalError } = await supabase.rpc('update_company_modal', {
+            company_id: submitData.company_id,
+            amount: keuntungan // Menambah modal sebesar keuntungan penjualan
+          });
+
+          if (modalError) {
+            console.error('Error updating company modal:', modalError);
+            toast({
+              title: "Warning",
+              description: `Penjualan tersimpan tapi gagal menambah modal perusahaan: ${modalError.message}`,
+              variant: "destructive"
+            });
+          }
+        } catch (modalUpdateError) {
+          console.error('CATCH ERROR saat update modal:', modalUpdateError);
+          toast({
+            title: "Warning",
+            description: "Penjualan tersimpan tapi gagal menambah modal perusahaan",
+            variant: "destructive"
+          });
+        }
+      }
+
       return penjualanResult;
     },
     onSuccess: () => {

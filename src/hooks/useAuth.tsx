@@ -1,6 +1,8 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { useIdleTimeout } from './useIdleTimeout';
+import { toast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: User | null;
@@ -111,6 +113,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUserProfile(null);
     }
   };
+
+  // Auto logout after 5 minutes of inactivity
+  const handleIdleTimeout = () => {
+    signOut();
+    toast({
+      title: "Sesi berakhir",
+      description: "Anda telah logout otomatis karena tidak ada aktivitas selama 5 menit",
+      variant: "default",
+    });
+  };
+
+  useIdleTimeout({
+    timeout: 5 * 60 * 1000, // 5 minutes in milliseconds
+    onTimeout: handleIdleTimeout,
+    enabled: !!user, // Only enable when user is logged in
+  });
 
   const value = {
     user,

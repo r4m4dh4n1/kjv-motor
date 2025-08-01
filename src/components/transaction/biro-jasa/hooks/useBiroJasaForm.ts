@@ -13,7 +13,9 @@ export const useBiroJasaForm = (onSuccess: () => void, selectedDivision: string)
   const [formData, setFormData] = useState<BiroJasaFormData>({
     tanggal: getCurrentDate(),
     brand_id: "",
+    brand_name: "",
     jenis_motor_id: "",
+    jenis_motor: "",
     warna: "",
     plat_nomor: "",
     tahun: "",
@@ -57,9 +59,10 @@ export const useBiroJasaForm = (onSuccess: () => void, selectedDivision: string)
     try {
       const submitData = {
         tanggal: convertDateToISO(formData.tanggal),
-        brand_id: formData.brand_id ? parseInt(formData.brand_id) : null,
-        jenis_motor_id: formData.jenis_motor_id ? parseInt(formData.jenis_motor_id) : null,
-        jenis_motor: formData.jenis_motor || null, // For Other Brands manual input
+        brand_id: null, // Always null since we use manual input
+        brand_name: formData.brand_name || null,
+        jenis_motor_id: null, // Always null since we use manual input  
+        jenis_motor: formData.jenis_motor || null,
         warna: formData.warna,
         plat_nomor: formData.plat_nomor,
         tahun: formData.tahun ? parseInt(formData.tahun) : null,
@@ -146,8 +149,10 @@ export const useBiroJasaForm = (onSuccess: () => void, selectedDivision: string)
     setEditingBiroJasa(biroJasa);
     setFormData({
       tanggal: convertDateFromISO(biroJasa.tanggal),
-      brand_id: biroJasa.brand_id?.toString() || "",
-      jenis_motor_id: biroJasa.jenis_motor_id?.toString() || "",
+      brand_id: "",
+      brand_name: biroJasa.brand_name || "",
+      jenis_motor_id: "",
+      jenis_motor: typeof biroJasa.jenis_motor === 'string' ? biroJasa.jenis_motor : (biroJasa.jenis_motor?.jenis_motor || ""),
       warna: biroJasa.warna || "",
       plat_nomor: biroJasa.plat_nomor || "",
       tahun: biroJasa.tahun?.toString() || "",
@@ -166,7 +171,9 @@ export const useBiroJasaForm = (onSuccess: () => void, selectedDivision: string)
     setFormData({
       tanggal: getCurrentDate(),
       brand_id: "",
+      brand_name: "",
       jenis_motor_id: "",
+      jenis_motor: "",
       warna: "",
       plat_nomor: "",
       tahun: "",

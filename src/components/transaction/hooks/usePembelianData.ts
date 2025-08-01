@@ -29,7 +29,7 @@ export const usePembelianData = (selectedDivision: string, selectedJenisPembelia
         query = query.eq('status', selectedStatus);
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false });
+      const { data, error } = await query.order('tanggal_pembelian', { ascending: true });
       
       if (error) throw error;
       return data;
