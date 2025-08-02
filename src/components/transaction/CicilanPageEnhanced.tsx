@@ -8,13 +8,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus, CreditCard, CheckCircle, Clock, AlertCircle, Search, Filter, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, CreditCard, CheckCircle, Clock, AlertCircle, Search, Filter, RotateCcw, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatNumber, parseFormattedNumber } from "@/utils/formatUtils";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CicilanHistoryTable from "./CicilanHistoryTable";
+import EditCicilanDialog from "./EditCicilanDialog";
+import { handleCurrencyInput, parseCurrency } from '@/utils/formatUtils';
 
 interface CicilanPageEnhancedProps {
   selectedDivision: string;
@@ -27,6 +29,9 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
   const [companiesData, setCompaniesData] = useState([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedPenjualan, setSelectedPenjualan] = useState(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedCicilan, setSelectedCicilan] = useState(null);
+  const [overpaymentConfirmed, setOverpaymentConfirmed] = useState(false);
   const [formData, setFormData] = useState({
     penjualan_id: '',
     tanggal_bayar: new Date().toISOString().split('T')[0],
@@ -109,6 +114,12 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
           plat,
           harga_jual,
           sisa_bayar,
+          tt,
+          jenis_pembayaran,
+          divisi,
+          cabang_id,
+          pembelian_id,
+          company_id,
           cabang:cabang_id(nama),
           brands:brand_id(name),
           jenis_motor:jenis_id(jenis_motor)
@@ -185,71 +196,71 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
     if (dateFilter !== 'all') {
       const today = new Date();
       const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+      const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
-  filtered = filtered.filter(item => {
-    const itemDate = new Date(item.tanggal_bayar);
-    
-    switch (dateFilter) {
-      case 'today':
-        return itemDate >= startOfToday && itemDate <= endOfToday;
-      case 'tomorrow':
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1);
-        const startOfTomorrow = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
-        const endOfTomorrow = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 23, 59, 59, 999);
-        return itemDate >= startOfTomorrow && itemDate <= endOfTomorrow;
-      case 'yesterday':
-        const yesterday = new Date(today);
-        yesterday.setDate(today.getDate() - 1);
-        const startOfYesterday = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
-        const endOfYesterday = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59, 999);
-        return itemDate >= startOfYesterday && itemDate <= endOfYesterday;
-      case 'this_week':
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay());
-        startOfWeek.setHours(0, 0, 0, 0);
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-        endOfWeek.setHours(23, 59, 59, 999);
-        return itemDate >= startOfWeek && itemDate <= endOfWeek;
-      case 'last_week':
-        const lastWeekStart = new Date(today);
-        lastWeekStart.setDate(today.getDate() - today.getDay() - 7);
-        lastWeekStart.setHours(0, 0, 0, 0);
-        const lastWeekEnd = new Date(lastWeekStart);
-        lastWeekEnd.setDate(lastWeekStart.getDate() + 6);
-        lastWeekEnd.setHours(23, 59, 59, 999);
-        return itemDate >= lastWeekStart && itemDate <= lastWeekEnd;
-      case 'this_month':
-        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
-        return itemDate >= startOfMonth && itemDate <= endOfMonth;
-      case 'last_month':
-        const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
-        return itemDate >= lastMonthStart && itemDate <= lastMonthEnd;
-      case 'this_year':
-        const startOfYear = new Date(today.getFullYear(), 0, 1);
-        const endOfYear = new Date(today.getFullYear(), 11, 31, 23, 59, 59, 999);
-        return itemDate >= startOfYear && itemDate <= endOfYear;
-      case 'last_year':
-        const lastYearStart = new Date(today.getFullYear() - 1, 0, 1);
-        const lastYearEnd = new Date(today.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
-        return itemDate >= lastYearStart && itemDate <= lastYearEnd;
-      case 'custom':
-        if (customStartDate && customEndDate) {
-          const start = new Date(customStartDate);
-          const end = new Date(customEndDate);
-          end.setHours(23, 59, 59, 999);
-          return itemDate >= start && itemDate <= end;
+      filtered = filtered.filter(item => {
+        const itemDate = new Date(item.tanggal_bayar);
+        
+        switch (dateFilter) {
+          case 'today':
+            return itemDate >= startOfToday && itemDate <= endOfToday;
+          case 'tomorrow':
+            const tomorrow = new Date(today);
+            tomorrow.setDate(today.getDate() + 1);
+            const startOfTomorrow = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+            const endOfTomorrow = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 23, 59, 59, 999);
+            return itemDate >= startOfTomorrow && itemDate <= endOfTomorrow;
+          case 'yesterday':
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+            const startOfYesterday = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+            const endOfYesterday = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59, 999);
+            return itemDate >= startOfYesterday && itemDate <= endOfYesterday;
+          case 'this_week':
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - today.getDay());
+            startOfWeek.setHours(0, 0, 0, 0);
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+            endOfWeek.setHours(23, 59, 59, 999);
+            return itemDate >= startOfWeek && itemDate <= endOfWeek;
+          case 'last_week':
+            const lastWeekStart = new Date(today);
+            lastWeekStart.setDate(today.getDate() - today.getDay() - 7);
+            lastWeekStart.setHours(0, 0, 0, 0);
+            const lastWeekEnd = new Date(lastWeekStart);
+            lastWeekEnd.setDate(lastWeekStart.getDate() + 6);
+            lastWeekEnd.setHours(23, 59, 59, 999);
+            return itemDate >= lastWeekStart && itemDate <= lastWeekEnd;
+          case 'this_month':
+            const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+            return itemDate >= startOfMonth && itemDate <= endOfMonth;
+          case 'last_month':
+            const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+            return itemDate >= lastMonthStart && itemDate <= lastMonthEnd;
+          case 'this_year':
+            const startOfYear = new Date(today.getFullYear(), 0, 1);
+            const endOfYear = new Date(today.getFullYear(), 11, 31, 23, 59, 59, 999);
+            return itemDate >= startOfYear && itemDate <= endOfYear;
+          case 'last_year':
+            const lastYearStart = new Date(today.getFullYear() - 1, 0, 1);
+            const lastYearEnd = new Date(today.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+            return itemDate >= lastYearStart && itemDate <= lastYearEnd;
+          case 'custom':
+            if (customStartDate && customEndDate) {
+              const start = new Date(customStartDate);
+              const end = new Date(customEndDate);
+              end.setHours(23, 59, 59, 999);
+              return itemDate >= start && itemDate <= end;
+            }
+            return true;
+          default:
+            return true;
         }
-        return true;
-      default:
-        return true;
+      });
     }
-  });
-}
 
     return filtered;
   };
@@ -313,7 +324,8 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
       return;
     }
 
-    const jumlahBayar = parseFloat(formData.jumlah_bayar);
+    const jumlahBayar = parseCurrency(formData.jumlah_bayar);
+  
     if (isNaN(jumlahBayar) || jumlahBayar <= 0) {
       toast({
         title: "Error",
@@ -332,13 +344,17 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
       return;
     }
 
-    if (jumlahBayar > selectedPenjualan.sisa_bayar) {
-      toast({
-        title: "Error",
-        description: "Jumlah bayar tidak boleh melebihi sisa bayar",
-        variant: "destructive",
-      });
-      return;
+    // Konfirmasi overpayment jika pembayaran melebihi sisa bayar
+    if (jumlahBayar > selectedPenjualan.sisa_bayar && !overpaymentConfirmed) {
+      const overpayment = jumlahBayar - selectedPenjualan.sisa_bayar;
+      const confirmed = window.confirm(
+        `Pembayaran melebihi sisa bayar sebesar ${formatCurrency(overpayment)}.\n\nApakah Anda yakin ingin melanjutkan?`
+      );
+      
+      if (!confirmed) {
+        return;
+      }
+      setOverpaymentConfirmed(true);
     }
 
     try {
@@ -354,6 +370,9 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
 
       const nextBatch = existingCicilan.length > 0 ? existingCicilan[0].batch_ke + 1 : 1;
       const sisaBayarBaru = selectedPenjualan.sisa_bayar - jumlahBayar;
+      
+      // Pastikan sisa bayar tidak negatif untuk tampilan di tabel penjualan
+      const sisaBayarDisplay = Math.max(0, sisaBayarBaru);
 
       // Insert cicilan record
       const { error: insertError } = await supabase
@@ -363,11 +382,11 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
           batch_ke: nextBatch,
           tanggal_bayar: formData.tanggal_bayar,
           jumlah_bayar: jumlahBayar,
-          sisa_bayar: sisaBayarBaru,
+          sisa_bayar: sisaBayarBaru, // Bisa negatif jika overpayment
           keterangan: formData.keterangan,
           jenis_pembayaran: formData.jenis_pembayaran,
           tujuan_pembayaran_id: formData.tujuan_pembayaran_id ? parseInt(formData.tujuan_pembayaran_id) : null,
-          status: sisaBayarBaru === 0 ? 'completed' : 'pending'
+          status: sisaBayarBaru <= 0 ? 'completed' : 'pending'
         }]);
 
       if (insertError) throw insertError;
@@ -376,8 +395,8 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
       const { error: updateError } = await supabase
         .from('penjualans')
         .update({ 
-          sisa_bayar: sisaBayarBaru,
-          status: sisaBayarBaru === 0 ? 'selesai' : 'proses'
+          sisa_bayar: sisaBayarDisplay,
+          status: sisaBayarBaru <= 0 ? 'selesai' : 'proses'
         })
         .eq('id', parseInt(formData.penjualan_id));
 
@@ -428,9 +447,20 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
         });
       }
 
+      // Pesan sukses yang menangani overpayment
+      let successMessage = 'Pembayaran cicilan berhasil dicatat.';
+      if (sisaBayarBaru <= 0) {
+        if (sisaBayarBaru < 0) {
+          const overpayment = Math.abs(sisaBayarBaru);
+          successMessage += ` Pembayaran telah lunas dengan kelebihan bayar ${formatCurrency(overpayment)}!`;
+        } else {
+          successMessage += ' Pembayaran telah lunas!';
+        }
+      }
+
       toast({
         title: "Berhasil",
-        description: `Pembayaran cicilan berhasil dicatat. ${sisaBayarBaru === 0 ? 'Pembayaran telah lunas!' : ''}`,
+        description: successMessage,
       });
 
       resetForm();
@@ -446,6 +476,116 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
     }
   };
 
+  // Fungsi untuk menghapus cicilan
+  const handleDelete = async (cicilan: any) => {
+    const confirmed = window.confirm(
+      `Apakah Anda yakin ingin menghapus cicilan batch ke-${cicilan.batch_ke} untuk motor ${cicilan.penjualans?.plat}?\n\nTindakan ini akan:\n- Menghapus data cicilan\n- Menghapus pembukuan terkait\n- Mengubah status penjualan kembali ke 'Booked'\n- Mengembalikan sisa bayar`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      // 1. Hapus pembukuan terkait cicilan ini
+      const brandName = cicilan.penjualans?.brands?.name || '';
+      const jenisMotor = cicilan.penjualans?.jenis_motor?.jenis_motor || '';
+      const platNomor = cicilan.penjualans?.plat;
+      
+      let keteranganPembukuan = '';
+      if (cicilan.penjualans?.tt !== 'tukar_tambah') {
+        if (cicilan.penjualans?.jenis_pembayaran === 'cash_bertahap') {
+          keteranganPembukuan = `cash bertahap ke ${cicilan.batch_ke} dari ${brandName} - ${jenisMotor} - ${platNomor}`;
+        } else if (cicilan.penjualans?.jenis_pembayaran === 'kredit') {
+          keteranganPembukuan = `cicilan ke ${cicilan.batch_ke} dari ${brandName} - ${jenisMotor} - ${platNomor}`;
+        }
+      } else {
+        if (cicilan.penjualans?.jenis_pembayaran === 'cash_bertahap') {
+          keteranganPembukuan = `cash bertahap ke ${cicilan.batch_ke} Tukar Tambah dari ${brandName} - ${jenisMotor} - ${platNomor}`;
+        } else if (cicilan.penjualans?.jenis_pembayaran === 'kredit') {
+          keteranganPembukuan = `cicilan ke ${cicilan.batch_ke} Tukar Tambah dari ${brandName} - ${jenisMotor} - ${platNomor}`;
+        }
+      }
+
+      // Hapus pembukuan berdasarkan keterangan dan tanggal
+      const { error: pembukuanDeleteError } = await supabase
+        .from('pembukuan')
+        .delete()
+        .eq('tanggal', cicilan.tanggal_bayar)
+        .eq('keterangan', keteranganPembukuan)
+        .eq('kredit', cicilan.jumlah_bayar);
+
+      if (pembukuanDeleteError) {
+        console.error('Error deleting pembukuan:', pembukuanDeleteError);
+        toast({
+          title: "Warning",
+          description: `Gagal menghapus pembukuan: ${pembukuanDeleteError.message}`,
+          variant: "destructive"
+        });
+      }
+
+      // 2. Hitung ulang sisa bayar setelah menghapus cicilan ini
+      const sisaBayarBaru = cicilan.sisa_bayar + cicilan.jumlah_bayar;
+      
+      // 3. Update status penjualan kembali ke 'booked' dan kembalikan sisa bayar
+      const { error: updatePenjualanError } = await supabase
+        .from('penjualans')
+        .update({ 
+          sisa_bayar: sisaBayarBaru,
+          status: 'Booked' // Kembalikan status ke booked
+        })
+        .eq('id', cicilan.penjualan_id);
+
+      if (updatePenjualanError) throw updatePenjualanError;
+
+      // 4. Hapus data cicilan
+      const { error: deleteCicilanError } = await supabase
+        .from('cicilan')
+        .delete()
+        .eq('id', cicilan.id);
+
+      if (deleteCicilanError) throw deleteCicilanError;
+
+      // 5. Update batch_ke untuk cicilan yang batch-nya lebih tinggi
+      const { error: updateBatchError } = await supabase
+        .rpc('update_batch_numbers', {
+          p_penjualan_id: cicilan.penjualan_id,
+          p_deleted_batch: cicilan.batch_ke
+        });
+
+      if (updateBatchError) {
+        console.error('Error updating batch numbers:', updateBatchError);
+        // Jika RPC tidak ada, gunakan cara manual
+        const { data: higherBatches } = await supabase
+          .from('cicilan')
+          .select('id, batch_ke')
+          .eq('penjualan_id', cicilan.penjualan_id)
+          .gt('batch_ke', cicilan.batch_ke);
+
+        if (higherBatches && higherBatches.length > 0) {
+          for (const batch of higherBatches) {
+            await supabase
+              .from('cicilan')
+              .update({ batch_ke: batch.batch_ke - 1 })
+              .eq('id', batch.id);
+          }
+        }
+      }
+
+      toast({
+        title: "Berhasil",
+        description: "Cicilan berhasil dihapus dan status penjualan dikembalikan ke 'booked'",
+      });
+
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting cicilan:', error);
+      toast({
+        title: "Error",
+        description: "Gagal menghapus cicilan",
+        variant: "destructive",
+      });
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       penjualan_id: '',
@@ -456,6 +596,7 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
       tujuan_pembayaran_id: ''
     });
     setSelectedPenjualan(null);
+    setOverpaymentConfirmed(false);
   };
 
   const handlePenjualanSelect = (penjualanId: string) => {
@@ -466,6 +607,7 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
       penjualan_id: penjualanId,
       tujuan_pembayaran_id: penjualan?.company_id?.toString() || ''
     }));
+    setOverpaymentConfirmed(false);
   };
 
   const formatCurrency = (amount: number) => {
@@ -518,138 +660,113 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
               Tambah Pembayaran
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Tambah Pembayaran Cicilan</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="penjualan_id">Pilih Penjualan *</Label>
-                <Select value={formData.penjualan_id} onValueChange={handlePenjualanSelect}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Pilih penjualan" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {penjualanData.map((penjualan) => (
-                      <SelectItem key={penjualan.id} value={penjualan.id.toString()}>
-                        {penjualan.plat} - {penjualan.brands?.name} {penjualan.jenis_motor?.jenis_motor}
-                        <br />
-                        <small className="text-gray-500">
-                          Sisa: {formatCurrency(penjualan.sisa_bayar)}
-                        </small>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {selectedPenjualan && (
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <h4 className="font-medium text-sm mb-2">Detail Penjualan:</h4>
-                  <div className="text-sm space-y-1">
-                    <p><strong>Motor:</strong> {selectedPenjualan.brands?.name} {selectedPenjualan.jenis_motor?.jenis_motor}</p>
-                    <p><strong>Plat:</strong> {selectedPenjualan.plat}</p>
-                    <p><strong>Harga Jual:</strong> {formatCurrency(selectedPenjualan.harga_jual)}</p>
-                    <p><strong>Sisa Bayar:</strong> <span className="text-red-600 font-semibold">{formatCurrency(selectedPenjualan.sisa_bayar)}</span></p>
-                    <p><strong>Divisi:</strong> {selectedPenjualan.divisi}</p>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="penjualan">Pilih Penjualan *</Label>
+                  <Select value={formData.penjualan_id} onValueChange={handlePenjualanSelect}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih penjualan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {penjualanData.map((penjualan) => (
+                        <SelectItem key={penjualan.id} value={penjualan.id.toString()}>
+                          {penjualan.brands?.name} {penjualan.jenis_motor?.jenis_motor} - {penjualan.plat} 
+                          (Sisa: {formatCurrency(penjualan.sisa_bayar)})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedPenjualan && (
+                    <div className="mt-2 p-3 bg-blue-50 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        <strong>Sisa Bayar:</strong> {formatCurrency(selectedPenjualan.sisa_bayar)}
+                      </p>
+                      <p className="text-sm text-blue-600">
+                        <strong>Harga Jual:</strong> {formatCurrency(selectedPenjualan.harga_jual)}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )}
 
-              <div>
-                <Label htmlFor="tanggal_bayar">Tanggal Bayar *</Label>
-                <div className="mt-1">
-                  <DatePicker
+                <div>
+                  <Label htmlFor="tanggal_bayar">Tanggal Bayar *</Label>
+                  <Input
                     id="tanggal_bayar"
+                    type="date"
                     value={formData.tanggal_bayar}
-                    onChange={(value) => setFormData({...formData, tanggal_bayar: value})}
-                    placeholder="Pilih tanggal bayar"
+                    onChange={(e) => setFormData(prev => ({ ...prev, tanggal_bayar: e.target.value }))}
                     required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="jumlah_bayar">Jumlah Bayar *</Label>
+                  <Input
+                    id="jumlah_bayar"
+                    type="text"
+                    placeholder="Masukkan jumlah bayar"
+                    value={formData.jumlah_bayar}
+                    onChange={(e) => {
+                      const formattedValue = handleCurrencyInput(e.target.value);
+                      setFormData(prev => ({ ...prev, jumlah_bayar: formattedValue }));
+                    }}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="jenis_pembayaran">Jenis Pembayaran</Label>
+                  <Select value={formData.jenis_pembayaran} onValueChange={(value) => setFormData(prev => ({ ...prev, jenis_pembayaran: value }))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="transfer">Transfer</SelectItem>
+                      <SelectItem value="check">Check</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <Label htmlFor="tujuan_pembayaran">Tujuan Pembayaran (Perusahaan)</Label>
+                  <Select value={formData.tujuan_pembayaran_id} onValueChange={(value) => setFormData(prev => ({ ...prev, tujuan_pembayaran_id: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih perusahaan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getCompaniesForPenjualan().map((company) => (
+                        <SelectItem key={company.id} value={company.id.toString()}>
+                          {company.nama_perusahaan}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <Label htmlFor="keterangan">Keterangan</Label>
+                  <Textarea
+                    id="keterangan"
+                    placeholder="Masukkan keterangan (opsional)"
+                    value={formData.keterangan}
+                    onChange={(e) => setFormData(prev => ({ ...prev, keterangan: e.target.value }))}
+                    rows={3}
                   />
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="jumlah_bayar">Jumlah Bayar *</Label>
-                <Input
-                  id="jumlah_bayar"
-                  type="text"
-                  value={formatNumber(formData.jumlah_bayar)}
-                  onChange={(e) => {
-                    const rawValue = e.target.value.replace(/[^0-9]/g, '');
-                    setFormData({...formData, jumlah_bayar: rawValue});
-                  }}
-                  placeholder="Masukkan jumlah pembayaran"
-                  className="mt-1"
-                />
-                {selectedPenjualan && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Maksimal: {formatCurrency(selectedPenjualan.sisa_bayar)}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="jenis_pembayaran">Jenis Pembayaran *</Label>
-                <Select value={formData.jenis_pembayaran} onValueChange={(value) => setFormData({...formData, jenis_pembayaran: value})}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Pilih jenis pembayaran" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="transfer">Transfer</SelectItem>
-                    <SelectItem value="check">Cek</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="tujuan_pembayaran_id">Tujuan Pembayaran *</Label>
-                <Select 
-                  value={formData.tujuan_pembayaran_id} 
-                  onValueChange={(value) => setFormData({...formData, tujuan_pembayaran_id: value})}
-                  disabled={!selectedPenjualan}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Pilih perusahaan tujuan" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getCompaniesForPenjualan().map((company) => (
-                      <SelectItem key={company.id} value={company.id.toString()}>
-                        {company.nama_perusahaan}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {selectedPenjualan && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Divisi: {selectedPenjualan.divisi} • Companies: {getCompaniesForPenjualan().length}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="keterangan">Keterangan</Label>
-                <Textarea
-                  id="keterangan"
-                  value={formData.keterangan}
-                  onChange={(e) => setFormData({...formData, keterangan: e.target.value})}
-                  placeholder="Catatan pembayaran (opsional)"
-                  className="mt-1"
-                  rows={3}
-                />
-              </div>
-
-              <div className="flex gap-2 pt-4 sticky bottom-0 bg-white border-t mt-6 pt-4">
+              <div className="flex justify-end gap-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Batal
+                </Button>
                 <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
                   Simpan Pembayaran
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setIsDialogOpen(false)}
-                >
-                  Batal
                 </Button>
               </div>
             </form>
@@ -657,339 +774,367 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
         </Dialog>
       </div>
 
-      <Tabs defaultValue="active" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+      <Tabs defaultValue="active" className="space-y-6">
+        <TabsList>
           <TabsTrigger value="active">Data Aktif</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
         
         <TabsContent value="active" className="space-y-6">
-      {/* Filter yang Ditingkatkan */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
-            Filter & Pencarian
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Baris 1: Pencarian */}
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Label htmlFor="search">Pencarian</Label>
-              <div className="relative mt-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  id="search"
-                  placeholder="Cari berdasarkan plat, brand, jenis motor, atau keterangan..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Baris 2: Filter Dropdown */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <Label htmlFor="cabang-filter">Cabang</Label>
-              <Select value={selectedCabang} onValueChange={setSelectedCabang}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Semua Cabang" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Cabang</SelectItem>
-                  {cabangOptions.map((cabang) => (
-                    <SelectItem key={cabang.id} value={cabang.id.toString()}>
-                      {cabang.nama}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="status-filter">Status</Label>
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Semua Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="completed">Selesai</SelectItem>
-                  <SelectItem value="overdue">Terlambat</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="jenis-pembayaran-filter">Jenis Pembayaran</Label>
-              <Select value={selectedJenisPembayaran} onValueChange={setSelectedJenisPembayaran}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Semua Jenis" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Jenis</SelectItem>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="transfer">Transfer</SelectItem>
-                  <SelectItem value="check">Cek</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="date-filter">Periode</Label>
-              <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Semua Tanggal" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Tanggal</SelectItem>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="tomorrow">Tommorow</SelectItem>
-                  <SelectItem value="yesterday">Yesterday</SelectItem>
-                  <SelectItem value="this_week">This Week</SelectItem>
-                  <SelectItem value="last_week">Last Week</SelectItem>
-                  <SelectItem value="this_month">This Month</SelectItem>
-                  <SelectItem value="last_month">Last Month</SelectItem>
-                  <SelectItem value="this_year">This Year</SelectItem>
-                  <SelectItem value="last_year">Last Year</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Filter Tanggal Kustom */}
-          {dateFilter === 'custom' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="start-date">Tanggal Mulai</Label>
-                <Input
-                  id="start-date"
-                  type="date"
-                  value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="end-date">Tanggal Akhir</Label>
-                <Input
-                  id="end-date"
-                  type="date"
-                  value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Tombol Reset dan Info */}
-          <div className="flex items-center justify-between pt-2 border-t">
-            <Button
-              variant="outline"
-              onClick={resetFilters}
-              className="flex items-center gap-2"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Reset Filter
-            </Button>
-            <div className="text-sm text-gray-600">
-              Menampilkan {filteredData.length} dari {cicilanData.length} data
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Kartu Ringkasan yang Ditingkatkan */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Cicilan</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(getTotalCicilan())}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Dari {filteredData.length} transaksi
-                </p>
-              </div>
-              <CreditCard className="w-8 h-8 text-green-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Cicilan Hari Ini</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {formatCurrency(getCicilanHariIni())}
-                </p>
-              </div>
-              <Clock className="w-8 h-8 text-blue-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Pembayaran Pending</p>
-                <p className="text-2xl font-bold text-yellow-600">
-                  {getPendingCount()}
-                </p>
-              </div>
-              <Clock className="w-8 h-8 text-yellow-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Pembayaran Selesai</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {getCompletedCount()}
-                </p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-green-600" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabel Data dengan Paginasi */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Riwayat Pembayaran Cicilan</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8">Loading...</div>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>No</TableHead>
-                    <TableHead>Tanggal</TableHead>
-                    <TableHead>Motor</TableHead>
-                    <TableHead>Plat</TableHead>
-                    <TableHead>Cabang</TableHead>
-                    <TableHead>Batch</TableHead>
-                    <TableHead>Jumlah Bayar</TableHead>
-                    <TableHead>Sisa Bayar</TableHead>
-                    <TableHead>Jenis Bayar</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Keterangan</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedData.map((item, index) => (
-                    <TableRow key={item.id}>
-                      <TableCell>{startIndex + index + 1}</TableCell>
-                      <TableCell>{formatDate(item.tanggal_bayar)}</TableCell>
-                      <TableCell>
-                        {item.penjualans?.brands?.name} {item.penjualans?.jenis_motor?.jenis_motor}
-                      </TableCell>
-                      <TableCell>{item.penjualans?.plat}</TableCell>
-                      <TableCell>{item.penjualans?.cabang?.nama || '-'}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">#{item.batch_ke}</Badge>
-                      </TableCell>
-                      <TableCell className="font-semibold text-green-600">
-                        {formatCurrency(item.jumlah_bayar)}
-                      </TableCell>
-                      <TableCell className="font-semibold text-red-600">
-                        {formatCurrency(item.sisa_bayar)}
-                      </TableCell>
-                      <TableCell className="capitalize">{item.jenis_pembayaran}</TableCell>
-                      <TableCell>{getStatusBadge(item.status)}</TableCell>
-                      <TableCell className="max-w-xs truncate">
-                        {item.keterangan || '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {paginatedData.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={11} className="text-center py-8 text-gray-500">
-                        {filteredData.length === 0 ? 'Tidak ada data yang sesuai dengan filter' : 'Tidak ada data cicilan'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-
-              {/* Kontrol Paginasi */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">
-                      Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredData.length)} dari {filteredData.length} data
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      Sebelumnya
-                    </Button>
-                    
-                    <span className="text-sm text-gray-600">
-                      Halaman {currentPage} dari {totalPages}
-                    </span>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Selanjutnya
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
+          {/* Filter yang Ditingkatkan */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Filter className="w-5 h-5" />
+                Filter & Pencarian
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Baris pertama filter */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <Label htmlFor="search">Pencarian</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      id="search"
+                      placeholder="Cari plat, brand, jenis motor..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
                   </div>
                 </div>
-              )}
 
-              {/* Kontrol Items per Page */}
-              <div className="flex items-center justify-end mt-4 pt-4 border-t">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="items-per-page" className="text-sm">Items per halaman:</Label>
-                  <Select value={itemsPerPage.toString()} onValueChange={(value) => {
-                    setItemsPerPage(parseInt(value));
-                    setCurrentPage(1);
-                  }}>
-                    <SelectTrigger className="w-20">
-                      <SelectValue />
+                <div>
+                  <Label htmlFor="cabang-filter">Cabang</Label>
+                  <Select value={selectedCabang} onValueChange={setSelectedCabang}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Semua Cabang" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="5">5</SelectItem>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="25">25</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="all">Semua Cabang</SelectItem>
+                      {cabangOptions.map((cabang) => (
+                        <SelectItem key={cabang.id} value={cabang.id.toString()}>
+                          {cabang.nama}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="status-filter">Status</Label>
+                  <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Semua Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Status</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="completed">Selesai</SelectItem>
+                      <SelectItem value="overdue">Terlambat</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="jenis-pembayaran-filter">Jenis Pembayaran</Label>
+                  <Select value={selectedJenisPembayaran} onValueChange={setSelectedJenisPembayaran}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Semua Jenis" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Jenis</SelectItem>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="transfer">Transfer</SelectItem>
+                      <SelectItem value="check">Check</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+
+              {/* Baris kedua filter - Periode Tanggal */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="date-filter">Periode Tanggal</Label>
+                  <Select value={dateFilter} onValueChange={setDateFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Semua Tanggal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Tanggal</SelectItem>
+                      <SelectItem value="today">Hari Ini</SelectItem>
+                      <SelectItem value="yesterday">Kemarin</SelectItem>
+                      <SelectItem value="tomorrow">Besok</SelectItem>
+                      <SelectItem value="this_week">Minggu Ini</SelectItem>
+                      <SelectItem value="last_week">Minggu Lalu</SelectItem>
+                      <SelectItem value="this_month">Bulan Ini</SelectItem>
+                      <SelectItem value="last_month">Bulan Lalu</SelectItem>
+                      <SelectItem value="this_year">Tahun Ini</SelectItem>
+                      <SelectItem value="last_year">Tahun Lalu</SelectItem>
+                      <SelectItem value="custom">Kustom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Custom Date Range */}
+              {dateFilter === 'custom' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="start-date">Tanggal Mulai</Label>
+                    <Input
+                      id="start-date"
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="end-date">Tanggal Akhir</Label>
+                    <Input
+                      id="end-date"
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Tombol Reset dan Info */}
+              <div className="flex items-center justify-between pt-2 border-t">
+                <Button
+                  variant="outline"
+                  onClick={resetFilters}
+                  className="flex items-center gap-2"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Reset Filter
+                </Button>
+                <div className="text-sm text-gray-600">
+                  Menampilkan {filteredData.length} dari {cicilanData.length} data
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Kartu Ringkasan yang Ditingkatkan */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Cicilan</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {formatCurrency(getTotalCicilan())}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Dari {filteredData.length} transaksi
+                    </p>
+                  </div>
+                  <CreditCard className="w-8 h-8 text-green-600" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Cicilan Hari Ini</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {formatCurrency(getCicilanHariIni())}
+                    </p>
+                  </div>
+                  <Clock className="w-8 h-8 text-blue-600" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Pembayaran Pending</p>
+                    <p className="text-2xl font-bold text-yellow-600">
+                      {getPendingCount()}
+                    </p>
+                  </div>
+                  <Clock className="w-8 h-8 text-yellow-600" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Pembayaran Selesai</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {getCompletedCount()}
+                    </p>
+                  </div>
+                  <CheckCircle className="w-8 h-8 text-green-600" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Tabel Data dengan Paginasi */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Riwayat Pembayaran Cicilan</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="text-center py-8">Loading...</div>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>No</TableHead>
+                        <TableHead>Tanggal</TableHead>
+                        <TableHead>Motor</TableHead>
+                        <TableHead>Plat</TableHead>
+                        <TableHead>Cabang</TableHead>
+                        <TableHead>Batch</TableHead>
+                        <TableHead>Jumlah Bayar</TableHead>
+                        <TableHead>Sisa Bayar</TableHead>
+                        <TableHead>Jenis Bayar</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Keterangan</TableHead>
+                        <TableHead>Aksi</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedData.map((item, index) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{startIndex + index + 1}</TableCell>
+                          <TableCell>{formatDate(item.tanggal_bayar)}</TableCell>
+                          <TableCell>
+                            {item.penjualans?.brands?.name} {item.penjualans?.jenis_motor?.jenis_motor}
+                          </TableCell>
+                          <TableCell>{item.penjualans?.plat}</TableCell>
+                          <TableCell>{item.penjualans?.cabang?.nama || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">#{item.batch_ke}</Badge>
+                          </TableCell>
+                          <TableCell className="font-semibold text-green-600">
+                            {formatCurrency(item.jumlah_bayar)}
+                          </TableCell>
+                          <TableCell className={`font-semibold ${
+                            item.sisa_bayar < 0 ? 'text-blue-600' : 'text-red-600'
+                          }`}>
+                            {item.sisa_bayar < 0 ? 
+                              `+${formatCurrency(Math.abs(item.sisa_bayar))}` : 
+                              formatCurrency(item.sisa_bayar)
+                            }
+                          </TableCell>
+                          <TableCell className="capitalize">{item.jenis_pembayaran}</TableCell>
+                          <TableCell>{getStatusBadge(item.status)}</TableCell>
+                          <TableCell className="max-w-xs truncate">
+                            {item.keterangan || '-'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedCicilan(item);
+                                  setEditDialogOpen(true);
+                                }}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDelete(item)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {paginatedData.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={12} className="text-center py-8 text-gray-500">
+                            {filteredData.length === 0 ? 'Tidak ada data yang sesuai dengan filter' : 'Tidak ada data cicilan'}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+
+                  {/* Kontrol Paginasi */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">
+                          Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredData.length)} dari {filteredData.length} data
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                          Sebelumnya
+                        </Button>
+                        
+                        <span className="text-sm text-gray-600">
+                          Halaman {currentPage} dari {totalPages}
+                        </span>
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                          disabled={currentPage === totalPages}
+                        >
+                          Selanjutnya
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Kontrol Items per Page */}
+                  <div className="flex items-center justify-end mt-4 pt-4 border-t">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="items-per-page" className="text-sm">Items per halaman:</Label>
+                      <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+                        setItemsPerPage(parseInt(value));
+                        setCurrentPage(1);
+                      }}>
+                        <SelectTrigger className="w-20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5</SelectItem>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="25">25</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
         
         <TabsContent value="history" className="space-y-6">
@@ -1006,6 +1151,21 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
           </Card>
         </TabsContent>
       </Tabs>
+
+      <EditCicilanDialog
+        cicilan={selectedCicilan}
+        isOpen={editDialogOpen}
+        onClose={() => {
+          setEditDialogOpen(false);
+          setSelectedCicilan(null);
+        }}
+        onSuccess={() => {
+          fetchData();
+          setEditDialogOpen(false);
+          setSelectedCicilan(null);
+        }}
+        companiesData={companiesData}
+      />
     </div>
   );
 };

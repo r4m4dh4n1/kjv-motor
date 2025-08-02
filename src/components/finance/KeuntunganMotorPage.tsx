@@ -226,7 +226,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         operasionalQuery = operasionalQuery.eq('divisi', selectedDivision);
       }
 
-      // Query untuk modal perusahaan
+      // Query untuk modal perusahaan - tidak perlu filter tanggal karena ini adalah modal kumulatif
       let companiesQuery = supabase
         .from('companies')
         .select('modal, divisi');
@@ -313,11 +313,14 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       // Hitung total modal perusahaan
       const totalModalPerusahaan = companiesResult.data?.reduce((sum, item) => sum + (item.modal || 0), 0) || 0;
 
-      // Hitung total pencatatan asset
+      // Hitung total pencatatan asset (berdasarkan periode filter)
       const totalPencatatanAsset = pencatatanAssetResult.data?.reduce((sum, item) => sum + (item.nominal || 0), 0) || 0;
 
+      // Hitung total profit dari data keuntungan yang sudah difilter
+      const totalProfitFiltered = formattedData.reduce((sum, item) => sum + item.profit, 0);
+
       // Set total modal kalkulasi dengan rumus baru
-      const totalModalKalkulasiBaru = totalModalPerusahaan + totalPencatatanAsset + totalPembelianReady + totalBookedHargaBeli + totalProfit - totalOperasionalAmount;
+      const totalModalKalkulasiBaru = totalModalPerusahaan + totalPencatatanAsset + totalPembelianReady + totalBookedHargaBeli + totalProfitFiltered - totalOperasionalAmount;
       setTotalModalKalkulasi(totalModalKalkulasiBaru);
 
     } catch (error) {
@@ -358,7 +361,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
   const totalProfit = keuntunganData.reduce((sum, item) => sum + item.profit, 0);
   const totalUnit = keuntunganData.length;
 
-  // Perhitungan metrik finansial baru
+  // Perhitungan metrik finansial berdasarkan data yang sudah difilter per periode
   const netCashFlow = (totalBooked + totalProfit) - totalOperasional;
   const roi = totalPembelianGabungan > 0 ? (totalProfit / totalPembelianGabungan) * 100 : 0;
   const grossProfitMargin = totalProfit - totalOperasional;

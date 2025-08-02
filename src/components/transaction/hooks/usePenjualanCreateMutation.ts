@@ -97,29 +97,34 @@ export const usePenjualanCreate = () => {
         }
       }
 
-      // 5. TAMBAHAN: Jika status penjualan 'selesai', tambah modal perusahaan dengan keuntungan
-      if (status === 'selesai' && submitData.company_id && keuntungan > 0) {
-        try {
-          const { error: modalError } = await supabase.rpc('update_company_modal', {
-            company_id: submitData.company_id,
-            amount: keuntungan // Menambah modal sebesar keuntungan penjualan
-          });
+      // 5. TAMBAHAN: Jika pembayaran sudah lunas (harga_bayar >= harga_jual atau status 'selesai'), 
+      // tambah modal perusahaan dengan total pembayaran yang diterima
+      if ((status === 'selesai' || hargaBayar >= hargaJual) && submitData.company_id) {
+        const totalPembayaran = Math.min(hargaBayar, hargaJual); // Ambil yang terkecil untuk menghindari overpayment
+        
+        if (totalPembayaran > 0) {
+          try {
+            const { error: modalError } = await supabase.rpc('update_company_modal', {
+              company_id: submitData.company_id,
+              amount: totalPembayaran // Menambah modal sebesar total pembayaran yang diterima
+            });
 
-          if (modalError) {
-            console.error('Error updating company modal:', modalError);
+            if (modalError) {
+              console.error('Error updating company modal:', modalError);
+              toast({
+                title: "Warning",
+                description: `Penjualan tersimpan tapi gagal menambah modal perusahaan: ${modalError.message}`,
+                variant: "destructive"
+              });
+            }
+          } catch (modalUpdateError) {
+            console.error('CATCH ERROR saat update modal:', modalUpdateError);
             toast({
               title: "Warning",
-              description: `Penjualan tersimpan tapi gagal menambah modal perusahaan: ${modalError.message}`,
+              description: "Penjualan tersimpan tapi gagal menambah modal perusahaan",
               variant: "destructive"
             });
           }
-        } catch (modalUpdateError) {
-          console.error('CATCH ERROR saat update modal:', modalUpdateError);
-          toast({
-            title: "Warning",
-            description: "Penjualan tersimpan tapi gagal menambah modal perusahaan",
-            variant: "destructive"
-          });
         }
       }
 
