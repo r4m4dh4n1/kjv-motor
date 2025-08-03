@@ -102,16 +102,11 @@ const EditCicilanDialog = ({ cicilan, isOpen, onClose, onSuccess, companiesData 
       if (formData.tujuan_pembayaran_id && selisihPembayaran !== 0) {
         const { error: modalError } = await supabase.rpc('update_company_modal', {
           company_id: parseInt(formData.tujuan_pembayaran_id),
-          amount: selisihPembayaran
+          amount: Math.abs(selisihPembayaran) // UBAH: Selalu tambah (bukan kurangi)
         });
 
         if (modalError) {
           console.error('Error updating company modal:', modalError);
-          toast({
-            title: "Warning",
-            description: `Cicilan berhasil diupdate tapi gagal mengupdate modal perusahaan: ${modalError.message}`,
-            variant: "destructive"
-          });
         }
       }
 

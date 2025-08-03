@@ -314,6 +314,7 @@ const PembelianPage = ({ selectedDivision }: PembelianPageProps) => {
           biaya_lain_lain: biayaLainLain,
           keterangan_biaya_lain: updateHargaForm.keterangan_biaya_lain || null,
           reason: updateHargaForm.reason,
+          company_id: 1, // Add required company_id field  
           user_id: null // Ganti dengan user ID yang sebenarnya
         });
 

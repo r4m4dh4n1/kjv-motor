@@ -29,6 +29,22 @@ interface KeuntunganMotorPageProps {
   selectedDivision: string;
 }
 
+// Interface untuk data yang difilter berdasarkan periode
+interface PeriodFilteredData {
+  keuntunganData: KeuntunganData[];
+  totalBooked: number;
+  totalOperasional: number;
+  totalPembelianReady: number;
+  totalBookedHargaBeli: number;
+  totalPencatatanAsset: number;
+  totalProfitFiltered: number;
+}
+
+// Interface untuk data kumulatif (tidak difilter periode)
+interface CumulativeData {
+  totalModalPerusahaan: number;
+}
+
 const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => {
   const [keuntunganData, setKeuntunganData] = useState<KeuntunganData[]>([]);
   const [cabangList, setCabangList] = useState<CabangData[]>([]);
@@ -37,71 +53,242 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
   const [selectedCabang, setSelectedCabang] = useState('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  
+  // Data yang difilter berdasarkan periode
   const [totalBooked, setTotalBooked] = useState(0);
   const [totalOperasional, setTotalOperasional] = useState(0);
   const [totalPembelianGabungan, setTotalPembelianGabungan] = useState(0);
+  const [totalPencatatanAsset, setTotalPencatatanAsset] = useState(0);
+  
+  // Data kumulatif (tidak difilter periode)
+  const [totalModalPerusahaan, setTotalModalPerusahaan] = useState(0);
+  
+  // Total modal kalkulasi (gabungan periode + kumulatif)
   const [totalModalKalkulasi, setTotalModalKalkulasi] = useState(0);
 
-  const getDateRange = (period: string) => {
+  // Helper function untuk konversi timezone Indonesia
+  const getIndonesiaDate = () => {
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // Offset Indonesia UTC+7 (7 jam * 60 menit * 60 detik * 1000 ms)
+    const indonesiaOffset = 7 * 60 * 60 * 1000;
+    // Dapatkan UTC time
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+    // Tambahkan offset Indonesia
+    return new Date(utc + indonesiaOffset);
+  };
+
+  // Helper function untuk konversi dari waktu Indonesia ke UTC untuk query database
+  const convertToUTC = (localDate: Date) => {
+    const indonesiaOffset = 7 * 60 * 60 * 1000;
+    return new Date(localDate.getTime() - indonesiaOffset);
+  };
+
+  function toUTCFromWIB(date: Date): Date {
+  return new Date(date.getTime() - (7 * 60 * 60 * 1000));
+}
+
+  const getDateRange = (period: string) => {
+    // Gunakan waktu Indonesia sebagai basis perhitungan
+    const nowIndonesia = getIndonesiaDate();
+
+    // Tanggal minimum Juli 2024
+    const julyMinimumUTC = new Date(Date.UTC(2025, 6, 1, 0, 0, 0)); // Juli = bulan ke-6 (0-indexed)
+
+    
+    // Logging untuk debugging
+    console.log('📅 Date range calculation (Indonesia Timezone):', {
+      period,
+      currentDateIndonesia: nowIndonesia.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+      currentDateUTC: new Date().toISOString(),
+      currentMonth: nowIndonesia.getMonth() + 1,
+      currentYear: nowIndonesia.getFullYear(),
+      timezone: 'Asia/Jakarta (UTC+7)'
+    });
+    
+    let dateRange;
+    let start: Date;
+    let end: Date;
     
     switch (period) {
-      case 'today':
-        return { start: today, end: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59) };
+      case 'today': {
+        const startOfDay = new Date(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 0, 0, 0, 0);
+        const endOfDay = new Date(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59, 999);
+        
+        dateRange = { 
+          start: convertToUTC(startOfDay), 
+          end: convertToUTC(endOfDay)
+        };
+        break;
+      }
       
-      case 'yesterday':
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        return { start: yesterday, end: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59) };
+      case 'yesterday': {
+      const yesterday = new Date(nowIndonesia);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const startOfDay = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0, 0);
+      const endOfDay = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59, 999);
       
-      case 'this_week':
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay());
-        return { start: startOfWeek, end: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59) };
+      const startUTC = convertToUTC(startOfDay);
+      const endUTC = convertToUTC(endOfDay);
       
-      case 'last_week':
-        const startOfLastWeek = new Date(today);
-        startOfLastWeek.setDate(today.getDate() - today.getDay() - 7);
-        const endOfLastWeek = new Date(startOfLastWeek);
-        endOfLastWeek.setDate(startOfLastWeek.getDate() + 6);
-        endOfLastWeek.setHours(23, 59, 59);
-        return { start: startOfLastWeek, end: endOfLastWeek };
-      
-      case 'this_month':
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-        return { start: startOfMonth, end: endOfMonth };
-      
-      case 'last_month':
-        const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-        return { start: startOfLastMonth, end: endOfLastMonth };
-      
-      case 'this_year':
-        const startOfYear = new Date(now.getFullYear(), 0, 1);
-        const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
-        return { start: startOfYear, end: endOfYear };
-      
-      case 'last_year':
-        const startOfLastYear = new Date(now.getFullYear() - 1, 0, 1);
-        const endOfLastYear = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59);
-        return { start: startOfLastYear, end: endOfLastYear };
-      
-      case 'custom':
-        if (customStartDate && customEndDate) {
-          return {
-            start: new Date(customStartDate),
-            end: new Date(customEndDate + 'T23:59:59')
-          };
-        }
-        return { start: today, end: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59) };
-      
-      default:
-        return { start: today, end: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59) };
+      dateRange = {
+        start: startUTC < julyMinimumUTC ? julyMinimumUTC : startUTC,
+        end: endUTC
+      };
+      break;
     }
+    
+    case 'this_week': {
+      const startOfWeek = new Date(nowIndonesia);
+      startOfWeek.setDate(nowIndonesia.getDate() - nowIndonesia.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      const endOfWeek = new Date(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59, 999);
+      
+      const startUTC = convertToUTC(startOfWeek);
+      const endUTC = convertToUTC(endOfWeek);
+      
+      dateRange = {
+        start: startUTC < julyMinimumUTC ? julyMinimumUTC : startUTC,
+        end: endUTC
+      };
+      break;
+    }
+    
+    case 'last_week': {
+      const startOfLastWeek = new Date(nowIndonesia);
+      startOfLastWeek.setDate(nowIndonesia.getDate() - nowIndonesia.getDay() - 7);
+      startOfLastWeek.setHours(0, 0, 0, 0);
+      const endOfLastWeek = new Date(startOfLastWeek);
+      endOfLastWeek.setDate(startOfLastWeek.getDate() + 6);
+      endOfLastWeek.setHours(23, 59, 59, 999);
+      
+      const startUTC = convertToUTC(startOfLastWeek);
+      const endUTC = convertToUTC(endOfLastWeek);
+      
+      dateRange = {
+        start: startUTC < julyMinimumUTC ? julyMinimumUTC : startUTC,
+        end: endUTC
+      };
+      break;
+    }
+      
+     case 'this_month': {
+      const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), 1, 0, 0, 0));
+      const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth() + 1, 0, 23, 59, 59));
+      
+      dateRange = { 
+        start: startUTC < julyMinimumUTC ? julyMinimumUTC : startUTC, 
+        end: endUTC 
+      };
+      break;
+    }
+      
+     case 'last_month': {
+        const currentMonth = nowIndonesia.getMonth(); // 0-indexed
+        const currentYear = nowIndonesia.getFullYear();
+        const julyMonth = 6; // Juli = index 6
+        const augustMonth = 7; // Agustus = index 7
+        
+        let startUTC: Date;
+        let endUTC: Date;
+        
+        // Jika bulan berjalan adalah Agustus
+        if (currentMonth === augustMonth) {
+          // Last month = dari Januari sampai Juli
+          startUTC = new Date(Date.UTC(currentYear, 0, 1, 0, 0, 0)); // Januari 1
+          endUTC = new Date(Date.UTC(currentYear, julyMonth + 1, 0, 23, 59, 59)); // Akhir Juli
+        } else {
+          // Bulan lainnya: last month = bulan sebelumnya saja
+          startUTC = new Date(Date.UTC(currentYear, currentMonth - 1, 1, 0, 0, 0));
+          endUTC = new Date(Date.UTC(currentYear, currentMonth, 0, 23, 59, 59));
+          
+          // Tetap terapkan Juli minimum jika diperlukan
+          const julyMinimumUTC = new Date(Date.UTC(2025, 6, 1, 0, 0, 0));
+          startUTC = startUTC < julyMinimumUTC ? julyMinimumUTC : startUTC;
+        }
+        
+        dateRange = {
+          start: startUTC,
+          end: endUTC
+        };
+        break;
+      }
+    
+    case 'this_year': {
+      const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), 0, 1, 0, 0, 0));
+      const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), 11, 31, 23, 59, 59));
+      dateRange = { start: startUTC, end: endUTC };
+      break;
+    }
+      
+      case 'last_year': {
+      const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear() - 1, 0, 1, 0, 0, 0));
+      const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear() - 1, 11, 31, 23, 59, 59));
+      
+      dateRange = {
+        start: startUTC < julyMinimumUTC ? julyMinimumUTC : startUTC,
+        end: endUTC
+      };
+      break;
+    }
+    
+    case 'custom': {
+      if (customStartDate && customEndDate) {
+        const startDateIndonesia = new Date(`${customStartDate}T00:00:00`);
+        const endDateIndonesia = new Date(`${customEndDate}T23:59:59.999`);
+        
+        const startUTC = new Date(Date.UTC(
+          startDateIndonesia.getFullYear(),
+          startDateIndonesia.getMonth(),
+          startDateIndonesia.getDate(),
+          0, 0, 0
+        ));
+        const endUTC = new Date(Date.UTC(
+          endDateIndonesia.getFullYear(),
+          endDateIndonesia.getMonth(),
+          endDateIndonesia.getDate(),
+          23, 59, 59
+        ));
+        
+        dateRange = { 
+          start: startUTC < julyMinimumUTC ? julyMinimumUTC : startUTC, 
+          end: endUTC 
+        };
+      } else {
+        // Fallback ke Juli minimum
+        const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59));
+        dateRange = { start: julyMinimumUTC, end: endUTC };
+      }
+      break;
+    }
+      
+      default: {
+        // Default ke hari ini
+        const startOfDay = new Date(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 0, 0, 0, 0);
+        const endOfDay = new Date(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59, 999);
+        
+        dateRange = { 
+          start: convertToUTC(startOfDay), 
+          end: convertToUTC(endOfDay)
+        };
+      }
+    }
+    
+    // Logging hasil perhitungan
+    console.log(`📅 ${period.toUpperCase()} date range (Indonesia → UTC):`, {
+      startUTC: dateRange.start.toISOString(),
+      endUTC: dateRange.end.toISOString(),
+      startIndonesia: new Date(dateRange.start.getTime() + (7 * 60 * 60 * 1000)).toLocaleString('id-ID'),
+      endIndonesia: new Date(dateRange.end.getTime() + (7 * 60 * 60 * 1000)).toLocaleString('id-ID'),
+      startDateForQuery: dateRange.start.toISOString().split('T')[0],
+      endDateForQuery: dateRange.end.toISOString().split('T')[0],
+      daysDifference: Math.ceil((dateRange.end.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24))
+    });
+    
+    return dateRange;
   };
+
   console.log('KeuntunganMotorPage - selectedDivision:', selectedDivision);
+  
   const fetchInitialData = async () => {
     try {
       const { data: cabangData, error: cabangError } = await supabase
@@ -110,8 +297,10 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
 
       if (cabangError) throw cabangError;
       setCabangList(cabangData || []);
+      
+      console.log('🏢 Cabang data loaded:', cabangData?.length || 0, 'cabang');
     } catch (error) {
-      console.error('Error fetching initial data:', error);
+      console.error('❌ Error fetching initial data:', error);
       toast({
         title: "Error",
         description: "Gagal mengambil data cabang",
@@ -120,211 +309,319 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     }
   };
 
+  // Fungsi untuk mengambil data yang difilter berdasarkan periode
+  const fetchPeriodFilteredData = async (dateRange: { start: Date; end: Date }): Promise<PeriodFilteredData> => {
+    console.log('🔍 Fetching period filtered data:', {
+      period: selectedPeriod,
+      dateRange: {
+        start: dateRange.start.toISOString(),
+        end: dateRange.end.toISOString(),
+        startIndonesia: new Date(dateRange.start.getTime() + (7 * 60 * 60 * 1000)).toLocaleString('id-ID'),
+        endIndonesia: new Date(dateRange.end.getTime() + (7 * 60 * 60 * 1000)).toLocaleString('id-ID')
+      },
+      division: selectedDivision,
+      cabang: selectedCabang
+    });
+
+    // 1. Query untuk data keuntungan (penjualan yang selesai)
+    let keuntunganQuery = supabase
+      .from('penjualans')
+      .select(`
+        id,
+        pembelian_id,
+        harga_beli,
+        harga_jual,
+        keuntungan,
+        status,
+        tanggal,
+        tahun,
+        warna,
+        kilometer,
+        cabang:cabang_id(nama),
+        divisi,
+        brands(name),
+        jenis_motor(jenis_motor),
+        pembelian:pembelian_id(harga_final, harga_beli)
+      `)
+      .eq('status', 'selesai')
+      .gte('tanggal', dateRange.start.toISOString().split('T')[0])
+      .lte('tanggal', dateRange.end.toISOString().split('T')[0]);
+
+    if (selectedCabang !== 'all') {
+      keuntunganQuery = keuntunganQuery.eq('cabang_id', parseInt(selectedCabang));
+    }
+    if (selectedDivision !== 'all') {
+      keuntunganQuery = keuntunganQuery.eq('divisi', selectedDivision);
+    }
+
+    // 2. Query untuk total booked (DP dari penjualan dengan status 'Booked')
+    let bookedQuery = supabase
+      .from('penjualans')
+      .select('dp, tanggal, id')
+      .eq('status', 'Booked')
+      .gte('tanggal', dateRange.start.toISOString().split('T')[0])
+      .lte('tanggal', dateRange.end.toISOString().split('T')[0]);
+
+    if (selectedCabang !== 'all') {
+      bookedQuery = bookedQuery.eq('cabang_id', parseInt(selectedCabang));
+    }
+    if (selectedDivision !== 'all') {
+      bookedQuery = bookedQuery.eq('divisi', selectedDivision);
+    }
+
+    // 3. Query untuk harga_beli dari penjualans dengan status 'Booked'
+    let bookedHargaBeliQuery = supabase
+      .from('penjualans')
+      .select('harga_beli, tanggal, id')
+      .eq('status', 'Booked')
+      .gte('tanggal', dateRange.start.toISOString().split('T')[0])
+      .lte('tanggal', dateRange.end.toISOString().split('T')[0]);
+
+    if (selectedCabang !== 'all') {
+      bookedHargaBeliQuery = bookedHargaBeliQuery.eq('cabang_id', parseInt(selectedCabang));
+    }
+    if (selectedDivision !== 'all') {
+      bookedHargaBeliQuery = bookedHargaBeliQuery.eq('divisi', selectedDivision);
+    }
+
+    // 4. Query untuk pembelian dengan status 'ready'
+    let pembelianReadyQuery = supabase
+      .from('pembelian')
+      .select('harga_beli, divisi, tanggal_pembelian, id')
+      .eq('status', 'ready')
+      .gte('tanggal_pembelian', dateRange.start.toISOString().split('T')[0])
+      .lte('tanggal_pembelian', dateRange.end.toISOString().split('T')[0]);
+
+    if (selectedCabang !== 'all') {
+      pembelianReadyQuery = pembelianReadyQuery.eq('cabang_id', parseInt(selectedCabang));
+    }
+    if (selectedDivision !== 'all') {
+      pembelianReadyQuery = pembelianReadyQuery.eq('divisi', selectedDivision);
+    }
+
+    // 5. Query untuk total operasional
+    let operasionalQuery = supabase
+      .from('operational')
+      .select('nominal, divisi, tanggal, id')
+      .gte('tanggal', dateRange.start.toISOString().split('T')[0])
+      .lte('tanggal', dateRange.end.toISOString().split('T')[0]);
+
+    if (selectedCabang !== 'all') {
+      operasionalQuery = operasionalQuery.eq('cabang_id', parseInt(selectedCabang));
+    }
+    if (selectedDivision !== 'all') {
+      operasionalQuery = operasionalQuery.eq('divisi', selectedDivision);
+    }
+
+    // 6. Query untuk pencatatan asset
+    let pencatatanAssetQuery = (supabase as any)
+      .from('pencatatan_asset')
+      .select('nominal, divisi, tanggal, id')
+      .gte('tanggal', dateRange.start.toISOString().split('T')[0])
+      .lte('tanggal', dateRange.end.toISOString().split('T')[0]);
+
+    if (selectedCabang !== 'all') {
+      pencatatanAssetQuery = pencatatanAssetQuery.eq('cabang_id', parseInt(selectedCabang));
+    }
+    if (selectedDivision !== 'all') {
+      pencatatanAssetQuery = pencatatanAssetQuery.eq('divisi', selectedDivision);
+    }
+
+    const [keuntunganResult, bookedResult, bookedHargaBeliResult, pembelianReadyResult, operasionalResult, pencatatanAssetResult] = await Promise.all([
+      keuntunganQuery,
+      bookedQuery,
+      bookedHargaBeliQuery,
+      pembelianReadyQuery,
+      operasionalQuery,
+      pencatatanAssetQuery
+    ]);
+
+    // Error handling
+    if (keuntunganResult.error) throw keuntunganResult.error;
+    if (bookedResult.error) throw bookedResult.error;
+    if (bookedHargaBeliResult.error) throw bookedHargaBeliResult.error;
+    if (pembelianReadyResult.error) throw pembelianReadyResult.error;
+    if (operasionalResult.error) throw operasionalResult.error;
+    if (pencatatanAssetResult.error) throw pencatatanAssetResult.error;
+
+    // Logging detail untuk debugging
+    console.log('📊 Raw query results:', {
+      keuntungan: {
+        count: keuntunganResult.data?.length || 0,
+        sample: keuntunganResult.data?.slice(0, 2) || []
+      },
+      booked: {
+        count: bookedResult.data?.length || 0,
+        sample: bookedResult.data?.slice(0, 2) || []
+      },
+      pembelianReady: {
+        count: pembelianReadyResult.data?.length || 0,
+        sample: pembelianReadyResult.data?.slice(0, 2) || [],
+        dates: pembelianReadyResult.data?.map(item => item.tanggal_pembelian) || []
+      },
+      operasional: {
+        count: operasionalResult.data?.length || 0,
+        sample: operasionalResult.data?.slice(0, 2) || []
+      }
+    });
+
+    // Format data keuntungan
+    const formattedData = keuntunganResult.data?.map(item => {
+      const modalValue = item.pembelian 
+        ? (item.pembelian.harga_final || item.pembelian.harga_beli || 0)
+        : (item.harga_beli || 0);
+      
+      return {
+        id: item.id,
+        nama_motor: `${item.brands?.name || ''} ${item.jenis_motor?.jenis_motor || ''} ${item.tahun || ''}  ${item.warna || ''} ${item.kilometer ? Number(item.kilometer).toLocaleString('id-ID') : '0'}`,
+        modal: modalValue,
+        harga_jual: item.harga_jual || 0,
+        profit: item.keuntungan || 0,
+        tanggal_jual: item.tanggal,
+        cabang: item.cabang?.nama || '',
+        divisi: item.divisi || ''
+      };
+    }) || [];
+
+    // Hitung totals
+    const totalBooked = bookedResult.data?.reduce((sum, item) => sum + (item.dp || 0), 0) || 0;
+    const totalOperasional = operasionalResult.data?.reduce((sum, item) => sum + (item.nominal || 0), 0) || 0;
+    const totalPembelianReady = pembelianReadyResult.data?.reduce((sum, item) => sum + (item.harga_beli || 0), 0) || 0;
+    const totalBookedHargaBeli = bookedHargaBeliResult.data?.reduce((sum, item) => sum + (item.harga_beli || 0), 0) || 0;
+    const totalPencatatanAsset = pencatatanAssetResult.data?.reduce((sum, item) => sum + (item.nominal || 0), 0) || 0;
+    const totalProfitFiltered = formattedData.reduce((sum, item) => sum + item.profit, 0);
+
+    console.log('📊 Period filtered data results:', {
+      keuntunganRecords: formattedData.length,
+      totalBooked,
+      totalOperasional,
+      totalPembelianReady,
+      totalBookedHargaBeli,
+      totalPencatatanAsset,
+      totalProfitFiltered,
+      pembelianReadyDetails: pembelianReadyResult.data?.map(item => ({
+        id: item.id,
+        tanggal: item.tanggal_pembelian,
+        harga_beli: item.harga_beli,
+        divisi: item.divisi
+      })) || []
+    });
+
+    return {
+      keuntunganData: formattedData,
+      totalBooked,
+      totalOperasional,
+      totalPembelianReady,
+      totalBookedHargaBeli,
+      totalPencatatanAsset,
+      totalProfitFiltered
+    };
+  };
+
+  // Fungsi untuk mengambil data kumulatif (tidak difilter periode)
+  const fetchCumulativeData = async (): Promise<CumulativeData> => {
+    console.log('🏦 Fetching cumulative data:', {
+      division: selectedDivision
+    });
+
+    // Query untuk modal perusahaan - tidak perlu filter tanggal karena ini adalah modal kumulatif
+    let companiesQuery = supabase
+      .from('companies')
+      .select('modal, divisi, id');
+
+    if (selectedDivision !== 'all') {
+      companiesQuery = companiesQuery.eq('divisi', selectedDivision);
+    }
+
+    const companiesResult = await companiesQuery;
+    if (companiesResult.error) throw companiesResult.error;
+
+    const totalModalPerusahaan = companiesResult.data?.reduce((sum, item) => sum + (item.modal || 0), 0) || 0;
+
+    console.log('🏦 Cumulative data results:', {
+      totalModalPerusahaan,
+      companiesRecords: companiesResult.data?.length || 0,
+      companiesData: companiesResult.data || []
+    });
+
+    return {
+      totalModalPerusahaan
+    };
+  };
+
   const fetchKeuntunganData = async () => {
     setLoading(true);
-    console.log('Fetching data with division:', selectedDivision);
+    console.log('🚀 Starting fetchKeuntunganData with:', {
+      selectedPeriod,
+      selectedDivision,
+      selectedCabang,
+      customStartDate,
+      customEndDate,
+      timestamp: new Date().toISOString(),
+      indonesiaTime: getIndonesiaDate().toLocaleString('id-ID')
+    });
+    
     try {
+      // Reset semua state sebelum fetching data baru
+      setKeuntunganData([]);
+      setTotalBooked(0);
+      setTotalOperasional(0);
+      setTotalPembelianGabungan(0);
+      setTotalPencatatanAsset(0);
+      setTotalModalPerusahaan(0);
+      setTotalModalKalkulasi(0);
+      
       const dateRange = getDateRange(selectedPeriod);
-
-      // Query untuk data keuntungan (penjualan yang selesai)
-      let keuntunganQuery = supabase
-        .from('penjualans')
-        .select(`
-          id,
-          pembelian_id,
-          harga_beli,
-          harga_jual,
-          keuntungan,
-          status,
-          tanggal,
-          tahun,
-          warna,
-          kilometer,
-          cabang:cabang_id(nama),
-          divisi,
-          brands(name),
-          jenis_motor(jenis_motor),
-          pembelian:pembelian_id(harga_final, harga_beli)
-        `)
-        .eq('status', 'selesai')
-        .gte('tanggal', dateRange.start.toISOString())
-        .lte('tanggal', dateRange.end.toISOString());
-
-      if (selectedCabang !== 'all') {
-        keuntunganQuery = keuntunganQuery.eq('cabang_id', parseInt(selectedCabang));
-      }
-
-      // Filter berdasarkan divisi jika bukan 'all'
-      if (selectedDivision !== 'all') {
-        keuntunganQuery = keuntunganQuery.eq('divisi', selectedDivision);
-      }
-
-      // Query untuk total booked (DP dari penjualan dengan status 'Booked')
-      let bookedQuery = supabase
-        .from('penjualans')
-        .select('dp')
-        .eq('status', 'Booked')
-        .gte('tanggal', dateRange.start.toISOString())
-        .lte('tanggal', dateRange.end.toISOString());
-
-      if (selectedCabang !== 'all') {
-        bookedQuery = bookedQuery.eq('cabang_id', parseInt(selectedCabang));
-      }
-
-      // Filter berdasarkan divisi jika bukan 'all'
-      if (selectedDivision !== 'all') {
-        bookedQuery = bookedQuery.eq('divisi', selectedDivision);
-      }
-
-      // Query untuk harga_beli dari penjualans dengan status 'Booked'
-      let bookedHargaBeliQuery = supabase
-        .from('penjualans')
-        .select('harga_beli')
-        .eq('status', 'Booked')
-        .gte('tanggal', dateRange.start.toISOString())
-        .lte('tanggal', dateRange.end.toISOString());
-
-      if (selectedCabang !== 'all') {
-        bookedHargaBeliQuery = bookedHargaBeliQuery.eq('cabang_id', parseInt(selectedCabang));
-      }
-
-      // Filter berdasarkan divisi jika bukan 'all'
-      if (selectedDivision !== 'all') {
-        bookedHargaBeliQuery = bookedHargaBeliQuery.eq('divisi', selectedDivision);
-      }
-
-      // Query untuk pembelian dengan status 'ready'
-      let pembelianReadyQuery = supabase
-        .from('pembelian')
-        .select('harga_beli, divisi')
-        .eq('status', 'ready')
-        .gte('tanggal_pembelian', dateRange.start.toISOString())
-        .lte('tanggal_pembelian', dateRange.end.toISOString());
-
-      if (selectedCabang !== 'all') {
-        pembelianReadyQuery = pembelianReadyQuery.eq('cabang_id', parseInt(selectedCabang));
-      }
-
-      // Filter berdasarkan divisi jika bukan 'all'
-      if (selectedDivision !== 'all') {
-        pembelianReadyQuery = pembelianReadyQuery.eq('divisi', selectedDivision);
-      }
-
-      // Query untuk total operasional
-      let operasionalQuery = supabase
-        .from('operational')
-        .select('nominal, divisi')
-        .gte('tanggal', dateRange.start.toISOString())
-        .lte('tanggal', dateRange.end.toISOString());
-
-      if (selectedCabang !== 'all') {
-        operasionalQuery = operasionalQuery.eq('cabang_id', parseInt(selectedCabang));
-      }
-
-      // Filter berdasarkan divisi jika bukan 'all'
-      if (selectedDivision !== 'all') {
-        operasionalQuery = operasionalQuery.eq('divisi', selectedDivision);
-      }
-
-      // Query untuk modal perusahaan - tidak perlu filter tanggal karena ini adalah modal kumulatif
-      let companiesQuery = supabase
-        .from('companies')
-        .select('modal, divisi');
-
-      // Filter berdasarkan divisi jika bukan 'all'
-      if (selectedDivision !== 'all') {
-        companiesQuery = companiesQuery.eq('divisi', selectedDivision);
-      }
-
-      // Query untuk pencatatan asset
-      let pencatatanAssetQuery = (supabase as any)
-        .from('pencatatan_asset')
-        .select('nominal, divisi')
-        .gte('tanggal', dateRange.start.toISOString())
-        .lte('tanggal', dateRange.end.toISOString());
-
-      if (selectedCabang !== 'all') {
-        pencatatanAssetQuery = pencatatanAssetQuery.eq('cabang_id', parseInt(selectedCabang));
-      }
-
-      // Filter berdasarkan divisi jika bukan 'all'
-      if (selectedDivision !== 'all') {
-        pencatatanAssetQuery = pencatatanAssetQuery.eq('divisi', selectedDivision);
-      }
-
-      const [keuntunganResult, bookedResult, bookedHargaBeliResult, pembelianReadyResult, operasionalResult, companiesResult, pencatatanAssetResult] = await Promise.all([
-        keuntunganQuery,
-        bookedQuery,
-        bookedHargaBeliQuery,
-        pembelianReadyQuery,
-        operasionalQuery,
-        companiesQuery,
-        pencatatanAssetQuery
+      
+      // Fetch data secara paralel
+      const [periodData, cumulativeData] = await Promise.all([
+        fetchPeriodFilteredData(dateRange),
+        fetchCumulativeData()
       ]);
 
-      if (keuntunganResult.error) throw keuntunganResult.error;
-      if (bookedResult.error) throw bookedResult.error;
-      if (bookedHargaBeliResult.error) throw bookedHargaBeliResult.error;
-      if (pembelianReadyResult.error) throw pembelianReadyResult.error;
-      if (operasionalResult.error) throw operasionalResult.error;
-      if (companiesResult.error) throw companiesResult.error;
-      if (pencatatanAssetResult.error) throw pencatatanAssetResult.error;
+      // Validasi data sebelum set state
+      if (!periodData || !cumulativeData) {
+        throw new Error('Data tidak valid dari server');
+      }
 
-      // Format data keuntungan
-      const formattedData = keuntunganResult.data?.map(item => {
-        // Get harga_beli from pembelian table - prioritas harga_final, fallback ke harga_beli
-        const modalValue = item.pembelian 
-          ? (item.pembelian.harga_final || item.pembelian.harga_beli || 0)
-          : (item.harga_beli || 0);
-        
-        return {
-          id: item.id,
-          nama_motor: `${item.brands?.name || ''} ${item.jenis_motor?.jenis_motor || ''} ${item.tahun || ''}  ${item.warna || ''} ${item.kilometer ? Number(item.kilometer).toLocaleString('id-ID') : '0'}`,
-          modal: modalValue,
-          harga_jual: item.harga_jual || 0,
-          profit: item.keuntungan || 0,
-          tanggal_jual: item.tanggal,
-          cabang: item.cabang?.nama || '',
-          divisi: item.divisi || ''
-        };
-      }) || [];
-
-      setKeuntunganData(formattedData);
-
-      // Hitung total booked (DP) - TIDAK DIUBAH
-      const totalBookedAmount = bookedResult.data?.reduce((sum, item) => sum + (item.dp || 0), 0) || 0;
-      setTotalBooked(totalBookedAmount);
-
-      // Hitung total operasional - TIDAK DIUBAH
-      const totalOperasionalAmount = operasionalResult.data?.reduce((sum, item) => sum + (item.nominal || 0), 0) || 0;
-      setTotalOperasional(totalOperasionalAmount);
-
-      // Hitung total pembelian gabungan:
-      // 1. Harga beli dari pembelian dengan status 'ready'
-      const totalPembelianReady = pembelianReadyResult.data?.reduce((sum, item) => sum + (item.harga_beli || 0), 0) || 0;
+      // Set data yang difilter berdasarkan periode
+      setKeuntunganData(periodData.keuntunganData || []);
+      setTotalBooked(periodData.totalBooked || 0);
+      setTotalOperasional(periodData.totalOperasional || 0);
+      setTotalPencatatanAsset(periodData.totalPencatatanAsset || 0);
       
-      // 2. Harga beli dari penjualans dengan status 'Booked'
-      const totalBookedHargaBeli = bookedHargaBeliResult.data?.reduce((sum, item) => sum + (item.harga_beli || 0), 0) || 0;
-      
-      // 3. Total gabungan untuk card Total Pembelian
-      const totalGabungan = totalPembelianReady + totalBookedHargaBeli;
+      // Set total pembelian gabungan
+      const totalGabungan = (periodData.totalPembelianReady || 0) + (periodData.totalBookedHargaBeli || 0);
       setTotalPembelianGabungan(totalGabungan);
-
-      // Hitung total modal perusahaan
-      const totalModalPerusahaan = companiesResult.data?.reduce((sum, item) => sum + (item.modal || 0), 0) || 0;
-
-      // Hitung total pencatatan asset (berdasarkan periode filter)
-      const totalPencatatanAsset = pencatatanAssetResult.data?.reduce((sum, item) => sum + (item.nominal || 0), 0) || 0;
-
-      // Hitung total profit dari data keuntungan yang sudah difilter
-      const totalProfitFiltered = formattedData.reduce((sum, item) => sum + item.profit, 0);
-
-      // Set total modal kalkulasi dengan rumus baru
-      const totalModalKalkulasiBaru = totalModalPerusahaan + totalPencatatanAsset + totalPembelianReady + totalBookedHargaBeli + totalProfitFiltered - totalOperasionalAmount;
+      
+      // Set data kumulatif
+      setTotalModalPerusahaan(cumulativeData.totalModalPerusahaan || 0);
+      
+      // Hitung total modal kalkulasi (gabungan periode + kumulatif)
+      const totalModalKalkulasiBaru = 
+        (cumulativeData.totalModalPerusahaan || 0) + 
+        (periodData.totalPencatatanAsset || 0) + 
+        (periodData.totalPembelianReady || 0) + 
+        (periodData.totalBookedHargaBeli || 0) + 
+        (periodData.totalProfitFiltered || 0) - 
+        (periodData.totalOperasional || 0);
+      
       setTotalModalKalkulasi(totalModalKalkulasiBaru);
 
+      console.log('✅ Final calculations:', {
+        totalModalPerusahaan: cumulativeData.totalModalPerusahaan,
+        totalPencatatanAsset: periodData.totalPencatatanAsset,
+        totalPembelianReady: periodData.totalPembelianReady,
+        totalBookedHargaBeli: periodData.totalBookedHargaBeli,
+        totalProfitFiltered: periodData.totalProfitFiltered,
+        totalOperasional: periodData.totalOperasional,
+        totalModalKalkulasiBaru,
+        totalPembelianGabungan: totalGabungan,
+        keuntunganDataCount: periodData.keuntunganData?.length || 0
+      });
+
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('❌ Error fetching data:', error);
       toast({
         title: "Error",
         description: "Gagal mengambil data keuntungan",
@@ -356,6 +653,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     return `${value.toFixed(2)}%`;
   };
 
+  // Perhitungan metrik dari data tabel (konsisten dengan data yang ditampilkan)
   const totalModal = keuntunganData.reduce((sum, item) => sum + item.modal, 0);
   const totalTerjual = keuntunganData.reduce((sum, item) => sum + item.harga_jual, 0);
   const totalProfit = keuntunganData.reduce((sum, item) => sum + item.profit, 0);
@@ -397,7 +695,6 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     link.click();
     document.body.removeChild(link);
   };
-
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -416,6 +713,8 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
           </Button>
         </div>
       </div>
+
+  
 
       {/* Filter Data */}
       <Card>

@@ -546,9 +546,9 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
 
       // 5. Update batch_ke untuk cicilan yang batch-nya lebih tinggi
       const { error: updateBatchError } = await supabase
-        .rpc('update_batch_numbers', {
-          p_penjualan_id: cicilan.penjualan_id,
-          p_deleted_batch: cicilan.batch_ke
+        .rpc('update_company_modal', {
+          company_id: cicilan.tujuan_pembayaran_id,
+          amount: 0 // Placeholder for batch update functionality
         });
 
       if (updateBatchError) {

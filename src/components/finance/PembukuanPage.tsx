@@ -51,66 +51,207 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
     }));
   }, [selectedDivision]);
 
+  // Helper function untuk konversi timezone Indonesia
+const getIndonesiaDate = () => {
+  const now = new Date();
+  // Offset Indonesia UTC+7 (7 jam * 60 menit * 60 detik * 1000 ms)
+  const indonesiaOffset = 7 * 60 * 60 * 1000;
+  // Dapatkan UTC time
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+  // Tambahkan offset Indonesia
+  return new Date(utc + indonesiaOffset);
+};
+
   const getDateRange = () => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    switch (dateFilter) {
-      case "today":
-        return { start: today.toISOString().split('T')[0], end: today.toISOString().split('T')[0] };
-      
-      case "yesterday":
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        return { start: yesterday.toISOString().split('T')[0], end: yesterday.toISOString().split('T')[0] };
-      
-      case "this_week":
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay());
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-        return { start: startOfWeek.toISOString().split('T')[0], end: endOfWeek.toISOString().split('T')[0] };
-      
-      case "last_week":
-        const startOfLastWeek = new Date(today);
-        startOfLastWeek.setDate(today.getDate() - today.getDay() - 7);
-        const endOfLastWeek = new Date(startOfLastWeek);
-        endOfLastWeek.setDate(startOfLastWeek.getDate() + 6);
-        return { start: startOfLastWeek.toISOString().split('T')[0], end: endOfLastWeek.toISOString().split('T')[0] };
-      
-      case "this_month":
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        return { start: startOfMonth.toISOString().split('T')[0], end: endOfMonth.toISOString().split('T')[0] };
-      
-      case "last_month":
-        const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-        return { start: startOfLastMonth.toISOString().split('T')[0], end: endOfLastMonth.toISOString().split('T')[0] };
-      
-      case "this_year":
-        const startOfYear = new Date(now.getFullYear(), 0, 1);
-        const endOfYear = new Date(now.getFullYear(), 11, 31);
-        return { start: startOfYear.toISOString().split('T')[0], end: endOfYear.toISOString().split('T')[0] };
-      
-      case "last_year":
-        const startOfLastYear = new Date(now.getFullYear() - 1, 0, 1);
-        const endOfLastYear = new Date(now.getFullYear() - 1, 11, 31);
-        return { start: startOfLastYear.toISOString().split('T')[0], end: endOfLastYear.toISOString().split('T')[0] };
-      
-      case "custom":
-        return { start: customStartDate, end: customEndDate };
-      
-      case "all":
-        // Return a very wide range for "all"
-        const veryOldDate = new Date(2020, 0, 1);
-        const futureDate = new Date(now.getFullYear() + 1, 11, 31);
-        return { start: veryOldDate.toISOString().split('T')[0], end: futureDate.toISOString().split('T')[0] };
-      
-      default:
-        return { start: today.toISOString().split('T')[0], end: today.toISOString().split('T')[0] };
+  // Gunakan waktu Indonesia sebagai basis perhitungan
+  const nowIndonesia = getIndonesiaDate();
+  
+  // Logging untuk debugging
+  console.log('📅 Date range calculation (Indonesia Timezone):', {
+    period: dateFilter,
+    currentDateIndonesia: nowIndonesia.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+    currentDateUTC: new Date().toISOString(),
+    currentMonth: nowIndonesia.getMonth() + 1,
+    currentYear: nowIndonesia.getFullYear(),
+    timezone: 'Asia/Jakarta (UTC+7)'
+  });
+  
+  let dateRange;
+  
+  switch (dateFilter) {
+    case "today": {
+      const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 0, 0, 0));
+      const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59));
+      dateRange = { 
+        start: startUTC.toISOString().split('T')[0], 
+        end: endUTC.toISOString().split('T')[0] 
+      };
+      break;
     }
-  };
+    
+    case "yesterday": {
+      const yesterday = new Date(nowIndonesia);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const startUTC = new Date(Date.UTC(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0));
+      const endUTC = new Date(Date.UTC(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59));
+      dateRange = { 
+        start: startUTC.toISOString().split('T')[0], 
+        end: endUTC.toISOString().split('T')[0] 
+      };
+      break;
+    }
+    
+    case "this_week": {
+      const startOfWeek = new Date(nowIndonesia);
+      startOfWeek.setDate(nowIndonesia.getDate() - nowIndonesia.getDay());
+      const startUTC = new Date(Date.UTC(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate(), 0, 0, 0));
+      const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59));
+      dateRange = { 
+        start: startUTC.toISOString().split('T')[0], 
+        end: endUTC.toISOString().split('T')[0] 
+      };
+      break;
+    }
+    
+    case "last_week": {
+      const startOfLastWeek = new Date(nowIndonesia);
+      startOfLastWeek.setDate(nowIndonesia.getDate() - nowIndonesia.getDay() - 7);
+      const endOfLastWeek = new Date(startOfLastWeek);
+      endOfLastWeek.setDate(startOfLastWeek.getDate() + 6);
+      const startUTC = new Date(Date.UTC(startOfLastWeek.getFullYear(), startOfLastWeek.getMonth(), startOfLastWeek.getDate(), 0, 0, 0));
+      const endUTC = new Date(Date.UTC(endOfLastWeek.getFullYear(), endOfLastWeek.getMonth(), endOfLastWeek.getDate(), 23, 59, 59));
+      dateRange = { 
+        start: startUTC.toISOString().split('T')[0], 
+        end: endUTC.toISOString().split('T')[0] 
+      };
+      break;
+    }
+    
+    case "this_month": {
+      const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), 1, 0, 0, 0));
+      const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth() + 1, 0, 23, 59, 59));
+      dateRange = { 
+        start: startUTC.toISOString().split('T')[0], 
+        end: endUTC.toISOString().split('T')[0] 
+      };
+      break;
+    }
+    
+    case "last_month": {
+      const currentMonth = nowIndonesia.getMonth(); // 0-indexed
+      const currentYear = nowIndonesia.getFullYear();
+      const julyMonth = 6; // Juli = index 6
+      const augustMonth = 7; // Agustus = index 7
+      
+      let startUTC: Date;
+      let endUTC: Date;
+      
+      // Jika bulan berjalan adalah Agustus
+      if (currentMonth === augustMonth) {
+        // Last month = dari Januari sampai Juli
+        startUTC = new Date(Date.UTC(currentYear, 0, 1, 0, 0, 0)); // Januari 1
+        endUTC = new Date(Date.UTC(currentYear, julyMonth + 1, 0, 23, 59, 59)); // Akhir Juli
+      } else {
+        // Bulan lainnya: last month = bulan sebelumnya saja
+        startUTC = new Date(Date.UTC(currentYear, currentMonth - 1, 1, 0, 0, 0));
+        endUTC = new Date(Date.UTC(currentYear, currentMonth, 0, 23, 59, 59));
+      }
+      
+      dateRange = { 
+        start: startUTC.toISOString().split('T')[0], 
+        end: endUTC.toISOString().split('T')[0] 
+      };
+      break;
+    }
+    
+    case "this_year": {
+      const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), 0, 1, 0, 0, 0));
+      const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), 11, 31, 23, 59, 59));
+      dateRange = { 
+        start: startUTC.toISOString().split('T')[0], 
+        end: endUTC.toISOString().split('T')[0] 
+      };
+      break;
+    }
+    
+    case "last_year": {
+      const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear() - 1, 0, 1, 0, 0, 0));
+      const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear() - 1, 11, 31, 23, 59, 59));
+      dateRange = { 
+        start: startUTC.toISOString().split('T')[0], 
+        end: endUTC.toISOString().split('T')[0] 
+      };
+      break;
+    }
+    
+    case "custom": {
+      if (customStartDate && customEndDate) {
+        // Parse tanggal custom sebagai tanggal Indonesia, lalu konversi ke UTC
+        const startDateIndonesia = new Date(`${customStartDate}T00:00:00`);
+        const endDateIndonesia = new Date(`${customEndDate}T23:59:59.999`);
+        
+        const startUTC = new Date(Date.UTC(
+          startDateIndonesia.getFullYear(),
+          startDateIndonesia.getMonth(),
+          startDateIndonesia.getDate(),
+          0, 0, 0
+        ));
+        const endUTC = new Date(Date.UTC(
+          endDateIndonesia.getFullYear(),
+          endDateIndonesia.getMonth(),
+          endDateIndonesia.getDate(),
+          23, 59, 59
+        ));
+        
+        dateRange = { 
+          start: startUTC.toISOString().split('T')[0], 
+          end: endUTC.toISOString().split('T')[0] 
+        };
+      } else {
+        // Fallback ke hari ini
+        const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 0, 0, 0));
+        const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59));
+        dateRange = { 
+          start: startUTC.toISOString().split('T')[0], 
+          end: endUTC.toISOString().split('T')[0] 
+        };
+      }
+      break;
+    }
+    
+    case "all": {
+      // Return a very wide range for "all"
+      const veryOldDate = new Date(Date.UTC(2020, 0, 1, 0, 0, 0));
+      const futureDate = new Date(Date.UTC(nowIndonesia.getFullYear() + 1, 11, 31, 23, 59, 59));
+      dateRange = { 
+        start: veryOldDate.toISOString().split('T')[0], 
+        end: futureDate.toISOString().split('T')[0] 
+      };
+      break;
+    }
+    
+    default: {
+      // Default ke hari ini
+      const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 0, 0, 0));
+      const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59));
+      dateRange = { 
+        start: startUTC.toISOString().split('T')[0], 
+        end: endUTC.toISOString().split('T')[0] 
+      };
+    }
+  }
+  
+  // Logging hasil perhitungan
+  console.log(`📅 ${dateFilter.toUpperCase()} date range (Indonesia → UTC):`, {
+    startUTC: dateRange.start,
+    endUTC: dateRange.end,
+    startIndonesia: new Date(`${dateRange.start}T00:00:00Z`).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }),
+    endIndonesia: new Date(`${dateRange.end}T23:59:59Z`).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }),
+    period: dateFilter
+  });
+  
+  return dateRange;
+};
 
   const fetchInitialData = async () => {
     try {

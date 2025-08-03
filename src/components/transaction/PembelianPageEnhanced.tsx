@@ -83,6 +83,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     biaya_qc: "",
     biaya_lain_lain: "",
     keterangan_biaya_lain: "",
+    company_id: "",
     reason: ""
   });
 
@@ -278,7 +279,8 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       biaya_qc: "",
       biaya_lain_lain: "",
       keterangan_biaya_lain: "",
-      reason: ""
+      reason: "",
+     company_id: pembelian.sumber_dana_1_id?.toString() || "" // Default ke sumber dana utama
     });
     setIsUpdateHargaDialogOpen(true);
   };
@@ -340,6 +342,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       biaya_qc: "",
       biaya_lain_lain: "",
       keterangan_biaya_lain: "",
+      company_id: "",
       reason: ""
     });
     setQcForm({
@@ -360,6 +363,15 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       });
       return;
     }
+
+    if (!updateHargaForm.harga_beli_dasar || !updateHargaForm.reason || !updateHargaForm.company_id || !updatingHargaPembelian) {
+    toast({
+      title: "Error",
+      description: "Mohon lengkapi field yang wajib diisi (Harga Beli Dasar, Perusahaan, dan Alasan Update)",
+      variant: "destructive"
+    });
+    return;
+  }
 
     const hargaBeliBaru = parseFloat(parseNumericInput(updateHargaForm.harga_beli_dasar));
     const biayaPajak = parseFloat(parseNumericInput(updateHargaForm.biaya_pajak)) || 0;
@@ -403,6 +415,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
           biaya_lain_lain: biayaLainLain,
           keterangan_biaya_lain: updateHargaForm.keterangan_biaya_lain || null,
           reason: updateHargaForm.reason,
+          company_id: parseInt(updateHargaForm.company_id), // Tambahkan ini
           user_id: null // Ganti dengan user ID yang sebenarnya
         });
 
@@ -933,18 +946,22 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
         </DialogContent>
       </Dialog>
 
-      {/* Update Harga Dialog */}
-      <Dialog open={isUpdateHargaDialogOpen} onOpenChange={setIsUpdateHargaDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Update Harga</DialogTitle>
-          </DialogHeader>
-          {updatingHargaPembelian && (
-            <div className="space-y-4">
-              <div>
-                <Label>Motor: {updatingHargaPembelian.jenis_motor?.jenis_motor}</Label>
-                <p className="text-sm text-gray-600">Plat: {updatingHargaPembelian.plat_nomor}</p>
-              </div>
+     {/* Update Harga Dialog */}
+    <Dialog open={isUpdateHargaDialogOpen} onOpenChange={setIsUpdateHargaDialogOpen}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Update Harga Pembelian Motor</DialogTitle>
+        </DialogHeader>
+        {updatingHargaPembelian && (
+          <div className="space-y-4">
+            {/* Motor Info - Compact */}
+            <div className="bg-blue-50 p-3 rounded-md">
+              <p className="font-medium">{updatingHargaPembelian.jenis_motor?.jenis_motor}</p>
+              <p className="text-sm text-gray-600">Plat: {updatingHargaPembelian.plat_nomor}</p>
+            </div>
+            
+            {/* Form Fields - Grid Layout */}
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="harga-beli-dasar">Harga Beli Dasar *</Label>
                 <Input
@@ -952,7 +969,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                   type="text"
                   value={formatNumberInput(updateHargaForm.harga_beli_dasar)}
                   onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, harga_beli_dasar: parseNumericInput(e.target.value) }))}
-                  placeholder="Masukkan harga beli dasar"
+                  placeholder="Harga beli dasar"
                 />
               </div>
               <div>
@@ -962,7 +979,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                   type="text"
                   value={formatNumberInput(updateHargaForm.biaya_pajak)}
                   onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, biaya_pajak: parseNumericInput(e.target.value) }))}
-                  placeholder="Masukkan biaya pajak"
+                  placeholder="Biaya pajak"
                 />
               </div>
               <div>
@@ -972,7 +989,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                   type="text"
                   value={formatNumberInput(updateHargaForm.biaya_qc)}
                   onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, biaya_qc: parseNumericInput(e.target.value) }))}
-                  placeholder="Masukkan biaya QC"
+                  placeholder="Biaya QC"
                 />
               </div>
               <div>
@@ -982,49 +999,77 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                   type="text"
                   value={formatNumberInput(updateHargaForm.biaya_lain_lain)}
                   onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, biaya_lain_lain: parseNumericInput(e.target.value) }))}
-                  placeholder="Masukkan biaya lain-lain"
+                  placeholder="Biaya lain-lain"
                 />
               </div>
-              {updateHargaForm.biaya_lain_lain && (
-                <div>
-                  <Label htmlFor="keterangan-biaya-lain">Keterangan Biaya Lain *</Label>
-                  <Input
-                    id="keterangan-biaya-lain"
-                    value={updateHargaForm.keterangan_biaya_lain}
-                    onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, keterangan_biaya_lain: e.target.value }))}
-                    placeholder="Jelaskan biaya lain-lain"
-                  />
-                </div>
-              )}
+            </div>
+            
+            {/* Conditional Fields */}
+            {updateHargaForm.biaya_lain_lain && (
+              <div>
+                <Label htmlFor="keterangan-biaya-lain">Keterangan Biaya Lain *</Label>
+                <Input
+                  id="keterangan-biaya-lain"
+                  value={updateHargaForm.keterangan_biaya_lain}
+                  onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, keterangan_biaya_lain: e.target.value }))}
+                  placeholder="Jelaskan biaya lain-lain"
+                />
+              </div>
+            )}
+            
+            {/* Company and Reason - Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="company_id">Perusahaan *</Label>
+                <Select
+                  value={updateHargaForm.company_id}
+                  onValueChange={(value) => setUpdateHargaForm(prev => ({ ...prev, company_id: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih perusahaan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companiesData?.map((company) => (
+                      <SelectItem key={company.id} value={company.id.toString()}>
+                        {company.nama_perusahaan}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <Label htmlFor="reason">Alasan Update *</Label>
-                <Textarea
+                <Input
                   id="reason"
                   value={updateHargaForm.reason}
                   onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, reason: e.target.value }))}
-                  placeholder="Jelaskan alasan update harga"
-                  className="h-20"
+                  placeholder="Alasan update harga"
                 />
               </div>
-              <div className="bg-gray-50 p-3 rounded">
-                <Label className="text-sm font-medium">Preview Harga Final:</Label>
-                <p className="text-lg font-bold text-green-600">
-                  {formatCurrency(
-                    (parseFloat(parseNumericInput(updateHargaForm.harga_beli_dasar)) || 0) +
-                    (parseFloat(parseNumericInput(updateHargaForm.biaya_pajak)) || 0) +
-                    (parseFloat(parseNumericInput(updateHargaForm.biaya_qc)) || 0) +
-                    (parseFloat(parseNumericInput(updateHargaForm.biaya_lain_lain)) || 0)
-                  )}
-                </p>
-              </div>
-              <div className="flex justify-end gap-2 mt-6">
-                <Button variant="outline" onClick={closeAllDialogs}>Batal</Button>
-                <Button onClick={handleUpdateHargaSubmit}>Update Harga</Button>
-              </div>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+            
+            {/* Preview - Compact */}
+            <div className="bg-green-50 p-3 rounded-md flex justify-between items-center">
+              <span className="text-sm font-medium">Harga Final:</span>
+              <span className="text-lg font-bold text-green-600">
+                {formatCurrency(
+                  (parseFloat(parseNumericInput(updateHargaForm.harga_beli_dasar)) || 0) +
+                  (parseFloat(parseNumericInput(updateHargaForm.biaya_pajak)) || 0) +
+                  (parseFloat(parseNumericInput(updateHargaForm.biaya_qc)) || 0) +
+                  (parseFloat(parseNumericInput(updateHargaForm.biaya_lain_lain)) || 0)
+                )}
+              </span>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={closeAllDialogs}>Batal</Button>
+              <Button onClick={handleUpdateHargaSubmit}>Update Harga</Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
 
       {/* QC Dialog dengan field yang diperlukan */}
       <Dialog open={isQCDialogOpen} onOpenChange={setIsQCDialogOpen}>

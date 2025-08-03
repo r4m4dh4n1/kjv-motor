@@ -99,14 +99,49 @@ export const usePenjualanCreate = () => {
 
       // 5. TAMBAHAN: Jika pembayaran sudah lunas (harga_bayar >= harga_jual atau status 'selesai'), 
       // tambah modal perusahaan dengan total pembayaran yang diterima
+      const dp = parseFormattedNumber(formData.dp || "0");
+      if ((formData.jenis_pembayaran === 'cash_bertahap' || formData.jenis_pembayaran === 'kredit') && dp > 0 && submitData.company_id) {
+        try {
+          const { error: dpModalError } = await supabase.rpc('update_company_modal', {
+            company_id: submitData.company_id,
+            amount: dp // Menambah modal sebesar DP yang diterima
+          });
+
+          if (dpModalError) {
+            console.error('Error adding DP to company modal:', dpModalError);
+            toast({
+              title: "Warning",
+              description: `Penjualan tersimpan tapi gagal menambah modal dari DP: ${dpModalError.message}`,
+              variant: "destructive"
+            });
+          }
+        } catch (dpModalUpdateError) {
+          console.error('CATCH ERROR saat update modal DP:', dpModalUpdateError);
+          toast({
+            title: "Warning",
+            description: "Penjualan tersimpan tapi gagal menambah modal dari DP",
+            variant: "destructive"
+          });
+        }
+      }
+
+      // 6. MODIFIKASI: Tambah modal saat pelunasan (hanya sisa pembayaran)
       if ((status === 'selesai' || hargaBayar >= hargaJual) && submitData.company_id) {
-        const totalPembayaran = Math.min(hargaBayar, hargaJual); // Ambil yang terkecil untuk menghindari overpayment
+        // Untuk cash_bertahap/kredit: hanya tambah sisa pembayaran (total - DP)
+        // Untuk cash: tambah total pembayaran
+        let sisaPembayaran = 0;
         
-        if (totalPembayaran > 0) {
+        if (formData.jenis_pembayaran === 'cash_bertahap' || formData.jenis_pembayaran === 'kredit') {
+          sisaPembayaran = Math.min(hargaBayar, hargaJual) - dp; // Total pembayaran dikurangi DP yang sudah ditambahkan
+        } else {
+          sisaPembayaran = Math.min(hargaBayar, hargaJual); // Untuk cash penuh
+        }
+        
+        if (sisaPembayaran > 0) {
           try {
             const { error: modalError } = await supabase.rpc('update_company_modal', {
               company_id: submitData.company_id,
-              amount: totalPembayaran // Menambah modal sebesar total pembayaran yang diterima
+              amount: sisaPembayaran
             });
 
             if (modalError) {

@@ -1591,6 +1591,7 @@ export type Database = {
           pembelian_id: number
           reason: string | null
           updated_at: string
+          company_id: number | null
           user_id: number | null
         }
         Insert: {
@@ -1605,6 +1606,7 @@ export type Database = {
           pembelian_id: number
           reason?: string | null
           updated_at?: string
+          company_id: number | null
           user_id?: number | null
         }
         Update: {
@@ -1619,6 +1621,7 @@ export type Database = {
           pembelian_id?: number
           reason?: string | null
           updated_at?: string
+          company_id: number | null
           user_id?: number | null
         }
         Relationships: [
@@ -1629,6 +1632,13 @@ export type Database = {
             referencedRelation: "pembelian"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "price_histories_pembelian_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          }
         ]
       }
       profiles: {

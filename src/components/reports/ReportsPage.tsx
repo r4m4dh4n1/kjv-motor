@@ -37,53 +37,112 @@ const ReportsPage = ({ selectedDivision }: ReportsPageProps) => {
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
-  // Date range calculation function
+  // Fungsi helper untuk format tanggal lokal
+  const formatLocalDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Date range calculation function yang sudah diperbaiki
   const getDateRange = () => {
     const now = new Date();
+    
+    // Buat objek tanggal untuk hari ini dalam timezone lokal
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     switch (dateFilter) {
       case "today":
-        return { start: today.toISOString().split('T')[0], end: today.toISOString().split('T')[0] };
+        return { 
+          start: formatLocalDate(today), 
+          end: formatLocalDate(today) 
+        };
       
       case "yesterday":
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
-        return { start: yesterday.toISOString().split('T')[0], end: yesterday.toISOString().split('T')[0] };
+        return { 
+          start: formatLocalDate(yesterday), 
+          end: formatLocalDate(yesterday) 
+        };
       
       case "this_week":
         const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay());
+        // Mengatur ke hari Senin (0 = Minggu, 1 = Senin, dst.)
+        const dayOfWeek = startOfWeek.getDay();
+        const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Jika Minggu, mundur 6 hari
+        startOfWeek.setDate(today.getDate() - diffToMonday);
+        
         const endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(startOfWeek.getDate() + 6);
-        return { start: startOfWeek.toISOString().split('T')[0], end: endOfWeek.toISOString().split('T')[0] };
+        return { 
+          start: formatLocalDate(startOfWeek), 
+          end: formatLocalDate(endOfWeek) 
+        };
       
       case "last_week":
-        const lastWeekStart = new Date(today);
-        lastWeekStart.setDate(today.getDate() - today.getDay() - 7);
-        const lastWeekEnd = new Date(lastWeekStart);
-        lastWeekEnd.setDate(lastWeekStart.getDate() + 6);
-        return { start: lastWeekStart.toISOString().split('T')[0], end: lastWeekEnd.toISOString().split('T')[0] };
+        const lastWeekEnd = new Date(today);
+        const dayOfWeekForLast = lastWeekEnd.getDay();
+        const diffToLastSunday = dayOfWeekForLast === 0 ? 0 : dayOfWeekForLast;
+        lastWeekEnd.setDate(today.getDate() - diffToLastSunday - 1); // Minggu minggu lalu
+        
+        const lastWeekStart = new Date(lastWeekEnd);
+        lastWeekStart.setDate(lastWeekEnd.getDate() - 6); // Senin minggu lalu
+        return { 
+          start: formatLocalDate(lastWeekStart), 
+          end: formatLocalDate(lastWeekEnd) 
+        };
       
       case "this_month":
         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
         const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-        return { start: startOfMonth.toISOString().split('T')[0], end: endOfMonth.toISOString().split('T')[0] };
+        return { 
+          start: formatLocalDate(startOfMonth), 
+          end: formatLocalDate(endOfMonth) 
+        };
       
-      case "last_month":
-        const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
-        return { start: lastMonthStart.toISOString().split('T')[0], end: lastMonthEnd.toISOString().split('T')[0] };
+      case "last_month": {
+        const currentMonth = today.getMonth(); // 0-indexed
+        const currentYear = today.getFullYear();
+        const julyMonth = 6; // Juli = index 6
+        const augustMonth = 7; // Agustus = index 7
+        
+        let lastMonthStart: Date;
+        let lastMonthEnd: Date;
+        
+        // Jika bulan berjalan adalah Agustus
+        if (currentMonth === augustMonth) {
+          // Last month = dari Januari sampai Juli
+          lastMonthStart = new Date(currentYear, 0, 1); // Januari 1
+          lastMonthEnd = new Date(currentYear, julyMonth + 1, 0); // Akhir Juli
+        } else {
+          // Bulan lainnya: last month = bulan sebelumnya saja
+          lastMonthStart = new Date(currentYear, currentMonth - 1, 1);
+          lastMonthEnd = new Date(currentYear, currentMonth, 0);
+        }
+        
+        return { 
+          start: formatLocalDate(lastMonthStart), 
+          end: formatLocalDate(lastMonthEnd) 
+        };
+      }
       
       case "this_year":
         const startOfYear = new Date(today.getFullYear(), 0, 1);
         const endOfYear = new Date(today.getFullYear(), 11, 31);
-        return { start: startOfYear.toISOString().split('T')[0], end: endOfYear.toISOString().split('T')[0] };
+        return { 
+          start: formatLocalDate(startOfYear), 
+          end: formatLocalDate(endOfYear) 
+        };
       
       case "last_year":
         const lastYearStart = new Date(today.getFullYear() - 1, 0, 1);
         const lastYearEnd = new Date(today.getFullYear() - 1, 11, 31);
-        return { start: lastYearStart.toISOString().split('T')[0], end: lastYearEnd.toISOString().split('T')[0] };
+        return { 
+          start: formatLocalDate(lastYearStart), 
+          end: formatLocalDate(lastYearEnd) 
+        };
       
       case "custom":
         return { start: customStartDate, end: customEndDate };
@@ -96,7 +155,7 @@ const ReportsPage = ({ selectedDivision }: ReportsPageProps) => {
 
   useEffect(() => {
     // Initialize with today's date for custom filter
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatLocalDate(new Date());
     setCustomStartDate(today);
     setCustomEndDate(today);
   }, []);
