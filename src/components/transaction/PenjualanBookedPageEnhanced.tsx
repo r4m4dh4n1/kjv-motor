@@ -13,6 +13,7 @@ import PenjualanForm from "./PenjualanForm";
 import PenjualanTable from "./PenjualanTable";
 import UpdateHargaModal from "./UpdateHargaModal";
 import PriceHistoryModal from "./PriceHistoryModal";
+import DpCancellationModal from "./DpCancellationModal";
 import { Penjualan, PenjualanFormData } from "./penjualan-types";
 import { formatCurrency } from "@/utils/formatUtils";
 import { usePagination } from "@/hooks/usePagination";
@@ -24,6 +25,7 @@ import {
 import { usePenjualanData } from "./hooks/usePenjualanData";
 import { usePenjualanCreate, usePenjualanDelete } from "./hooks/usePenjualanMutations";
 import { usePenjualanActions } from "./hooks/usePenjualanActions";
+import { useDpCancellation } from "./hooks/useDpCancellation";
 import {
   createInitialPenjualanFormData,
   validatePenjualanFormData,
@@ -38,6 +40,10 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPenjualan, setEditingPenjualan] = useState<Penjualan | null>(null);
   const [formData, setFormData] = useState<PenjualanFormData>(createInitialPenjualanFormData(selectedDivision));
+  
+  // DP Cancellation states
+  const [isDpCancelModalOpen, setIsDpCancelModalOpen] = useState(false);
+  const [selectedPenjualanForCancel, setSelectedPenjualanForCancel] = useState<any>(null);
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -68,6 +74,7 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
   // Mutations
   const createPenjualanMutation = usePenjualanCreate();
   const deletePenjualanMutation = usePenjualanDelete();
+  const dpCancellationMutation = useDpCancellation();
   
   // Actions
   const {
@@ -226,6 +233,27 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
     setCustomStartDate(undefined);
     setCustomEndDate(undefined);
     resetPage();
+  };
+
+  const handleCancelDp = (penjualan: any) => {
+    setSelectedPenjualanForCancel(penjualan);
+    setIsDpCancelModalOpen(true);
+  };
+
+  const handleDpCancellationConfirm = async (cancellationData: any) => {
+    if (!selectedPenjualanForCancel) return;
+
+    try {
+      await dpCancellationMutation.mutateAsync({
+        penjualanId: selectedPenjualanForCancel.id,
+        cancellationData
+      });
+      setIsDpCancelModalOpen(false);
+      setSelectedPenjualanForCancel(null);
+      refetchPenjualan();
+    } catch (error) {
+      // Error handling is done in the mutation
+    }
   };
 
   return (
@@ -459,6 +487,8 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
         deleteMutation={{ mutate: handleDelete }}
         handleUpdateHarga={handleUpdateHarga}
         handleRiwayatHarga={handleRiwayatHarga}
+        handleCancelDp={handleCancelDp}
+        showCancelDp={true}
       />
 
       {/* Pagination Controls */}
@@ -510,6 +540,17 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
           setSelectedPenjualanForHistory(null);
         }}
         penjualan={selectedPenjualanForHistory}
+      />
+
+      <DpCancellationModal
+        isOpen={isDpCancelModalOpen}
+        onClose={() => {
+          setIsDpCancelModalOpen(false);
+          setSelectedPenjualanForCancel(null);
+        }}
+        penjualan={selectedPenjualanForCancel}
+        onConfirm={handleDpCancellationConfirm}
+        isLoading={dpCancellationMutation.isPending}
       />
     </div>
   );

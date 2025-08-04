@@ -37,6 +37,11 @@ export const usePenjualanUpdate = () => {
       const sisaBayar = parseFormattedNumber(formData.sisa_bayar || "0");
       const dp = parseFormattedNumber(formData.dp || "0");
       
+      // Get original values for comparison
+      const originalHargaBayar = originalPenjualan.harga_bayar || 0;
+      const originalDp = originalPenjualan.dp || 0;
+      const originalStatus = originalPenjualan.status;
+      
       // If payment is complete, set status to 'selesai'
       if (hargaBayar >= hargaJual || sisaBayar === 0) {
         status = 'selesai';
@@ -55,9 +60,10 @@ export const usePenjualanUpdate = () => {
       
       // Check if DP has been paid for cash_bertahap or kredit
       const isDpPaid = (formData.jenis_pembayaran === 'cash_bertahap' || formData.jenis_pembayaran === 'kredit') && dp > 0;
+      const wasOriginalDpPaid = (originalPenjualan.jenis_pembayaran === 'cash_bertahap' || originalPenjualan.jenis_pembayaran === 'kredit') && originalDp > 0;
 
       // If motor changed and DP was paid, handle stock restoration
-      if (motorChanged && isDpPaid) {
+      if (motorChanged && (isDpPaid || wasOriginalDpPaid)) {
         // 1. Return old motor to stock (increment qty)
         const { error: oldStockError } = await supabase
           .rpc('increment_qty', { 
@@ -100,13 +106,13 @@ export const usePenjualanUpdate = () => {
       }
 
       // If company changed and DP was paid, handle modal transfer
-      if (companyChanged && isDpPaid) {
-        // Return funds to old company
-        if (originalPenjualan.company_id && dp > 0) {
+      if (companyChanged && (wasOriginalDpPaid || isDpPaid)) {
+        // Return funds to old company (use original DP amount)
+        if (originalPenjualan.company_id && originalDp > 0) {
           try {
             const { error: oldModalError } = await supabase.rpc('update_company_modal', {
               company_id: originalPenjualan.company_id,
-              amount: dp // Return DP amount to old company
+              amount: originalDp // Return original DP amount to old company
             });
 
             if (oldModalError) {
@@ -122,12 +128,12 @@ export const usePenjualanUpdate = () => {
           }
         }
 
-        // Deduct funds from new company
+        // Deduct funds from new company (use new DP amount)
         if (submitData.company_id && dp > 0) {
           try {
             const { error: newModalError } = await supabase.rpc('update_company_modal', {
               company_id: submitData.company_id,
-              amount: -dp // Deduct DP amount from new company
+              amount: -dp // Deduct new DP amount from new company
             });
 
             if (newModalError) {
@@ -158,14 +164,27 @@ export const usePenjualanUpdate = () => {
       }
 
       // 2. Handle company modal update when payment is complete
+      // Only add the difference in payment, not the total payment
       if ((status === 'selesai' || hargaBayar >= hargaJual) && submitData.company_id) {
-        const totalPembayaran = Math.min(hargaBayar, hargaJual);
+        // Calculate additional payment (new payment - original payment)
+        const additionalPayment = Math.min(hargaBayar, hargaJual) - Math.min(originalHargaBayar, hargaJual);
         
-        if (totalPembayaran > 0) {
+        // For cash_bertahap/kredit: subtract DP that was already added
+        let modalToAdd = additionalPayment;
+        if (formData.jenis_pembayaran === 'cash_bertahap' || formData.jenis_pembayaran === 'kredit') {
+          // If this is the first time DP is being paid, don't subtract it
+          const dpDifference = dp - originalDp;
+          if (dpDifference > 0 && !companyChanged) {
+            // DP increased, subtract the increase since it will be added separately
+            modalToAdd = additionalPayment - dpDifference;
+          }
+        }
+        
+        if (modalToAdd > 0) {
           try {
             const { error: modalError } = await supabase.rpc('update_company_modal', {
               company_id: submitData.company_id,
-              amount: totalPembayaran
+              amount: modalToAdd
             });
 
             if (modalError) {
@@ -178,6 +197,31 @@ export const usePenjualanUpdate = () => {
             }
           } catch (modalUpdateError) {
             console.error('Error updating company modal:', modalUpdateError);
+          }
+        }
+      }
+
+      // 3. Handle DP changes for cash_bertahap/kredit (when company doesn't change)
+      if (!companyChanged && submitData.company_id && (formData.jenis_pembayaran === 'cash_bertahap' || formData.jenis_pembayaran === 'kredit')) {
+        const dpDifference = dp - originalDp;
+        
+        if (dpDifference !== 0) {
+          try {
+            const { error: dpModalError } = await supabase.rpc('update_company_modal', {
+              company_id: submitData.company_id,
+              amount: dpDifference // Add or subtract DP difference
+            });
+
+            if (dpModalError) {
+              console.error('Error updating DP modal:', dpModalError);
+              toast({
+                title: "Warning",
+                description: `Penjualan tersimpan tapi gagal menyesuaikan modal DP: ${dpModalError.message}`,
+                variant: "destructive"
+              });
+            }
+          } catch (dpModalUpdateError) {
+            console.error('Error updating DP modal:', dpModalUpdateError);
           }
         }
       }

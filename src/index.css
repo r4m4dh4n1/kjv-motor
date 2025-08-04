@@ -149,3 +149,10 @@ All colors MUST be HSL.
     @apply h-48 sm:h-64 md:h-80 w-full;
   }
 }
+
+@layer components {
+  .required::after {
+    content: " *";
+    @apply text-red-500;
+  }
+}

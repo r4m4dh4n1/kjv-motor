@@ -184,7 +184,7 @@ const PembelianPage = ({ selectedDivision }: PembelianPageProps) => {
   const handleUpdateHarga = (pembelian: any) => {
     setUpdatingHargaPembelian(pembelian);
     setUpdateHargaForm({
-      harga_beli_dasar: pembelian.harga_beli.toString(),
+      harga_beli_dasar: (pembelian.harga_final || pembelian.harga_beli).toString(),
       biaya_pajak: "",
       biaya_qc: "",
       biaya_lain_lain: "",

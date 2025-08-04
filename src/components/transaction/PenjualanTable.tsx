@@ -8,7 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, Eye, DollarSign, History, MoreHorizontal } from "lucide-react";
+import { Edit, Trash2, Eye, DollarSign, History, MoreHorizontal, XCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -44,6 +44,8 @@ interface PenjualanTableProps {
   handleViewDetail?: (penjualan: any) => void;
   handleUpdateHarga?: (penjualan: any) => void;
   handleRiwayatHarga?: (penjualan: any) => void;
+  handleCancelDp?: (penjualan: any) => void;
+  showCancelDp?: boolean;
 }
 
 const PenjualanTable = ({ 
@@ -52,7 +54,9 @@ const PenjualanTable = ({
   deleteMutation,
   handleViewDetail,
   handleUpdateHarga,
-  handleRiwayatHarga
+  handleRiwayatHarga,
+  handleCancelDp,
+  showCancelDp = false
 }: PenjualanTableProps) => {
   const isMobile = useIsMobile();
 
@@ -134,6 +138,15 @@ const PenjualanTable = ({
               <History className="w-4 h-4 mr-2" />
               Riwayat Harga
             </DropdownMenuItem>
+            {showCancelDp && penjualan.dp > 0 && (
+              <DropdownMenuItem 
+                onClick={() => handleCancelDp?.(penjualan)}
+                className="text-orange-600 focus:text-orange-600"
+              >
+                <XCircle className="w-4 h-4 mr-2" />
+                Batalkan DP
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={() => handleEdit(penjualan)}>
               <Edit className="w-4 h-4 mr-2" />
               Edit
@@ -195,6 +208,25 @@ const PenjualanTable = ({
             <p>Riwayat Harga</p>
           </TooltipContent>
         </Tooltip>
+
+        {/* Tombol Cancel DP */}
+        {showCancelDp && penjualan.dp > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleCancelDp?.(penjualan)}
+                className="text-orange-600 hover:text-orange-700 border-orange-200 hover:border-orange-300"
+              >
+                <XCircle className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Batalkan DP</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
 
         {/* Tombol Edit */}
         <Tooltip>

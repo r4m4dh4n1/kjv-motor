@@ -96,11 +96,76 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
         });
       } else {
         // Create new asset
-        const { error } = await (supabase as any)
+        const { data: insertedData, error } = await (supabase as any)
           .from('pencatatan_asset')
-          .insert([submitData]);
+          .insert([submitData])
+          .select();
 
         if (error) throw error;
+
+        // TAMBAHAN: Menambah modal perusahaan dan mencatat ke pembukuan
+        const assetAmount = parseCurrency(formData.nominal);
+        if (assetAmount > 0 && formData.sumber_dana_id && insertedData && insertedData.length > 0) {
+          const assetId = insertedData[0].id;
+          
+          try {
+            // 1. Update modal perusahaan menggunakan RPC function
+            const { error: modalError } = await supabase.rpc('update_company_modal', {
+              company_id: parseInt(formData.sumber_dana_id),
+              amount: assetAmount // Menambah modal perusahaan
+            });
+
+            if (modalError) {
+              console.error('Error updating company modal:', modalError);
+              toast({
+                title: "Warning",
+                description: `Asset tersimpan tapi gagal menambah modal perusahaan: ${modalError.message}`,
+                variant: "destructive"
+              });
+            }
+          } catch (modalUpdateError) {
+            console.error('CATCH ERROR saat update modal:', modalUpdateError);
+            toast({
+              title: "Warning",
+              description: "Asset tersimpan tapi gagal menambah modal perusahaan",
+              variant: "destructive"
+            });
+          }
+
+          try {
+            // 2. Mencatat transaksi ke tabel pembukuan
+            const pembukuanEntry = {
+              tanggal: convertDateToISO(formData.tanggal),
+              divisi: selectedDivision,
+              cabang_id: 1, // Default cabang
+              keterangan: `Pencatatan Asset - ${formData.nama}${formData.keterangan ? ` - ${formData.keterangan}` : ''}`,
+              debit: 0,
+              kredit: assetAmount, // Asset menambah modal (kredit)
+              saldo: 0,
+              company_id: parseInt(formData.sumber_dana_id)
+            };
+
+            const { error: pembukuanError } = await supabase
+              .from('pembukuan')
+              .insert([pembukuanEntry]);
+
+            if (pembukuanError) {
+              console.error('Pembukuan Error:', pembukuanError);
+              toast({
+                title: "Warning",
+                description: `Asset tersimpan tapi pembukuan gagal: ${pembukuanError.message}`,
+                variant: "destructive"
+              });
+            }
+          } catch (pembukuanInsertError) {
+            console.error('CATCH ERROR saat insert pembukuan:', pembukuanInsertError);
+            toast({
+              title: "Warning",
+              description: "Asset tersimpan tapi pembukuan gagal",
+              variant: "destructive"
+            });
+          }
+        }
 
         toast({
           title: "Berhasil",
