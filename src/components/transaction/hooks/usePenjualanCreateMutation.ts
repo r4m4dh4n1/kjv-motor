@@ -11,8 +11,6 @@ export const usePenjualanCreate = () => {
 
   return useMutation({
     mutationFn: async ({ formData, pembelianData }: { formData: PenjualanFormData; pembelianData: any[] }) => {
-      const submitData = transformPenjualanFormDataForSubmit(formData);
-      
       // Calculate keuntungan
       const hargaJual = parseFormattedNumber(formData.harga_jual);
       // Get selected motor data
@@ -28,14 +26,18 @@ export const usePenjualanCreate = () => {
       const hargaBayar = parseFormattedNumber(formData.harga_bayar || "0");
       const sisaBayar = parseFormattedNumber(formData.sisa_bayar || "0");
       
-      // If payment is complete (harga_bayar >= harga_jual OR sisa_bayar = 0), set status to 'selesai'
+      // If payment is complete (harga_bayar >= harga_jual OR sisa_bayar = 0), set status to 'Sold'
       if (hargaBayar >= hargaJual || sisaBayar === 0) {
-        status = 'selesai';
+        status = 'Sold'; // ✅ Gunakan 'Sold' yang akan di-mapping ke 'selesai'
       }
       
+      // Update formData status untuk transformasi
+      const updatedFormData = { ...formData, status };
+      const submitData = transformPenjualanFormDataForSubmit(updatedFormData);
+      
       // Prepare penjualan data
-      const penjualanData = createPenjualanData(submitData, formData, hargaBeli, hargaJual, keuntungan);
-      penjualanData.status = status;
+      const penjualanData = createPenjualanData(submitData, updatedFormData, hargaBeli, hargaJual, keuntungan);
+      // Status sudah di-transform di submitData, tidak perlu override lagi
 
       // 1. Insert into penjualans table
       const { data: penjualanResult, error: penjualanError } = await supabase
@@ -70,7 +72,7 @@ export const usePenjualanCreate = () => {
       }
 
       // 4. Insert into pembukuan table
-      const pembukuanEntries = createPembukuanEntries(submitData, formData, selectedMotor);
+      const pembukuanEntries = createPembukuanEntries(submitData, updatedFormData, selectedMotor);
       
       if (pembukuanEntries.length > 0) {
         try {
@@ -97,8 +99,7 @@ export const usePenjualanCreate = () => {
         }
       }
 
-      // 5. TAMBAHAN: Jika pembayaran sudah lunas (harga_bayar >= harga_jual atau status 'selesai'), 
-      // tambah modal perusahaan dengan total pembayaran yang diterima
+      // 5. TAMBAHAN: Untuk cash_bertahap/kredit, tambah DP ke modal perusahaan
       const dp = parseFormattedNumber(formData.dp || "0");
       if ((formData.jenis_pembayaran === 'cash_bertahap' || formData.jenis_pembayaran === 'kredit') && dp > 0 && submitData.company_id) {
         try {
@@ -125,17 +126,35 @@ export const usePenjualanCreate = () => {
         }
       }
 
-      // 6. MODIFIKASI: Tambah modal saat pelunasan (hanya sisa pembayaran)
-      if ((status === 'selesai' || hargaBayar >= hargaJual) && submitData.company_id) {
-        // Untuk cash_bertahap/kredit: hanya tambah sisa pembayaran (total - DP)
-        // Untuk cash: tambah total pembayaran
-        let sisaPembayaran = 0;
-        
-        if (formData.jenis_pembayaran === 'cash_bertahap' || formData.jenis_pembayaran === 'kredit') {
-          sisaPembayaran = Math.min(hargaBayar, hargaJual) - dp; // Total pembayaran dikurangi DP yang sudah ditambahkan
-        } else {
-          sisaPembayaran = Math.min(hargaBayar, hargaJual); // Untuk cash penuh
+      // 6. TAMBAHAN: Untuk cash_penuh, tambah seluruh pembayaran ke modal perusahaan
+      if (formData.jenis_pembayaran === 'cash_penuh' && hargaBayar > 0 && submitData.company_id) {
+        try {
+          const { error: cashModalError } = await supabase.rpc('update_company_modal', {
+            company_id: submitData.company_id,
+            amount: Math.min(hargaBayar, hargaJual) // Menambah modal sebesar pembayaran cash penuh
+          });
+
+          if (cashModalError) {
+            console.error('Error adding cash payment to company modal:', cashModalError);
+            toast({
+              title: "Warning",
+              description: `Penjualan tersimpan tapi gagal menambah modal dari cash: ${cashModalError.message}`,
+              variant: "destructive"
+            });
+          }
+        } catch (cashModalUpdateError) {
+          console.error('CATCH ERROR saat update modal cash:', cashModalUpdateError);
+          toast({
+            title: "Warning",
+            description: "Penjualan tersimpan tapi gagal menambah modal dari cash",
+            variant: "destructive"
+          });
         }
+      }
+
+      // 7. TAMBAHAN: Untuk cash_bertahap/kredit yang sudah lunas, tambah sisa pembayaran
+      if ((submitData.status === 'selesai' || hargaBayar >= hargaJual) && submitData.company_id && (formData.jenis_pembayaran === 'cash_bertahap' || formData.jenis_pembayaran === 'kredit')) {
+        const sisaPembayaran = Math.min(hargaBayar, hargaJual) - dp; // Total pembayaran dikurangi DP yang sudah ditambahkan
         
         if (sisaPembayaran > 0) {
           try {
