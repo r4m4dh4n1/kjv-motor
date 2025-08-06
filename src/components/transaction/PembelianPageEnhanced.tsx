@@ -58,7 +58,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCabang, setSelectedCabang] = useState("all");
   const [selectedJenisPembelian, setSelectedJenisPembelian] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("ready"); // Ubah dari "all" ke "ready"
+  const [selectedStatus, setSelectedStatus] = useState("ready");
   const [dateFilter, setDateFilter] = useState("all");
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
@@ -148,7 +148,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     
     const matchesJenisPembelian = selectedJenisPembelian === "all" || item.jenis_pembelian === selectedJenisPembelian;
     
-    const matchesStatus = selectedStatus === "all" || item.status === selectedStatus; // Perbaiki logika filter status
+    const matchesStatus = selectedStatus === "all" || item.status === selectedStatus;
     
     // Date filter logic
     let matchesDate = true;
@@ -175,16 +175,47 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     totalItems
   } = usePagination(filteredData, pageSize);
 
-  // Calculate totals
+  // Calculate totals - OPSI 3: Perhitungan terpisah untuk total keseluruhan
   const calculateTotals = useMemo(() => {
-    const totalPembelian = filteredData.length;
+    // Total keseluruhan (tanpa filter status) - hanya filter lain yang berlaku
+    const allDataFiltered = pembelianDataRaw.filter((item: any) => {
+      const matchesSearch = !searchTerm || 
+        item.plat_nomor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.brands?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.jenis_motor?.jenis_motor?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesCabang = selectedCabang === "all" || item.cabang_id.toString() === selectedCabang;
+      
+      const matchesJenisPembelian = selectedJenisPembelian === "all" || item.jenis_pembelian === selectedJenisPembelian;
+      
+      // Date filter logic
+      let matchesDate = true;
+      if (dateFilter !== "all") {
+        const dateRange = getDateRange();
+        if (dateRange) {
+          const itemDate = new Date(item.tanggal_pembelian);
+          matchesDate = itemDate >= dateRange.start && itemDate <= dateRange.end;
+        } else if (dateFilter === "custom") {
+          matchesDate = false;
+        }
+      }
+      
+      return matchesSearch && matchesCabang && matchesJenisPembelian && matchesDate;
+    });
+
+    // Total pembelian keseluruhan (tanpa filter status)
+    const totalPembelian = allDataFiltered.length;
+    
+    // Total ready dari data yang sudah difilter dengan semua filter termasuk status
     const totalReady = filteredData.filter(item => item.status === 'ready').length;
-    const totalNilai = filteredData.reduce((sum, item) => {
+    
+    // Total nilai keseluruhan (tanpa filter status)
+    const totalNilai = allDataFiltered.reduce((sum, item) => {
       return sum + (item.harga_final || item.harga_beli || 0);
     }, 0);
 
     return { totalPembelian, totalReady, totalNilai };
-  }, [filteredData]);
+  }, [pembelianDataRaw, filteredData, searchTerm, selectedCabang, selectedJenisPembelian, dateFilter, customStartDate, customEndDate]);
 
   // Helper functions untuk format currency
   const formatNumberInput = (value: string) => {
@@ -280,7 +311,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       biaya_lain_lain: "",
       keterangan_biaya_lain: "",
       reason: "",
-     company_id: pembelian.sumber_dana_1_id?.toString() || "" // Default ke sumber dana utama
+     company_id: pembelian.sumber_dana_1_id?.toString() || ""
     });
     setIsUpdateHargaDialogOpen(true);
   };
@@ -415,8 +446,8 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
           biaya_lain_lain: biayaLainLain,
           keterangan_biaya_lain: updateHargaForm.keterangan_biaya_lain || null,
           reason: updateHargaForm.reason,
-          company_id: parseInt(updateHargaForm.company_id), // Tambahkan ini
-          user_id: null // Ganti dengan user ID yang sebenarnya
+          company_id: parseInt(updateHargaForm.company_id),
+          user_id: null
         });
 
       if (historyError) throw historyError;
@@ -431,7 +462,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
           keterangan: `Update harga motor ${updatingHargaPembelian.plat_nomor} - ${updateHargaForm.reason}`,
           debit: selisihHarga,
           pembelian_id: updatingHargaPembelian.id,
-          company_id: updatingHargaPembelian.sumber_dana_1_id // Menggunakan sumber dana utama
+          company_id: updatingHargaPembelian.sumber_dana_1_id
         };
 
         const { error: pembukuanError } = await supabase
@@ -514,7 +545,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     }
 
     try {
-      // Insert ke tabel qc_history (perlu dibuat tabel baru)
+      // Insert ke tabel qc_history
       const { error: qcHistoryError } = await supabase
         .from('qc_history')
         .insert({
@@ -523,7 +554,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
           jenis_qc: qcForm.jenis_qc,
           total_pengeluaran: totalPengeluaran,
           keterangan: qcForm.keterangan || null,
-          user_id: null // Ganti dengan user ID yang sebenarnya
+          user_id: null
         });
 
       if (qcHistoryError) throw qcHistoryError;
@@ -536,7 +567,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
         keterangan: `QC ${qcForm.jenis_qc} - Motor ${qcPembelian.plat_nomor} - ${qcForm.keterangan || ''}`,
         debit: totalPengeluaran,
         pembelian_id: qcPembelian.id,
-        company_id: qcPembelian.sumber_dana_1_id // Menggunakan sumber dana utama
+        company_id: qcPembelian.sumber_dana_1_id
       };
 
       const { error: pembukuanError } = await supabase
@@ -600,7 +631,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     setSearchTerm("");
     setSelectedCabang("all");
     setSelectedJenisPembelian("all");
-    setSelectedStatus("ready"); // Tetap 'ready' bukan 'all'
+    setSelectedStatus("ready");
     setDateFilter("all");
     setCustomStartDate(undefined);
     setCustomEndDate(undefined);
@@ -803,14 +834,14 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
         </CardContent>
       </Card>
 
-      {/* Summary Cards */}
+      {/* Summary Cards - OPSI 3: Label yang jelas untuk membedakan total keseluruhan vs filtered */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Total Pembelian {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
+                  Total Pembelian (Semua Data) {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
                 </p>
                 <p className="text-2xl font-bold text-blue-600">
                   {calculateTotals.totalPembelian}
@@ -826,7 +857,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Ready {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
+                  Ready (Status Ready) {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
                 </p>
                 <p className="text-2xl font-bold text-green-600">
                   {calculateTotals.totalReady}
@@ -842,7 +873,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Total Nilai {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
+                  Total Nilai (Semua Data) {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
                 </p>
                 <p className="text-2xl font-bold text-purple-600">
                   {formatCurrency(calculateTotals.totalNilai)}

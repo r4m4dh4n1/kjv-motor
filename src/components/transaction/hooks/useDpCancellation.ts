@@ -37,7 +37,7 @@ export const useDpCancellation = () => {
       const { error: updateError } = await supabase
         .from('penjualans')
         .update({
-          status: 'cancelled',
+          status: 'cancelled_dp_hangus',
           dp: 0,
           harga_bayar: 0,
           sisa_bayar: currentPenjualan.harga_jual,

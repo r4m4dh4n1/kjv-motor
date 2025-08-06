@@ -117,6 +117,25 @@ const PenjualanTable = ({
   );
 
   const renderActionButtons = (penjualan: any) => {
+    // Jika status cancelled_dp_hangus, hanya tampilkan tombol view
+    if (penjualan.status === 'cancelled_dp_hangus') {
+      return (
+        <div className="flex space-x-1">
+          {/* Hanya Tombol Lihat Detail */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <DetailDialog penjualan={penjualan} />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Lihat Detail</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      );
+    }
+
     if (isMobile) {
       return (
         <DropdownMenu>
@@ -130,34 +149,39 @@ const PenjualanTable = ({
               <Eye className="w-4 h-4 mr-2" />
               Lihat Detail
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleUpdateHarga?.(penjualan)}>
-              <DollarSign className="w-4 h-4 mr-2" />
-              Update Harga
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleRiwayatHarga?.(penjualan)}>
-              <History className="w-4 h-4 mr-2" />
-              Riwayat Harga
-            </DropdownMenuItem>
-            {showCancelDp && penjualan.dp > 0 && penjualan.status === 'booked' && (
-              <DropdownMenuItem 
-                onClick={() => handleCancelDp?.(penjualan)}
-                className="text-orange-600 focus:text-orange-600"
-              >
-                <XCircle className="w-4 h-4 mr-2" />
-                Batalkan DP
-              </DropdownMenuItem>
+            {/* Sembunyikan tombol lain untuk cancelled_dp_hangus */}
+            {penjualan.status !== 'cancelled_dp_hangus' && (
+              <>
+                <DropdownMenuItem onClick={() => handleUpdateHarga?.(penjualan)}>
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Update Harga
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleRiwayatHarga?.(penjualan)}>
+                  <History className="w-4 h-4 mr-2" />
+                  Riwayat Harga
+                </DropdownMenuItem>
+                {showCancelDp && penjualan.dp > 0 && penjualan.status === 'booked' && (
+                  <DropdownMenuItem 
+                    onClick={() => handleCancelDp?.(penjualan)}
+                    className="text-orange-600 focus:text-orange-600"
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Batalkan DP
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => handleEdit(penjualan)}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => deleteMutation.mutate(penjualan.id)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Hapus
+                </DropdownMenuItem>
+              </>
             )}
-            <DropdownMenuItem onClick={() => handleEdit(penjualan)}>
-              <Edit className="w-4 h-4 mr-2" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => deleteMutation.mutate(penjualan.id)}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Hapus
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );
@@ -177,105 +201,110 @@ const PenjualanTable = ({
           </TooltipContent>
         </Tooltip>
 
-        {/* Tombol Update Harga */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleUpdateHarga?.(penjualan)}
-            >
-              <DollarSign className="w-4 h-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Update Harga</p>
-          </TooltipContent>
-        </Tooltip>
-
-        {/* Tombol Riwayat Harga */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleRiwayatHarga?.(penjualan)}
-            >
-              <History className="w-4 h-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Riwayat Harga</p>
-          </TooltipContent>
-        </Tooltip>
-
-        {/* Tombol Cancel DP - only show for booked status */}
-        {showCancelDp && penjualan.dp > 0 && penjualan.status === 'booked' && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleCancelDp?.(penjualan)}
-                className="text-orange-600 hover:text-orange-700 border-orange-200 hover:border-orange-300"
-              >
-                <XCircle className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Batalkan DP</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
-
-        {/* Tombol Edit */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleEdit(penjualan)}
-            >
-              <Edit className="w-4 h-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Edit</p>
-          </TooltipContent>
-        </Tooltip>
-
-        {/* Tombol Delete */}
-        <AlertDialog>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm">
-                  <Trash2 className="w-4 h-4" />
+        {/* Sembunyikan tombol lain untuk cancelled_dp_hangus */}
+        {penjualan.status !== 'cancelled_dp_hangus' && (
+          <>
+            {/* Tombol Update Harga */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleUpdateHarga?.(penjualan)}
+                >
+                  <DollarSign className="w-4 h-4" />
                 </Button>
-              </AlertDialogTrigger>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Hapus</p>
-            </TooltipContent>
-          </Tooltip>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Hapus Penjualan</AlertDialogTitle>
-              <AlertDialogDescription>
-                Apakah Anda yakin ingin menghapus data penjualan ini? Tindakan ini tidak dapat dibatalkan.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Batal</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => deleteMutation.mutate(penjualan.id)}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                Hapus
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Update Harga</p>
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Tombol Riwayat Harga */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRiwayatHarga?.(penjualan)}
+                >
+                  <History className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Riwayat Harga</p>
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Tombol Cancel DP - only show for booked status */}
+            {showCancelDp && penjualan.dp > 0 && penjualan.status === 'booked' && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCancelDp?.(penjualan)}
+                    className="text-orange-600 hover:text-orange-700 border-orange-200 hover:border-orange-300"
+                  >
+                    <XCircle className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Batalkan DP</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Tombol Edit */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleEdit(penjualan)}
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Edit</p>
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Tombol Delete */}
+            <AlertDialog>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Hapus</p>
+                </TooltipContent>
+              </Tooltip>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Hapus Penjualan</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Apakah Anda yakin ingin menghapus data penjualan ini? Tindakan ini tidak dapat dibatalkan.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deleteMutation.mutate(penjualan.id)}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Hapus
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
+        )}
       </div>
     );
   };
@@ -326,9 +355,10 @@ const PenjualanTable = ({
                       penjualan.status === 'selesai' ? 'bg-green-100 text-green-800' :
                       penjualan.status === 'proses' ? 'bg-blue-100 text-blue-800' :
                       penjualan.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      penjualan.status === 'cancelled_dp_hangus' ? 'bg-gray-100 text-gray-800' :
                       'bg-red-100 text-red-800'
                     }`}>
-                      {penjualan.status}
+                      {penjualan.status === 'cancelled_dp_hangus' ? 'DP Hangus' : penjualan.status}
                     </span>
                   </TableCell>
                   <TableCell>{penjualan.companies?.nama_perusahaan || '-'}</TableCell>
