@@ -15,6 +15,7 @@ interface PenjualanFormFieldsProps {
   pembelianData: any[];
   companiesData: any[];
   selectedDivision: string;
+  editingPenjualan?: any;
 }
 
 const PenjualanFormFields = ({
@@ -24,20 +25,32 @@ const PenjualanFormFields = ({
   pembelianData,
   companiesData,
   selectedDivision,
+  editingPenjualan,
 }: PenjualanFormFieldsProps) => {
-  // Filter pembelian berdasarkan divisi dan status ready
+  // Filter pembelian berdasarkan divisi dan status ready (atau motor yang sedang diedit)
   const filteredPembelian = pembelianData.filter(pembelian => {
     const divisiToCheck = formData.divisi && formData.divisi !== 'all' ? formData.divisi : selectedDivision;
-    console.log('Debug brand filter:', {
-      pembelianTotal: pembelianData.length,
-      divisiToCheck,
-      selectedDivision,
+    
+    // PERBAIKAN: Gunakan formData.pembelian_id untuk perbandingan
+    const isEditingThisMotor = editingPenjualan && formData.pembelian_id && 
+                               pembelian.id.toString() === formData.pembelian_id;
+    const isReady = pembelian.status === 'ready';
+    
+    // Pastikan divisi sesuai
+    const isDivisiMatch = divisiToCheck === 'all' || pembelian.divisi.toLowerCase() === divisiToCheck.toLowerCase();
+    
+    console.log('Debug filter pembelian (FIXED):', {
+      pembelianId: pembelian.id,
       pembelianStatus: pembelian.status,
-      pembelianDivisi: pembelian.divisi,
-      brandData: pembelian.brands
+      isEditingThisMotor,
+      isReady,
+      isDivisiMatch,
+      formDataPembelianId: formData.pembelian_id,
+      editingPenjualanPembelianId: editingPenjualan?.pembelian_id,
+      willInclude: (isReady || isEditingThisMotor) && isDivisiMatch
     });
-    return pembelian.status === 'ready' && 
-           (divisiToCheck === 'all' || pembelian.divisi.toLowerCase() === divisiToCheck.toLowerCase());
+    
+    return (isReady || isEditingThisMotor) && isDivisiMatch;
   });
 
   // Get unique brands dari pembelian yang sudah difilter
@@ -69,11 +82,12 @@ const PenjualanFormFields = ({
     }, []);
 
   // Get motor details berdasarkan divisi, brand, dan jenis motor yang dipilih
-  const selectedMotorDetails = filteredPembelian.filter(pembelian => 
-    formData.divisi && pembelian.divisi.toLowerCase() === formData.divisi.toLowerCase() &&
-    formData.brand_id && pembelian.brand_id.toString() === formData.brand_id &&
-    formData.jenis_motor_id && pembelian.jenis_motor_id.toString() === formData.jenis_motor_id
-  );
+  const selectedMotorDetails = filteredPembelian.filter(pembelian => {
+    const divisiToCheck = formData.divisi && formData.divisi !== 'all' ? formData.divisi : selectedDivision;
+    return divisiToCheck && pembelian.divisi.toLowerCase() === divisiToCheck.toLowerCase() &&
+           formData.brand_id && pembelian.brand_id.toString() === formData.brand_id &&
+           formData.jenis_motor_id && pembelian.jenis_motor_id.toString() === formData.jenis_motor_id;
+  });
 
   // Filter companies by division
   const filteredCompanies = companiesData.filter(company => 
@@ -100,15 +114,67 @@ const PenjualanFormFields = ({
     setFormData({ ...formData, sisa_ongkir: sisaOngkir.toString() });
   }, [formData.total_ongkir, formData.titip_ongkir]);
 
-  // Reset payment fields when payment type changes
+  // Reset payment fields when payment type changes (hanya jika bukan mode edit)
   useEffect(() => {
-    setFormData({
-      ...formData,
-      harga_bayar: "",
-      dp: "",
-      sisa_bayar: ""
-    });
+    // Jangan reset field pembayaran jika sedang dalam mode edit
+    if (!editingPenjualan) {
+      setFormData({
+        ...formData,
+        harga_bayar: "",
+        dp: "",
+        sisa_bayar: ""
+      });
+    }
   }, [formData.jenis_pembayaran]);
+
+  // Auto-select motor when editing - PERBAIKAN UTAMA
+  useEffect(() => {
+    if (editingPenjualan && formData.pembelian_id && filteredPembelian.length > 0) {
+      const selectedMotor = filteredPembelian.find(motor => motor.id.toString() === formData.pembelian_id);
+      
+      console.log('Auto-select motor debug (FIXED):', {
+        editingPenjualan: !!editingPenjualan,
+        pembelianId: formData.pembelian_id,
+        selectedMotor: selectedMotor ? {
+          id: selectedMotor.id,
+          brand_id: selectedMotor.brand_id,
+          jenis_motor_id: selectedMotor.jenis_motor_id,
+          status: selectedMotor.status
+        } : null,
+        filteredPembelianCount: filteredPembelian.length,
+        currentBrandId: formData.brand_id,
+        currentJenisMotorId: formData.jenis_motor_id
+      });
+      
+      if (selectedMotor) {
+        // Pastikan brand_id dan jenis_motor_id terisi dengan benar
+        setFormData(prev => ({
+          ...prev,
+          brand_id: selectedMotor.brand_id.toString(),
+          jenis_motor_id: selectedMotor.jenis_motor_id.toString(),
+          brand_name: selectedMotor.brands?.name || "",
+          jenis_motor_name: selectedMotor.jenis_motor?.jenis_motor || "",
+          selected_motor_id: selectedMotor.id.toString()
+        }));
+      }
+    }
+  }, [editingPenjualan, formData.pembelian_id, filteredPembelian.length]);
+
+  // Debug log untuk troubleshooting
+  useEffect(() => {
+    if (editingPenjualan) {
+      console.log('Edit mode debug info (FIXED):', {
+        editingPenjualan,
+        formDataKeys: Object.keys(formData),
+        pembelian_id: formData.pembelian_id,
+        brand_id: formData.brand_id,
+        jenis_motor_id: formData.jenis_motor_id,
+        filteredPembelianCount: filteredPembelian.length,
+        availableBrandsCount: availableBrands.length,
+        availableJenisMotorCount: availableJenisMotor.length
+      });
+    }
+  }, [editingPenjualan, formData.brand_id, formData.jenis_motor_id, filteredPembelian.length]);
 
   return (
     <div className="space-y-6">
@@ -129,17 +195,24 @@ const PenjualanFormFields = ({
         <div>
           <Label htmlFor="divisi">Divisi *</Label>
           {selectedDivision === "all" ? (
-            <Select value={formData.divisi} onValueChange={(value) => setFormData({ 
-              ...formData, 
-              divisi: value,
-              brand_id: "",
-              jenis_motor_id: "",
-              tahun: "",
-              warna: "",
-              kilometer: "",
-              plat_nomor: "",
-              harga_beli: ""
-            })}>
+            <Select value={formData.divisi} onValueChange={(value) => {
+              // Jangan reset field saat edit
+              if (!editingPenjualan) {
+                setFormData({ 
+                  ...formData, 
+                  divisi: value,
+                  brand_id: "",
+                  jenis_motor_id: "",
+                  tahun: "",
+                  warna: "",
+                  kilometer: "",
+                  plat_nomor: "",
+                  harga_beli: ""
+                });
+              } else {
+                setFormData({ ...formData, divisi: value });
+              }
+            }}>
               <SelectTrigger className="mt-1">
                 <SelectValue placeholder="Pilih divisi" />
               </SelectTrigger>
@@ -196,16 +269,23 @@ const PenjualanFormFields = ({
           <Label htmlFor="brand_id">Brand *</Label>
           <Select 
             value={formData.brand_id} 
-            onValueChange={(value) => setFormData({ 
-              ...formData, 
-              brand_id: value, 
-              jenis_motor_id: "",
-              tahun: "",
-              warna: "",
-              kilometer: "",
-              plat_nomor: "",
-              harga_beli: ""
-            })}
+            onValueChange={(value) => {
+              // Jangan reset jenis_motor_id jika sedang dalam mode edit
+              const resetFields = editingPenjualan ? {} : {
+                jenis_motor_id: "",
+                tahun: "",
+                warna: "",
+                kilometer: "",
+                plat_nomor: "",
+                harga_beli: ""
+              };
+              
+              setFormData({ 
+                ...formData, 
+                brand_id: value,
+                ...resetFields
+              });
+            }}
           >
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="- Pilih Brand -" />
@@ -223,15 +303,22 @@ const PenjualanFormFields = ({
           <Label htmlFor="jenis_motor_id">Jenis Motor *</Label>
           <Select 
             value={formData.jenis_motor_id} 
-            onValueChange={(value) => setFormData({ 
-              ...formData, 
-              jenis_motor_id: value,
-              tahun: "",
-              warna: "",
-              kilometer: "",
-              plat_nomor: "",
-              harga_beli: ""
-            })}
+            onValueChange={(value) => {
+              // Jangan reset field motor detail jika sedang dalam mode edit
+              const resetFields = editingPenjualan ? {} : {
+                tahun: "",
+                warna: "",
+                kilometer: "",
+                plat_nomor: "",
+                harga_beli: ""
+              };
+              
+              setFormData({ 
+                ...formData, 
+                jenis_motor_id: value,
+                ...resetFields
+              });
+            }}
           >
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="- Pilih Jenis Motor -" />
@@ -480,7 +567,7 @@ const PenjualanFormFields = ({
                 </SelectContent>
               </Select>
             );
-          })()}
+          })()} 
         </div>
         <div>
           <Label htmlFor="company_id">Company *</Label>

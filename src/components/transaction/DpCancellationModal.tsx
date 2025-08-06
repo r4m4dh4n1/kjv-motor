@@ -86,57 +86,40 @@ const DpCancellationModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-orange-500" />
-            Batalkan / Hanguskan DP
+            Batalkan DP
           </DialogTitle>
           <DialogDescription>
-            Proses pembatalan DP untuk penjualan motor {penjualan?.brands?.name} - {penjualan?.jenis_motor?.jenis_motor}
+            {penjualan?.brands?.name} - {penjualan?.plat}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Informasi Penjualan */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Informasi Penjualan</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><strong>Plat Nomor:</strong> {penjualan?.plat}</div>
-                <div><strong>Tanggal:</strong> {new Date(penjualan?.tanggal).toLocaleDateString('id-ID')}</div>
-                <div><strong>Harga Jual:</strong> {formatCurrency(penjualan?.harga_jual)}</div>
-                <div><strong>DP Saat Ini:</strong> <span className="text-orange-600 font-semibold">{formatCurrency(dpAmount)}</span></div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="space-y-4">
+          {/* Informasi DP */}
+          <div className="bg-orange-50 rounded-lg p-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">DP Saat Ini:</span>
+              <span className="text-orange-600 font-bold text-lg">{formatCurrency(dpAmount)}</span>
+            </div>
+          </div>
 
           {/* Pilihan Tipe Pembatalan */}
-          <div className="space-y-4">
-            <Label className="text-base font-medium">Pilih Tipe Pembatalan DP</Label>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Tipe Pembatalan</Label>
             <RadioGroup value={cancellationType} onValueChange={(value: any) => setCancellationType(value)}>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="full_forfeit" id="full_forfeit" />
-                <Label htmlFor="full_forfeit" className="flex-1">
-                  <div>
-                    <div className="font-medium">DP Hangus Sepenuhnya</div>
-                    <div className="text-sm text-muted-foreground">
-                      Seluruh DP ({formatCurrency(dpAmount)}) masuk sebagai modal perusahaan
-                    </div>
-                  </div>
+                <Label htmlFor="full_forfeit" className="text-sm">
+                  DP Hangus Sepenuhnya (Tidak ada pembukuan)
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="partial_refund" id="partial_refund" />
-                <Label htmlFor="partial_refund" className="flex-1">
-                  <div>
-                    <div className="font-medium">Sebagian DP Dikembalikan</div>
-                    <div className="text-sm text-muted-foreground">
-                      Sebagian DP dikembalikan ke customer, sisanya masuk modal perusahaan
-                    </div>
-                  </div>
+                <Label htmlFor="partial_refund" className="text-sm">
+                  Sebagian DP Dikembalikan
                 </Label>
               </div>
             </RadioGroup>
@@ -145,94 +128,60 @@ const DpCancellationModal = ({
           {/* Input Jumlah Pengembalian */}
           {cancellationType === 'partial_refund' && (
             <div className="space-y-2">
-              <Label htmlFor="refund_amount">Jumlah DP yang Dikembalikan ke Customer</Label>
+              <Label htmlFor="refund_amount" className="text-sm">Jumlah Dikembalikan</Label>
               <Input
                 id="refund_amount"
-                placeholder="Masukkan jumlah pengembalian"
+                placeholder="0"
                 value={refundAmount}
                 onChange={(e) => setRefundAmount(e.target.value)}
                 className={!isValidRefund ? "border-red-500" : ""}
               />
-              {refundAmount && (
-                <div className="text-sm space-y-1">
-                  <div className="text-muted-foreground">
-                    • Dikembalikan ke customer: <span className="text-red-600 font-medium">{formatCurrency(refundAmountNum)}</span>
-                  </div>
-                  <div className="text-muted-foreground">
-                    • Masuk modal perusahaan: <span className="text-green-600 font-medium">{formatCurrency(forfeitAmount)}</span>
-                  </div>
+              {refundAmount && isValidRefund && (
+                <div className="text-xs bg-blue-50 p-2 rounded">
+                  <div>Dikembalikan: <span className="text-red-600 font-medium">{formatCurrency(refundAmountNum)}</span></div>
+                  <div>Sisa hangus: <span className="text-green-600 font-medium">{formatCurrency(forfeitAmount)}</span></div>
                 </div>
               )}
               {!isValidRefund && refundAmount && (
-                <p className="text-sm text-red-600">
-                  Jumlah pengembalian tidak boleh melebihi total DP ({formatCurrency(dpAmount)})
+                <p className="text-xs text-red-600">
+                  Maksimal {formatCurrency(dpAmount)}
                 </p>
               )}
             </div>
           )}
 
-          {/* Alasan Pembatalan */}
+          {/* Alasan */}
           <div className="space-y-2">
-            <Label htmlFor="reason" className="required">Alasan Pembatalan DP *</Label>
+            <Label htmlFor="reason" className="text-sm">Alasan *</Label>
             <Textarea
               id="reason"
-              placeholder="Masukkan alasan pembatalan DP (wajib diisi)"
+              placeholder="Alasan pembatalan..."
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              rows={3}
+              rows={2}
             />
           </div>
 
-          {/* Keterangan Tambahan */}
+          {/* Keterangan */}
           <div className="space-y-2">
-            <Label htmlFor="keterangan">Keterangan Tambahan</Label>
+            <Label htmlFor="keterangan" className="text-sm">Keterangan</Label>
             <Textarea
               id="keterangan"
-              placeholder="Keterangan tambahan (opsional)"
+              placeholder="Keterangan tambahan..."
               value={keterangan}
               onChange={(e) => setKeterangan(e.target.value)}
               rows={2}
             />
           </div>
 
-          {/* Summary */}
-          <Card className="bg-muted/50">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2 mb-3">
-                <DollarSign className="w-4 h-4" />
-                <span className="font-medium">Ringkasan Dampak Keuangan</span>
-              </div>
-              <div className="space-y-2 text-sm">
-                {cancellationType === 'full_forfeit' ? (
-                  <>
-                    <div className="flex justify-between">
-                      <span>Modal perusahaan bertambah:</span>
-                      <span className="text-green-600 font-medium">+{formatCurrency(dpAmount)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Pengembalian ke customer:</span>
-                      <span className="text-muted-foreground">Rp 0</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex justify-between">
-                      <span>Modal perusahaan bertambah:</span>
-                      <span className="text-green-600 font-medium">+{formatCurrency(forfeitAmount)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Pengembalian ke customer:</span>
-                      <span className="text-red-600 font-medium">-{formatCurrency(refundAmountNum)}</span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t">
-                      <span className="font-medium">Pembukuan (Debit):</span>
-                      <span className="text-red-600 font-medium">{formatCurrency(refundAmountNum)}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Summary kompak */}
+          {cancellationType === 'partial_refund' && refundAmountNum > 0 && (
+            <div className="bg-muted/50 rounded-lg p-3 text-xs">
+              <div className="font-medium mb-1">Dampak:</div>
+              <div>• Modal berkurang: {formatCurrency(refundAmountNum)}</div>
+              <div>• Pembukuan debit: {formatCurrency(refundAmountNum)}</div>
+            </div>
+          )}
         </div>
 
         <DialogFooter>

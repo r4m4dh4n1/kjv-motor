@@ -132,8 +132,8 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
 
   // Filter and search logic - only for BOOKED status (not 'selesai')
   const filteredData = penjualanData.filter((item: any) => {
-    // Filter utama: hanya yang belum selesai (Booked)
-    if (item.status === 'selesai') {
+    // Filter utama: hanya yang belum selesai (status: booked, proses, cancelled, etc but not 'selesai/sold')
+    if (item.status === 'selesai' || item.status === 'sold') {
       return false;
     }
 

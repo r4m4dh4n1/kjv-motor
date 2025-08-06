@@ -45,6 +45,13 @@ interface CumulativeData {
   totalModalPerusahaan: number;
 }
 
+// Interface untuk data akumulatif dari awal tahun
+interface AccumulativeData {
+  totalUnitYTD: number;
+  totalPembelianYTD: number;
+  totalBookedYTD: number;
+}
+
 const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => {
   const [keuntunganData, setKeuntunganData] = useState<KeuntunganData[]>([]);
   const [cabangList, setCabangList] = useState<CabangData[]>([]);
@@ -65,6 +72,11 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
   
   // Total modal kalkulasi (gabungan periode + kumulatif)
   const [totalModalKalkulasi, setTotalModalKalkulasi] = useState(0);
+
+  // Data akumulatif untuk card display
+  const [displayTotalUnit, setDisplayTotalUnit] = useState(0);
+  const [displayTotalPembelian, setDisplayTotalPembelian] = useState(0);
+  const [displayTotalBooked, setDisplayTotalBooked] = useState(0);
 
   // Helper function untuk konversi timezone Indonesia
   const getIndonesiaDate = () => {
@@ -287,6 +299,79 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     return dateRange;
   };
 
+  // Fungsi untuk mendapatkan range tanggal akumulatif (dari awal tahun sampai periode yang dipilih)
+  const getAccumulativeDateRange = (period: string) => {
+    const nowIndonesia = getIndonesiaDate();
+    const julyMinimumUTC = new Date(Date.UTC(2025, 6, 1, 0, 0, 0));
+    
+    // Tentukan tanggal akhir berdasarkan periode yang dipilih
+    let endDate: Date;
+    
+    switch (period) {
+      case 'this_month': {
+        // Dari awal tahun sampai akhir bulan ini
+        endDate = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth() + 1, 0, 23, 59, 59));
+        break;
+      }
+      case 'last_month': {
+        // Dari awal tahun sampai akhir bulan lalu
+        endDate = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), 0, 23, 59, 59));
+        break;
+      }
+      case 'this_week': {
+        // Dari awal tahun sampai akhir minggu ini
+        const endOfWeek = new Date(nowIndonesia);
+        endOfWeek.setDate(nowIndonesia.getDate() - nowIndonesia.getDay() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+        endDate = convertToUTC(endOfWeek);
+        break;
+      }
+      case 'last_week': {
+        // Dari awal tahun sampai akhir minggu lalu
+        const startOfThisWeek = new Date(nowIndonesia);
+        startOfThisWeek.setDate(nowIndonesia.getDate() - nowIndonesia.getDay());
+        const endOfLastWeek = new Date(startOfThisWeek);
+        endOfLastWeek.setDate(startOfThisWeek.getDate() - 1);
+        endOfLastWeek.setHours(23, 59, 59, 999);
+        endDate = convertToUTC(endOfLastWeek);
+        break;
+      }
+      case 'today': {
+        // Dari awal tahun sampai hari ini
+        const endOfToday = new Date(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59, 999);
+        endDate = convertToUTC(endOfToday);
+        break;
+      }
+      case 'yesterday': {
+        // Dari awal tahun sampai kemarin
+        const yesterday = new Date(nowIndonesia);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const endOfYesterday = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59, 999);
+        endDate = convertToUTC(endOfYesterday);
+        break;
+      }
+      default: {
+        // Default: sampai sekarang
+        endDate = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59));
+        break;
+      }
+    }
+    
+    // Start date selalu dari awal tahun atau Juli minimum
+    const startOfYear = new Date(Date.UTC(nowIndonesia.getFullYear(), 0, 1, 0, 0, 0));
+    const startDate = startOfYear < julyMinimumUTC ? julyMinimumUTC : startOfYear;
+    
+    console.log('📊 Accumulative date range:', {
+      period,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      startIndonesia: new Date(startDate.getTime() + (7 * 60 * 60 * 1000)).toLocaleString('id-ID'),
+      endIndonesia: new Date(endDate.getTime() + (7 * 60 * 60 * 1000)).toLocaleString('id-ID')
+    });
+    
+    return { start: startDate, end: endDate };
+  };
+
   console.log('KeuntunganMotorPage - selectedDivision:', selectedDivision);
   
   const fetchInitialData = async () => {
@@ -307,6 +392,97 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         variant: "destructive",
       });
     }
+  };
+
+  // Fungsi untuk mengambil data akumulatif (dari awal tahun sampai periode yang dipilih)
+  const fetchAccumulativeData = async (dateRange: { start: Date; end: Date }): Promise<AccumulativeData> => {
+    console.log('🏦 Fetching accumulative data:', {
+      period: selectedPeriod,
+      dateRange: {
+        start: dateRange.start.toISOString(),
+        end: dateRange.end.toISOString(),
+        startIndonesia: new Date(dateRange.start.getTime() + (7 * 60 * 60 * 1000)).toLocaleString('id-ID'),
+        endIndonesia: new Date(dateRange.end.getTime() + (7 * 60 * 60 * 1000)).toLocaleString('id-ID')
+      },
+      division: selectedDivision,
+      cabang: selectedCabang
+    });
+
+    // 1. Query untuk total unit YTD (penjualan selesai)
+    let unitYTDQuery = supabase
+      .from('penjualans')
+      .select('id')
+      .eq('status', 'selesai')
+      .gte('tanggal', dateRange.start.toISOString().split('T')[0])
+      .lte('tanggal', dateRange.end.toISOString().split('T')[0]);
+
+    if (selectedCabang !== 'all') {
+      unitYTDQuery = unitYTDQuery.eq('cabang_id', parseInt(selectedCabang));
+    }
+    if (selectedDivision !== 'all') {
+      unitYTDQuery = unitYTDQuery.eq('divisi', selectedDivision);
+    }
+
+    // 2. Query untuk total pembelian YTD (pembelian ready)
+    let pembelianYTDQuery = supabase
+      .from('pembelian')
+      .select('harga_beli')
+      .eq('status', 'ready')
+      .gte('tanggal_pembelian', dateRange.start.toISOString().split('T')[0])
+      .lte('tanggal_pembelian', dateRange.end.toISOString().split('T')[0]);
+
+    if (selectedCabang !== 'all') {
+      pembelianYTDQuery = pembelianYTDQuery.eq('cabang_id', parseInt(selectedCabang));
+    }
+    if (selectedDivision !== 'all') {
+      pembelianYTDQuery = pembelianYTDQuery.eq('divisi', selectedDivision);
+    }
+
+    // 3. Query untuk total booked YTD (DP dari penjualan booked)
+    let bookedYTDQuery = supabase
+      .from('penjualans')
+      .select('dp')
+      .eq('status', 'Booked')
+      .gte('tanggal', dateRange.start.toISOString().split('T')[0])
+      .lte('tanggal', dateRange.end.toISOString().split('T')[0]);
+
+    if (selectedCabang !== 'all') {
+      bookedYTDQuery = bookedYTDQuery.eq('cabang_id', parseInt(selectedCabang));
+    }
+    if (selectedDivision !== 'all') {
+      bookedYTDQuery = bookedYTDQuery.eq('divisi', selectedDivision);
+    }
+
+    const [unitYTDResult, pembelianYTDResult, bookedYTDResult] = await Promise.all([
+      unitYTDQuery,
+      pembelianYTDQuery,
+      bookedYTDQuery
+    ]);
+
+    // Error handling
+    if (unitYTDResult.error) throw unitYTDResult.error;
+    if (pembelianYTDResult.error) throw pembelianYTDResult.error;
+    if (bookedYTDResult.error) throw bookedYTDResult.error;
+
+    // Hitung totals
+    const totalUnitYTD = unitYTDResult.data?.length || 0;
+    const totalPembelianYTD = pembelianYTDResult.data?.reduce((sum, item) => sum + (item.harga_beli || 0), 0) || 0;
+    const totalBookedYTD = bookedYTDResult.data?.reduce((sum, item) => sum + (item.dp || 0), 0) || 0;
+
+    console.log('📊 Accumulative data results:', {
+      totalUnitYTD,
+      totalPembelianYTD,
+      totalBookedYTD,
+      unitRecords: unitYTDResult.data?.length || 0,
+      pembelianRecords: pembelianYTDResult.data?.length || 0,
+      bookedRecords: bookedYTDResult.data?.length || 0
+    });
+
+    return {
+      totalUnitYTD,
+      totalPembelianYTD,
+      totalBookedYTD
+    };
   };
 
   // Fungsi untuk mengambil data yang difilter berdasarkan periode
@@ -570,8 +746,21 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       setTotalPencatatanAsset(0);
       setTotalModalPerusahaan(0);
       setTotalModalKalkulasi(0);
+      setDisplayTotalUnit(0);
+      setDisplayTotalPembelian(0);
+      setDisplayTotalBooked(0);
       
       const dateRange = getDateRange(selectedPeriod);
+      
+      // Tentukan apakah perlu data akumulatif untuk card display
+      const shouldUseAccumulative = ['this_month', 'last_month', 'this_week', 'last_week', 'today', 'yesterday'].includes(selectedPeriod);
+      
+      let accumulativeData: AccumulativeData | null = null;
+      
+      if (shouldUseAccumulative) {
+        const accumulativeDateRange = getAccumulativeDateRange(selectedPeriod);
+        accumulativeData = await fetchAccumulativeData(accumulativeDateRange);
+      }
       
       // Fetch data secara paralel
       const [periodData, cumulativeData] = await Promise.all([
@@ -608,6 +797,30 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       
       setTotalModalKalkulasi(totalModalKalkulasiBaru);
 
+      // Set data untuk card display
+      if (shouldUseAccumulative && accumulativeData) {
+        setDisplayTotalUnit(accumulativeData.totalUnitYTD);
+        setDisplayTotalPembelian(accumulativeData.totalPembelianYTD);
+        setDisplayTotalBooked(accumulativeData.totalBookedYTD);
+        
+        console.log('📊 Using accumulative data for card display:', {
+          displayTotalUnit: accumulativeData.totalUnitYTD,
+          displayTotalPembelian: accumulativeData.totalPembelianYTD,
+          displayTotalBooked: accumulativeData.totalBookedYTD
+        });
+      } else {
+        // Untuk periode lain (this_year, last_year, custom), gunakan data periode
+        setDisplayTotalUnit(periodData.keuntunganData?.length || 0);
+        setDisplayTotalPembelian(periodData.totalPembelianReady || 0);
+        setDisplayTotalBooked(periodData.totalBooked || 0);
+        
+        console.log('📊 Using period data for card display:', {
+          displayTotalUnit: periodData.keuntunganData?.length || 0,
+          displayTotalPembelian: periodData.totalPembelianReady || 0,
+          displayTotalBooked: periodData.totalBooked || 0
+        });
+      }
+
       console.log('✅ Final calculations:', {
         totalModalPerusahaan: cumulativeData.totalModalPerusahaan,
         totalPencatatanAsset: periodData.totalPencatatanAsset,
@@ -617,7 +830,9 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         totalOperasional: periodData.totalOperasional,
         totalModalKalkulasiBaru,
         totalPembelianGabungan: totalGabungan,
-        keuntunganDataCount: periodData.keuntunganData?.length || 0
+        keuntunganDataCount: periodData.keuntunganData?.length || 0,
+        shouldUseAccumulative,
+        accumulativeData
       });
 
     } catch (error) {
@@ -695,6 +910,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     link.click();
     document.body.removeChild(link);
   };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -713,8 +929,6 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
           </Button>
         </div>
       </div>
-
-  
 
       {/* Filter Data */}
       <Card>
@@ -802,12 +1016,22 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Unit</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Unit
+              {['this_month', 'last_month', 'this_week', 'last_week', 'today', 'yesterday'].includes(selectedPeriod) && 
+                <span className="text-xs text-blue-500 block">(YTD)</span>
+              }
+            </CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalUnit}</div>
-            <p className="text-xs text-muted-foreground">Unit terjual</p>
+            <div className="text-2xl font-bold">{displayTotalUnit}</div>
+            <p className="text-xs text-muted-foreground">
+              {['this_month', 'last_month', 'this_week', 'last_week', 'today', 'yesterday'].includes(selectedPeriod) 
+                ? 'Unit terjual dari awal tahun' 
+                : 'Unit terjual'
+              }
+            </p>
           </CardContent>
         </Card>
 
@@ -828,23 +1052,43 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
 
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Pembelian</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Pembelian
+              {['this_month', 'last_month', 'this_week', 'last_week', 'today', 'yesterday'].includes(selectedPeriod) && 
+                <span className="text-xs text-blue-500 block">(YTD)</span>
+              }
+            </CardTitle>
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{formatCurrency(totalPembelianGabungan)}</div>
-            <p className="text-xs text-muted-foreground">Modal investasi</p>
+            <div className="text-2xl font-bold text-red-600">{formatCurrency(displayTotalPembelian)}</div>
+            <p className="text-xs text-muted-foreground">
+              {['this_month', 'last_month', 'this_week', 'last_week', 'today', 'yesterday'].includes(selectedPeriod) 
+                ? 'Modal investasi dari awal tahun' 
+                : 'Modal investasi'
+              }
+            </p>
           </CardContent>
         </Card>
 
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Booked</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Booked
+              {['this_month', 'last_month', 'this_week', 'last_week', 'today', 'yesterday'].includes(selectedPeriod) && 
+                <span className="text-xs text-blue-500 block">(YTD)</span>
+              }
+            </CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{formatCurrency(totalBooked)}</div>
-            <p className="text-xs text-muted-foreground">Uang muka diterima</p>
+            <div className="text-2xl font-bold text-blue-600">{formatCurrency(displayTotalBooked)}</div>
+            <p className="text-xs text-muted-foreground">
+              {['this_month', 'last_month', 'this_week', 'last_week', 'today', 'yesterday'].includes(selectedPeriod) 
+                ? 'Uang muka dari awal tahun' 
+                : 'Uang muka diterima'
+              }
+            </p>
           </CardContent>
         </Card>
 

@@ -119,13 +119,13 @@ export const transformPenjualanToFormData = (penjualan: any): PenjualanFormData 
     tanggal_penjualan: penjualan.tanggal,
     divisi: penjualan.divisi,
     cabang_id: penjualan.cabang_id.toString(),
-    jenis_transaksi: penjualan.jenis_transaksi,
+    jenis_transaksi: penjualan.tt || "",
     brand_id: penjualan.brand_id.toString(),
     jenis_motor_id: penjualan.jenis_id.toString(),
     tahun: penjualan.tahun.toString(),
     warna: penjualan.warna,
     kilometer: penjualan.kilometer.toString(),
-    plat_nomor: penjualan.plat_nomor,
+    plat_nomor: penjualan.plat,
     harga_beli: penjualan.harga_beli.toString(),
     harga_jual: penjualan.harga_jual.toString(),
     jenis_pembayaran: penjualan.jenis_pembayaran,
@@ -137,10 +137,10 @@ export const transformPenjualanToFormData = (penjualan: any): PenjualanFormData 
     sisa_ongkir: penjualan.sisa_ongkir?.toString() || "0",
     status: statusMapping[penjualan.status] || penjualan.status,
     company_id: penjualan.company_id.toString(),
-    catatan: penjualan.catatan,
+    catatan: penjualan.catatan || "",
     selected_motor_id: penjualan.pembelian_id?.toString() || "",
     pembelian_id: penjualan.pembelian_id?.toString() || "",
-    brand_name: penjualan.brand_name || "",
-    jenis_motor_name: penjualan.jenis_motor_name || ""
+    brand_name: penjualan.brands?.name || "",
+    jenis_motor_name: penjualan.jenis_motor?.jenis_motor || ""
   };
 };

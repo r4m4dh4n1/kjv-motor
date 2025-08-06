@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Car, MapPin, Palette, TrendingUp } from "lucide-react";
+import { Eye, Car, MapPin, Palette, TrendingUp, DollarSign } from "lucide-react";
 import { EnhancedTable, CurrencyCell, DateCell, StatusBadge } from "./EnhancedTable";
 import {
   Dialog,
@@ -11,12 +11,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import UpdateHargaSoldModal, { UpdateHargaSoldData } from "./UpdateHargaSoldModal";
+import { useSoldUpdateHarga } from "./hooks/useSoldUpdateHarga";
 
 interface PenjualanSoldTableProps {
   penjualanData: any[];
 }
 
 const PenjualanSoldTable = ({ penjualanData }: PenjualanSoldTableProps) => {
+  const [selectedPenjualan, setSelectedPenjualan] = useState<any>(null);
+  const [isUpdateHargaOpen, setIsUpdateHargaOpen] = useState(false);
+  
+  const soldUpdateHarga = useSoldUpdateHarga();
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -27,6 +33,30 @@ const PenjualanSoldTable = ({ penjualanData }: PenjualanSoldTableProps) => {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('id-ID');
+  };
+
+  const handleUpdateHarga = (penjualan: any) => {
+    setSelectedPenjualan(penjualan);
+    setIsUpdateHargaOpen(true);
+  };
+
+  const handleUpdateHargaConfirm = (data: UpdateHargaSoldData) => {
+    if (selectedPenjualan) {
+      soldUpdateHarga.mutate({
+        penjualan_id: selectedPenjualan.id,
+        ...data
+      }, {
+        onSuccess: () => {
+          setIsUpdateHargaOpen(false);
+          setSelectedPenjualan(null);
+        }
+      });
+    }
+  };
+
+  const handleUpdateHargaClose = () => {
+    setIsUpdateHargaOpen(false);
+    setSelectedPenjualan(null);
   };
 
   const DetailDialog = ({ penjualan }: { penjualan: any }) => (
@@ -259,42 +289,58 @@ const PenjualanSoldTable = ({ penjualanData }: PenjualanSoldTableProps) => {
     }
   ];
 
-  const actions = [
-    {
-      label: "Lihat Detail",
-      icon: Eye,
-      onClick: (row: any) => {}, // This will be handled by the custom DetailDialog
-      variant: "outline" as const,
-      className: "hover:bg-blue-50 hover:text-blue-600"
-    }
-  ];
+  const UpdateHargaButton = ({ penjualan }: { penjualan: any }) => (
+    <Button 
+      variant="outline" 
+      size="sm" 
+      onClick={() => handleUpdateHarga(penjualan)}
+      className="hover:bg-orange-50 hover:text-orange-600"
+    >
+      <DollarSign className="w-4 h-4" />
+    </Button>
+  );
 
   // Override the actions column to use DetailDialog
   const customColumns = columns.map(col => col);
 
   return (
-    <EnhancedTable
-      title="Data Penjualan Motor (Sold)"
-      subtitle={`Menampilkan ${penjualanData.length} motor yang telah terjual`}
-      icon={TrendingUp}
-      data={penjualanData.map(row => ({
-        ...row,
-        actions: <DetailDialog penjualan={row} />
-      }))}
-      columns={[
-        ...customColumns,
-        {
-          key: "actions",
-          header: "Aksi",
-          width: "w-20",
-          className: "text-center",
-          render: (value: any) => value
-        }
-      ]}
-      actions={[]} // Empty since we're using custom actions
-      emptyMessage="Belum ada data penjualan motor yang selesai"
-      headerColor="bg-gradient-to-r from-green-50 to-emerald-50"
-    />
+    <>
+      <EnhancedTable
+        title="Data Penjualan Motor (Sold)"
+        subtitle={`Menampilkan ${penjualanData.length} motor yang telah terjual`}
+        icon={TrendingUp}
+        data={penjualanData.map(row => ({
+          ...row,
+          actions: (
+            <div className="flex gap-1">
+              <DetailDialog penjualan={row} />
+              <UpdateHargaButton penjualan={row} />
+            </div>
+          )
+        }))}
+        columns={[
+          ...customColumns,
+          {
+            key: "actions",
+            header: "Aksi",
+            width: "w-24",
+            className: "text-center",
+            render: (value: any) => value
+          }
+        ]}
+        actions={[]} // Empty since we're using custom actions
+        emptyMessage="Belum ada data penjualan motor yang selesai"
+        headerColor="bg-gradient-to-r from-green-50 to-emerald-50"
+      />
+      
+      <UpdateHargaSoldModal
+        isOpen={isUpdateHargaOpen}
+        onClose={handleUpdateHargaClose}
+        penjualan={selectedPenjualan}
+        onConfirm={handleUpdateHargaConfirm}
+        isLoading={soldUpdateHarga.isPending}
+      />
+    </>
   );
 };
 

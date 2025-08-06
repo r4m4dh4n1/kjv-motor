@@ -76,42 +76,33 @@ export const useDpCancellation = () => {
       // 5. Handle company modal based on cancellation type
       let modalAmount = 0;
       if (cancellationData.type === 'full_forfeit') {
-        modalAmount = dpAmount; // All DP becomes company modal
-      } else {
-        modalAmount = cancellationData.forfeit_amount; // Only forfeit amount becomes modal
-      }
-
-      if (modalAmount > 0 && companyId) {
-        const { error: modalError } = await supabase.rpc('update_company_modal', {
-          company_id: companyId,
-          amount: modalAmount
-        });
-
-        if (modalError) {
-          console.error('Error updating company modal:', modalError);
-          toast({
-            title: "Warning",
-            description: `DP dibatalkan tapi gagal menambah modal perusahaan: ${modalError.message}`,
-            variant: "destructive"
+        // For full forfeit, don't add to company modal as per requirement
+        modalAmount = 0;
+      } else if (cancellationData.type === 'partial_refund') {
+        // For partial refund, only the refund amount reduces modal (subtract from company)
+        if (cancellationData.refund_amount && cancellationData.refund_amount > 0) {
+          const { error: modalError } = await supabase.rpc('update_company_modal', {
+            company_id: companyId,
+            amount: -cancellationData.refund_amount // Negative to reduce modal
           });
+
+          if (modalError) {
+            console.error('Error updating company modal:', modalError);
+            toast({
+              title: "Warning",
+              description: `DP dibatalkan tapi gagal mengurangi modal perusahaan: ${modalError.message}`,
+              variant: "destructive"
+            });
+          }
         }
       }
 
       // 6. Create pembukuan entries
       const pembukuanEntries = [];
 
-      // Entry for forfeit amount (company gain)
-      if (modalAmount > 0) {
-        pembukuanEntries.push({
-          tanggal: new Date().toISOString().split('T')[0],
-          divisi: currentPenjualan.divisi,
-          keterangan: `DP Hangus - ${cancellationData.reason} (${currentPenjualan.brands?.name || 'Motor'} ${currentPenjualan.plat})`,
-          debit: 0,
-          kredit: modalAmount,
-          cabang_id: currentPenjualan.cabang_id,
-          company_id: companyId,
-          pembelian_id: currentPenjualan.pembelian_id
-        });
+      // For full forfeit: NO pembukuan entry as per requirement
+      if (cancellationData.type === 'full_forfeit') {
+        // Do nothing - no pembukuan entry for full forfeit
       }
 
       // Entry for refund amount (company expense) if partial refund

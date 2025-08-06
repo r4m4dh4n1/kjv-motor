@@ -324,6 +324,16 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
       return;
     }
 
+    // Validasi tujuan pembayaran wajib diisi
+    if (!formData.tujuan_pembayaran_id) {
+      toast({
+        title: "Error",
+        description: "Tujuan pembayaran (perusahaan) wajib dipilih",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const jumlahBayar = parseCurrency(formData.jumlah_bayar);
   
     if (isNaN(jumlahBayar) || jumlahBayar <= 0) {
@@ -402,7 +412,7 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
 
       if (updateError) throw updateError;
 
-      // Insert pembukuan entry for cicilan payment
+      // Insert pembukuan entry for cicilan payment - PERBAIKAN: gunakan tujuan_pembayaran_id
       const brandName = selectedPenjualan.brands?.name || '';
       const jenisMotor = selectedPenjualan.jenis_motor?.jenis_motor || '';
       const platNomor = selectedPenjualan.plat;
@@ -431,7 +441,7 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
         kredit: jumlahBayar,
         saldo: 0,
         pembelian_id: selectedPenjualan.pembelian_id,
-        company_id: selectedPenjualan.company_id
+        company_id: parseInt(formData.tujuan_pembayaran_id) // PERBAIKAN: gunakan tujuan_pembayaran_id
       };
 
       const { error: pembukuanError } = await supabase
@@ -443,6 +453,22 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
         toast({
           title: "Warning",
           description: `Cicilan tersimpan tapi pembukuan gagal: ${pembukuanError.message}`,
+          variant: "destructive"
+        });
+      }
+
+      // PERBAIKAN: Update modal perusahaan tujuan
+      const { error: modalError } = await supabase
+        .rpc('update_company_modal', {
+          company_id: parseInt(formData.tujuan_pembayaran_id),
+          amount: jumlahBayar
+        });
+
+      if (modalError) {
+        console.error('Modal Update Error:', modalError);
+        toast({
+          title: "Warning",
+          description: `Cicilan tersimpan tapi update modal perusahaan gagal: ${modalError.message}`,
           variant: "destructive"
         });
       }
@@ -522,6 +548,24 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
         });
       }
 
+      // PERBAIKAN: Kurangi modal perusahaan jika ada tujuan_pembayaran_id
+      if (cicilan.tujuan_pembayaran_id) {
+        const { error: modalError } = await supabase
+          .rpc('update_company_modal', {
+            company_id: cicilan.tujuan_pembayaran_id,
+            amount: -cicilan.jumlah_bayar // Negatif untuk mengurangi modal
+          });
+
+        if (modalError) {
+          console.error('Error updating company modal:', modalError);
+          toast({
+            title: "Warning",
+            description: `Gagal mengurangi modal perusahaan: ${modalError.message}`,
+            variant: "destructive"
+          });
+        }
+      }
+
       // 2. Hitung ulang sisa bayar setelah menghapus cicilan ini
       const sisaBayarBaru = cicilan.sisa_bayar + cicilan.jumlah_bayar;
       
@@ -545,28 +589,18 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
       if (deleteCicilanError) throw deleteCicilanError;
 
       // 5. Update batch_ke untuk cicilan yang batch-nya lebih tinggi
-      const { error: updateBatchError } = await supabase
-        .rpc('update_company_modal', {
-          company_id: cicilan.tujuan_pembayaran_id,
-          amount: 0 // Placeholder for batch update functionality
-        });
+      const { data: higherBatches } = await supabase
+        .from('cicilan')
+        .select('id, batch_ke')
+        .eq('penjualan_id', cicilan.penjualan_id)
+        .gt('batch_ke', cicilan.batch_ke);
 
-      if (updateBatchError) {
-        console.error('Error updating batch numbers:', updateBatchError);
-        // Jika RPC tidak ada, gunakan cara manual
-        const { data: higherBatches } = await supabase
-          .from('cicilan')
-          .select('id, batch_ke')
-          .eq('penjualan_id', cicilan.penjualan_id)
-          .gt('batch_ke', cicilan.batch_ke);
-
-        if (higherBatches && higherBatches.length > 0) {
-          for (const batch of higherBatches) {
-            await supabase
-              .from('cicilan')
-              .update({ batch_ke: batch.batch_ke - 1 })
-              .eq('id', batch.id);
-          }
+      if (higherBatches && higherBatches.length > 0) {
+        for (const batch of higherBatches) {
+          await supabase
+            .from('cicilan')
+            .update({ batch_ke: batch.batch_ke - 1 })
+            .eq('id', batch.id);
         }
       }
 
@@ -734,8 +768,8 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
                 </div>
 
                 <div className="md:col-span-2">
-                  <Label htmlFor="tujuan_pembayaran">Tujuan Pembayaran (Perusahaan)</Label>
-                  <Select value={formData.tujuan_pembayaran_id} onValueChange={(value) => setFormData(prev => ({ ...prev, tujuan_pembayaran_id: value }))}>
+                  <Label htmlFor="tujuan_pembayaran">Tujuan Pembayaran (Perusahaan) *</Label>
+                  <Select value={formData.tujuan_pembayaran_id} onValueChange={(value) => setFormData(prev => ({ ...prev, tujuan_pembayaran_id: value }))} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih perusahaan" />
                     </SelectTrigger>

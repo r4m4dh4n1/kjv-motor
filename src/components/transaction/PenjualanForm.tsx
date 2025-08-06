@@ -53,6 +53,7 @@ const PenjualanForm = ({
             pembelianData={pembelianData} // Ganti dari brandsData dan jenisMotorData
             companiesData={companiesData}
             selectedDivision={selectedDivision}
+            editingPenjualan={editingPenjualan}
           />
           <div className="flex justify-end space-x-2">
             <Button type="button" variant="outline" onClick={resetForm}>

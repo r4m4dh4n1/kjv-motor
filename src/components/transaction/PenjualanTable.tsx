@@ -138,7 +138,7 @@ const PenjualanTable = ({
               <History className="w-4 h-4 mr-2" />
               Riwayat Harga
             </DropdownMenuItem>
-            {showCancelDp && penjualan.dp > 0 && (
+            {showCancelDp && penjualan.dp > 0 && penjualan.status === 'booked' && (
               <DropdownMenuItem 
                 onClick={() => handleCancelDp?.(penjualan)}
                 className="text-orange-600 focus:text-orange-600"
@@ -209,8 +209,8 @@ const PenjualanTable = ({
           </TooltipContent>
         </Tooltip>
 
-        {/* Tombol Cancel DP */}
-        {showCancelDp && penjualan.dp > 0 && (
+        {/* Tombol Cancel DP - only show for booked status */}
+        {showCancelDp && penjualan.dp > 0 && penjualan.status === 'booked' && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
