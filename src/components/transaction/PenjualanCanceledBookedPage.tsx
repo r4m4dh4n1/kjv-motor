@@ -114,17 +114,7 @@ const PenjualanCanceledBookedPage = ({ selectedDivision }: PenjualanCanceledBook
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Nilai Canceled</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalPenjualanCanceled)}</div>
-              <p className="text-xs text-muted-foreground">
-                Divisi {selectedDivision}
-              </p>
-            </CardContent>
-          </Card>
+         
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
