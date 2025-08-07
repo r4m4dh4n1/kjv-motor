@@ -27,6 +27,7 @@ import {
   useJenisMotorData,
   useCompaniesData
 } from "./hooks/usePembelianData";
+import { usePenjualanData } from "./hooks/usePenjualanData";
 import {
   usePembelianCreate,
   usePembelianUpdate,
@@ -91,6 +92,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   const { data: pembelianDataRaw = [] } = usePembelianData(selectedDivision, "all");
   const { data: cabangData = [] } = useCabangData();
   const { data: brandsData = [] } = useBrandsData();
+  const { penjualanData: penjualanDataRaw = [] } = usePenjualanData(selectedDivision);
   const { data: jenisMotorData = [] } = useJenisMotorData();
   const { data: companiesData = [] } = useCompaniesData(selectedDivision);
 
@@ -175,47 +177,72 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     totalItems
   } = usePagination(filteredData, pageSize);
 
-  // Calculate totals - OPSI 3: Perhitungan terpisah untuk total keseluruhan
+  // Calculate totals - Menggabungkan data pembelian dan penjualan
   const calculateTotals = useMemo(() => {
-    // Total keseluruhan (tanpa filter status) - hanya filter lain yang berlaku
-    const allDataFiltered = pembelianDataRaw.filter((item: any) => {
+    // Gabungkan data pembelian dan penjualan
+    const combinedData = [
+      ...pembelianDataRaw.map((item: any) => ({ ...item, source: 'pembelian' })),
+      ...penjualanDataRaw.map((item: any) => ({ ...item, source: 'penjualan' }))
+    ];
+
+    // Filter gabungan berdasarkan kriteria yang sama
+    const allDataFiltered = combinedData.filter((item: any) => {
       const matchesSearch = !searchTerm || 
         item.plat_nomor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.plat?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.brands?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.jenis_motor?.jenis_motor?.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesCabang = selectedCabang === "all" || item.cabang_id.toString() === selectedCabang;
       
-      const matchesJenisPembelian = selectedJenisPembelian === "all" || item.jenis_pembelian === selectedJenisPembelian;
+      // Untuk penjualan, tidak ada jenis_pembelian, jadi skip filter ini
+      const matchesJenisPembelian = selectedJenisPembelian === "all" || 
+        (item.source === 'pembelian' && item.jenis_pembelian === selectedJenisPembelian) ||
+        item.source === 'penjualan';
+
+      // TAMBAHKAN FILTER DIVISI
+     const matchesDivisi = item.divisi === selectedDivision;
+    
       
       // Date filter logic
       let matchesDate = true;
       if (dateFilter !== "all") {
         const dateRange = getDateRange();
         if (dateRange) {
-          const itemDate = new Date(item.tanggal_pembelian);
+          const itemDate = new Date(item.tanggal_pembelian || item.tanggal);
           matchesDate = itemDate >= dateRange.start && itemDate <= dateRange.end;
         } else if (dateFilter === "custom") {
           matchesDate = false;
         }
       }
       
-      return matchesSearch && matchesCabang && matchesJenisPembelian && matchesDate;
+      return matchesSearch && matchesCabang && matchesJenisPembelian && matchesDate && matchesDivisi;
     });
 
-    // Total pembelian keseluruhan (tanpa filter status)
-    const totalPembelian = allDataFiltered.length;
+    // Total pembelian keseluruhan (ready + booked)
+    const totalPembelian = allDataFiltered.filter(item => 
+    item.status === 'ready' || item.status === 'booked' || item.status === 'sold'
+  ).length;
     
     // Total ready dari data yang sudah difilter dengan semua filter termasuk status
     const totalReady = filteredData.filter(item => item.status === 'ready').length;
     
-    // Total nilai keseluruhan (tanpa filter status)
+    // Total nilai keseluruhan (ready + booked)
     const totalNilai = allDataFiltered.reduce((sum, item) => {
-      return sum + (item.harga_final || item.harga_beli || 0);
+      if (item.status === 'ready' && item.source === 'pembelian') {
+        // Untuk pembelian status ready: prioritas harga_final, fallback ke harga_beli
+        return sum + (item.harga_final || item.harga_beli || 0);
+      } else if (item.status === 'booked' && item.source === 'penjualan') {
+        // Untuk penjualan status booked: menggunakan harga_beli dari pembelian terkait
+        return sum + (item.harga_beli || 0);
+      } else {
+        // Untuk status lainnya: tidak dihitung
+        return sum;
+      }
     }, 0);
 
     return { totalPembelian, totalReady, totalNilai };
-  }, [pembelianDataRaw, filteredData, searchTerm, selectedCabang, selectedJenisPembelian, dateFilter, customStartDate, customEndDate]);
+  }, [pembelianDataRaw, penjualanDataRaw, filteredData, searchTerm, selectedCabang, selectedJenisPembelian, dateFilter, customStartDate, customEndDate, selectedDivision]);
 
   // Helper functions untuk format currency
   const formatNumberInput = (value: string) => {
@@ -834,14 +861,14 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
         </CardContent>
       </Card>
 
-      {/* Summary Cards - OPSI 3: Label yang jelas untuk membedakan total keseluruhan vs filtered */}
+      {/* Summary Cards - Label yang jelas untuk ready + booked */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Total Pembelian (Semua Data) {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
+                  Total Pembelian {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
                 </p>
                 <p className="text-2xl font-bold text-blue-600">
                   {calculateTotals.totalPembelian}
@@ -873,7 +900,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Total Nilai (Semua Data) {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
+                  Total Nilai (Ready+Booked) {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
                 </p>
                 <p className="text-2xl font-bold text-purple-600">
                   {formatCurrency(calculateTotals.totalNilai)}

@@ -442,7 +442,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     let bookedYTDQuery = supabase
       .from('penjualans')
       .select('dp')
-      .eq('status', 'Booked')
+      .eq('status', 'booked')
       .gte('tanggal', dateRange.start.toISOString().split('T')[0])
       .lte('tanggal', dateRange.end.toISOString().split('T')[0]);
 
@@ -534,7 +534,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     let bookedQuery = supabase
       .from('penjualans')
       .select('dp, tanggal, id')
-      .eq('status', 'Booked')
+      .eq('status', 'booked')
       .gte('tanggal', dateRange.start.toISOString().split('T')[0])
       .lte('tanggal', dateRange.end.toISOString().split('T')[0]);
 
@@ -549,7 +549,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     let bookedHargaBeliQuery = supabase
       .from('penjualans')
       .select('harga_beli, tanggal, id')
-      .eq('status', 'Booked')
+      .eq('status', 'booked')
       .gte('tanggal', dateRange.start.toISOString().split('T')[0])
       .lte('tanggal', dateRange.end.toISOString().split('T')[0]);
 
