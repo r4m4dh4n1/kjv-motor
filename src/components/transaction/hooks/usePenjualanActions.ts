@@ -34,15 +34,18 @@ export const usePenjualanActions = () => {
 
   const handleSubmitUpdateHarga = async (updateData: UpdateHargaData, onRefresh: () => void) => {
     try {
-      // Logika baru: Update harga tidak mengubah harga jual, tapi mengurangi keuntungan perusahaan
+      // Logika untuk booked: Update harga_beli di penjualans dan harga_final di pembelian
       const totalBiayaTambahan = updateData.biaya_pajak + updateData.biaya_qc + updateData.biaya_lain_lain;
+      const hargaBeliLama = selectedPenjualanForUpdate.harga_beli;
+      const hargaBeliBaru = hargaBeliLama + totalBiayaTambahan;
       const keuntunganLama = selectedPenjualanForUpdate.keuntungan;
       const keuntunganBaru = keuntunganLama - totalBiayaTambahan; // Mengurangi keuntungan
       
-      // 1. Update penjualan table dengan biaya tambahan saja (tidak mengubah harga_jual)
+      // 1. Update penjualan table dengan harga_beli baru dan biaya tambahan
       const { error: updateError } = await supabase
         .from('penjualans')
         .update({
+          harga_beli: hargaBeliBaru, // Update harga_beli
           biaya_pajak: updateData.biaya_pajak,
           biaya_qc: updateData.biaya_qc,
           biaya_lain_lain: updateData.biaya_lain_lain,
@@ -53,6 +56,21 @@ export const usePenjualanActions = () => {
         .eq('id', selectedPenjualanForUpdate.id);
 
       if (updateError) throw updateError;
+
+      // 1.1. Update harga_final di tabel pembelian
+      if (selectedPenjualanForUpdate.pembelian_id) {
+        const { error: pembelianError } = await supabase
+          .from('pembelian')
+          .update({
+            harga_final: hargaBeliBaru // Update harga_final di pembelian
+          })
+          .eq('id', selectedPenjualanForUpdate.pembelian_id);
+
+        if (pembelianError) {
+          console.error('Error updating pembelian harga_final:', pembelianError);
+          // Don't throw error, just log it
+        }
+      }
 
       // 2. Kurangi modal company sebesar total biaya tambahan
       if (selectedPenjualanForUpdate.company_id && totalBiayaTambahan > 0) {
@@ -67,13 +85,13 @@ export const usePenjualanActions = () => {
         }
       }
 
-      // 3. Insert into price_histories table (hanya simpan data yang ada di tabel)
+      // 3. Insert into price_histories table
       const { error: historyError } = await supabase
         .from('price_histories')
         .insert({
           pembelian_id: selectedPenjualanForUpdate.pembelian_id,
-          harga_jual_lama: selectedPenjualanForUpdate.harga_jual, // Harga jual tidak berubah
-          harga_jual_baru: selectedPenjualanForUpdate.harga_jual, // Harga jual tetap sama
+          harga_jual_lama: selectedPenjualanForUpdate.harga_jual,
+          harga_jual_baru: selectedPenjualanForUpdate.harga_jual, // Harga jual tetap sama untuk booked
           biaya_pajak: updateData.biaya_pajak,
           biaya_qc: updateData.biaya_qc,
           biaya_lain_lain: updateData.biaya_lain_lain,
@@ -102,7 +120,7 @@ export const usePenjualanActions = () => {
 
       toast({
         title: "Berhasil",
-        description: `Biaya tambahan berhasil disimpan. Keuntungan berkurang sebesar ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(totalBiayaTambahan)}`
+        description: `Harga beli dan harga final berhasil diupdate. Biaya tambahan: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(totalBiayaTambahan)}`
       });
 
       setIsUpdateHargaOpen(false);

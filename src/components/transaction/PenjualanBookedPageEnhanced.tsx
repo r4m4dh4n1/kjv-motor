@@ -130,10 +130,10 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
     }
   };
 
-  // Filter and search logic - only for BOOKED status (not 'selesai')
+  // Filter and search logic - only for BOOKED status (not 'selesai' or 'cancelled_dp_hangus')
   const filteredData = penjualanData.filter((item: any) => {
-    // Filter utama: hanya yang belum selesai (status: booked, proses, cancelled, etc but not 'selesai/sold')
-    if (item.status === 'selesai' || item.status === 'sold') {
+    // Filter utama: hanya yang belum selesai (status: booked, proses, cancelled, etc but not 'selesai/sold' or 'cancelled_dp_hangus')
+    if (item.status === 'selesai' || item.status === 'sold' || item.status === 'cancelled_dp_hangus') {
       return false;
     }
 

@@ -26,6 +26,7 @@ import BreakdownPercabangPage from "@/components/finance/BreakdownPercabangPage"
 import KeuntunganMotorPage from "@/components/finance/KeuntunganMotorPage";
 import PenjualanBookedPageEnhanced from "@/components/transaction/PenjualanBookedPageEnhanced";
 import PenjualanSoldPageEnhanced from "@/components/transaction/PenjualanSoldPageEnhanced";
+import PenjualanCanceledBookedPage from "@/components/transaction/PenjualanCanceledBookedPage";
 import CloseMonthPage from "@/components/finance/CloseMonthPage";
 import { ProfitDistributionPage } from "@/components/finance/ProfitDistributionPage";
 import { PencatatanAssetPage } from "@/components/transaction/PencatatanAssetPage";
@@ -62,6 +63,8 @@ const Index = () => {
   return <PenjualanBookedPageEnhanced selectedDivision={selectedDivision} />;
 case "penjualan-sold":
   return <PenjualanSoldPageEnhanced selectedDivision={selectedDivision} />;
+case "penjualan-canceled-booked":
+  return <PenjualanCanceledBookedPage selectedDivision={selectedDivision} />;
       case 'cicilan':
   return <CicilanPageEnhanced selectedDivision={selectedDivision} />;
       case "operational":

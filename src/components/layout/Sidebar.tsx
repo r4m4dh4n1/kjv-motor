@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronDown, ChevronRight, Home, Settings, Building, Car, Briefcase, Package, MapPin, ShoppingCart, CreditCard, FileText, BookOpen, Calculator, Cog, Users, UserCog, Shield, DollarSign, Pin, PinOff, TrendingUp, CheckCircle, Calendar } from "lucide-react";
+import { ChevronDown, ChevronRight, Home, Settings, Building, Car, Briefcase, Package, MapPin, ShoppingCart, CreditCard, FileText, BookOpen, Calculator, Cog, Users, UserCog, Shield, DollarSign, Pin, PinOff, TrendingUp, CheckCircle, Calendar, XCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
@@ -50,7 +50,8 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
       icon: ShoppingCart,
       subItems: [
         { id: "penjualan-booked", label: "Booked", icon: BookOpen },
-        { id: "penjualan-sold", label: "Sold", icon: CheckCircle }
+        { id: "penjualan-sold", label: "Sold", icon: CheckCircle },
+        { id: "penjualan-canceled-booked", label: "Canceled Booked", icon: XCircle }
       ]
     },
     { id: "cicilan", label: "Cash Bertahap", icon: Calculator },
