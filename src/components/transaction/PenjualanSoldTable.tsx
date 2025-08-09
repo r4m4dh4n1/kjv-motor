@@ -230,7 +230,11 @@ const handleUpdateHargaConfirm = (data: UpdateHargaSoldData) => {
       key: "tanggal",
       header: "Tanggal",
       width: "w-28",
-      render: (value: string) => <DateCell date={value} />
+      render: (value: string, row: any) => {
+        // Gunakan tanggal_lunas jika ada, jika tidak gunakan tanggal biasa
+        const displayDate = row.tanggal_lunas || row.tanggal;
+        return <DateCell date={displayDate} />;
+      }
     },
     {
       key: "divisi",

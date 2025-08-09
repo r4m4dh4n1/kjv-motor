@@ -86,13 +86,16 @@ const EditCicilanDialog = ({ cicilan, isOpen, onClose, onSuccess, companiesData 
       const newSisaBayar = penjualanData.harga_jual - newHargaBayar;
       const newStatus = newSisaBayar <= 0 ? 'selesai' : penjualanData.status;
 
+      // Di fungsi handleSubmit, sekitar baris 89-130
       const { error: penjualanUpdateError } = await supabase
         .from('penjualans')
         .update({
           harga_bayar: newHargaBayar,
           sisa_bayar: newSisaBayar,
           status: newStatus,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          // Tambahkan ini: set tanggal_lunas jika status menjadi selesai
+          ...(newStatus === 'selesai' && { tanggal_lunas: formData.tanggal_bayar })
         })
         .eq('id', cicilan.penjualan_id);
 

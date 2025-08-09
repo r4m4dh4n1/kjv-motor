@@ -1243,6 +1243,7 @@ export type Database = {
           tt: string | null
           updated_at: string | null
           warna: string
+          tanggal_lunas: string | null
         }
         Insert: {
           biaya_lain_lain?: number | null
@@ -1283,6 +1284,7 @@ export type Database = {
           tt?: string | null
           updated_at?: string | null
           warna: string
+          tanggal_lunas?: string | null
         }
         Update: {
           biaya_lain_lain?: number | null
@@ -1323,6 +1325,7 @@ export type Database = {
           tt?: string | null
           updated_at?: string | null
           warna?: string
+          tanggal_lunas?: string | null
         }
         Relationships: [
           {

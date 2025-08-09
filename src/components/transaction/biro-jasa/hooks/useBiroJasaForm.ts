@@ -211,9 +211,7 @@ export const useBiroJasaForm = (onSuccess: () => void, selectedDivision: string)
   const resetForm = () => {
     setFormData({
       tanggal: getCurrentDate(),
-      brand_id: "", // Always empty since we don't use brand_id
       brand_name: "",
-      jenis_motor_id: "", // Always empty since we don't use jenis_motor_id
       jenis_motor: "",
       warna: "",
       plat_nomor: "",
