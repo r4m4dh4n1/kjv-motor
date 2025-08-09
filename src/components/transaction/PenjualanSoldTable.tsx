@@ -43,19 +43,23 @@ const PenjualanSoldTable = ({ penjualanData }: PenjualanSoldTableProps) => {
     setIsUpdateHargaOpen(true);
   };
 
-  const handleUpdateHargaConfirm = (data: UpdateHargaSoldData) => {
-    if (selectedPenjualan) {
-      soldUpdateHarga.mutate({
-        penjualan_id: selectedPenjualan.id,
-        ...data
-      }, {
-        onSuccess: () => {
-          setIsUpdateHargaOpen(false);
-          setSelectedPenjualan(null);
-        }
-      });
-    }
-  };
+  // Update handleUpdateHargaConfirm function
+const handleUpdateHargaConfirm = (data: UpdateHargaSoldData) => {
+  if (selectedPenjualan) {
+    soldUpdateHarga.mutate({
+      penjualan_id: selectedPenjualan.id,
+      biaya_tambahan: data.biaya_tambahan,
+      reason: data.reason,
+      keterangan: data.keterangan,
+      operation_mode: data.operation_mode
+    }, {
+      onSuccess: () => {
+        setIsUpdateHargaOpen(false);
+        setSelectedPenjualan(null);
+      }
+    });
+  }
+};
 
   const handleUpdateHargaClose = () => {
     setIsUpdateHargaOpen(false);

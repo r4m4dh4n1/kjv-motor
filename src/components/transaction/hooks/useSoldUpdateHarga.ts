@@ -4,9 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface SoldUpdateHargaData {
   penjualan_id: number;
-  biaya_tambahan: number;
+  biaya_tambahan: number; // Can be negative for reduction
   reason: string;
   keterangan?: string;
+  operation_mode: 'tambah' | 'kurang';
 }
 
 export const useSoldUpdateHarga = () => {
@@ -32,19 +33,34 @@ export const useSoldUpdateHarga = () => {
 
       const newKeuntungan = (currentPenjualan.keuntungan || 0) - updateData.biaya_tambahan;
       const companyId = currentPenjualan.company_id;
-
-      // 2. Update penjualan - reduce profit, add notes, increase harga_beli
       const newHargaBeli = (currentPenjualan.harga_beli || 0) + updateData.biaya_tambahan;
+      
+      // Additional validation for reduction
+      if (updateData.operation_mode === 'kurang' && newHargaBeli < 0) {
+        throw new Error('Pengurangan tidak boleh membuat harga beli negatif');
+      }
+
+      // 2. Update penjualan
+      const updateFields: any = {
+        harga_beli: newHargaBeli,
+        keuntungan: newKeuntungan,
+        reason_update_harga: updateData.reason,
+        keterangan_biaya_lain: updateData.keterangan || null,
+      };
+
+      // Update biaya_lain_lain field based on operation mode
+      if (updateData.operation_mode === 'tambah') {
+        updateFields.biaya_lain_lain = (currentPenjualan.biaya_lain_lain || 0) + Math.abs(updateData.biaya_tambahan);
+      } else {
+        // For reduction, we might want to track it differently or reduce existing biaya_lain_lain
+        const currentBiayaLain = currentPenjualan.biaya_lain_lain || 0;
+        const reduction = Math.abs(updateData.biaya_tambahan);
+        updateFields.biaya_lain_lain = Math.max(0, currentBiayaLain - reduction);
+      }
       
       const { error: updateError } = await supabase
         .from('penjualans')
-        .update({
-          harga_beli: newHargaBeli,
-          keuntungan: newKeuntungan,
-          biaya_lain_lain: (currentPenjualan.biaya_lain_lain || 0) + updateData.biaya_tambahan,
-          reason_update_harga: updateData.reason,
-          keterangan_biaya_lain: updateData.keterangan || null,
-        })
+        .update(updateFields)
         .eq('id', updateData.penjualan_id);
 
       if (updateError) {
@@ -52,7 +68,7 @@ export const useSoldUpdateHarga = () => {
       }
 
       // 2b. Update harga_final in pembelian table if pembelian_id exists
-      if (currentPenjualan.pembelian_id && updateData.biaya_tambahan > 0) {
+      if (currentPenjualan.pembelian_id) {
         const { error: pembelianError } = await supabase
           .from('pembelian')
           .update({
@@ -70,37 +86,42 @@ export const useSoldUpdateHarga = () => {
         }
       }
 
-      // 3. Reduce company modal
-      if (updateData.biaya_tambahan > 0 && companyId) {
+      // 3. Update company modal
+      if (updateData.biaya_tambahan !== 0 && companyId) {
         const { error: modalError } = await supabase.rpc('update_company_modal', {
           company_id: companyId,
-          amount: -updateData.biaya_tambahan // Negative to reduce modal
+          amount: -updateData.biaya_tambahan // Negative for cost addition, positive for cost reduction
         });
 
         if (modalError) {
           console.error('Error updating company modal:', modalError);
           toast({
             title: "Warning",
-            description: `Harga diupdate tapi gagal mengurangi modal perusahaan: ${modalError.message}`,
+            description: `Harga diupdate tapi gagal mengupdate modal perusahaan: ${modalError.message}`,
             variant: "destructive"
           });
         }
       }
 
-      // 4. Create pembukuan entry for the additional cost
-      if (updateData.biaya_tambahan > 0) {
+      // 4. Create pembukuan entry
+      if (updateData.biaya_tambahan !== 0) {
+        const isAddition = updateData.biaya_tambahan > 0;
+        const amount = Math.abs(updateData.biaya_tambahan);
+        
+        const pembukuanData = {
+          tanggal: new Date().toISOString().split('T')[0],
+          divisi: currentPenjualan.divisi,
+          keterangan: `${updateData.operation_mode === 'tambah' ? 'Biaya Tambahan' : 'Pengurangan Biaya'} - ${updateData.reason} (${currentPenjualan.plat})`,
+          debit: isAddition ? amount : 0,
+          kredit: isAddition ? 0 : amount,
+          cabang_id: currentPenjualan.cabang_id,
+          company_id: companyId,
+          pembelian_id: currentPenjualan.pembelian_id
+        };
+
         const { error: pembukuanError } = await supabase
           .from('pembukuan')
-          .insert({
-            tanggal: new Date().toISOString().split('T')[0],
-            divisi: currentPenjualan.divisi,
-            keterangan: `Biaya Tambahan - ${updateData.reason} (${currentPenjualan.plat})`,
-            debit: updateData.biaya_tambahan,
-            kredit: 0,
-            cabang_id: currentPenjualan.cabang_id,
-            company_id: companyId,
-            pembelian_id: currentPenjualan.pembelian_id
-          });
+          .insert(pembukuanData);
 
         if (pembukuanError) {
           console.error('Error creating pembukuan entry:', pembukuanError);
@@ -112,20 +133,22 @@ export const useSoldUpdateHarga = () => {
         }
       }
 
-      // 5. Create price history entry in price_histories_pembelian
+      // 5. Create price history entry
+      const historyData = {
+        pembelian_id: currentPenjualan.pembelian_id,
+        harga_beli_lama: currentPenjualan.harga_beli || 0,
+        harga_beli_baru: newHargaBeli,
+        biaya_qc: 0,
+        biaya_pajak: 0,
+        biaya_lain_lain: updateData.operation_mode === 'tambah' ? Math.abs(updateData.biaya_tambahan) : -Math.abs(updateData.biaya_tambahan),
+        reason: `${updateData.operation_mode === 'tambah' ? 'Penambahan' : 'Pengurangan'} Biaya: ${updateData.reason}`,
+        keterangan_biaya_lain: updateData.keterangan || null,
+        company_id: companyId
+      };
+
       const { error: historyError } = await supabase
         .from('price_histories_pembelian')
-        .insert({
-          pembelian_id: currentPenjualan.pembelian_id,
-          harga_beli_lama: currentPenjualan.harga_beli || 0,
-          harga_beli_baru: newHargaBeli,
-          biaya_qc: 0,
-          biaya_pajak: 0,
-          biaya_lain_lain: updateData.biaya_tambahan,
-          reason: updateData.reason,
-          keterangan_biaya_lain: updateData.keterangan || null,
-          company_id: companyId
-        });
+        .insert(historyData);
 
       if (historyError) {
         console.error('Error creating price history:', historyError);
@@ -136,13 +159,18 @@ export const useSoldUpdateHarga = () => {
         });
       }
 
-      return { success: true };
+      return { success: true, operation_mode: updateData.operation_mode };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      const message = data.operation_mode === 'tambah' 
+        ? "Biaya berhasil ditambahkan, keuntungan berkurang dan modal perusahaan disesuaikan"
+        : "Biaya berhasil dikurangi, keuntungan bertambah dan modal perusahaan disesuaikan";
+        
       toast({
         title: "Sukses",
-        description: "Harga berhasil diupdate, keuntungan berkurang dan modal perusahaan disesuaikan"
+        description: message
       });
+      
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['penjualan'] });
       queryClient.invalidateQueries({ queryKey: ['companies'] });
