@@ -28,7 +28,7 @@ export const BiroJasaTable = ({ data, onEdit, onDelete, onRefresh, selectedDivis
   });
 
   const handleView = (item: BiroJasaItem) => {
-    alert(`Detail Biro Jasa:\nTanggal: ${convertDateFromISO(item.tanggal)}\nBrand: ${item.brands?.name || '-'}\nJenis Motor: ${item.jenis_motor?.jenis_motor || '-'}\nWarna: ${item.warna || '-'}\nPlat Nomor: ${item.plat_nomor || '-'}\nTahun: ${item.tahun || '-'}\nJenis Pengurusan: ${item.jenis_pengurusan}\nKeterangan: ${item.keterangan || '-'}\nEstimasi Biaya: ${formatCurrency(item.estimasi_biaya?.toString() || '0')}\nEstimasi Tanggal Selesai: ${convertDateFromISO(item.estimasi_tanggal_selesai)}\nDP: ${formatCurrency(item.dp?.toString() || '0')}\nSisa: ${formatCurrency(item.sisa?.toString() || '0')}\nRekening Tujuan: ${item.companies?.nama_perusahaan || '-'}\nStatus: ${item.status}`);
+    alert(`Detail Biro Jasa:\nTanggal: ${convertDateFromISO(item.tanggal)}\nBrand: ${item.brands?.name || '-'}\nJenis Motor: ${item.jenis_motor || '-'}\nWarna: ${item.warna || '-'}\nPlat Nomor: ${item.plat_nomor || '-'}\nTahun: ${item.tahun || '-'}\nJenis Pengurusan: ${item.jenis_pengurusan}\nKeterangan: ${item.keterangan || '-'}\nEstimasi Biaya: ${formatCurrency(item.estimasi_biaya?.toString() || '0')}\nEstimasi Tanggal Selesai: ${convertDateFromISO(item.estimasi_tanggal_selesai)}\nDP: ${formatCurrency(item.dp?.toString() || '0')}\nSisa: ${formatCurrency(item.sisa?.toString() || '0')}\nRekening Tujuan: ${item.companies?.nama_perusahaan || '-'}\nStatus: ${item.status}`);
   };
 
   const showUpdateBiaya = (item: BiroJasaItem) => {
@@ -66,7 +66,7 @@ export const BiroJasaTable = ({ data, onEdit, onDelete, onRefresh, selectedDivis
                 <TableRow key={item.id}>
                   <TableCell>{convertDateFromISO(item.tanggal)}</TableCell>
                   <TableCell>{item.brands?.name || '-'}</TableCell>
-                  <TableCell>{item.jenis_motor?.jenis_motor || '-'}</TableCell>
+                  <TableCell>{item.jenis_motor || '-'}</TableCell>
                   <TableCell>{item.plat_nomor || '-'}</TableCell>
                   <TableCell>{item.jenis_pengurusan}</TableCell>
                   <TableCell>{formatCurrency(item.estimasi_biaya?.toString() || '0')}</TableCell>

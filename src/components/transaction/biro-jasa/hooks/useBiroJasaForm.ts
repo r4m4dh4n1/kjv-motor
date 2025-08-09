@@ -5,16 +5,14 @@ import type { BiroJasaFormData, BiroJasaItem } from "../types";
 import { getCurrentDate, convertDateToISO, convertDateFromISO } from "../utils";
 import { formatCurrency, parseCurrency } from "../utils";
 
-
 export const useBiroJasaForm = (onSuccess: () => void, selectedDivision: string) => {
   const { toast } = useToast();
   const [editingBiroJasa, setEditingBiroJasa] = useState<BiroJasaItem | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<BiroJasaFormData>({
     tanggal: getCurrentDate(),
-    brand_id: "",
     brand_name: "",
-    jenis_motor_id: "",
     jenis_motor: "",
     warna: "",
     plat_nomor: "",
@@ -35,16 +33,7 @@ export const useBiroJasaForm = (onSuccess: () => void, selectedDivision: string)
     const dp = parseCurrency(formData.dp) || 0;
     const sisa = Math.max(0, estimasiBiaya - dp);
     
-    console.log('Debug sisa calculation:', {
-      estimasi_biaya_raw: formData.estimasi_biaya,
-      dp_raw: formData.dp,
-      estimasiBiaya_parsed: estimasiBiaya,
-      dp_parsed: dp,
-      sisa_calculated: sisa
-    });
-    
     const formattedSisa = formatCurrency(sisa);
-    console.log('Debug formatted sisa:', formattedSisa);
     
     // Only update if the calculated sisa is different from current sisa
     const currentSisa = parseCurrency(formData.sisa) || 0;
@@ -53,26 +42,72 @@ export const useBiroJasaForm = (onSuccess: () => void, selectedDivision: string)
     }
   }, [formData.estimasi_biaya, formData.dp]);
   
+  // Validation function
+  const validateForm = (): boolean => {
+    const errors: string[] = [];
+    
+    if (!formData.tanggal) {
+      errors.push("Tanggal harus diisi");
+    }
+    
+    if (!formData.jenis_pengurusan) {
+      errors.push("Jenis Pengurusan harus dipilih");
+    }
+    
+    // Validate estimasi_biaya is not negative
+    const estimasiBiaya = parseCurrency(formData.estimasi_biaya) || 0;
+    if (estimasiBiaya < 0) {
+      errors.push("Estimasi biaya tidak boleh negatif");
+    }
+    
+    // Validate DP is not greater than estimasi_biaya
+    const dp = parseCurrency(formData.dp) || 0;
+    if (dp > estimasiBiaya) {
+      errors.push("DP tidak boleh lebih besar dari estimasi biaya");
+    }
+    
+    if (dp < 0) {
+      errors.push("DP tidak boleh negatif");
+    }
+    
+    if (errors.length > 0) {
+      toast({
+        title: "Validasi Error",
+        description: errors.join(", "),
+        variant: "destructive",
+      });
+      return false;
+    }
+    
+    return true;
+  };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent double submission
+    if (isSubmitting) return;
+    
+    // Validate form
+    if (!validateForm()) return;
+    
+    setIsSubmitting(true);
   
     try {
       const submitData = {
         tanggal: convertDateToISO(formData.tanggal),
-        brand_id: null, // Always null since we use manual input
-        brand_name: formData.brand_name || null,
-        jenis_motor_id: null, // Always null since we use manual input  
-        jenis_motor: formData.jenis_motor || null,
-        warna: formData.warna,
-        plat_nomor: formData.plat_nomor,
+        brand_name: formData.brand_name?.trim() || null,
+        jenis_motor: formData.jenis_motor?.trim() || null,
+        warna: formData.warna?.trim() || null,
+        plat_nomor: formData.plat_nomor?.trim() || null,
         tahun: formData.tahun ? parseInt(formData.tahun) : null,
         jenis_pengurusan: formData.jenis_pengurusan,
-        keterangan: formData.keterangan,
-        estimasi_biaya: parseCurrency(formData.estimasi_biaya),
+        keterangan: formData.keterangan?.trim() || null,
+        estimasi_biaya: parseCurrency(formData.estimasi_biaya) || 0,
         estimasi_tanggal_selesai: convertDateToISO(formData.estimasi_tanggal_selesai),
-        dp: parseCurrency(formData.dp),
-        sisa: parseCurrency(formData.sisa),
-        total_bayar: parseCurrency(formData.dp),
+        dp: parseCurrency(formData.dp) || 0,
+        sisa: parseCurrency(formData.sisa) || 0,
+        total_bayar: parseCurrency(formData.dp) || 0,
         rekening_tujuan_id: formData.rekening_tujuan_id ? parseInt(formData.rekening_tujuan_id) : null,
         status: formData.status,
       };
@@ -83,7 +118,10 @@ export const useBiroJasaForm = (onSuccess: () => void, selectedDivision: string)
           .update(submitData)
           .eq("id", editingBiroJasa.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Update error:', error);
+          throw new Error(error.message || 'Gagal mengupdate data');
+        }
 
         toast({
           title: "Berhasil",
@@ -95,7 +133,10 @@ export const useBiroJasaForm = (onSuccess: () => void, selectedDivision: string)
           .insert([submitData])
           .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Insert error:', error);
+          throw new Error(error.message || 'Gagal menyimpan data');
+        }
 
         // If DP is filled, create pembukuan entry
         const dpAmount = parseCurrency(formData.dp);
@@ -135,13 +176,15 @@ export const useBiroJasaForm = (onSuccess: () => void, selectedDivision: string)
 
       onSuccess();
       resetForm();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving data:", error);
       toast({
         title: "Error",
-        description: "Gagal menyimpan data",
+        description: error?.message || "Gagal menyimpan data. Silakan coba lagi.",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -149,10 +192,8 @@ export const useBiroJasaForm = (onSuccess: () => void, selectedDivision: string)
     setEditingBiroJasa(biroJasa);
     setFormData({
       tanggal: convertDateFromISO(biroJasa.tanggal),
-      brand_id: "",
       brand_name: biroJasa.brand_name || "",
-      jenis_motor_id: "",
-      jenis_motor: typeof biroJasa.jenis_motor === 'string' ? biroJasa.jenis_motor : (biroJasa.jenis_motor?.jenis_motor || ""),
+      jenis_motor: biroJasa.jenis_motor || "",
       warna: biroJasa.warna || "",
       plat_nomor: biroJasa.plat_nomor || "",
       tahun: biroJasa.tahun?.toString() || "",
@@ -170,9 +211,9 @@ export const useBiroJasaForm = (onSuccess: () => void, selectedDivision: string)
   const resetForm = () => {
     setFormData({
       tanggal: getCurrentDate(),
-      brand_id: "",
+      brand_id: "", // Always empty since we don't use brand_id
       brand_name: "",
-      jenis_motor_id: "",
+      jenis_motor_id: "", // Always empty since we don't use jenis_motor_id
       jenis_motor: "",
       warna: "",
       plat_nomor: "",
@@ -196,5 +237,6 @@ export const useBiroJasaForm = (onSuccess: () => void, selectedDivision: string)
     handleSubmit,
     handleEdit,
     resetForm,
+    isSubmitting,
   };
 };

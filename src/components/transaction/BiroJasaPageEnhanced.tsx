@@ -49,7 +49,7 @@ const BiroJasaPageEnhanced = ({ selectedDivision }: { selectedDivision: string }
       const matchesSearch = 
         item.plat_nomor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.brands?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.jenis_motor?.jenis_motor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.jenis_motor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.jenis_pengurusan?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.keterangan?.toLowerCase().includes(searchTerm.toLowerCase());
 

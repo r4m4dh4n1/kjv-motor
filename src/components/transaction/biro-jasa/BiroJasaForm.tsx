@@ -39,7 +39,6 @@ export const BiroJasaForm = ({
   const [tanggalOpen, setTanggalOpen] = useState(false);
   const [estimasiTanggalOpen, setEstimasiTanggalOpen] = useState(false);
 
-
   const handleCurrencyChange = (field: keyof BiroJasaFormData, value: string) => {
     const formattedValue = handleCurrencyInput(value);
     setFormData(prev => ({ ...prev, [field]: formattedValue }));
@@ -78,7 +77,6 @@ export const BiroJasaForm = ({
     setEstimasiTanggalOpen(false);
   };
 
-
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid grid-cols-1 gap-4">
@@ -112,16 +110,14 @@ export const BiroJasaForm = ({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="brand_id">Brand</Label>
+          <Label htmlFor="brand_name">Brand</Label>
           <Input
-            id="brand_id"
+            id="brand_name"
             type="text"
             value={formData.brand_name || ''}
             onChange={(e) => setFormData(prev => ({ 
               ...prev, 
               brand_name: e.target.value,
-              brand_id: "",
-              jenis_motor_id: ""
             }))}
             placeholder="Masukkan brand secara manual"
             className="w-full"
@@ -136,7 +132,6 @@ export const BiroJasaForm = ({
             onChange={(e) => setFormData(prev => ({ 
               ...prev, 
               jenis_motor: e.target.value,
-              jenis_motor_id: ""
             }))}
             placeholder="Masukkan jenis motor secara manual"
             className="w-full"

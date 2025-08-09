@@ -23,6 +23,7 @@ export interface BiroJasaItem {
   brand_id?: number;
   brand_name?: string;
   jenis_motor_id?: number;
+  jenis_motor?: string;
   warna?: string;
   plat_nomor?: string;
   tahun?: number;
@@ -40,7 +41,6 @@ export interface BiroJasaItem {
   cabang?: string;
   brands?: { name: string };
   companies?: { nama_perusahaan: string };
-  jenis_motor?: { jenis_motor: string };
 }
 
 export interface Brand {

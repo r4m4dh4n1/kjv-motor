@@ -107,7 +107,7 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
               </div>
               <div>
                 <span className="text-muted-foreground">Jenis Motor:</span>
-                <span className="ml-2">{biroJasa?.jenis_motor?.jenis_motor || '-'}</span>
+                <span className="ml-2">{biroJasa?.jenis_motor || '-'}</span>
               </div>
               <div>
                 <span className="text-muted-foreground">Plat Nomor:</span>

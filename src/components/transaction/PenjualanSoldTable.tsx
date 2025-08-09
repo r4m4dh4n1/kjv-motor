@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Car, MapPin, Palette, TrendingUp, DollarSign } from "lucide-react";
+import { Eye, Car, MapPin, Palette, TrendingUp, DollarSign, Clock } from "lucide-react";
 import { EnhancedTable, CurrencyCell, DateCell, StatusBadge } from "./EnhancedTable";
 import {
   Dialog,
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import UpdateHargaSoldModal, { UpdateHargaSoldData } from "./UpdateHargaSoldModal";
+import PriceHistoryModal from "./PriceHistoryModal";
 import { useSoldUpdateHarga } from "./hooks/useSoldUpdateHarga";
 
 interface PenjualanSoldTableProps {
@@ -21,6 +22,8 @@ interface PenjualanSoldTableProps {
 const PenjualanSoldTable = ({ penjualanData }: PenjualanSoldTableProps) => {
   const [selectedPenjualan, setSelectedPenjualan] = useState<any>(null);
   const [isUpdateHargaOpen, setIsUpdateHargaOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [selectedPenjualanForHistory, setSelectedPenjualanForHistory] = useState<any>(null);
   
   const soldUpdateHarga = useSoldUpdateHarga();
   const formatCurrency = (amount: number) => {
@@ -57,6 +60,16 @@ const PenjualanSoldTable = ({ penjualanData }: PenjualanSoldTableProps) => {
   const handleUpdateHargaClose = () => {
     setIsUpdateHargaOpen(false);
     setSelectedPenjualan(null);
+  };
+
+  const handleViewHistory = (penjualan: any) => {
+    setSelectedPenjualanForHistory(penjualan);
+    setIsHistoryOpen(true);
+  };
+
+  const handleHistoryClose = () => {
+    setIsHistoryOpen(false);
+    setSelectedPenjualanForHistory(null);
   };
 
   const DetailDialog = ({ penjualan }: { penjualan: any }) => (
@@ -147,7 +160,20 @@ const PenjualanSoldTable = ({ penjualanData }: PenjualanSoldTableProps) => {
               <h4 className="font-semibold mb-3 text-orange-900">Informasi Finansial</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Harga Beli:</span>
+                  <span className="text-muted-foreground">Harga Beli Awal:</span>
+                  <CurrencyCell 
+                    amount={(penjualan.harga_beli || 0) - (penjualan.biaya_lain_lain || 0)} 
+                    className="text-green-600" 
+                  />
+                </div>
+                {(penjualan.biaya_lain_lain || 0) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Update Harga:</span>
+                    <CurrencyCell amount={penjualan.biaya_lain_lain} className="text-red-600" />
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Harga Beli Total:</span>
                   <CurrencyCell amount={penjualan.harga_beli} className="text-red-600" />
                 </div>
                 <div className="flex justify-between">
@@ -300,6 +326,17 @@ const PenjualanSoldTable = ({ penjualanData }: PenjualanSoldTableProps) => {
     </Button>
   );
 
+  const HistoryButton = ({ penjualan }: { penjualan: any }) => (
+    <Button 
+      variant="outline" 
+      size="sm" 
+      onClick={() => handleViewHistory(penjualan)}
+      className="hover:bg-purple-50 hover:text-purple-600"
+    >
+      <Clock className="w-4 h-4" />
+    </Button>
+  );
+
   // Override the actions column to use DetailDialog
   const customColumns = columns.map(col => col);
 
@@ -314,6 +351,7 @@ const PenjualanSoldTable = ({ penjualanData }: PenjualanSoldTableProps) => {
           actions: (
             <div className="flex gap-1">
               <DetailDialog penjualan={row} />
+              <HistoryButton penjualan={row} />
               <UpdateHargaButton penjualan={row} />
             </div>
           )
@@ -323,7 +361,7 @@ const PenjualanSoldTable = ({ penjualanData }: PenjualanSoldTableProps) => {
           {
             key: "actions",
             header: "Aksi",
-            width: "w-24",
+            width: "w-32",
             className: "text-center",
             render: (value: any) => value
           }
@@ -339,6 +377,12 @@ const PenjualanSoldTable = ({ penjualanData }: PenjualanSoldTableProps) => {
         penjualan={selectedPenjualan}
         onConfirm={handleUpdateHargaConfirm}
         isLoading={soldUpdateHarga.isPending}
+      />
+      
+      <PriceHistoryModal
+        isOpen={isHistoryOpen}
+        onClose={handleHistoryClose}
+        penjualan={selectedPenjualanForHistory}
       />
     </>
   );

@@ -1,111 +1,93 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import type { BiroJasaItem, Brand, Company, JenisMotor } from "../types";
+import type { BiroJasaItem } from "../types";
 
 export const useBiroJasaData = (selectedDivision: string) => {
   const [biroJasaData, setBiroJasaData] = useState<BiroJasaItem[]>([]);
-  const [brandsData, setBrandsData] = useState<Brand[]>([]);
-  const [companiesData, setCompaniesData] = useState<Company[]>([]);
-  const [jenisMotorData, setJenisMotorData] = useState<JenisMotor[]>([]);
+  const [brandsData, setBrandsData] = useState<any[]>([]);
+  const [companiesData, setCompaniesData] = useState<any[]>([]);
+  const [jenisMotorData, setJenisMotorData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   const fetchData = async () => {
+    setLoading(true);
     try {
-      // Fetch biro jasa data with jenis_motor relation to filter by divisi
+      // Fetch biro jasa data without joins to brands and jenis_motor tables
+      // since we're using manual input for brand_name and jenis_motor
       let biroJasaQuery = supabase
-        .from("biro_jasa")
+        .from('biro_jasa')
         .select(`
           *,
-          brands:brand_id(name),
-          companies:rekening_tujuan_id(nama_perusahaan, divisi),
-          jenis_motor:jenis_motor_id(jenis_motor, divisi)
+          companies:rekening_tujuan_id(nama_perusahaan)
         `)
-        .order("created_at", { ascending: false });
+        .order('created_at', { ascending: false });
 
-      const { data: biroJasa, error: biroJasaError } = await biroJasaQuery;
+      if (selectedDivision !== 'all') {
+        // Add division filter if needed based on your business logic
+        // For now, we'll fetch all data since biro_jasa doesn't have division column
+      }
 
+      const { data: biroJasaResult, error: biroJasaError } = await biroJasaQuery;
       if (biroJasaError) throw biroJasaError;
-      
-      // Filter biro jasa data based on selected division
-      const filteredBiroJasa = selectedDivision !== 'all' 
-        ? (biroJasa || []).filter(item => item.jenis_motor?.divisi === selectedDivision)
-        : (biroJasa || []);
-      
-      setBiroJasaData(filteredBiroJasa);
 
-      // Fetch brands
-      const { data: brands, error: brandsError } = await supabase
-        .from("brands")
-        .select("*")
-        .order("name");
-
-      if (brandsError) throw brandsError;
-      setBrandsData(brands || []);
-
-      // Fetch companies based on selected division
+      // Fetch companies data for dropdown with division filter
       let companiesQuery = supabase
-        .from("companies")
-        .select("*")
-        .order("nama_perusahaan");
-
+        .from('companies')
+        .select('*')
+        .order('nama_perusahaan');
+      
+      // Apply division filter to companies
       if (selectedDivision !== 'all') {
         companiesQuery = companiesQuery.eq('divisi', selectedDivision);
       }
 
-      const { data: companies, error: companiesError } = await companiesQuery;
-
+      const { data: companiesResult, error: companiesError } = await companiesQuery;
       if (companiesError) throw companiesError;
-      setCompaniesData(companies || []);
 
-      // Fetch jenis motor based on selected division
-      let jenisMotorQuery = supabase
-        .from("jenis_motor")
-        .select("*")
-        .order("jenis_motor");
+      // Set empty arrays for brands and jenis_motor since we don't use them anymore
+      // but keep the structure for backward compatibility
+      setBiroJasaData(biroJasaResult || []);
+      setBrandsData([]); // Empty since we use manual input
+      setCompaniesData(companiesResult || []);
+      setJenisMotorData([]); // Empty since we use manual input
 
-      if (selectedDivision !== 'all') {
-        jenisMotorQuery = jenisMotorQuery.eq('divisi', selectedDivision);
-      }
-
-      const { data: jenisMotor, error: jenisMotorError } = await jenisMotorQuery;
-
-      if (jenisMotorError) throw jenisMotorError;
-      setJenisMotorData(jenisMotor || []);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error('Error fetching biro jasa data:', error);
       toast({
         title: "Error",
-        description: "Gagal memuat data",
+        description: "Gagal mengambil data biro jasa",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm("Yakin ingin menghapus data ini?")) {
-      try {
-        const { error } = await supabase
-          .from("biro_jasa")
-          .delete()
-          .eq("id", id);
+    try {
+      const { error } = await supabase
+        .from('biro_jasa')
+        .delete()
+        .eq('id', id);
 
-        if (error) throw error;
+      if (error) throw error;
 
-        toast({
-          title: "Berhasil",
-          description: "Data berhasil dihapus",
-        });
+      toast({
+        title: "Berhasil",
+        description: "Data biro jasa berhasil dihapus",
+      });
 
-        fetchData();
-      } catch (error) {
-        console.error("Error deleting data:", error);
-        toast({
-          title: "Error",
-          description: "Gagal menghapus data",
-          variant: "destructive",
-        });
-      }
+      // Refresh data after delete
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting biro jasa:', error);
+      toast({
+        title: "Error",
+        description: "Gagal menghapus data biro jasa",
+        variant: "destructive",
+      });
     }
   };
 
@@ -115,9 +97,10 @@ export const useBiroJasaData = (selectedDivision: string) => {
 
   return {
     biroJasaData,
-    brandsData,
+    brandsData, // Empty array for backward compatibility
     companiesData,
-    jenisMotorData,
+    jenisMotorData, // Empty array for backward compatibility
+    loading,
     fetchData,
     handleDelete,
   };

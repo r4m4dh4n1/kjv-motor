@@ -33,10 +33,13 @@ export const useSoldUpdateHarga = () => {
       const newKeuntungan = (currentPenjualan.keuntungan || 0) - updateData.biaya_tambahan;
       const companyId = currentPenjualan.company_id;
 
-      // 2. Update penjualan - reduce profit, add notes
+      // 2. Update penjualan - reduce profit, add notes, increase harga_beli
+      const newHargaBeli = (currentPenjualan.harga_beli || 0) + updateData.biaya_tambahan;
+      
       const { error: updateError } = await supabase
         .from('penjualans')
         .update({
+          harga_beli: newHargaBeli,
           keuntungan: newKeuntungan,
           biaya_lain_lain: (currentPenjualan.biaya_lain_lain || 0) + updateData.biaya_tambahan,
           reason_update_harga: updateData.reason,
@@ -46,6 +49,25 @@ export const useSoldUpdateHarga = () => {
 
       if (updateError) {
         throw new Error(`Gagal mengupdate penjualan: ${updateError.message}`);
+      }
+
+      // 2b. Update harga_final in pembelian table if pembelian_id exists
+      if (currentPenjualan.pembelian_id && updateData.biaya_tambahan > 0) {
+        const { error: pembelianError } = await supabase
+          .from('pembelian')
+          .update({
+            harga_final: newHargaBeli
+          })
+          .eq('id', currentPenjualan.pembelian_id);
+
+        if (pembelianError) {
+          console.error('Error updating pembelian harga_final:', pembelianError);
+          toast({
+            title: "Warning",
+            description: `Harga diupdate tapi gagal mengupdate harga final pembelian: ${pembelianError.message}`,
+            variant: "destructive"
+          });
+        }
       }
 
       // 3. Reduce company modal
@@ -88,6 +110,30 @@ export const useSoldUpdateHarga = () => {
             variant: "destructive"
           });
         }
+      }
+
+      // 5. Create price history entry in price_histories_pembelian
+      const { error: historyError } = await supabase
+        .from('price_histories_pembelian')
+        .insert({
+          pembelian_id: currentPenjualan.pembelian_id,
+          harga_beli_lama: currentPenjualan.harga_beli || 0,
+          harga_beli_baru: newHargaBeli,
+          biaya_qc: 0,
+          biaya_pajak: 0,
+          biaya_lain_lain: updateData.biaya_tambahan,
+          reason: updateData.reason,
+          keterangan_biaya_lain: updateData.keterangan || null,
+          company_id: companyId
+        });
+
+      if (historyError) {
+        console.error('Error creating price history:', historyError);
+        toast({
+          title: "Warning",
+          description: `Harga diupdate tapi gagal mencatat riwayat: ${historyError.message}`,
+          variant: "destructive"
+        });
       }
 
       return { success: true };
