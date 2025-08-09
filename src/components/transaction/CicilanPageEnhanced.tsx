@@ -159,6 +159,13 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
   const getFilteredData = () => {
     let filtered = [...cicilanData];
 
+    // Filter divisi
+    if (selectedDivision !== 'all') {
+      filtered = filtered.filter(item => 
+        item.penjualans?.divisi === selectedDivision
+      );
+    }
+
     // Filter pencarian
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
