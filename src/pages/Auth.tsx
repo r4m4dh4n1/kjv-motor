@@ -127,6 +127,33 @@ const Auth = () => {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!formData.email) {
+      toast({
+        title: 'Email diperlukan',
+        description: 'Masukkan email Anda terlebih dahulu.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setLoading(true);
+    try {
+      const redirectUrl = `${window.location.origin}/reset-password`;
+      const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
+        redirectTo: redirectUrl,
+      });
+      if (error) {
+        toast({ title: 'Gagal mengirim link', description: error.message, variant: 'destructive' });
+      } else {
+        toast({ title: 'Email terkirim', description: 'Periksa email untuk reset password.' });
+      }
+    } catch (err) {
+      toast({ title: 'Error', description: 'Terjadi kesalahan. Coba lagi.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm(true)) return;
@@ -257,9 +284,14 @@ const Auth = () => {
                   )}
                 </div>
 
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Signing In...' : 'Sign In'}
-                </Button>
+                <div className="space-y-2">
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? 'Signing In...' : 'Sign In'}
+                  </Button>
+                  <Button type="button" variant="link" className="px-0" onClick={handleResetPassword}>
+                    Lupa password?
+                  </Button>
+                </div>
               </form>
             </TabsContent>
 

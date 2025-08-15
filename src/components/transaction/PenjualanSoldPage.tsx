@@ -16,7 +16,7 @@ const PenjualanSoldPage = ({ selectedDivision }: PenjualanSoldPageProps) => {
   // Data queries
   const { penjualanData } = usePenjualanData(selectedDivision);
 
-  // Filter data penjualan - hanya yang statusnya 'selesai' (Sold)
+  // Filter dan sort data penjualan - hanya yang statusnya 'selesai' (Sold)
   const filteredPenjualanData = penjualanData.filter((penjualan: any) => {
     // Filter utama: hanya yang sudah selesai (Sold)
     if (penjualan.status !== 'selesai') {
@@ -32,7 +32,7 @@ const PenjualanSoldPage = ({ selectedDivision }: PenjualanSoldPageProps) => {
     }
 
     return true;
-  });
+  }).sort((a: any, b: any) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
 
   const resetFilters = () => {
     setFilterTukarTambah('semua');

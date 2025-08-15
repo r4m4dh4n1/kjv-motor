@@ -102,12 +102,15 @@ const UserApprovalPage = () => {
         }
       }
       
+      // Optimistically update UI
+      setPendingUsers(prev => prev.map(u => u.id === userId ? { ...u, is_approved: approve } : u));
+      
       toast({
         title: "Success",
         description: `User ${approve ? 'approved' : 'rejected'} successfully.`,
       });
       
-      // Refetch data
+      // Refetch to ensure data consistency
       await fetchPendingUsers();
       
     } catch (error) {

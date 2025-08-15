@@ -98,7 +98,7 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
     }
     
     return matchesSearch && matchesCabang && matchesDate;
-  });
+  }).sort((a: any, b: any) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
 
   // Use pagination hook
   const {

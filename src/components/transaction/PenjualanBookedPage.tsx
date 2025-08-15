@@ -69,7 +69,7 @@ const PenjualanBookedPage = ({ selectedDivision }: PenjualanBookedPageProps) => 
     handleSubmitUpdateHarga
   } = usePenjualanActions();
 
-  // Filter data penjualan - hanya yang statusnya BUKAN 'selesai' (Booked)
+  // Filter dan sort data penjualan - hanya yang statusnya BUKAN 'selesai' (Booked)
   const filteredPenjualanData = penjualanData.filter((penjualan: any) => {
     // Filter utama: hanya yang belum selesai (Booked)
     if (penjualan.status === 'selesai') {
@@ -85,7 +85,7 @@ const PenjualanBookedPage = ({ selectedDivision }: PenjualanBookedPageProps) => 
     }
 
     return true;
-  });
+  }).sort((a: any, b: any) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
 
   // Fungsi-fungsi yang sama dengan PenjualanPage
   const handleSubmit = async (e: React.FormEvent) => {

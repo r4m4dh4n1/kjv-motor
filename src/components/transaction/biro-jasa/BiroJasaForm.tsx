@@ -10,16 +10,14 @@ import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import type { BiroJasaFormData, Brand, Company, JenisMotor } from "./types";
+import type { BiroJasaFormData, Company } from "./types";
 import { yearOptions } from "./utils";
 import { formatCurrency, parseCurrency, handleCurrencyInput } from "./utils";
 
 interface BiroJasaFormProps {
   formData: BiroJasaFormData;
   setFormData: React.Dispatch<React.SetStateAction<BiroJasaFormData>>;
-  brandsData: Brand[];
   companiesData: Company[];
-  jenisMotorData: JenisMotor[];
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
   isEditing: boolean;
@@ -28,9 +26,7 @@ interface BiroJasaFormProps {
 export const BiroJasaForm = ({
   formData,
   setFormData,
-  brandsData,
   companiesData,
-  jenisMotorData,
   onSubmit,
   onCancel,
   isEditing,

@@ -18,12 +18,10 @@ export const usePenjualanDelete = () => {
 
       // 2. Return modal to company (add back the harga_beli to company modal)
       if (penjualanToDelete.company_id && penjualanToDelete.harga_beli) {
-          const { error: modalError } = await supabase
-            .from('companies')
-            .update({ 
-              modal: penjualanToDelete.harga_beli
-            })
-            .eq('id', penjualanToDelete.company_id);
+        const { error: modalError } = await supabase.rpc('update_company_modal', {
+          company_id: penjualanToDelete.company_id,
+          amount: penjualanToDelete.harga_beli  // Return the purchase cost
+        });
 
         if (modalError) {
           console.error('Error returning modal to company:', modalError);
@@ -32,12 +30,10 @@ export const usePenjualanDelete = () => {
 
       // 3. Subtract keuntungan from company modal (remove the profit gained)
       if (penjualanToDelete.company_id && penjualanToDelete.keuntungan > 0) {
-          const { error: keuntunganError } = await supabase
-            .from('companies')
-            .update({ 
-              modal: -penjualanToDelete.keuntungan
-            })
-            .eq('id', penjualanToDelete.company_id);
+        const { error: keuntunganError } = await supabase.rpc('update_company_modal', {
+          company_id: penjualanToDelete.company_id,
+          amount: -penjualanToDelete.keuntungan  // Subtract the profit
+        });
 
         if (keuntunganError) {
           console.error('Error subtracting keuntungan from company:', keuntunganError);

@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -104,14 +104,13 @@ export type Database = {
       biro_jasa: {
         Row: {
           biaya_modal: number | null
-          brand_id: number | null
+          brand_name: string | null
           created_at: string | null
           dp: number | null
           estimasi_biaya: number | null
           estimasi_tanggal_selesai: string
           id: number
           jenis_motor: string | null
-          jenis_motor_id: number | null
           jenis_pengurusan: string
           keterangan: string | null
           keuntungan: number | null
@@ -127,14 +126,13 @@ export type Database = {
         }
         Insert: {
           biaya_modal?: number | null
-          brand_id?: number | null
+          brand_name?: string | null
           created_at?: string | null
           dp?: number | null
           estimasi_biaya?: number | null
           estimasi_tanggal_selesai?: string
           id?: number
           jenis_motor?: string | null
-          jenis_motor_id?: number | null
           jenis_pengurusan: string
           keterangan?: string | null
           keuntungan?: number | null
@@ -150,14 +148,13 @@ export type Database = {
         }
         Update: {
           biaya_modal?: number | null
-          brand_id?: number | null
+          brand_name?: string | null
           created_at?: string | null
           dp?: number | null
           estimasi_biaya?: number | null
           estimasi_tanggal_selesai?: string
           id?: number
           jenis_motor?: string | null
-          jenis_motor_id?: number | null
           jenis_pengurusan?: string
           keterangan?: string | null
           keuntungan?: number | null
@@ -172,20 +169,6 @@ export type Database = {
           warna?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "biro_jasa_brand_id_fkey"
-            columns: ["brand_id"]
-            isOneToOne: false
-            referencedRelation: "brands"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "biro_jasa_jenis_motor_id_fkey"
-            columns: ["jenis_motor_id"]
-            isOneToOne: false
-            referencedRelation: "jenis_motor"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "biro_jasa_rekening_tujuan_id_fkey"
             columns: ["rekening_tujuan_id"]
@@ -247,25 +230,22 @@ export type Database = {
         Row: {
           biaya_modal: number | null
           brand_id: number | null
-          closed_at: string | null
-          closed_month: number
-          closed_year: number
           created_at: string | null
           dp: number | null
           estimasi_biaya: number | null
-          estimasi_tanggal_selesai: string
-          id: number
+          estimasi_tanggal_selesai: string | null
+          id: number | null
           jenis_motor: string | null
           jenis_motor_id: number | null
-          jenis_pengurusan: string
+          jenis_pengurusan: string | null
           keterangan: string | null
           keuntungan: number | null
           plat_nomor: string | null
           rekening_tujuan_id: number | null
           sisa: number | null
-          status: string
+          status: string | null
           tahun: number | null
-          tanggal: string
+          tanggal: string | null
           total_bayar: number | null
           updated_at: string | null
           warna: string | null
@@ -273,25 +253,22 @@ export type Database = {
         Insert: {
           biaya_modal?: number | null
           brand_id?: number | null
-          closed_at?: string | null
-          closed_month: number
-          closed_year: number
           created_at?: string | null
           dp?: number | null
           estimasi_biaya?: number | null
-          estimasi_tanggal_selesai: string
-          id: number
+          estimasi_tanggal_selesai?: string | null
+          id?: number | null
           jenis_motor?: string | null
           jenis_motor_id?: number | null
-          jenis_pengurusan: string
+          jenis_pengurusan?: string | null
           keterangan?: string | null
           keuntungan?: number | null
           plat_nomor?: string | null
           rekening_tujuan_id?: number | null
           sisa?: number | null
-          status: string
+          status?: string | null
           tahun?: number | null
-          tanggal: string
+          tanggal?: string | null
           total_bayar?: number | null
           updated_at?: string | null
           warna?: string | null
@@ -299,25 +276,22 @@ export type Database = {
         Update: {
           biaya_modal?: number | null
           brand_id?: number | null
-          closed_at?: string | null
-          closed_month?: number
-          closed_year?: number
           created_at?: string | null
           dp?: number | null
           estimasi_biaya?: number | null
-          estimasi_tanggal_selesai?: string
-          id?: number
+          estimasi_tanggal_selesai?: string | null
+          id?: number | null
           jenis_motor?: string | null
           jenis_motor_id?: number | null
-          jenis_pengurusan?: string
+          jenis_pengurusan?: string | null
           keterangan?: string | null
           keuntungan?: number | null
           plat_nomor?: string | null
           rekening_tujuan_id?: number | null
           sisa?: number | null
-          status?: string
+          status?: string | null
           tahun?: number | null
-          tanggal?: string
+          tanggal?: string | null
           total_bayar?: number | null
           updated_at?: string | null
           warna?: string | null
@@ -422,7 +396,7 @@ export type Database = {
         Insert: {
           batch_ke: number
           created_at?: string | null
-          id?: never
+          id?: number
           jenis_pembayaran: string
           jumlah_bayar: number
           keterangan?: string | null
@@ -436,7 +410,7 @@ export type Database = {
         Update: {
           batch_ke?: number
           created_at?: string | null
-          id?: never
+          id?: number
           jenis_pembayaran?: string
           jumlah_bayar?: number
           keterangan?: string | null
@@ -475,9 +449,13 @@ export type Database = {
           jenis_pembayaran: string
           jumlah_bayar: number
           keterangan: string | null
+          nominal_dana_1: number
+          nominal_dana_2: number | null
           penjualan_id: number
           sisa_bayar: number
           status: string
+          sumber_dana_1_id: number | null
+          sumber_dana_2_id: number | null
           tanggal_bayar: string
           tujuan_pembayaran_id: number | null
           updated_at: string | null
@@ -492,9 +470,13 @@ export type Database = {
           jenis_pembayaran: string
           jumlah_bayar: number
           keterangan?: string | null
+          nominal_dana_1?: number
+          nominal_dana_2?: number | null
           penjualan_id: number
           sisa_bayar: number
           status?: string
+          sumber_dana_1_id?: number | null
+          sumber_dana_2_id?: number | null
           tanggal_bayar: string
           tujuan_pembayaran_id?: number | null
           updated_at?: string | null
@@ -509,9 +491,13 @@ export type Database = {
           jenis_pembayaran?: string
           jumlah_bayar?: number
           keterangan?: string | null
+          nominal_dana_1?: number
+          nominal_dana_2?: number | null
           penjualan_id?: number
           sisa_bayar?: number
           status?: string
+          sumber_dana_1_id?: number | null
+          sumber_dana_2_id?: number | null
           tanggal_bayar?: string
           tujuan_pembayaran_id?: number | null
           updated_at?: string | null
@@ -1203,6 +1189,93 @@ export type Database = {
         }
         Relationships: []
       }
+      pencatatan_asset: {
+        Row: {
+          cabang_id: number
+          created_at: string | null
+          divisi: string
+          id: number
+          keterangan: string | null
+          nama: string
+          nominal: number
+          sumber_dana_id: number
+          tanggal: string
+          updated_at: string | null
+        }
+        Insert: {
+          cabang_id?: number
+          created_at?: string | null
+          divisi: string
+          id?: number
+          keterangan?: string | null
+          nama: string
+          nominal?: number
+          sumber_dana_id: number
+          tanggal?: string
+          updated_at?: string | null
+        }
+        Update: {
+          cabang_id?: number
+          created_at?: string | null
+          divisi?: string
+          id?: number
+          keterangan?: string | null
+          nama?: string
+          nominal?: number
+          sumber_dana_id?: number
+          tanggal?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      pencatatan_asset_history: {
+        Row: {
+          cabang_id: number
+          closed_at: string | null
+          closed_month: number
+          closed_year: number
+          created_at: string | null
+          divisi: string
+          id: number
+          keterangan: string | null
+          nama: string
+          nominal: number
+          sumber_dana_id: number
+          tanggal: string
+          updated_at: string | null
+        }
+        Insert: {
+          cabang_id: number
+          closed_at?: string | null
+          closed_month: number
+          closed_year: number
+          created_at?: string | null
+          divisi: string
+          id: number
+          keterangan?: string | null
+          nama: string
+          nominal: number
+          sumber_dana_id: number
+          tanggal: string
+          updated_at?: string | null
+        }
+        Update: {
+          cabang_id?: number
+          closed_at?: string | null
+          closed_month?: number
+          closed_year?: number
+          created_at?: string | null
+          divisi?: string
+          id?: number
+          keterangan?: string | null
+          nama?: string
+          nominal?: number
+          sumber_dana_id?: number
+          tanggal?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       penjualans: {
         Row: {
           biaya_lain_lain: number | null
@@ -1238,12 +1311,12 @@ export type Database = {
           status: string
           tahun: number
           tanggal: string
+          tanggal_lunas: string | null
           titip_ongkir: number | null
           total_ongkir: number | null
           tt: string | null
           updated_at: string | null
           warna: string
-          tanggal_lunas: string | null
         }
         Insert: {
           biaya_lain_lain?: number | null
@@ -1279,12 +1352,12 @@ export type Database = {
           status: string
           tahun: number
           tanggal: string
+          tanggal_lunas?: string | null
           titip_ongkir?: number | null
           total_ongkir?: number | null
           tt?: string | null
           updated_at?: string | null
           warna: string
-          tanggal_lunas?: string | null
         }
         Update: {
           biaya_lain_lain?: number | null
@@ -1320,12 +1393,12 @@ export type Database = {
           status?: string
           tahun?: number
           tanggal?: string
+          tanggal_lunas?: string | null
           titip_ongkir?: number | null
           total_ongkir?: number | null
           tt?: string | null
           updated_at?: string | null
           warna?: string
-          tanggal_lunas?: string | null
         }
         Relationships: [
           {
@@ -1410,6 +1483,7 @@ export type Database = {
           status: string
           tahun: number
           tanggal: string
+          tanggal_lunas: string | null
           titip_ongkir: number | null
           total_ongkir: number | null
           tt: string | null
@@ -1453,6 +1527,7 @@ export type Database = {
           status: string
           tahun: number
           tanggal: string
+          tanggal_lunas?: string | null
           titip_ongkir?: number | null
           total_ongkir?: number | null
           tt?: string | null
@@ -1496,6 +1571,7 @@ export type Database = {
           status?: string
           tahun?: number
           tanggal?: string
+          tanggal_lunas?: string | null
           titip_ongkir?: number | null
           total_ongkir?: number | null
           tt?: string | null
@@ -1533,6 +1609,7 @@ export type Database = {
           biaya_lain_lain: number | null
           biaya_pajak: number | null
           biaya_qc: number | null
+          company_id: number | null
           created_at: string
           harga_jual_baru: number
           harga_jual_lama: number
@@ -1547,6 +1624,7 @@ export type Database = {
           biaya_lain_lain?: number | null
           biaya_pajak?: number | null
           biaya_qc?: number | null
+          company_id?: number | null
           created_at?: string
           harga_jual_baru: number
           harga_jual_lama?: number
@@ -1561,6 +1639,7 @@ export type Database = {
           biaya_lain_lain?: number | null
           biaya_pajak?: number | null
           biaya_qc?: number | null
+          company_id?: number | null
           created_at?: string
           harga_jual_baru?: number
           harga_jual_lama?: number
@@ -1572,6 +1651,13 @@ export type Database = {
           user_id?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "price_histories_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "price_histories_pembelian_id_fkey"
             columns: ["pembelian_id"]
@@ -1586,6 +1672,7 @@ export type Database = {
           biaya_lain_lain: number | null
           biaya_pajak: number | null
           biaya_qc: number | null
+          company_id: number | null
           created_at: string
           harga_beli_baru: number
           harga_beli_lama: number
@@ -1594,13 +1681,13 @@ export type Database = {
           pembelian_id: number
           reason: string | null
           updated_at: string
-          company_id: number | null
           user_id: number | null
         }
         Insert: {
           biaya_lain_lain?: number | null
           biaya_pajak?: number | null
           biaya_qc?: number | null
+          company_id?: number | null
           created_at?: string
           harga_beli_baru: number
           harga_beli_lama?: number
@@ -1609,13 +1696,13 @@ export type Database = {
           pembelian_id: number
           reason?: string | null
           updated_at?: string
-          company_id: number | null
           user_id?: number | null
         }
         Update: {
           biaya_lain_lain?: number | null
           biaya_pajak?: number | null
           biaya_qc?: number | null
+          company_id?: number | null
           created_at?: string
           harga_beli_baru?: number
           harga_beli_lama?: number
@@ -1624,10 +1711,16 @@ export type Database = {
           pembelian_id?: number
           reason?: string | null
           updated_at?: string
-          company_id: number | null
           user_id?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "price_histories_pembelian_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "price_histories_pembelian_pembelian_id_fkey"
             columns: ["pembelian_id"]
@@ -1635,13 +1728,6 @@ export type Database = {
             referencedRelation: "pembelian"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "price_histories_pembelian_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          }
         ]
       }
       profiles: {
@@ -2004,11 +2090,11 @@ export type Database = {
     }
     Functions: {
       assign_user_role: {
-        Args: { user_id_param: number; role_name_param: string }
+        Args: { role_name_param: string; user_id_param: number }
         Returns: boolean
       }
       close_month: {
-        Args: { target_month: number; target_year: number; notes?: string }
+        Args: { notes?: string; target_month: number; target_year: number }
         Returns: Json
       }
       decrement_qty: {
@@ -2022,8 +2108,8 @@ export type Database = {
       get_user_permissions: {
         Args: { user_id_param: number }
         Returns: {
-          permission_name: string
           description: string
+          permission_name: string
         }[]
       }
       get_user_role: {
@@ -2047,11 +2133,11 @@ export type Database = {
         Returns: Json
       }
       update_company_modal: {
-        Args: { company_id: number; amount: number }
+        Args: { amount: number; company_id: number }
         Returns: undefined
       }
       user_has_permission: {
-        Args: { user_id_param: number; permission_name_param: string }
+        Args: { permission_name_param: string; user_id_param: number }
         Returns: boolean
       }
     }

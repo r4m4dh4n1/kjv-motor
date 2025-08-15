@@ -1,8 +1,6 @@
 export interface BiroJasaFormData {
   tanggal: string;
-  brand_id: string;
   brand_name?: string;
-  jenis_motor_id: string;
   jenis_motor?: string;
   warna: string;
   plat_nomor: string;
@@ -20,9 +18,7 @@ export interface BiroJasaFormData {
 export interface BiroJasaItem {
   id: number;
   tanggal: string;
-  brand_id?: number;
   brand_name?: string;
-  jenis_motor_id?: number;
   jenis_motor?: string;
   warna?: string;
   plat_nomor?: string;
@@ -43,23 +39,12 @@ export interface BiroJasaItem {
   companies?: { nama_perusahaan: string };
 }
 
-export interface Brand {
-  id: number;
-  name: string;
-}
-
 export interface Company {
   id: number;
   nama_perusahaan: string;
   nomor_rekening: string;
 }
 
-export interface JenisMotor {
-  id: number;
-  jenis_motor: string;
-  brand_id: number;
-  divisi: string;
-}
 
 export interface UpdateBiayaFormData {
   jumlah_bayar: string;

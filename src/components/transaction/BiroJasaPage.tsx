@@ -89,9 +89,7 @@ const BiroJasaPage = ({ selectedDivision }: { selectedDivision: string }) => {
             <BiroJasaForm
               formData={formData}
               setFormData={setFormData}
-              brandsData={brandsData}
               companiesData={companiesData}
-              jenisMotorData={jenisMotorData}
               onSubmit={handleSubmit}
               onCancel={handleCancel}
               isEditing={!!editingBiroJasa}

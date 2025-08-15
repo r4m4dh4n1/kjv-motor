@@ -159,7 +159,7 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
     }
     
     return matchesSearch && matchesCabang && matchesStatus && matchesDate;
-  });
+  }).sort((a: any, b: any) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
 
   // Use pagination hook
   const {

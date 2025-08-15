@@ -17,7 +17,7 @@ export const usePenjualanData = (selectedDivision: string) => {
           jenis_motor:jenis_id(jenis_motor),
           companies:company_id(nama_perusahaan)
         `)
-        .order('created_at', { ascending: false });
+        .order('tanggal', { ascending: false });
 
       if (selectedDivision !== 'all') {
         query = query.eq('divisi', selectedDivision);
