@@ -98,7 +98,12 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
     }
     
     return matchesSearch && matchesCabang && matchesDate;
-  }).sort((a: any, b: any) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
+  }).sort((a: any, b: any) => {
+    // Sort by tanggal_lunas (newest first), fallback to tanggal if tanggal_lunas is null
+    const dateA = new Date(a.tanggal_lunas || a.tanggal);
+    const dateB = new Date(b.tanggal_lunas || b.tanggal);
+    return dateB.getTime() - dateA.getTime(); // Newest first (descending)
+  });
 
   // Use pagination hook
   const {
