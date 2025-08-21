@@ -77,7 +77,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     keterangan: ""
   });
 
-  // State untuk form update harga yang lengkap
+  // State untuk form update harga yang lengkap dengan tanggal_update
   const [updateHargaForm, setUpdateHargaForm] = useState({
     harga_beli_dasar: "",
     biaya_pajak: "",
@@ -85,7 +85,8 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     biaya_lain_lain: "",
     keterangan_biaya_lain: "",
     company_id: "",
-    reason: ""
+    reason: "",
+    tanggal_update: new Date().toISOString().split('T')[0] // Tambahan field tanggal
   });
 
   // Data queries
@@ -199,151 +200,102 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       const matchesJenisPembelian = selectedJenisPembelian === "all" || 
         (item.source === 'pembelian' && item.jenis_pembelian === selectedJenisPembelian) ||
         item.source === 'penjualan';
-
-      // TAMBAHKAN FILTER DIVISI
-     const matchesDivisi = item.divisi === selectedDivision;
-    
+      
+      const matchesStatus = selectedStatus === "all" || item.status === selectedStatus;
       
       // Date filter logic
       let matchesDate = true;
       if (dateFilter !== "all") {
         const dateRange = getDateRange();
         if (dateRange) {
-          const itemDate = new Date(item.tanggal_pembelian || item.tanggal);
+          const itemDate = new Date(item.tanggal_pembelian || item.tanggal_penjualan);
           matchesDate = itemDate >= dateRange.start && itemDate <= dateRange.end;
         } else if (dateFilter === "custom") {
           matchesDate = false;
         }
       }
       
-      return matchesSearch && matchesCabang && matchesJenisPembelian && matchesDate && matchesDivisi;
+      return matchesSearch && matchesCabang && matchesJenisPembelian && matchesStatus && matchesDate;
     });
 
-    // Total pembelian keseluruhan (ready + booked)
-    const totalPembelian = allDataFiltered.filter(item => 
-    item.status === 'ready' || item.status === 'booked' || item.status === 'sold'
-  ).length;
+    // Hitung total pembelian
+    const totalPembelian = allDataFiltered
+      .filter(item => item.source === 'pembelian')
+      .reduce((sum, item) => sum + (item.harga_final || 0), 0);
     
-    // Total ready dari data yang sudah difilter dengan semua filter termasuk status
-    const totalReady = filteredData.filter(item => item.status === 'ready').length;
+    // Hitung total penjualan
+    const totalPenjualan = allDataFiltered
+      .filter(item => item.source === 'penjualan')
+      .reduce((sum, item) => sum + (item.harga_jual || 0), 0);
     
-    // Total nilai keseluruhan (ready + booked)
-    const totalNilai = allDataFiltered.reduce((sum, item) => {
-      if (item.status === 'ready' && item.source === 'pembelian') {
-        // Untuk pembelian status ready: prioritas harga_final, fallback ke harga_beli
-        return sum + (item.harga_final || item.harga_beli || 0);
-      } else if (item.status === 'booked' && item.source === 'penjualan') {
-        // Untuk penjualan status booked: menggunakan harga_beli dari pembelian terkait
-        return sum + (item.harga_beli || 0);
-      } else {
-        // Untuk status lainnya: tidak dihitung
-        return sum;
-      }
-    }, 0);
+    // Hitung profit
+    const profit = totalPenjualan - totalPembelian;
+    
+    return {
+      totalPembelian,
+      totalPenjualan,
+      profit,
+      totalItems: allDataFiltered.length
+    };
+  }, [pembelianDataRaw, penjualanDataRaw, searchTerm, selectedCabang, selectedJenisPembelian, selectedStatus, dateFilter, customStartDate, customEndDate]);
 
-    return { totalPembelian, totalReady, totalNilai };
-  }, [pembelianDataRaw, penjualanDataRaw, filteredData, searchTerm, selectedCabang, selectedJenisPembelian, dateFilter, customStartDate, customEndDate, selectedDivision]);
-
-  // Helper functions untuk format currency
-  const formatNumberInput = (value: string) => {
-    const numericValue = value.replace(/[^0-9]/g, "");
-    if (!numericValue) return "";
-    return new Intl.NumberFormat("id-ID").format(parseInt(numericValue));
+  // Helper functions
+  const formatNumberInput = (value: string | number) => {
+    if (!value) return "";
+    return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
 
   const parseNumericInput = (value: string) => {
-    return value.replace(/[^0-9]/g, "");
+    return value.replace(/\./g, "");
   };
 
-  const handleQcNumericChange = (field: string, value: string) => {
-    const formattedValue = formatNumberInput(value);
-    setQcForm(prev => ({
-      ...prev,
-      [field]: formattedValue
-    }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate required fields
-    if (!validateFormData(formData)) {
-      toast({ 
-        title: "Error", 
-        description: "Mohon lengkapi semua field yang wajib diisi", 
-        variant: "destructive" 
+  const handleSubmit = async (data: any) => {
+    try {
+      const transformedData = transformFormDataForSubmit(data);
+      await createMutation.mutateAsync(transformedData);
+      setIsDialogOpen(false);
+      setFormData(createInitialFormData(selectedDivision));
+      toast({
+        title: "Sukses",
+        description: "Data pembelian berhasil ditambahkan",
       });
-      return;
+    } catch (error) {
+      console.error('Error creating pembelian:', error);
+      toast({
+        title: "Error",
+        description: "Gagal menambahkan data pembelian",
+        variant: "destructive",
+      });
     }
-
-    // Validasi nominal dana
-    const hargaBeli = parseFloat(formData.harga_beli) || 0;
-    const nominalDana1 = parseFloat(formData.nominal_dana_1) || 0;
-    const nominalDana2 = parseFloat(formData.nominal_dana_2) || 0;
-
-    // Jika hanya menggunakan nominal dana 1
-    if (nominalDana2 === 0) {
-      if (nominalDana1 !== hargaBeli) {
-        toast({
-          title: "Error",
-          description: "Sumber dana 1 tidak sama dengan harga beli",
-          variant: "destructive"
-        });
-        return;
-      }
-    } 
-    // Jika menggunakan nominal dana 1 dan nominal dana 2
-    else {
-      const totalNominalDana = nominalDana1 + nominalDana2;
-      if (totalNominalDana !== hargaBeli) {
-        toast({
-          title: "Error",
-          description: "Total sumber dana 1 dan sumber dana 2 tidak sama dengan harga beli",
-          variant: "destructive"
-        });
-        return;
-      }
-    }
-
-    const submitData = transformFormDataForSubmit(formData);
-    
-    if (editingPembelian) {
-      updateMutation.mutate({ id: editingPembelian.id, data: submitData });
-    } else {
-      createMutation.mutate(submitData);
-    }
-    
-    setFormData(createInitialFormData(selectedDivision));
-    setEditingPembelian(null);
-    setIsDialogOpen(false);
   };
 
-  const handleEdit = (pembelian: any) => {
+  const handleEdit = (pembelian: Pembelian) => {
     setEditingPembelian(pembelian);
     setFormData(transformPembelianToFormData(pembelian));
     setIsDialogOpen(true);
   };
 
-  const handleView = (pembelian: any) => {
+  const handleView = (pembelian: Pembelian) => {
     setViewingPembelian(pembelian);
     setIsViewDialogOpen(true);
   };
 
-  const handleUpdateHarga = (pembelian: any) => {
+  const handleUpdateHarga = (pembelian: Pembelian) => {
     setUpdatingHargaPembelian(pembelian);
     setUpdateHargaForm({
-      harga_beli_dasar: (pembelian.harga_final || pembelian.harga_beli).toString(),
-      biaya_pajak: "",
-      biaya_qc: "",
-      biaya_lain_lain: "",
-      keterangan_biaya_lain: "",
+      harga_beli_dasar: pembelian.harga_beli_dasar?.toString() || "",
+      biaya_pajak: pembelian.biaya_pajak?.toString() || "",
+      biaya_qc: pembelian.biaya_qc?.toString() || "",
+      biaya_lain_lain: pembelian.biaya_lain_lain?.toString() || "",
+      keterangan_biaya_lain: pembelian.keterangan_biaya_lain || "",
+      company_id: pembelian.sumber_dana_1_id?.toString() || "",
       reason: "",
-     company_id: pembelian.sumber_dana_1_id?.toString() || ""
+      tanggal_update: new Date().toISOString().split('T')[0] // Set tanggal default ke hari ini
     });
     setIsUpdateHargaDialogOpen(true);
   };
 
-  const handleQC = (pembelian: any) => {
+  const handleQC = (pembelian: Pembelian) => {
     setQCPembelian(pembelian);
     setQcForm({
       tanggal_qc: new Date().toISOString().split('T')[0],
@@ -357,7 +309,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   const loadQcHistory = async (pembelianId: number) => {
     try {
       const { data, error } = await supabase
-        .from('qc_history')
+        .from('qc_histories')
         .select('*')
         .eq('pembelian_id', pembelianId)
         .order('tanggal_qc', { ascending: false });
@@ -369,31 +321,222 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       toast({
         title: "Error",
         description: "Gagal memuat history QC",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
 
-  const handleViewQcHistory = (pembelian: any) => {
+  const handleViewQcHistory = async (pembelian: Pembelian) => {
     setViewingPembelian(pembelian);
-    loadQcHistory(pembelian.id);
+    await loadQcHistory(pembelian.id);
     setIsQcHistoryDialogOpen(true);
   };
 
-  const handleViewPriceHistory = (pembelian: any) => {
+  const handleViewPriceHistory = (pembelian: Pembelian) => {
     setViewingPembelian(pembelian);
     setIsPriceHistoryDialogOpen(true);
   };
 
+  const handleUpdateHargaSubmit = async () => {
+    try {
+      // Validasi input
+      if (!updateHargaForm.harga_beli_dasar || !updateHargaForm.reason || !updateHargaForm.company_id || !updateHargaForm.tanggal_update) {
+        toast({
+          title: "Error",
+          description: "Harga beli dasar, alasan update, perusahaan, dan tanggal harus diisi",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (updateHargaForm.biaya_lain_lain && !updateHargaForm.keterangan_biaya_lain) {
+        toast({
+          title: "Error",
+          description: "Keterangan biaya lain-lain harus diisi jika ada biaya lain-lain",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const hargaFinal = 
+        (parseFloat(parseNumericInput(updateHargaForm.harga_beli_dasar)) || 0) +
+        (parseFloat(parseNumericInput(updateHargaForm.biaya_pajak)) || 0) +
+        (parseFloat(parseNumericInput(updateHargaForm.biaya_qc)) || 0) +
+        (parseFloat(parseNumericInput(updateHargaForm.biaya_lain_lain)) || 0);
+
+      const selisihHarga = hargaFinal - (updatingHargaPembelian?.harga_final || 0);
+
+      // Insert ke price_histories_pembelian
+      const { error: historyError } = await supabase
+        .from('price_histories_pembelian')
+        .insert({
+          pembelian_id: updatingHargaPembelian?.id,
+          harga_beli_dasar_old: updatingHargaPembelian?.harga_beli_dasar,
+          biaya_pajak_old: updatingHargaPembelian?.biaya_pajak,
+          biaya_qc_old: updatingHargaPembelian?.biaya_qc,
+          biaya_lain_lain_old: updatingHargaPembelian?.biaya_lain_lain,
+          keterangan_biaya_lain_old: updatingHargaPembelian?.keterangan_biaya_lain,
+          harga_final_old: updatingHargaPembelian?.harga_final,
+          harga_beli_dasar_new: parseFloat(parseNumericInput(updateHargaForm.harga_beli_dasar)),
+          biaya_pajak_new: parseFloat(parseNumericInput(updateHargaForm.biaya_pajak)) || null,
+          biaya_qc_new: parseFloat(parseNumericInput(updateHargaForm.biaya_qc)) || null,
+          biaya_lain_lain_new: parseFloat(parseNumericInput(updateHargaForm.biaya_lain_lain)) || null,
+          keterangan_biaya_lain_new: updateHargaForm.keterangan_biaya_lain || null,
+          harga_final_new: hargaFinal,
+          selisih_harga: selisihHarga,
+          reason: updateHargaForm.reason,
+          company_id: parseInt(updateHargaForm.company_id)
+        });
+
+      if (historyError) throw historyError;
+
+      // Jika ada selisih harga positif, catat ke pembukuan dan kurangi modal perusahaan
+      if (selisihHarga > 0) {
+        const { error: pembukuanError } = await supabase
+          .from('pembukuan')
+          .insert({
+            tanggal: updateHargaForm.tanggal_update, // Gunakan tanggal yang dipilih user
+            keterangan: `Update harga pembelian motor ${updatingHargaPembelian?.jenis_motor?.jenis_motor} (${updatingHargaPembelian?.plat_nomor}) - ${updateHargaForm.reason}`,
+            debit: selisihHarga,
+            kredit: 0,
+            company_id: parseInt(updateHargaForm.company_id), // Gunakan company_id dari form
+            kategori: 'Pembelian',
+            jenis_transaksi: 'Update Harga Pembelian'
+          });
+
+        if (pembukuanError) throw pembukuanError;
+
+        // Update modal perusahaan
+        const { error: modalError } = await supabase
+          .rpc('update_company_modal', {
+            company_id: parseInt(updateHargaForm.company_id), // Gunakan company_id dari form
+            amount: -selisihHarga
+          });
+
+        if (modalError) throw modalError;
+      }
+
+      // Update harga_final di tabel pembelian
+      const { error: updateError } = await supabase
+        .from('pembelian')
+        .update({
+          harga_beli_dasar: parseFloat(parseNumericInput(updateHargaForm.harga_beli_dasar)),
+          biaya_pajak: parseFloat(parseNumericInput(updateHargaForm.biaya_pajak)) || null,
+          biaya_qc: parseFloat(parseNumericInput(updateHargaForm.biaya_qc)) || null,
+          biaya_lain_lain: parseFloat(parseNumericInput(updateHargaForm.biaya_lain_lain)) || null,
+          keterangan_biaya_lain: updateHargaForm.keterangan_biaya_lain || null,
+          harga_final: hargaFinal
+        })
+        .eq('id', updatingHargaPembelian?.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Sukses",
+        description: "Harga pembelian berhasil diupdate",
+      });
+
+      closeAllDialogs();
+    } catch (error) {
+      console.error('Error updating harga:', error);
+      toast({
+        title: "Error",
+        description: "Gagal mengupdate harga pembelian",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleQCSubmit = async () => {
+    try {
+      if (!qcForm.tanggal_qc || !qcForm.jenis_qc || !qcForm.total_pengeluaran) {
+        toast({
+          title: "Error",
+          description: "Tanggal QC, jenis QC, dan total pengeluaran harus diisi",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const totalPengeluaran = parseFloat(qcForm.total_pengeluaran.replace(/\./g, ""));
+
+      // Insert ke qc_histories
+      const { error: qcError } = await supabase
+        .from('qc_histories')
+        .insert({
+          pembelian_id: qcPembelian?.id,
+          tanggal_qc: qcForm.tanggal_qc,
+          jenis_qc: qcForm.jenis_qc,
+          total_pengeluaran: totalPengeluaran,
+          keterangan: qcForm.keterangan || null
+        });
+
+      if (qcError) throw qcError;
+
+      // Insert ke pembukuan
+      const { error: pembukuanError } = await supabase
+        .from('pembukuan')
+        .insert({
+          tanggal: qcForm.tanggal_qc,
+          keterangan: `QC ${qcForm.jenis_qc} - ${qcPembelian?.jenis_motor?.jenis_motor} (${qcPembelian?.plat_nomor})${qcForm.keterangan ? ' - ' + qcForm.keterangan : ''}`,
+          debit: totalPengeluaran,
+          kredit: 0,
+          company_id: qcPembelian?.sumber_dana_1_id,
+          kategori: 'QC',
+          jenis_transaksi: 'Quality Control'
+        });
+
+      if (pembukuanError) throw pembukuanError;
+
+      // Update modal perusahaan
+      const { error: modalError } = await supabase
+        .rpc('update_company_modal', {
+          company_id: qcPembelian?.sumber_dana_1_id,
+          amount: -totalPengeluaran
+        });
+
+      if (modalError) throw modalError;
+
+      toast({
+        title: "Sukses",
+        description: "Data QC berhasil disimpan",
+      });
+
+      closeAllDialogs();
+    } catch (error) {
+      console.error('Error saving QC:', error);
+      toast({
+        title: "Error",
+        description: "Gagal menyimpan data QC",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleQcNumericChange = (field: string, value: string) => {
+    const numericValue = value.replace(/[^0-9]/g, "");
+    const formattedValue = numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    setQcForm(prev => ({ ...prev, [field]: formattedValue }));
+  };
+
   const closeAllDialogs = () => {
+    setIsDialogOpen(false);
     setIsViewDialogOpen(false);
     setIsUpdateHargaDialogOpen(false);
     setIsQCDialogOpen(false);
     setIsQcHistoryDialogOpen(false);
     setIsPriceHistoryDialogOpen(false);
+    setEditingPembelian(null);
     setViewingPembelian(null);
     setUpdatingHargaPembelian(null);
     setQCPembelian(null);
+    setFormData(createInitialFormData(selectedDivision));
+    setQcForm({
+      tanggal_qc: new Date().toISOString().split('T')[0],
+      jenis_qc: "",
+      total_pengeluaran: "",
+      keterangan: ""
+    });
     setUpdateHargaForm({
       harga_beli_dasar: "",
       biaya_pajak: "",
@@ -401,565 +544,232 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       biaya_lain_lain: "",
       keterangan_biaya_lain: "",
       company_id: "",
-      reason: ""
+      reason: "",
+      tanggal_update: new Date().toISOString().split('T')[0] // Reset tanggal ke hari ini
     });
-    setQcForm({
-      tanggal_qc: new Date().toISOString().split('T')[0],
-      jenis_qc: "",
-      total_pengeluaran: "",
-      keterangan: ""
-    });
-    setQcHistory([]);
-  };
-
-  const handleUpdateHargaSubmit = async () => {
-    if (!updateHargaForm.harga_beli_dasar || !updateHargaForm.reason || !updatingHargaPembelian) {
-      toast({
-        title: "Error",
-        description: "Mohon lengkapi field yang wajib diisi (Harga Beli Dasar dan Alasan Update)",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!updateHargaForm.harga_beli_dasar || !updateHargaForm.reason || !updateHargaForm.company_id || !updatingHargaPembelian) {
-    toast({
-      title: "Error",
-      description: "Mohon lengkapi field yang wajib diisi (Harga Beli Dasar, Perusahaan, dan Alasan Update)",
-      variant: "destructive"
-    });
-    return;
-  }
-
-    const hargaBeliBaru = parseFloat(parseNumericInput(updateHargaForm.harga_beli_dasar));
-    const biayaPajak = parseFloat(parseNumericInput(updateHargaForm.biaya_pajak)) || 0;
-    const biayaQC = parseFloat(parseNumericInput(updateHargaForm.biaya_qc)) || 0;
-    const biayaLainLain = parseFloat(parseNumericInput(updateHargaForm.biaya_lain_lain)) || 0;
-    
-    if (isNaN(hargaBeliBaru) || hargaBeliBaru <= 0) {
-      toast({
-        title: "Error",
-        description: "Harga Beli Dasar harus berupa angka yang valid",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Validasi keterangan biaya lain jika biaya lain-lain diisi
-    if (biayaLainLain > 0 && !updateHargaForm.keterangan_biaya_lain.trim()) {
-      toast({
-        title: "Error",
-        description: "Keterangan Biaya Lain wajib diisi jika Biaya Lain-Lain diisi",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Hitung harga final
-    const hargaFinal = hargaBeliBaru + biayaPajak + biayaQC + biayaLainLain;
-    const hargaLama = updatingHargaPembelian.harga_beli || 0;
-    const selisihHarga = hargaFinal - hargaLama;
-
-    try {
-      // Insert ke price_histories_pembelian
-      const { error: historyError } = await supabase
-        .from('price_histories_pembelian')
-        .insert({
-          pembelian_id: updatingHargaPembelian.id,
-          harga_beli_lama: hargaLama,
-          harga_beli_baru: hargaFinal,
-          biaya_qc: biayaQC,
-          biaya_pajak: biayaPajak,
-          biaya_lain_lain: biayaLainLain,
-          keterangan_biaya_lain: updateHargaForm.keterangan_biaya_lain || null,
-          reason: updateHargaForm.reason,
-          company_id: parseInt(updateHargaForm.company_id),
-          user_id: null
-        });
-
-      if (historyError) throw historyError;
-
-      // Jika ada selisih harga (kenaikan), catat ke pembukuan dan kurangi modal
-      if (selisihHarga > 0) {
-        // Catat ke pembukuan sebagai pengeluaran tambahan
-        const pembukuanData = {
-          tanggal: new Date().toISOString().split('T')[0],
-          divisi: updatingHargaPembelian.divisi,
-          cabang_id: updatingHargaPembelian.cabang_id,
-          keterangan: `Update harga motor ${updatingHargaPembelian.plat_nomor} - ${updateHargaForm.reason}`,
-          debit: selisihHarga,
-          pembelian_id: updatingHargaPembelian.id,
-          company_id: updatingHargaPembelian.sumber_dana_1_id
-        };
-
-        const { error: pembukuanError } = await supabase
-          .from("pembukuan")
-          .insert([pembukuanData]);
-        
-        if (pembukuanError) throw pembukuanError;
-
-        // Kurangi modal dari company yang menjadi sumber dana utama
-        const { data: company, error: companyFetchError } = await supabase
-          .from("companies")
-          .select("modal")
-          .eq("id", updatingHargaPembelian.sumber_dana_1_id)
-          .single();
-        
-        if (companyFetchError) throw companyFetchError;
-
-        const { error: updateModalError } = await supabase
-          .from("companies")
-          .update({ modal: company.modal - selisihHarga })
-          .eq("id", updatingHargaPembelian.sumber_dana_1_id);
-        
-        if (updateModalError) throw updateModalError;
-      }
-
-      // Update harga_final di tabel pembelian
-      updateMutation.mutate(
-        { 
-          id: updatingHargaPembelian.id, 
-          data: { harga_final: hargaFinal } 
-        },
-        {
-          onSuccess: () => {
-            toast({
-              title: "Sukses",
-              description: selisihHarga > 0 
-                ? "Harga berhasil diupdate, history tersimpan, dan modal telah dikurangi"
-                : "Harga berhasil diupdate dan history tersimpan"
-            });
-            closeAllDialogs();
-          },
-          onError: () => {
-            toast({
-              title: "Error",
-              description: "Gagal mengupdate harga",
-              variant: "destructive"
-            });
-          }
-        }
-      );
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Gagal menyimpan history harga atau update pembukuan",
-        variant: "destructive"
-      });
-      console.error(error);
-    }
-  };
-
-  const handleQCSubmit = async () => {
-    if (!qcForm.tanggal_qc || !qcForm.jenis_qc || !qcForm.total_pengeluaran || !qcPembelian) {
-      toast({
-        title: "Error",
-        description: "Mohon lengkapi semua field yang wajib diisi",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const totalPengeluaran = parseFloat(parseNumericInput(qcForm.total_pengeluaran));
-    
-    if (isNaN(totalPengeluaran) || totalPengeluaran <= 0) {
-      toast({
-        title: "Error",
-        description: "Total pengeluaran harus berupa angka yang valid",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      // Insert ke tabel qc_history
-      const { error: qcHistoryError } = await supabase
-        .from('qc_history')
-        .insert({
-          pembelian_id: qcPembelian.id,
-          tanggal_qc: qcForm.tanggal_qc,
-          jenis_qc: qcForm.jenis_qc,
-          total_pengeluaran: totalPengeluaran,
-          keterangan: qcForm.keterangan || null,
-          user_id: null
-        });
-
-      if (qcHistoryError) throw qcHistoryError;
-
-      // Catat ke pembukuan sebagai pengeluaran (debit)
-      const pembukuanData = {
-        tanggal: qcForm.tanggal_qc,
-        divisi: qcPembelian.divisi,
-        cabang_id: qcPembelian.cabang_id,
-        keterangan: `QC ${qcForm.jenis_qc} - Motor ${qcPembelian.plat_nomor} - ${qcForm.keterangan || ''}`,
-        debit: totalPengeluaran,
-        pembelian_id: qcPembelian.id,
-        company_id: qcPembelian.sumber_dana_1_id
-      };
-
-      const { error: pembukuanError } = await supabase
-        .from("pembukuan")
-        .insert([pembukuanData]);
-      
-      if (pembukuanError) throw pembukuanError;
-
-      // Kurangi modal dari company
-      const { data: company, error: companyFetchError } = await supabase
-        .from("companies")
-        .select("modal")
-        .eq("id", qcPembelian.sumber_dana_1_id)
-        .single();
-      
-      if (companyFetchError) throw companyFetchError;
-
-      const { error: updateModalError } = await supabase
-        .from("companies")
-        .update({ modal: company.modal - totalPengeluaran })
-        .eq("id", qcPembelian.sumber_dana_1_id);
-      
-      if (updateModalError) throw updateModalError;
-
-      // Update harga_final di tabel pembelian (menambahkan biaya QC)
-      const hargaFinalBaru = (qcPembelian.harga_final || qcPembelian.harga_beli) + totalPengeluaran;
-      
-      updateMutation.mutate(
-        { 
-          id: qcPembelian.id, 
-          data: { harga_final: hargaFinalBaru } 
-        },
-        {
-          onSuccess: () => {
-            toast({
-              title: "Sukses",
-              description: "QC berhasil disimpan, pembukuan tercatat, modal dikurangi, dan harga final diupdate"
-            });
-            closeAllDialogs();
-          },
-          onError: () => {
-            toast({
-              title: "Error",
-              description: "Gagal mengupdate harga final",
-              variant: "destructive"
-            });
-          }
-        }
-      );
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Gagal menyimpan data QC atau update pembukuan",
-        variant: "destructive"
-      });
-      console.error(error);
-    }
-  };
-
-  const resetFilters = () => {
-    setSearchTerm("");
-    setSelectedCabang("all");
-    setSelectedJenisPembelian("all");
-    setSelectedStatus("ready");
-    setDateFilter("all");
-    setCustomStartDate(undefined);
-    setCustomEndDate(undefined);
     resetPage();
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Data Pembelian</h1>
-        <PembelianForm
-          isDialogOpen={isDialogOpen}
-          setIsDialogOpen={setIsDialogOpen}
-          editingPembelian={editingPembelian}
-          formData={formData}
-          setFormData={setFormData}
-          cabangData={cabangData}
-          brandsData={brandsData}
-          jenisMotorData={jenisMotorData}
-          companiesData={companiesData}
-          handleSubmit={handleSubmit}
-          selectedDivision={selectedDivision}
-        />
-      </div>
-
-      {/* Tabs untuk Data Aktif dan History */}
-      <Tabs defaultValue="active" className="w-full">
+      <Tabs defaultValue="data" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="active">Data Aktif</TabsTrigger>
+          <TabsTrigger value="data">Data Pembelian</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="active" className="space-y-6">
-          {/* Filter Section */}
-          <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
-            Filter Pembelian
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-            <div>
-              <Label htmlFor="search">Search</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search"
-                  placeholder="Cari plat, brand, jenis motor..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <Label htmlFor="cabang">Cabang</Label>
-              <Select value={selectedCabang} onValueChange={setSelectedCabang}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih Cabang" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Cabang</SelectItem>
-                  {cabangData.map((cabang) => (
-                    <SelectItem key={cabang.id} value={cabang.id.toString()}>
-                      {cabang.nama}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="jenisPembelian">Jenis Pembelian</Label>
-              <Select value={selectedJenisPembelian} onValueChange={setSelectedJenisPembelian}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih Jenis Transaksi" />
-                </SelectTrigger>
-               <SelectContent>
-                  <SelectItem value="all">Semua Jenis</SelectItem>
-                  <SelectItem value="Tukar Tambah">Tukar Tambah</SelectItem>
-                  <SelectItem value="Bukan Tukar Tambah">Bukan Tukar Tambah</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="status">Status</Label>
-              <Select value={selectedStatus} onValueChange={setSelectedStatus} disabled>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Status</SelectItem>
-                  <SelectItem value="ready">Ready</SelectItem>
-                  <SelectItem value="sold">Sold</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="dateFilter">Filter Tanggal</Label>
-              <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih Filter Tanggal" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Tanggal</SelectItem>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="tomorrow">Tommorow</SelectItem>
-                  <SelectItem value="yesterday">Yesterday</SelectItem>
-                  <SelectItem value="this_week">This Week</SelectItem>
-                  <SelectItem value="last_week">Last Week</SelectItem>
-                  <SelectItem value="this_month">This Month</SelectItem>
-                  <SelectItem value="last_month">Last Month</SelectItem>
-                  <SelectItem value="this_year">This Year</SelectItem>
-                  <SelectItem value="last_year">Last Year</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="pageSize">Items per page</Label>
-              <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(parseInt(value))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <TabsContent value="data" className="space-y-6">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Pembelian</CardTitle>
+                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">{formatCurrency(calculateTotals.totalPembelian)}</div>
+                <p className="text-xs text-muted-foreground">Dari {filteredData.length} motor</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Penjualan</CardTitle>
+                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">{formatCurrency(calculateTotals.totalPenjualan)}</div>
+                <p className="text-xs text-muted-foreground">Motor terjual</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Profit</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold ${
+                  calculateTotals.profit >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {formatCurrency(calculateTotals.profit)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {calculateTotals.profit >= 0 ? 'Keuntungan' : 'Kerugian'}
+                </p>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Custom Date Range Picker */}
-          {dateFilter === "custom" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t">
-              <div>
-                <Label>Tanggal Mulai</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-left font-normal"
-                    >
-                      {customStartDate ? format(customStartDate, "dd/MM/yyyy") : "Pilih tanggal mulai"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={customStartDate}
-                      onSelect={setCustomStartDate}
-                      initialFocus
-                      className="p-3 pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
+          {/* Filters */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filter & Pencarian
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cari plat nomor, brand, jenis motor..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                
+                <Select value={selectedCabang} onValueChange={setSelectedCabang}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Cabang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Cabang</SelectItem>
+                    {cabangData.map((cabang: any) => (
+                      <SelectItem key={cabang.id} value={cabang.id.toString()}>
+                        {cabang.nama_cabang}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Select value={selectedJenisPembelian} onValueChange={setSelectedJenisPembelian}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Jenis Pembelian" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Jenis</SelectItem>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="kredit">Kredit</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Status</SelectItem>
+                    <SelectItem value="ready">Ready</SelectItem>
+                    <SelectItem value="sold">Sold</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
-              <div>
-                <Label>Tanggal Selesai</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-left font-normal"
-                    >
-                      {customEndDate ? format(customEndDate, "dd/MM/yyyy") : "Pilih tanggal selesai"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={customEndDate}
-                      onSelect={setCustomEndDate}
-                      initialFocus
-                      className="p-3 pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Select value={dateFilter} onValueChange={setDateFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter Tanggal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Tanggal</SelectItem>
+                    <SelectItem value="today">Hari Ini</SelectItem>
+                    <SelectItem value="tomorrow">Besok</SelectItem>
+                    <SelectItem value="yesterday">Kemarin</SelectItem>
+                    <SelectItem value="this_week">Minggu Ini</SelectItem>
+                    <SelectItem value="last_week">Minggu Lalu</SelectItem>
+                    <SelectItem value="this_month">Bulan Ini</SelectItem>
+                    <SelectItem value="last_month">Bulan Lalu</SelectItem>
+                    <SelectItem value="this_year">Tahun Ini</SelectItem>
+                    <SelectItem value="last_year">Tahun Lalu</SelectItem>
+                    <SelectItem value="custom">Custom Range</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                {dateFilter === "custom" && (
+                  <>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="justify-start text-left font-normal">
+                          {customStartDate ? format(customStartDate, "dd/MM/yyyy") : "Tanggal Mulai"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={customStartDate}
+                          onSelect={setCustomStartDate}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="justify-start text-left font-normal">
+                          {customEndDate ? format(customEndDate, "dd/MM/yyyy") : "Tanggal Akhir"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={customEndDate}
+                          onSelect={setCustomEndDate}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </>
+                )}
               </div>
-            </div>
-          )}
+            </CardContent>
+          </Card>
 
-          <div className="flex justify-between items-center mt-4">
-            <Button variant="outline" onClick={resetFilters}>
-              Reset Filter
+          {/* Add Button */}
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold">Data Pembelian Motor</h2>
+            <Button onClick={() => setIsDialogOpen(true)}>
+              Tambah Pembelian
             </Button>
-            <div className="text-sm text-muted-foreground">
-              Menampilkan {paginatedData.length} dari {totalItems} data
-            </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Summary Cards - Label yang jelas untuk ready + booked */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Total Pembelian {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
-                </p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {calculateTotals.totalPembelian}
-                </p>
-              </div>
-              <ShoppingCart className="w-8 h-8 text-blue-600" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Ready (Status Ready) {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
-                </p>
-                <p className="text-2xl font-bold text-green-600">
-                  {calculateTotals.totalReady}
-                </p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-green-600" />
-            </div>
-          </CardContent>
-        </Card>
+          {/* Table */}
+          <PembelianTable
+            data={paginatedData}
+            onEdit={handleEdit}
+            onView={handleView}
+            onUpdateHarga={handleUpdateHarga}
+            onQC={handleQC}
+            onViewQcHistory={handleViewQcHistory}
+            onViewPriceHistory={handleViewPriceHistory}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={totalItems}
+            onPageChange={goToPage}
+            onPageSizeChange={setPageSize}
+          />
+        </TabsContent>
+      </Tabs>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Total Nilai (Ready+Booked) {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
-                </p>
-                <p className="text-2xl font-bold text-purple-600">
-                  {formatCurrency(calculateTotals.totalNilai)}
-                </p>
-              </div>
-              <DollarSign className="w-8 h-8 text-purple-600" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <PembelianTable 
-        pembelianData={paginatedData}
-        handleEdit={handleEdit}
-        handleView={handleView}
-        handleUpdateHarga={handleUpdateHarga}
-        handleQC={handleQC}
-        handleViewQcHistory={handleViewQcHistory}
-        handleViewPriceHistory={handleViewPriceHistory}
-        deleteMutation={deleteMutation}
-      />
-
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center space-x-2 mt-4">
-          <Button
-            variant="outline"
-            onClick={() => goToPage(currentPage - 1)}
-            disabled={currentPage === 1}
-          >
-            Previous
-          </Button>
-          
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-            <Button
-              key={page}
-              variant={currentPage === page ? "default" : "outline"}
-              onClick={() => goToPage(page)}
-              size="sm"
-            >
-              {page}
-            </Button>
-          ))}
-          
-          <Button
-            variant="outline"
-            onClick={() => goToPage(currentPage + 1)}
-            disabled={currentPage === totalPages}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+      {/* Form Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingPembelian ? "Edit Pembelian" : "Tambah Pembelian Baru"}
+            </DialogTitle>
+          </DialogHeader>
+          <PembelianForm
+            formData={formData}
+            setFormData={setFormData}
+            onSubmit={handleSubmit}
+            onCancel={closeAllDialogs}
+            isEditing={!!editingPembelian}
+            cabangData={cabangData}
+            brandsData={brandsData}
+            jenisMotorData={jenisMotorData}
+            companiesData={companiesData}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* View Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Detail Pembelian</DialogTitle>
+            <DialogTitle>Detail Pembelian Motor</DialogTitle>
           </DialogHeader>
           {viewingPembelian && (
             <div className="grid grid-cols-2 gap-4">
@@ -968,12 +778,12 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                 <p>{new Date(viewingPembelian.tanggal_pembelian).toLocaleDateString('id-ID')}</p>
               </div>
               <div>
-                <Label>Divisi:</Label>
-                <p>{viewingPembelian.divisi}</p>
+                <Label>Cabang:</Label>
+                <p>{viewingPembelian.cabang?.nama_cabang}</p>
               </div>
               <div>
-                <Label>Cabang:</Label>
-                <p>{viewingPembelian.cabang?.nama}</p>
+                <Label>Brand:</Label>
+                <p>{viewingPembelian.brands?.name}</p>
               </div>
               <div>
                 <Label>Jenis Motor:</Label>
@@ -984,8 +794,39 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                 <p>{viewingPembelian.plat_nomor}</p>
               </div>
               <div>
-                <Label>Harga Beli:</Label>
-                <p>{formatCurrency(viewingPembelian.harga_beli)}</p>
+                <Label>Warna:</Label>
+                <p>{viewingPembelian.warna}</p>
+              </div>
+              <div>
+                <Label>Tahun:</Label>
+                <p>{viewingPembelian.tahun}</p>
+              </div>
+              <div>
+                <Label>Status:</Label>
+                <p className={`font-medium ${
+                  viewingPembelian.status === 'ready' ? 'text-green-600' :
+                  viewingPembelian.status === 'sold' ? 'text-blue-600' :
+                  'text-yellow-600'
+                }`}>
+                  {viewingPembelian.status === 'ready' ? 'Ready' :
+                   viewingPembelian.status === 'sold' ? 'Sold' : 'Pending'}
+                </p>
+              </div>
+              <div>
+                <Label>Harga Beli Dasar:</Label>
+                <p>{formatCurrency(viewingPembelian.harga_beli_dasar)}</p>
+              </div>
+              <div>
+                <Label>Biaya Pajak:</Label>
+                <p>{formatCurrency(viewingPembelian.biaya_pajak)}</p>
+              </div>
+              <div>
+                <Label>Biaya QC:</Label>
+                <p>{formatCurrency(viewingPembelian.biaya_qc)}</p>
+              </div>
+              <div>
+                <Label>Biaya Lain-Lain:</Label>
+                <p>{formatCurrency(viewingPembelian.biaya_lain_lain)}</p>
               </div>
               <div>
                 <Label>Harga Final:</Label>
@@ -1075,7 +916,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
               </div>
             )}
             
-            {/* Company and Reason - Grid */}
+            {/* Company, Reason, and Date - Grid */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="company_id">Perusahaan *</Label>
@@ -1096,14 +937,24 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="reason">Alasan Update *</Label>
+                <Label htmlFor="tanggal-update">Tanggal Update *</Label>
                 <Input
-                  id="reason"
-                  value={updateHargaForm.reason}
-                  onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, reason: e.target.value }))}
-                  placeholder="Alasan update harga"
+                  id="tanggal-update"
+                  type="date"
+                  value={updateHargaForm.tanggal_update}
+                  onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, tanggal_update: e.target.value }))}
                 />
               </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="reason">Alasan Update *</Label>
+              <Input
+                id="reason"
+                value={updateHargaForm.reason}
+                onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, reason: e.target.value }))}
+                placeholder="Alasan update harga"
+              />
             </div>
             
             {/* Preview - Compact */}
