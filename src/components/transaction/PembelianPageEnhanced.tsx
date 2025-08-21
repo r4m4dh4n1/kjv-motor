@@ -545,186 +545,202 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       keterangan_biaya_lain: "",
       company_id: "",
       reason: "",
-      tanggal_update: new Date().toISOString().split('T')[0] // Reset tanggal ke hari ini
+      tanggal_update: new Date().toISOString().split('T')[0]
     });
-    resetPage();
+  };
+
+  const handleUpdateHargaNumericChange = (field: string, value: string) => {
+    const numericValue = value.replace(/[^0-9]/g, "");
+    const formattedValue = numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    setUpdateHargaForm(prev => ({ ...prev, [field]: formattedValue }));
+  };
+
+  const calculateHargaFinal = () => {
+    const hargaBeli = parseFloat(parseNumericInput(updateHargaForm.harga_beli_dasar)) || 0;
+    const biayaPajak = parseFloat(parseNumericInput(updateHargaForm.biaya_pajak)) || 0;
+    const biayaQc = parseFloat(parseNumericInput(updateHargaForm.biaya_qc)) || 0;
+    const biayaLain = parseFloat(parseNumericInput(updateHargaForm.biaya_lain_lain)) || 0;
+    return hargaBeli + biayaPajak + biayaQc + biayaLain;
   };
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="data" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Pembelian</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(calculateTotals.totalPembelian)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Penjualan</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(calculateTotals.totalPenjualan)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Profit</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${
+              calculateTotals.profit >= 0 ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {formatCurrency(calculateTotals.profit)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Items</CardTitle>
+            <Filter className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{calculateTotals.totalItems}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Filter & Pencarian</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Cari plat nomor, brand, jenis..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            
+            <Select value={selectedCabang} onValueChange={setSelectedCabang}>
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih Cabang" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Cabang</SelectItem>
+                {cabangData.map((cabang: any) => (
+                  <SelectItem key={cabang.id} value={cabang.id.toString()}>
+                    {cabang.nama_cabang}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedJenisPembelian} onValueChange={setSelectedJenisPembelian}>
+              <SelectTrigger>
+                <SelectValue placeholder="Jenis Pembelian" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Jenis</SelectItem>
+                <SelectItem value="cash">Cash</SelectItem>
+                <SelectItem value="kredit">Kredit</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value="ready">Ready</SelectItem>
+                <SelectItem value="sold">Sold</SelectItem>
+                <SelectItem value="booked">Booked</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={dateFilter} onValueChange={setDateFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter Tanggal" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Tanggal</SelectItem>
+                <SelectItem value="today">Hari Ini</SelectItem>
+                <SelectItem value="tomorrow">Besok</SelectItem>
+                <SelectItem value="yesterday">Kemarin</SelectItem>
+                <SelectItem value="this_week">Minggu Ini</SelectItem>
+                <SelectItem value="last_week">Minggu Lalu</SelectItem>
+                <SelectItem value="this_month">Bulan Ini</SelectItem>
+                <SelectItem value="last_month">Bulan Lalu</SelectItem>
+                <SelectItem value="this_year">Tahun Ini</SelectItem>
+                <SelectItem value="last_year">Tahun Lalu</SelectItem>
+                <SelectItem value="custom">Custom Range</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button 
+              onClick={() => setIsDialogOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Tambah Pembelian
+            </Button>
+          </div>
+
+          {dateFilter === "custom" && (
+            <div className="flex gap-4">
+              <div className="space-y-2">
+                <Label>Tanggal Mulai</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left font-normal">
+                      {customStartDate ? format(customStartDate, "PPP") : "Pilih tanggal mulai"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={customStartDate}
+                      onSelect={setCustomStartDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label>Tanggal Akhir</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left font-normal">
+                      {customEndDate ? format(customEndDate, "PPP") : "Pilih tanggal akhir"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={customEndDate}
+                      onSelect={setCustomEndDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Tabs */}
+      <Tabs defaultValue="data" className="space-y-4">
+        <TabsList>
           <TabsTrigger value="data">Data Pembelian</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
         
         <TabsContent value="data" className="space-y-6">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Pembelian</CardTitle>
-                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">{formatCurrency(calculateTotals.totalPembelian)}</div>
-                <p className="text-xs text-muted-foreground">Dari {filteredData.length} motor</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Penjualan</CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{formatCurrency(calculateTotals.totalPenjualan)}</div>
-                <p className="text-xs text-muted-foreground">Motor terjual</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Profit</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${
-                  calculateTotals.profit >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {formatCurrency(calculateTotals.profit)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {calculateTotals.profit >= 0 ? 'Keuntungan' : 'Kerugian'}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="h-5 w-5" />
-                Filter & Pencarian
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Cari plat nomor, brand, jenis motor..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                
-                <Select value={selectedCabang} onValueChange={setSelectedCabang}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih Cabang" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Cabang</SelectItem>
-                    {cabangData.map((cabang: any) => (
-                      <SelectItem key={cabang.id} value={cabang.id.toString()}>
-                        {cabang.nama_cabang}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                
-                <Select value={selectedJenisPembelian} onValueChange={setSelectedJenisPembelian}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Jenis Pembelian" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Jenis</SelectItem>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="kredit">Kredit</SelectItem>
-                  </SelectContent>
-                </Select>
-                
-                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Status</SelectItem>
-                    <SelectItem value="ready">Ready</SelectItem>
-                    <SelectItem value="sold">Sold</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Select value={dateFilter} onValueChange={setDateFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter Tanggal" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Tanggal</SelectItem>
-                    <SelectItem value="today">Hari Ini</SelectItem>
-                    <SelectItem value="tomorrow">Besok</SelectItem>
-                    <SelectItem value="yesterday">Kemarin</SelectItem>
-                    <SelectItem value="this_week">Minggu Ini</SelectItem>
-                    <SelectItem value="last_week">Minggu Lalu</SelectItem>
-                    <SelectItem value="this_month">Bulan Ini</SelectItem>
-                    <SelectItem value="last_month">Bulan Lalu</SelectItem>
-                    <SelectItem value="this_year">Tahun Ini</SelectItem>
-                    <SelectItem value="last_year">Tahun Lalu</SelectItem>
-                    <SelectItem value="custom">Custom Range</SelectItem>
-                  </SelectContent>
-                </Select>
-                
-                {dateFilter === "custom" && (
-                  <>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="justify-start text-left font-normal">
-                          {customStartDate ? format(customStartDate, "dd/MM/yyyy") : "Tanggal Mulai"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={customStartDate}
-                          onSelect={setCustomStartDate}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="justify-start text-left font-normal">
-                          {customEndDate ? format(customEndDate, "dd/MM/yyyy") : "Tanggal Akhir"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={customEndDate}
-                          onSelect={setCustomEndDate}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Add Button */}
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold">Data Pembelian Motor</h2>
-            <Button onClick={() => setIsDialogOpen(true)}>
-              Tambah Pembelian
-            </Button>
-          </div>
-
-          {/* Table */}
           <PembelianTable
             data={paginatedData}
             onEdit={handleEdit}
@@ -740,6 +756,10 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
             onPageChange={goToPage}
             onPageSizeChange={setPageSize}
           />
+        </TabsContent>
+        
+        <TabsContent value="history" className="space-y-6">
+          <HistoryTab type="pembelian" selectedDivision={selectedDivision} />
         </TabsContent>
       </Tabs>
 
@@ -757,178 +777,142 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
             onSubmit={handleSubmit}
             onCancel={closeAllDialogs}
             isEditing={!!editingPembelian}
-            cabangData={cabangData}
-            brandsData={brandsData}
-            jenisMotorData={jenisMotorData}
-            companiesData={companiesData}
+            editingPembelian={editingPembelian}
+            selectedDivision={selectedDivision}
           />
         </DialogContent>
       </Dialog>
 
       {/* View Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detail Pembelian Motor</DialogTitle>
+            <DialogTitle>Detail Pembelian</DialogTitle>
           </DialogHeader>
           {viewingPembelian && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Tanggal Pembelian:</Label>
-                <p>{new Date(viewingPembelian.tanggal_pembelian).toLocaleDateString('id-ID')}</p>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="font-semibold">Tanggal Pembelian</Label>
+                  <p>{format(new Date(viewingPembelian.tanggal_pembelian), "dd/MM/yyyy")}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Plat Nomor</Label>
+                  <p>{viewingPembelian.plat_nomor}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Brand</Label>
+                  <p>{viewingPembelian.brands?.name}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Jenis Motor</Label>
+                  <p>{viewingPembelian.jenis_motor?.jenis_motor}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Tahun</Label>
+                  <p>{viewingPembelian.tahun}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Warna</Label>
+                  <p>{viewingPembelian.warna}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Harga Beli Dasar</Label>
+                  <p>{formatCurrency(viewingPembelian.harga_beli_dasar)}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Harga Final</Label>
+                  <p>{formatCurrency(viewingPembelian.harga_final)}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Status</Label>
+                  <p className={`inline-block px-2 py-1 rounded text-sm ${
+                    viewingPembelian.status === 'ready' ? 'bg-green-100 text-green-800' :
+                    viewingPembelian.status === 'sold' ? 'bg-blue-100 text-blue-800' :
+                    'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {viewingPembelian.status}
+                  </p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Jenis Pembelian</Label>
+                  <p>{viewingPembelian.jenis_pembelian}</p>
+                </div>
               </div>
-              <div>
-                <Label>Cabang:</Label>
-                <p>{viewingPembelian.cabang?.nama_cabang}</p>
-              </div>
-              <div>
-                <Label>Brand:</Label>
-                <p>{viewingPembelian.brands?.name}</p>
-              </div>
-              <div>
-                <Label>Jenis Motor:</Label>
-                <p>{viewingPembelian.jenis_motor?.jenis_motor}</p>
-              </div>
-              <div>
-                <Label>Plat Nomor:</Label>
-                <p>{viewingPembelian.plat_nomor}</p>
-              </div>
-              <div>
-                <Label>Warna:</Label>
-                <p>{viewingPembelian.warna}</p>
-              </div>
-              <div>
-                <Label>Tahun:</Label>
-                <p>{viewingPembelian.tahun}</p>
-              </div>
-              <div>
-                <Label>Status:</Label>
-                <p className={`font-medium ${
-                  viewingPembelian.status === 'ready' ? 'text-green-600' :
-                  viewingPembelian.status === 'sold' ? 'text-blue-600' :
-                  'text-yellow-600'
-                }`}>
-                  {viewingPembelian.status === 'ready' ? 'Ready' :
-                   viewingPembelian.status === 'sold' ? 'Sold' : 'Pending'}
-                </p>
-              </div>
-              <div>
-                <Label>Harga Beli Dasar:</Label>
-                <p>{formatCurrency(viewingPembelian.harga_beli_dasar)}</p>
-              </div>
-              <div>
-                <Label>Biaya Pajak:</Label>
-                <p>{formatCurrency(viewingPembelian.biaya_pajak)}</p>
-              </div>
-              <div>
-                <Label>Biaya QC:</Label>
-                <p>{formatCurrency(viewingPembelian.biaya_qc)}</p>
-              </div>
-              <div>
-                <Label>Biaya Lain-Lain:</Label>
-                <p>{formatCurrency(viewingPembelian.biaya_lain_lain)}</p>
-              </div>
-              <div>
-                <Label>Harga Final:</Label>
-                <p>{formatCurrency(viewingPembelian.harga_final)}</p>
-              </div>
-              <div>
-                <Label>Jenis Pembelian:</Label>
-                <p>{viewingPembelian.jenis_pembelian}</p>
-              </div>
-              <div className="col-span-2">
-                <Label>Keterangan:</Label>
-                <p>{viewingPembelian.keterangan || '-'}</p>
+              
+              <div className="flex justify-end">
+                <Button onClick={closeAllDialogs}>Tutup</Button>
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
 
-     {/* Update Harga Dialog */}
-    <Dialog open={isUpdateHargaDialogOpen} onOpenChange={setIsUpdateHargaDialogOpen}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Update Harga Pembelian Motor</DialogTitle>
-        </DialogHeader>
-        {updatingHargaPembelian && (
-          <div className="space-y-4">
-            {/* Motor Info - Compact */}
-            <div className="bg-blue-50 p-3 rounded-md">
-              <p className="font-medium">{updatingHargaPembelian.jenis_motor?.jenis_motor}</p>
-              <p className="text-sm text-gray-600">Plat: {updatingHargaPembelian.plat_nomor}</p>
-            </div>
-            
-            {/* Form Fields - Grid Layout */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="harga-beli-dasar">Harga Beli Dasar *</Label>
-                <Input
-                  id="harga-beli-dasar"
-                  type="text"
-                  value={formatNumberInput(updateHargaForm.harga_beli_dasar)}
-                  onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, harga_beli_dasar: parseNumericInput(e.target.value) }))}
-                  placeholder="Harga beli dasar"
-                />
+      {/* Update Harga Dialog */}
+      <Dialog open={isUpdateHargaDialogOpen} onOpenChange={setIsUpdateHargaDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Update Harga Pembelian Motor</DialogTitle>
+          </DialogHeader>
+          {updatingHargaPembelian && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Harga Beli Dasar *</Label>
+                  <Input
+                    value={formatNumberInput(updateHargaForm.harga_beli_dasar)}
+                    onChange={(e) => handleUpdateHargaNumericChange('harga_beli_dasar', e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label>Biaya Pajak</Label>
+                  <Input
+                    value={formatNumberInput(updateHargaForm.biaya_pajak)}
+                    onChange={(e) => handleUpdateHargaNumericChange('biaya_pajak', e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label>Biaya QC</Label>
+                  <Input
+                    value={formatNumberInput(updateHargaForm.biaya_qc)}
+                    onChange={(e) => handleUpdateHargaNumericChange('biaya_qc', e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label>Biaya Lain-lain</Label>
+                  <Input
+                    value={formatNumberInput(updateHargaForm.biaya_lain_lain)}
+                    onChange={(e) => handleUpdateHargaNumericChange('biaya_lain_lain', e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
               </div>
+              
+              {updateHargaForm.biaya_lain_lain && (
+                <div>
+                  <Label>Keterangan Biaya Lain-lain *</Label>
+                  <Input
+                    value={updateHargaForm.keterangan_biaya_lain}
+                    onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, keterangan_biaya_lain: e.target.value }))}
+                    placeholder="Jelaskan biaya lain-lain"
+                  />
+                </div>
+              )}
+              
               <div>
-                <Label htmlFor="biaya-pajak">Biaya Pajak</Label>
-                <Input
-                  id="biaya-pajak"
-                  type="text"
-                  value={formatNumberInput(updateHargaForm.biaya_pajak)}
-                  onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, biaya_pajak: parseNumericInput(e.target.value) }))}
-                  placeholder="Biaya pajak"
-                />
-              </div>
-              <div>
-                <Label htmlFor="biaya-qc">Biaya QC</Label>
-                <Input
-                  id="biaya-qc"
-                  type="text"
-                  value={formatNumberInput(updateHargaForm.biaya_qc)}
-                  onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, biaya_qc: parseNumericInput(e.target.value) }))}
-                  placeholder="Biaya QC"
-                />
-              </div>
-              <div>
-                <Label htmlFor="biaya-lain-lain">Biaya Lain-Lain</Label>
-                <Input
-                  id="biaya-lain-lain"
-                  type="text"
-                  value={formatNumberInput(updateHargaForm.biaya_lain_lain)}
-                  onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, biaya_lain_lain: parseNumericInput(e.target.value) }))}
-                  placeholder="Biaya lain-lain"
-                />
-              </div>
-            </div>
-            
-            {/* Conditional Fields */}
-            {updateHargaForm.biaya_lain_lain && (
-              <div>
-                <Label htmlFor="keterangan-biaya-lain">Keterangan Biaya Lain *</Label>
-                <Input
-                  id="keterangan-biaya-lain"
-                  value={updateHargaForm.keterangan_biaya_lain}
-                  onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, keterangan_biaya_lain: e.target.value }))}
-                  placeholder="Jelaskan biaya lain-lain"
-                />
-              </div>
-            )}
-            
-            {/* Company, Reason, and Date - Grid */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="company_id">Perusahaan *</Label>
-                <Select
-                  value={updateHargaForm.company_id}
+                <Label>Perusahaan *</Label>
+                <Select 
+                  value={updateHargaForm.company_id} 
                   onValueChange={(value) => setUpdateHargaForm(prev => ({ ...prev, company_id: value }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih perusahaan" />
                   </SelectTrigger>
                   <SelectContent>
-                    {companiesData?.map((company) => (
+                    {companiesData.map((company: any) => (
                       <SelectItem key={company.id} value={company.id.toString()}>
                         {company.nama_perusahaan}
                       </SelectItem>
@@ -936,51 +920,46 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                   </SelectContent>
                 </Select>
               </div>
+
               <div>
-                <Label htmlFor="tanggal-update">Tanggal Update *</Label>
+                <Label>Tanggal Update *</Label>
                 <Input
-                  id="tanggal-update"
                   type="date"
                   value={updateHargaForm.tanggal_update}
                   onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, tanggal_update: e.target.value }))}
                 />
               </div>
+              
+              <div>
+                <Label>Alasan Update *</Label>
+                <Textarea
+                  value={updateHargaForm.reason}
+                  onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, reason: e.target.value }))}
+                  placeholder="Jelaskan alasan update harga"
+                  rows={3}
+                />
+              </div>
+              
+              <div className="bg-gray-50 p-4 rounded">
+                <Label className="font-semibold">Preview Harga Final</Label>
+                <p className="text-2xl font-bold text-blue-600">
+                  {formatCurrency(calculateHargaFinal())}
+                </p>
+                <p className="text-sm text-gray-600">
+                  Selisih: {formatCurrency(calculateHargaFinal() - (updatingHargaPembelian?.harga_final || 0))}
+                </p>
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={closeAllDialogs}>Batal</Button>
+                <Button onClick={handleUpdateHargaSubmit}>Update Harga</Button>
+              </div>
             </div>
-            
-            <div>
-              <Label htmlFor="reason">Alasan Update *</Label>
-              <Input
-                id="reason"
-                value={updateHargaForm.reason}
-                onChange={(e) => setUpdateHargaForm(prev => ({ ...prev, reason: e.target.value }))}
-                placeholder="Alasan update harga"
-              />
-            </div>
-            
-            {/* Preview - Compact */}
-            <div className="bg-green-50 p-3 rounded-md flex justify-between items-center">
-              <span className="text-sm font-medium">Harga Final:</span>
-              <span className="text-lg font-bold text-green-600">
-                {formatCurrency(
-                  (parseFloat(parseNumericInput(updateHargaForm.harga_beli_dasar)) || 0) +
-                  (parseFloat(parseNumericInput(updateHargaForm.biaya_pajak)) || 0) +
-                  (parseFloat(parseNumericInput(updateHargaForm.biaya_qc)) || 0) +
-                  (parseFloat(parseNumericInput(updateHargaForm.biaya_lain_lain)) || 0)
-                )}
-              </span>
-            </div>
-            
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={closeAllDialogs}>Batal</Button>
-              <Button onClick={handleUpdateHargaSubmit}>Update Harga</Button>
-            </div>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+          )}
+        </DialogContent>
+      </Dialog>
 
-      {/* QC Dialog dengan field yang diperlukan */}
+      {/* QC Dialog */}
       <Dialog open={isQCDialogOpen} onOpenChange={setIsQCDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -989,14 +968,8 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
           {qcPembelian && (
             <div className="space-y-4">
               <div>
-                <Label>Motor: {qcPembelian.jenis_motor?.jenis_motor}</Label>
-                <p className="text-sm text-gray-600">Plat: {qcPembelian.plat_nomor}</p>
-              </div>
-              
-              <div>
-                <Label htmlFor="tanggal-qc">Tanggal QC *</Label>
+                <Label>Tanggal QC *</Label>
                 <Input
-                  id="tanggal-qc"
                   type="date"
                   value={qcForm.tanggal_qc}
                   onChange={(e) => setQcForm(prev => ({ ...prev, tanggal_qc: e.target.value }))}
@@ -1004,45 +977,45 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
               </div>
               
               <div>
-                <Label htmlFor="jenis-qc">Jenis QC *</Label>
-                <Select value={qcForm.jenis_qc} onValueChange={(value) => setQcForm(prev => ({ ...prev, jenis_qc: value }))}>
+                <Label>Jenis QC *</Label>
+                <Select 
+                  value={qcForm.jenis_qc} 
+                  onValueChange={(value) => setQcForm(prev => ({ ...prev, jenis_qc: value }))}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih Jenis QC" />
+                    <SelectValue placeholder="Pilih jenis QC" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Penggantian Sparepart">Penggantian Sparepart</SelectItem>
-                    <SelectItem value="Service Mesin">Service Mesin</SelectItem>
-                    <SelectItem value="Perbaikan Body">Perbaikan Body</SelectItem>
-                    <SelectItem value="Penggantian Oli">Penggantian Oli</SelectItem>
+                    <SelectItem value="Service Rutin">Service Rutin</SelectItem>
+                    <SelectItem value="Perbaikan Mesin">Perbaikan Mesin</SelectItem>
+                    <SelectItem value="Ganti Oli">Ganti Oli</SelectItem>
                     <SelectItem value="Tune Up">Tune Up</SelectItem>
+                    <SelectItem value="Perbaikan Body">Perbaikan Body</SelectItem>
                     <SelectItem value="Lainnya">Lainnya</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
               <div>
-                <Label htmlFor="total-pengeluaran">Total Pengeluaran *</Label>
+                <Label>Total Pengeluaran *</Label>
                 <Input
-                  id="total-pengeluaran"
-                  type="text"
                   value={qcForm.total_pengeluaran}
                   onChange={(e) => handleQcNumericChange('total_pengeluaran', e.target.value)}
-                  placeholder="Contoh: 1.000.000"
+                  placeholder="0"
                 />
               </div>
               
               <div>
-                <Label htmlFor="keterangan-qc">Keterangan</Label>
-                <Textarea 
-                  id="keterangan-qc"
+                <Label>Keterangan</Label>
+                <Textarea
                   value={qcForm.keterangan}
                   onChange={(e) => setQcForm(prev => ({ ...prev, keterangan: e.target.value }))}
-                  placeholder="Masukkan keterangan QC..."
-                  className="h-24"
+                  placeholder="Keterangan tambahan (opsional)"
+                  rows={3}
                 />
               </div>
               
-              <div className="flex justify-end gap-2 mt-6">
+              <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={closeAllDialogs}>Batal</Button>
                 <Button onClick={handleQCSubmit}>Simpan QC</Button>
               </div>
@@ -1059,94 +1032,23 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
           </DialogHeader>
           {viewingPembelian && (
             <div className="space-y-4">
-              <div>
-                <Label>Motor: {viewingPembelian.jenis_motor?.jenis_motor}</Label>
-                <p className="text-sm text-gray-600">Plat: {viewingPembelian.plat_nomor}</p>
+              <div className="bg-gray-50 p-4 rounded">
+                <h3 className="font-semibold">Motor: {viewingPembelian.jenis_motor?.jenis_motor}</h3>
+                <p>Plat Nomor: {viewingPembelian.plat_nomor}</p>
               </div>
               
               <div className="max-h-96 overflow-y-auto">
                 {qcHistory.length > 0 ? (
                   <div className="space-y-3">
-                    {qcHistory.map((qc: any, index: number) => (
-                      <Card key={qc.id || index} className="p-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label className="text-sm font-medium">Tanggal QC:</Label>
-                            <p className="text-sm">{new Date(qc.tanggal_qc).toLocaleDateString('id-ID')}</p>
-                          </div>
-                          <div>
-                            <Label className="text-sm font-medium">Jenis QC:</Label>
-                            <p className="text-sm">{qc.jenis_qc}</p>
-                          </div>
-                          <div>
-                            <Label className="text-sm font-medium">Total Pengeluaran:</Label>
-                            <p className="text-sm font-semibold text-red-600">{formatCurrency(qc.total_pengeluaran)}</p>
-                          </div>
-                          <div>
-                            <Label className="text-sm font-medium">Keterangan:</Label>
-                            <p className="text-sm">{qc.keterangan || '-'}</p>
-                          </div>
+                    {qcHistory.map((qc: any) => (
+                      <div key={qc.id} className="border p-3 rounded">
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div><strong>Tanggal:</strong> {format(new Date(qc.tanggal_qc), "dd/MM/yyyy")}</div>
+                          <div><strong>Jenis QC:</strong> {qc.jenis_qc}</div>
+                          <div><strong>Total Pengeluaran:</strong> {formatCurrency(qc.total_pengeluaran)}</div>
+                          <div><strong>Keterangan:</strong> {qc.keterangan || '-'}</div>
                         </div>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-center text-gray-500 py-8">Belum ada history QC untuk motor ini</p>
-                )}
-              </div>
-              
-              <div className="flex justify-end">
-                <Button onClick={closeAllDialogs}>Tutup</Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-        
-        </TabsContent>
-        
-        <TabsContent value="history" className="space-y-6">
-          <HistoryTab type="pembelian" selectedDivision={selectedDivision} />
-        </TabsContent>
-      </Tabs>
-
-      {/* QC History Dialog - Dipindahkan keluar dari TabsContent */}
-      <Dialog open={isQcHistoryDialogOpen} onOpenChange={setIsQcHistoryDialogOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>History Quality Control</DialogTitle>
-          </DialogHeader>
-          {viewingPembelian && (
-            <div className="space-y-4">
-              <div>
-                <Label>Motor: {viewingPembelian.jenis_motor?.jenis_motor}</Label>
-                <p className="text-sm text-gray-600">Plat: {viewingPembelian.plat_nomor}</p>
-              </div>
-              
-              <div className="max-h-96 overflow-y-auto">
-                {qcHistory.length > 0 ? (
-                  <div className="space-y-3">
-                    {qcHistory.map((qc: any, index: number) => (
-                      <Card key={qc.id || index} className="p-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label className="text-sm font-medium">Tanggal QC:</Label>
-                            <p className="text-sm">{new Date(qc.tanggal_qc).toLocaleDateString('id-ID')}</p>
-                          </div>
-                          <div>
-                            <Label className="text-sm font-medium">Jenis QC:</Label>
-                            <p className="text-sm">{qc.jenis_qc}</p>
-                          </div>
-                          <div>
-                            <Label className="text-sm font-medium">Total Pengeluaran:</Label>
-                            <p className="text-sm font-semibold text-red-600">{formatCurrency(qc.total_pengeluaran)}</p>
-                          </div>
-                          <div>
-                            <Label className="text-sm font-medium">Keterangan:</Label>
-                            <p className="text-sm">{qc.keterangan || '-'}</p>
-                          </div>
-                        </div>
-                      </Card>
+                      </div>
                     ))}
                   </div>
                 ) : (
