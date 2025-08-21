@@ -1110,6 +1110,58 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
         </TabsContent>
       </Tabs>
 
+      {/* QC History Dialog - Dipindahkan keluar dari TabsContent */}
+      <Dialog open={isQcHistoryDialogOpen} onOpenChange={setIsQcHistoryDialogOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>History Quality Control</DialogTitle>
+          </DialogHeader>
+          {viewingPembelian && (
+            <div className="space-y-4">
+              <div>
+                <Label>Motor: {viewingPembelian.jenis_motor?.jenis_motor}</Label>
+                <p className="text-sm text-gray-600">Plat: {viewingPembelian.plat_nomor}</p>
+              </div>
+              
+              <div className="max-h-96 overflow-y-auto">
+                {qcHistory.length > 0 ? (
+                  <div className="space-y-3">
+                    {qcHistory.map((qc: any, index: number) => (
+                      <Card key={qc.id || index} className="p-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-sm font-medium">Tanggal QC:</Label>
+                            <p className="text-sm">{new Date(qc.tanggal_qc).toLocaleDateString('id-ID')}</p>
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium">Jenis QC:</Label>
+                            <p className="text-sm">{qc.jenis_qc}</p>
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium">Total Pengeluaran:</Label>
+                            <p className="text-sm font-semibold text-red-600">{formatCurrency(qc.total_pengeluaran)}</p>
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium">Keterangan:</Label>
+                            <p className="text-sm">{qc.keterangan || '-'}</p>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-gray-500 py-8">Belum ada history QC untuk motor ini</p>
+                )}
+              </div>
+              
+              <div className="flex justify-end">
+                <Button onClick={closeAllDialogs}>Tutup</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Price History Modal */}
       <PriceHistoryModal
         isOpen={isPriceHistoryDialogOpen}
