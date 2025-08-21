@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Settings, Edit, Trash2, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -360,6 +360,12 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     setEditingOperational(null);
   };
 
+  // PERBAIKAN UTAMA: Fungsi untuk membuka dialog baru
+  const handleOpenNewDialog = () => {
+    resetForm();
+    setIsDialogOpen(true);
+  };
+
   // Helper functions for numeric formatting
   const formatNumberInput = (value: string): string => {
     if (!value) return "";
@@ -419,112 +425,116 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           </p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm} className="bg-purple-600 hover:bg-purple-700">
-              <Plus className="w-4 h-4 mr-2" />
-              Tambah Operasional
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>
-                {editingOperational ? "Edit Operasional" : "Tambah Operasional Baru"}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="tanggal">Tanggal *</Label>
-                <div className="mt-1">
-                  <DatePicker
-                    id="tanggal"
-                    value={formData.tanggal}
-                    onChange={(value) => setFormData({...formData, tanggal: value})}
-                    placeholder="Pilih tanggal operasional"
-                    required
-                  />
-                </div>
-              </div>
+        {/* PERBAIKAN: Hapus DialogTrigger dan gunakan manual control */}
+        <Button 
+          onClick={handleOpenNewDialog}
+          className="bg-purple-600 hover:bg-purple-700"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Tambah Operasional
+        </Button>
+      </div>
 
-              <div>
-                <Label htmlFor="kategori">Kategori *</Label>
-                <Select value={formData.kategori} onValueChange={(value) => setFormData({...formData, kategori: value})}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Pilih kategori" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="nominal">Nominal *</Label>
-                <div className="relative mt-1">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Rp</span>
-                  <Input
-                    id="nominal"
-                    type="text"
-                    value={formatNumberInput(formData.nominal)}
-                    onChange={(e) => handleNumericChange(e.target.value)}
-                    className="pl-10"
-                    placeholder="1.000.000"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="deskripsi">Deskripsi *</Label>
-                <Textarea
-                  id="deskripsi"
-                  value={formData.deskripsi}
-                  onChange={(e) => setFormData({...formData, deskripsi: e.target.value})}
-                  placeholder="Masukkan deskripsi pengeluaran operasional"
-                  className="mt-1"
-                  rows={3}
+      {/* PERBAIKAN: Dialog tanpa DialogTrigger */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingOperational ? "Edit Operasional" : "Tambah Operasional Baru"}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="tanggal">Tanggal *</Label>
+              <div className="mt-1">
+                <DatePicker
+                  id="tanggal"
+                  value={formData.tanggal}
+                  onChange={(value) => setFormData({...formData, tanggal: value})}
+                  placeholder="Pilih tanggal operasional"
+                  required
                 />
               </div>
+            </div>
 
-              <div>
-                <Label htmlFor="sumber_dana">Sumber Dana *</Label>
-                <Select value={formData.sumber_dana} onValueChange={(value) => setFormData({...formData, sumber_dana: value})}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Pilih sumber dana" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredCompanies.map((company) => (
-                      <SelectItem key={company.id} value={company.id.toString()}>
-                        {company.nama_perusahaan}
-                        <br />
-                        <small className="text-gray-500">
-                          Modal: {formatCurrency(company.modal)}
-                        </small>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label htmlFor="kategori">Kategori *</Label>
+              <Select value={formData.kategori} onValueChange={(value) => setFormData({...formData, kategori: value})}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Pilih kategori" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div className="flex gap-2 pt-4">
-                <Button type="submit" className="bg-purple-600 hover:bg-purple-700">
-                  {editingOperational ? "Update" : "Simpan"}
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setIsDialogOpen(false)}
-                >
-                  Batal
-                </Button>
+            <div>
+              <Label htmlFor="nominal">Nominal *</Label>
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Rp</span>
+                <Input
+                  id="nominal"
+                  type="text"
+                  value={formatNumberInput(formData.nominal)}
+                  onChange={(e) => handleNumericChange(e.target.value)}
+                  className="pl-10"
+                  placeholder="1.000.000"
+                />
               </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+            </div>
+
+            <div>
+              <Label htmlFor="deskripsi">Deskripsi *</Label>
+              <Textarea
+                id="deskripsi"
+                value={formData.deskripsi}
+                onChange={(e) => setFormData({...formData, deskripsi: e.target.value})}
+                placeholder="Masukkan deskripsi pengeluaran operasional"
+                className="mt-1"
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="sumber_dana">Sumber Dana *</Label>
+              <Select value={formData.sumber_dana} onValueChange={(value) => setFormData({...formData, sumber_dana: value})}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Pilih sumber dana" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredCompanies.map((company) => (
+                    <SelectItem key={company.id} value={company.id.toString()}>
+                      {company.nama_perusahaan}
+                      <br />
+                      <small className="text-gray-500">
+                        Modal: {formatCurrency(company.modal)}
+                      </small>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <Button type="submit" className="bg-purple-600 hover:bg-purple-700">
+                {editingOperational ? "Update" : "Simpan"}
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsDialogOpen(false)}
+              >
+                Batal
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Filter Controls */}
       <Card>
