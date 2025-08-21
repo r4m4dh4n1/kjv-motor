@@ -65,6 +65,31 @@ export const useBookedUpdateHarga = () => {
         throw pembelianError;
       }
 
+      // Create pembukuan entry for the additional costs
+      if (totalBiayaTambahan > 0) {
+        const { error: pembukuanError } = await supabase
+          .from('pembukuan')
+          .insert({
+            tanggal: new Date().toISOString().split('T')[0],
+            divisi: currentPenjualan.divisi,
+            keterangan: `Update Harga Booked - ${data.reason} (${currentPenjualan.plat})`,
+            debit: totalBiayaTambahan,
+            kredit: 0,
+            cabang_id: currentPenjualan.cabang_id,
+            company_id: currentPenjualan.company_id,
+            pembelian_id: currentPenjualan.pembelian_id
+          });
+
+        if (pembukuanError) {
+          console.error('Error creating pembukuan entry:', pembukuanError);
+          toast({
+            title: "Warning",
+            description: "Harga berhasil diupdate tapi gagal mencatat pembukuan",
+            variant: "destructive"
+          });
+        }
+      }
+
       // Create price history record in price_histories_pembelian
       const { error: historyError } = await supabase
         .from('price_histories_pembelian')
@@ -77,7 +102,7 @@ export const useBookedUpdateHarga = () => {
           biaya_lain_lain: data.biaya_lain_lain,
           keterangan_biaya_lain: data.keterangan_biaya_lain,
           reason: data.reason,
-          company_id: 1 // Default company, adjust if needed
+          company_id: currentPenjualan.company_id || 1
         });
 
       if (historyError) {
@@ -98,6 +123,7 @@ export const useBookedUpdateHarga = () => {
         description: "Harga berhasil diupdate",
       });
       queryClient.invalidateQueries({ queryKey: ['penjualan'] });
+      queryClient.invalidateQueries({ queryKey: ['pembukuan'] });
     },
     onError: (error) => {
       console.error('Error updating harga:', error);

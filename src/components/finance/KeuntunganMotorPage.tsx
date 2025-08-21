@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { Printer, Download, TrendingUp, TrendingDown, DollarSign, Calculator, PieChart, BarChart3, Target, Wallet } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { calculateStandardProfitTotals } from '@/utils/profitCalculationUtils';
 
 interface KeuntunganData {
   id: number;
@@ -95,13 +96,10 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     return new Date(localDate.getTime() - indonesiaOffset);
   };
 
-  function toUTCFromWIB(date: Date): Date {
-  return new Date(date.getTime() - (7 * 60 * 60 * 1000));
-}
-
   const getDateRange = (period: string) => {
     // Gunakan waktu Indonesia sebagai basis perhitungan
     const nowIndonesia = getIndonesiaDate();
+    const januaryMinimumUTC = new Date(Date.UTC(2025, 0, 1, 0, 0, 0)); // 1 Januari 2025
 
     // Tanggal minimum Juli 2024
     const julyMinimumUTC = new Date(Date.UTC(2025, 6, 1, 0, 0, 0)); // Juli = bulan ke-6 (0-indexed)
@@ -134,67 +132,67 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       }
       
       case 'yesterday': {
-      const yesterday = new Date(nowIndonesia);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const startOfDay = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0, 0);
-      const endOfDay = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59, 999);
+        const yesterday = new Date(nowIndonesia);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const startOfDay = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0, 0);
+        const endOfDay = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59, 999);
+        
+        const startUTC = convertToUTC(startOfDay);
+        const endUTC = convertToUTC(endOfDay);
+        
+        dateRange = {
+          start: startUTC < julyMinimumUTC ? julyMinimumUTC : startUTC,
+          end: endUTC
+        };
+        break;
+      }
       
-      const startUTC = convertToUTC(startOfDay);
-      const endUTC = convertToUTC(endOfDay);
+      case 'this_week': {
+        const startOfWeek = new Date(nowIndonesia);
+        startOfWeek.setDate(nowIndonesia.getDate() - nowIndonesia.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+        const endOfWeek = new Date(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59, 999);
+        
+        const startUTC = convertToUTC(startOfWeek);
+        const endUTC = convertToUTC(endOfWeek);
+        
+        dateRange = {
+          start: startUTC < julyMinimumUTC ? julyMinimumUTC : startUTC,
+          end: endUTC
+        };
+        break;
+      }
       
-      dateRange = {
-        start: startUTC < julyMinimumUTC ? julyMinimumUTC : startUTC,
-        end: endUTC
-      };
-      break;
-    }
-    
-    case 'this_week': {
-      const startOfWeek = new Date(nowIndonesia);
-      startOfWeek.setDate(nowIndonesia.getDate() - nowIndonesia.getDay());
-      startOfWeek.setHours(0, 0, 0, 0);
-      const endOfWeek = new Date(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59, 999);
-      
-      const startUTC = convertToUTC(startOfWeek);
-      const endUTC = convertToUTC(endOfWeek);
-      
-      dateRange = {
-        start: startUTC < julyMinimumUTC ? julyMinimumUTC : startUTC,
-        end: endUTC
-      };
-      break;
-    }
-    
-    case 'last_week': {
-      const startOfLastWeek = new Date(nowIndonesia);
-      startOfLastWeek.setDate(nowIndonesia.getDate() - nowIndonesia.getDay() - 7);
-      startOfLastWeek.setHours(0, 0, 0, 0);
-      const endOfLastWeek = new Date(startOfLastWeek);
-      endOfLastWeek.setDate(startOfLastWeek.getDate() + 6);
-      endOfLastWeek.setHours(23, 59, 59, 999);
-      
-      const startUTC = convertToUTC(startOfLastWeek);
-      const endUTC = convertToUTC(endOfLastWeek);
-      
-      dateRange = {
-        start: startUTC < julyMinimumUTC ? julyMinimumUTC : startUTC,
-        end: endUTC
-      };
-      break;
-    }
-      
-     case 'this_month': {
-      const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), 1, 0, 0, 0));
-      const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth() + 1, 0, 23, 59, 59));
-      
-      dateRange = { 
-        start: startUTC < julyMinimumUTC ? julyMinimumUTC : startUTC, 
-        end: endUTC 
-      };
-      break;
-    }
-      
-     case 'last_month': {
+      case 'last_week': {
+        const startOfLastWeek = new Date(nowIndonesia);
+        startOfLastWeek.setDate(nowIndonesia.getDate() - nowIndonesia.getDay() - 7);
+        startOfLastWeek.setHours(0, 0, 0, 0);
+        const endOfLastWeek = new Date(startOfLastWeek);
+        endOfLastWeek.setDate(startOfLastWeek.getDate() + 6);
+        endOfLastWeek.setHours(23, 59, 59, 999);
+        
+        const startUTC = convertToUTC(startOfLastWeek);
+        const endUTC = convertToUTC(endOfLastWeek);
+        
+        dateRange = {
+          start: startUTC < julyMinimumUTC ? julyMinimumUTC : startUTC,
+          end: endUTC
+        };
+        break;
+      }
+        
+      case 'this_month': {
+        const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), 1, 0, 0, 0));
+        const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth() + 1, 0, 23, 59, 59));
+        
+        dateRange = { 
+          start: startUTC < januaryMinimumUTC ? januaryMinimumUTC : startUTC, // Gunakan Januari minimum
+          end: endUTC 
+        };
+        break;
+      }
+        
+      case 'last_month': {
         const currentMonth = nowIndonesia.getMonth(); // 0-indexed
         const currentYear = nowIndonesia.getFullYear();
         const julyMonth = 6; // Juli = index 6
@@ -224,55 +222,55 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         };
         break;
       }
-    
-    case 'this_year': {
-      const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), 0, 1, 0, 0, 0));
-      const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), 11, 31, 23, 59, 59));
-      dateRange = { start: startUTC, end: endUTC };
-      break;
-    }
       
-      case 'last_year': {
-      const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear() - 1, 0, 1, 0, 0, 0));
-      const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear() - 1, 11, 31, 23, 59, 59));
-      
-      dateRange = {
-        start: startUTC < julyMinimumUTC ? julyMinimumUTC : startUTC,
-        end: endUTC
-      };
-      break;
-    }
-    
-    case 'custom': {
-      if (customStartDate && customEndDate) {
-        const startDateIndonesia = new Date(`${customStartDate}T00:00:00`);
-        const endDateIndonesia = new Date(`${customEndDate}T23:59:59.999`);
-        
-        const startUTC = new Date(Date.UTC(
-          startDateIndonesia.getFullYear(),
-          startDateIndonesia.getMonth(),
-          startDateIndonesia.getDate(),
-          0, 0, 0
-        ));
-        const endUTC = new Date(Date.UTC(
-          endDateIndonesia.getFullYear(),
-          endDateIndonesia.getMonth(),
-          endDateIndonesia.getDate(),
-          23, 59, 59
-        ));
-        
-        dateRange = { 
-          start: startUTC < julyMinimumUTC ? julyMinimumUTC : startUTC, 
-          end: endUTC 
-        };
-      } else {
-        // Fallback ke Juli minimum
-        const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59));
-        dateRange = { start: julyMinimumUTC, end: endUTC };
+      case 'this_year': {
+        const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), 0, 1, 0, 0, 0));
+        const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), 11, 31, 23, 59, 59));
+        dateRange = { start: startUTC, end: endUTC };
+        break;
       }
-      break;
-    }
+        
+      case 'last_year': {
+        const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear() - 1, 0, 1, 0, 0, 0));
+        const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear() - 1, 11, 31, 23, 59, 59));
+        
+        dateRange = {
+          start: startUTC < julyMinimumUTC ? julyMinimumUTC : startUTC,
+          end: endUTC
+        };
+        break;
+      }
       
+      case 'custom': {
+        if (customStartDate && customEndDate) {
+          const startDateIndonesia = new Date(`${customStartDate}T00:00:00`);
+          const endDateIndonesia = new Date(`${customEndDate}T23:59:59.999`);
+          
+          const startUTC = new Date(Date.UTC(
+            startDateIndonesia.getFullYear(),
+            startDateIndonesia.getMonth(),
+            startDateIndonesia.getDate(),
+            0, 0, 0
+          ));
+          const endUTC = new Date(Date.UTC(
+            endDateIndonesia.getFullYear(),
+            endDateIndonesia.getMonth(),
+            endDateIndonesia.getDate(),
+            23, 59, 59
+          ));
+          
+          dateRange = { 
+            start: startUTC < julyMinimumUTC ? julyMinimumUTC : startUTC, 
+            end: endUTC 
+          };
+        } else {
+          // Fallback ke Juli minimum
+          const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59));
+          dateRange = { start: julyMinimumUTC, end: endUTC };
+        }
+        break;
+      }
+        
       default: {
         // Default ke hari ini
         const startOfDay = new Date(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 0, 0, 0, 0);
@@ -299,81 +297,30 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     return dateRange;
   };
 
-  // Fungsi untuk mendapatkan range tanggal akumulatif (dari awal tahun sampai periode yang dipilih)
+  // Fungsi untuk mendapatkan range tanggal akumulatif 
+  // PENTING: Untuk match dengan PembelianPageEnhanced, ambil SEMUA data dari awal (tanpa batasan tanggal)
   const getAccumulativeDateRange = (period: string) => {
     const nowIndonesia = getIndonesiaDate();
-    const julyMinimumUTC = new Date(Date.UTC(2025, 6, 1, 0, 0, 0));
     
-    // Tentukan tanggal akhir berdasarkan periode yang dipilih
-    let endDate: Date;
+    // SAMA SEPERTI PembelianPageEnhanced: ambil semua data dari database tanpa filter tanggal
+    // Start date: dari tanggal paling awal (1 Januari 2000)
+    const startDate = new Date(Date.UTC(2000, 0, 1, 0, 0, 0));
     
-    switch (period) {
-      case 'this_month': {
-        // Dari awal tahun sampai akhir bulan ini
-        endDate = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth() + 1, 0, 23, 59, 59));
-        break;
-      }
-      case 'last_month': {
-        // Dari awal tahun sampai akhir bulan lalu
-        endDate = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), 0, 23, 59, 59));
-        break;
-      }
-      case 'this_week': {
-        // Dari awal tahun sampai akhir minggu ini
-        const endOfWeek = new Date(nowIndonesia);
-        endOfWeek.setDate(nowIndonesia.getDate() - nowIndonesia.getDay() + 6);
-        endOfWeek.setHours(23, 59, 59, 999);
-        endDate = convertToUTC(endOfWeek);
-        break;
-      }
-      case 'last_week': {
-        // Dari awal tahun sampai akhir minggu lalu
-        const startOfThisWeek = new Date(nowIndonesia);
-        startOfThisWeek.setDate(nowIndonesia.getDate() - nowIndonesia.getDay());
-        const endOfLastWeek = new Date(startOfThisWeek);
-        endOfLastWeek.setDate(startOfThisWeek.getDate() - 1);
-        endOfLastWeek.setHours(23, 59, 59, 999);
-        endDate = convertToUTC(endOfLastWeek);
-        break;
-      }
-      case 'today': {
-        // Dari awal tahun sampai hari ini
-        const endOfToday = new Date(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59, 999);
-        endDate = convertToUTC(endOfToday);
-        break;
-      }
-      case 'yesterday': {
-        // Dari awal tahun sampai kemarin
-        const yesterday = new Date(nowIndonesia);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const endOfYesterday = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59, 999);
-        endDate = convertToUTC(endOfYesterday);
-        break;
-      }
-      default: {
-        // Default: sampai sekarang
-        endDate = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59));
-        break;
-      }
-    }
+    // End date: sampai akhir tahun saat ini
+    const endDate = new Date(Date.UTC(nowIndonesia.getFullYear(), 11, 31, 23, 59, 59));
     
-    // Start date selalu dari awal tahun atau Juli minimum
-    const startOfYear = new Date(Date.UTC(nowIndonesia.getFullYear(), 0, 1, 0, 0, 0));
-    const startDate = startOfYear < julyMinimumUTC ? julyMinimumUTC : startOfYear;
-    
-    console.log('📊 Accumulative date range:', {
+    console.log('📊 Accumulative date range (ALL DATA - same as PembelianPageEnhanced):', {
       period,
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
       startIndonesia: new Date(startDate.getTime() + (7 * 60 * 60 * 1000)).toLocaleString('id-ID'),
-      endIndonesia: new Date(endDate.getTime() + (7 * 60 * 60 * 1000)).toLocaleString('id-ID')
+      endIndonesia: new Date(endDate.getTime() + (7 * 60 * 60 * 1000)).toLocaleString('id-ID'),
+      note: "Mengambil SEMUA data tanpa batasan tanggal, sama seperti PembelianPageEnhanced"
     });
     
     return { start: startDate, end: endDate };
   };
 
-  console.log('KeuntunganMotorPage - selectedDivision:', selectedDivision);
-  
   const fetchInitialData = async () => {
     try {
       const { data: cabangData, error: cabangError } = await supabase
@@ -408,74 +355,97 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       cabang: selectedCabang
     });
 
-    // 1. Query untuk total unit YTD (penjualan selesai)
+    // 1. Query untuk total unit YTD (penjualan selesai) - ambil semua data
     let unitYTDQuery = supabase
       .from('penjualans')
-      .select('id')
-      .eq('status', 'selesai')
-      .gte('tanggal', dateRange.start.toISOString().split('T')[0])
-      .lte('tanggal', dateRange.end.toISOString().split('T')[0]);
+      .select('id, status, tanggal, cabang_id, divisi');
 
-    if (selectedCabang !== 'all') {
-      unitYTDQuery = unitYTDQuery.eq('cabang_id', parseInt(selectedCabang));
-    }
     if (selectedDivision !== 'all') {
       unitYTDQuery = unitYTDQuery.eq('divisi', selectedDivision);
     }
 
-    // 2. Query untuk total pembelian YTD (pembelian ready)
+    // 2. Query untuk total pembelian YTD (pembelian ready) - ambil semua data
     let pembelianYTDQuery = supabase
       .from('pembelian')
-      .select('harga_beli')
-      .eq('status', 'ready')
-      .gte('tanggal_pembelian', dateRange.start.toISOString().split('T')[0])
-      .lte('tanggal_pembelian', dateRange.end.toISOString().split('T')[0]);
+      .select('harga_beli, harga_final, tanggal_pembelian, cabang_id, divisi, status');
 
-    if (selectedCabang !== 'all') {
-      pembelianYTDQuery = pembelianYTDQuery.eq('cabang_id', parseInt(selectedCabang));
-    }
     if (selectedDivision !== 'all') {
       pembelianYTDQuery = pembelianYTDQuery.eq('divisi', selectedDivision);
     }
 
-    // 3. Query untuk total booked YTD (DP dari penjualan booked)
+    // 2b. Query untuk total pembelian YTD dari penjualans (status booked) - ambil semua data
+    let penjualansBookedYTDQuery = supabase
+      .from('penjualans')
+      .select('harga_beli, tanggal, cabang_id, divisi, status');
+
+    if (selectedDivision !== 'all') {
+      penjualansBookedYTDQuery = penjualansBookedYTDQuery.eq('divisi', selectedDivision);
+    }
+
+    // 3. Query untuk total booked YTD (DP dari penjualan booked) - ambil semua data
     let bookedYTDQuery = supabase
       .from('penjualans')
-      .select('dp')
-      .eq('status', 'booked')
-      .gte('tanggal', dateRange.start.toISOString().split('T')[0])
-      .lte('tanggal', dateRange.end.toISOString().split('T')[0]);
+      .select('dp, tanggal, cabang_id, divisi, status');
 
-    if (selectedCabang !== 'all') {
-      bookedYTDQuery = bookedYTDQuery.eq('cabang_id', parseInt(selectedCabang));
-    }
     if (selectedDivision !== 'all') {
       bookedYTDQuery = bookedYTDQuery.eq('divisi', selectedDivision);
     }
 
-    const [unitYTDResult, pembelianYTDResult, bookedYTDResult] = await Promise.all([
+    const [unitYTDResult, pembelianYTDResult, penjualansBookedYTDResult, bookedYTDResult] = await Promise.all([
       unitYTDQuery,
       pembelianYTDQuery,
+      penjualansBookedYTDQuery,
       bookedYTDQuery
     ]);
 
     // Error handling
     if (unitYTDResult.error) throw unitYTDResult.error;
     if (pembelianYTDResult.error) throw pembelianYTDResult.error;
+    if (penjualansBookedYTDResult.error) throw penjualansBookedYTDResult.error;
     if (bookedYTDResult.error) throw bookedYTDResult.error;
 
+    // Filter data berdasarkan cabang SAJA di frontend (SAMA SEPERTI PembelianPageEnhanced - TANPA FILTER TANGGAL)
+    const filteredUnits = unitYTDResult.data?.filter(item => {
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      const matchesStatus = item.status === 'selesai';
+      return matchesCabang && matchesStatus;
+    }) || [];
+
+    const filteredPembelian = pembelianYTDResult.data?.filter(item => {
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      const matchesStatus = item.status === 'ready';
+      return matchesCabang && matchesStatus;
+    }) || [];
+
+    const filteredPenjualansBooked = penjualansBookedYTDResult.data?.filter(item => {
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      const matchesStatus = item.status === 'booked';
+      return matchesCabang && matchesStatus;
+    }) || [];
+
+    const filteredBooked = bookedYTDResult.data?.filter(item => {
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      const matchesStatus = item.status === 'booked';
+      return matchesCabang && matchesStatus;
+    }) || [];
+
     // Hitung totals
-    const totalUnitYTD = unitYTDResult.data?.length || 0;
-    const totalPembelianYTD = pembelianYTDResult.data?.reduce((sum, item) => sum + (item.harga_beli || 0), 0) || 0;
-    const totalBookedYTD = bookedYTDResult.data?.reduce((sum, item) => sum + (item.dp || 0), 0) || 0;
+    const totalUnitYTD = filteredUnits.length;
+    const totalPembelianFromPembelian = filteredPembelian.reduce((sum, item) => sum + (item.harga_final || item.harga_beli || 0), 0);
+    const totalPembelianFromPenjualans = filteredPenjualansBooked.reduce((sum, item) => sum + (item.harga_beli || 0), 0);
+    const totalPembelianYTD = totalPembelianFromPembelian + totalPembelianFromPenjualans;
+    const totalBookedYTD = filteredBooked.reduce((sum, item) => sum + (item.dp || 0), 0);
 
     console.log('📊 Accumulative data results:', {
       totalUnitYTD,
       totalPembelianYTD,
+      totalPembelianFromPembelian,
+      totalPembelianFromPenjualans,
       totalBookedYTD,
-      unitRecords: unitYTDResult.data?.length || 0,
-      pembelianRecords: pembelianYTDResult.data?.length || 0,
-      bookedRecords: bookedYTDResult.data?.length || 0
+      unitRecords: filteredUnits.length,
+      pembelianRecords: filteredPembelian.length,
+      penjualansBookedRecords: filteredPenjualansBooked.length,
+      bookedRecords: filteredBooked.length
     });
 
     return {
@@ -499,6 +469,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       cabang: selectedCabang
     });
 
+    // Ambil semua data tanpa filter tanggal (sama seperti PembelianPageEnhanced)
     // 1. Query untuk data keuntungan (penjualan yang selesai)
     let keuntunganQuery = supabase
       .from('penjualans')
@@ -517,15 +488,10 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         divisi,
         brands(name),
         jenis_motor(jenis_motor),
-        pembelian:pembelian_id(harga_final, harga_beli)
-      `)
-      .eq('status', 'selesai')
-      .gte('tanggal', dateRange.start.toISOString().split('T')[0])
-      .lte('tanggal', dateRange.end.toISOString().split('T')[0]);
+        pembelian:pembelian_id(harga_final, harga_beli),
+        cabang_id
+      `);
 
-    if (selectedCabang !== 'all') {
-      keuntunganQuery = keuntunganQuery.eq('cabang_id', parseInt(selectedCabang));
-    }
     if (selectedDivision !== 'all') {
       keuntunganQuery = keuntunganQuery.eq('divisi', selectedDivision);
     }
@@ -533,14 +499,8 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     // 2. Query untuk total booked (DP dari penjualan dengan status 'Booked')
     let bookedQuery = supabase
       .from('penjualans')
-      .select('dp, tanggal, id')
-      .eq('status', 'booked')
-      .gte('tanggal', dateRange.start.toISOString().split('T')[0])
-      .lte('tanggal', dateRange.end.toISOString().split('T')[0]);
+      .select('dp, tanggal, id, cabang_id, divisi, status');
 
-    if (selectedCabang !== 'all') {
-      bookedQuery = bookedQuery.eq('cabang_id', parseInt(selectedCabang));
-    }
     if (selectedDivision !== 'all') {
       bookedQuery = bookedQuery.eq('divisi', selectedDivision);
     }
@@ -548,29 +508,17 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     // 3. Query untuk harga_beli dari penjualans dengan status 'Booked'
     let bookedHargaBeliQuery = supabase
       .from('penjualans')
-      .select('harga_beli, tanggal, id')
-      .eq('status', 'booked')
-      .gte('tanggal', dateRange.start.toISOString().split('T')[0])
-      .lte('tanggal', dateRange.end.toISOString().split('T')[0]);
+      .select('harga_beli, tanggal, id, cabang_id, divisi, status');
 
-    if (selectedCabang !== 'all') {
-      bookedHargaBeliQuery = bookedHargaBeliQuery.eq('cabang_id', parseInt(selectedCabang));
-    }
     if (selectedDivision !== 'all') {
       bookedHargaBeliQuery = bookedHargaBeliQuery.eq('divisi', selectedDivision);
     }
 
-    // 4. Query untuk pembelian dengan status 'ready'
+    // 4. Query untuk pembelian dengan status 'ready' (dengan prioritas harga_final)
     let pembelianReadyQuery = supabase
       .from('pembelian')
-      .select('harga_beli, divisi, tanggal_pembelian, id')
-      .eq('status', 'ready')
-      .gte('tanggal_pembelian', dateRange.start.toISOString().split('T')[0])
-      .lte('tanggal_pembelian', dateRange.end.toISOString().split('T')[0]);
+      .select('harga_beli, harga_final, divisi, tanggal_pembelian, id, cabang_id, status');
 
-    if (selectedCabang !== 'all') {
-      pembelianReadyQuery = pembelianReadyQuery.eq('cabang_id', parseInt(selectedCabang));
-    }
     if (selectedDivision !== 'all') {
       pembelianReadyQuery = pembelianReadyQuery.eq('divisi', selectedDivision);
     }
@@ -578,27 +526,17 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     // 5. Query untuk total operasional
     let operasionalQuery = supabase
       .from('operational')
-      .select('nominal, divisi, tanggal, id')
-      .gte('tanggal', dateRange.start.toISOString().split('T')[0])
-      .lte('tanggal', dateRange.end.toISOString().split('T')[0]);
+      .select('nominal, divisi, tanggal, id, cabang_id');
 
-    if (selectedCabang !== 'all') {
-      operasionalQuery = operasionalQuery.eq('cabang_id', parseInt(selectedCabang));
-    }
     if (selectedDivision !== 'all') {
       operasionalQuery = operasionalQuery.eq('divisi', selectedDivision);
     }
 
     // 6. Query untuk pencatatan asset
-    let pencatatanAssetQuery = (supabase as any)
+    let pencatatanAssetQuery = supabase
       .from('pencatatan_asset')
-      .select('nominal, divisi, tanggal, id')
-      .gte('tanggal', dateRange.start.toISOString().split('T')[0])
-      .lte('tanggal', dateRange.end.toISOString().split('T')[0]);
+      .select('nominal, divisi, tanggal, id, cabang_id');
 
-    if (selectedCabang !== 'all') {
-      pencatatanAssetQuery = pencatatanAssetQuery.eq('cabang_id', parseInt(selectedCabang));
-    }
     if (selectedDivision !== 'all') {
       pencatatanAssetQuery = pencatatanAssetQuery.eq('divisi', selectedDivision);
     }
@@ -620,51 +558,77 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     if (operasionalResult.error) throw operasionalResult.error;
     if (pencatatanAssetResult.error) throw pencatatanAssetResult.error;
 
-    // Logging detail untuk debugging
-    console.log('📊 Raw query results:', {
-      keuntungan: {
-        count: keuntunganResult.data?.length || 0,
-        sample: keuntunganResult.data?.slice(0, 2) || []
-      },
-      booked: {
-        count: bookedResult.data?.length || 0,
-        sample: bookedResult.data?.slice(0, 2) || []
-      },
-      pembelianReady: {
-        count: pembelianReadyResult.data?.length || 0,
-        sample: pembelianReadyResult.data?.slice(0, 2) || [],
-        dates: pembelianReadyResult.data?.map(item => item.tanggal_pembelian) || []
-      },
-      operasional: {
-        count: operasionalResult.data?.length || 0,
-        sample: operasionalResult.data?.slice(0, 2) || []
-      }
-    });
+    // Filter semua data berdasarkan tanggal dan cabang di frontend (sama seperti PembelianPageEnhanced)
+    const filteredKeuntungan = keuntunganResult.data?.filter(item => {
+      const itemDate = new Date(item.tanggal);
+      const matchesDate = itemDate >= dateRange.start && itemDate <= dateRange.end;
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      const matchesStatus = item.status === 'selesai';
+      return matchesDate && matchesCabang && matchesStatus;
+    }) || [];
 
-    // Format data keuntungan
-    const formattedData = keuntunganResult.data?.map(item => {
+    const filteredBooked = bookedResult.data?.filter(item => {
+      const itemDate = new Date(item.tanggal);
+      const matchesDate = itemDate >= dateRange.start && itemDate <= dateRange.end;
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      const matchesStatus = item.status === 'booked';
+      return matchesDate && matchesCabang && matchesStatus;
+    }) || [];
+
+    const filteredBookedHargaBeli = bookedHargaBeliResult.data?.filter(item => {
+      const itemDate = new Date(item.tanggal);
+      const matchesDate = itemDate >= dateRange.start && itemDate <= dateRange.end;
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      const matchesStatus = item.status === 'booked';
+      return matchesDate && matchesCabang && matchesStatus;
+    }) || [];
+
+    const filteredPembelianReady = pembelianReadyResult.data?.filter(item => {
+      const itemDate = new Date(item.tanggal_pembelian);
+      const matchesDate = itemDate >= dateRange.start && itemDate <= dateRange.end;
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      const matchesStatus = item.status === 'ready';
+      return matchesDate && matchesCabang && matchesStatus;
+    }) || [];
+
+    const filteredOperasional = operasionalResult.data?.filter(item => {
+      const itemDate = new Date(item.tanggal);
+      const matchesDate = itemDate >= dateRange.start && itemDate <= dateRange.end;
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      return matchesDate && matchesCabang;
+    }) || [];
+
+    const filteredPencatatanAsset = pencatatanAssetResult.data?.filter(item => {
+      const itemDate = new Date(item.tanggal);
+      const matchesDate = itemDate >= dateRange.start && itemDate <= dateRange.end;
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      return matchesDate && matchesCabang;
+    }) || [];
+
+    // Format data keuntungan dari data yang sudah difilter
+    const formattedData = filteredKeuntungan.map(item => {
       const modalValue = item.pembelian 
         ? (item.pembelian.harga_final || item.pembelian.harga_beli || 0)
         : (item.harga_beli || 0);
       
       return {
-        id: item.id,
-        nama_motor: `${item.brands?.name || ''} ${item.jenis_motor?.jenis_motor || ''} ${item.tahun || ''}  ${item.warna || ''} ${item.kilometer ? Number(item.kilometer).toLocaleString('id-ID') : '0'}`,
-        modal: modalValue,
-        harga_jual: item.harga_jual || 0,
-        profit: item.keuntungan || 0,
-        tanggal_jual: item.tanggal,
-        cabang: item.cabang?.nama || '',
-        divisi: item.divisi || ''
-      };
-    }) || [];
+    id: item.id,
+    nama_motor: `${item.brands?.name || ''} ${item.jenis_motor?.jenis_motor || ''} ${item.tahun || ''}  ${item.warna || ''} ${item.kilometer ? Number(item.kilometer).toLocaleString('id-ID') : '0'}`,
+    modal: modalValue,
+    harga_jual: item.harga_jual || 0,
+    profit: item.keuntungan || 0,
+    tanggal_jual: item.tanggal,
+    cabang: item.cabang?.nama || '',
+    divisi: item.divisi || ''
+  };
+    });
 
-    // Hitung totals
-    const totalBooked = bookedResult.data?.reduce((sum, item) => sum + (item.dp || 0), 0) || 0;
-    const totalOperasional = operasionalResult.data?.reduce((sum, item) => sum + (item.nominal || 0), 0) || 0;
-    const totalPembelianReady = pembelianReadyResult.data?.reduce((sum, item) => sum + (item.harga_beli || 0), 0) || 0;
-    const totalBookedHargaBeli = bookedHargaBeliResult.data?.reduce((sum, item) => sum + (item.harga_beli || 0), 0) || 0;
-    const totalPencatatanAsset = pencatatanAssetResult.data?.reduce((sum, item) => sum + (item.nominal || 0), 0) || 0;
+    // Hitung totals menggunakan data yang sudah difilter (sama seperti PembelianPageEnhanced)
+    const totalBooked = filteredBooked.reduce((sum, item) => sum + (item.dp || 0), 0);
+    const totalOperasional = filteredOperasional.reduce((sum, item) => sum + (item.nominal || 0), 0);
+    const totalPembelianReady = filteredPembelianReady.reduce((sum, item) => sum + (item.harga_final || item.harga_beli || 0), 0);
+    const totalBookedHargaBeli = filteredBookedHargaBeli.reduce((sum, item) => sum + (item.harga_beli || 0), 0);
+    const totalPencatatanAsset = filteredPencatatanAsset.reduce((sum, item) => sum + (item.nominal || 0), 0);
     const totalProfitFiltered = formattedData.reduce((sum, item) => sum + item.profit, 0);
 
     console.log('📊 Period filtered data results:', {
@@ -674,13 +638,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       totalPembelianReady,
       totalBookedHargaBeli,
       totalPencatatanAsset,
-      totalProfitFiltered,
-      pembelianReadyDetails: pembelianReadyResult.data?.map(item => ({
-        id: item.id,
-        tanggal: item.tanggal_pembelian,
-        harga_beli: item.harga_beli,
-        divisi: item.divisi
-      })) || []
+      totalProfitFiltered
     });
 
     return {
@@ -773,66 +731,81 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         throw new Error('Data tidak valid dari server');
       }
 
-      // Set data yang difilter berdasarkan periode
-      setKeuntunganData(periodData.keuntunganData || []);
-      setTotalBooked(periodData.totalBooked || 0);
-      setTotalOperasional(periodData.totalOperasional || 0);
-      setTotalPencatatanAsset(periodData.totalPencatatanAsset || 0);
+      // LOGIKA BARU: Untuk close month/pergantian bulan, hanya Total Modal dan Total Pembelian yang akumulatif
       
-      // Set total pembelian gabungan
-      const totalGabungan = (periodData.totalPembelianReady || 0) + (periodData.totalBookedHargaBeli || 0);
-      setTotalPembelianGabungan(totalGabungan);
-      
-      // Set data kumulatif
+      // Set Total Modal Perusahaan (SELALU AKUMULATIF - tidak berubah saat close month)
       setTotalModalPerusahaan(cumulativeData.totalModalPerusahaan || 0);
       
-      // Hitung total modal kalkulasi (gabungan periode + kumulatif)
+      // Set Total Pembelian (SELALU AKUMULATIF - menjumlahkan dari Januari sampai periode berjalan)
+      if (shouldUseAccumulative && accumulativeData) {
+        setDisplayTotalPembelian(accumulativeData.totalPembelianYTD || 0);
+        setTotalPembelianGabungan(accumulativeData.totalPembelianYTD || 0);
+        
+        console.log('📊 Using accumulative Total Pembelian:', {
+          displayTotalPembelian: accumulativeData.totalPembelianYTD
+        });
+      } else {
+        // Untuk periode lain (this_year, last_year, custom)
+        const totalGabungan = (periodData.totalPembelianReady || 0) + (periodData.totalBookedHargaBeli || 0);
+        setDisplayTotalPembelian(totalGabungan);
+        setTotalPembelianGabungan(totalGabungan);
+      }
+
+      // CARD LAINNYA: Akan menjadi 0 saat close month (hanya menampilkan data periode berjalan)
+      if (shouldUseAccumulative) {
+        // Saat close month atau pergantian bulan, card selain Total Modal dan Total Pembelian menjadi 0
+        console.log('🔄 Close month/pergantian bulan - Card lain akan menjadi 0 kecuali Total Modal dan Total Pembelian');
+        
+        // Data periode yang TIDAK akumulatif (akan reset saat close month)
+        setKeuntunganData(periodData.keuntunganData || []);
+        setTotalBooked(periodData.totalBooked || 0);
+        setTotalOperasional(periodData.totalOperasional || 0);
+        setTotalPencatatanAsset(periodData.totalPencatatanAsset || 0);
+        setDisplayTotalUnit(periodData.keuntunganData?.length || 0);
+        
+        // FIX: Gunakan accumulative data untuk Total Booked
+        setDisplayTotalBooked(accumulativeData ? accumulativeData.totalBookedYTD : periodData.totalBooked || 0);
+        
+      } else {
+        // Untuk periode lain (this_year, last_year, custom), tampilkan data normal
+        setKeuntunganData(periodData.keuntunganData || []);
+        setTotalBooked(periodData.totalBooked || 0);
+        setTotalOperasional(periodData.totalOperasional || 0);
+        setTotalPencatatanAsset(periodData.totalPencatatanAsset || 0);
+        setDisplayTotalUnit(periodData.keuntunganData?.length || 0);
+        setDisplayTotalBooked(periodData.totalBooked || 0);
+      }
+      
+      // Hitung total modal kalkulasi (untuk perhitungan internal)
       const totalModalKalkulasiBaru = 
         (cumulativeData.totalModalPerusahaan || 0) + 
         (periodData.totalPencatatanAsset || 0) + 
-        (periodData.totalPembelianReady || 0) + 
-        (periodData.totalBookedHargaBeli || 0) + 
+        (shouldUseAccumulative && accumulativeData ? accumulativeData.totalPembelianYTD : ((periodData.totalPembelianReady || 0) + (periodData.totalBookedHargaBeli || 0))) + 
         (periodData.totalProfitFiltered || 0) - 
         (periodData.totalOperasional || 0);
       
       setTotalModalKalkulasi(totalModalKalkulasiBaru);
 
-      // Set data untuk card display
-      if (shouldUseAccumulative && accumulativeData) {
-        setDisplayTotalUnit(accumulativeData.totalUnitYTD);
-        setDisplayTotalPembelian(accumulativeData.totalPembelianYTD);
-        setDisplayTotalBooked(accumulativeData.totalBookedYTD);
-        
-        console.log('📊 Using accumulative data for card display:', {
-          displayTotalUnit: accumulativeData.totalUnitYTD,
-          displayTotalPembelian: accumulativeData.totalPembelianYTD,
-          displayTotalBooked: accumulativeData.totalBookedYTD
-        });
-      } else {
-        // Untuk periode lain (this_year, last_year, custom), gunakan data periode
-        setDisplayTotalUnit(periodData.keuntunganData?.length || 0);
-        setDisplayTotalPembelian(periodData.totalPembelianReady || 0);
-        setDisplayTotalBooked(periodData.totalBooked || 0);
-        
-        console.log('📊 Using period data for card display:', {
-          displayTotalUnit: periodData.keuntunganData?.length || 0,
-          displayTotalPembelian: periodData.totalPembelianReady || 0,
-          displayTotalBooked: periodData.totalBooked || 0
-        });
-      }
-
-      console.log('✅ Final calculations:', {
+      console.log('✅ Final calculations with close month logic:', {
         totalModalPerusahaan: cumulativeData.totalModalPerusahaan,
+        displayTotalPembelian: shouldUseAccumulative && accumulativeData ? accumulativeData.totalPembelianYTD : ((periodData.totalPembelianReady || 0) + (periodData.totalBookedHargaBeli || 0)),
+        displayTotalBooked: shouldUseAccumulative && accumulativeData ? accumulativeData.totalBookedYTD : periodData.totalBooked,
         totalPencatatanAsset: periodData.totalPencatatanAsset,
-        totalPembelianReady: periodData.totalPembelianReady,
-        totalBookedHargaBeli: periodData.totalBookedHargaBeli,
-        totalProfitFiltered: periodData.totalProfitFiltered,
         totalOperasional: periodData.totalOperasional,
         totalModalKalkulasiBaru,
-        totalPembelianGabungan: totalGabungan,
         keuntunganDataCount: periodData.keuntunganData?.length || 0,
         shouldUseAccumulative,
-        accumulativeData
+        closeMonthLogic: 'Total Modal, Total Pembelian, dan Total Booked akumulatif, lainnya reset',
+        debugInfo: {
+          selectedPeriod,
+          selectedDivision,
+          selectedCabang,
+          dateRange: {
+            start: dateRange.start,
+            end: dateRange.end
+          },
+          message: shouldUseAccumulative ? '🔄 CLOSE MONTH MODE: Hanya Total Modal, Total Pembelian & Total Booked akumulatif' : '📊 NORMAL MODE: Semua data sesuai periode'
+        }
       });
 
     } catch (error) {
@@ -871,7 +844,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
   // Perhitungan metrik dari data tabel (konsisten dengan data yang ditampilkan)
   const totalModal = keuntunganData.reduce((sum, item) => sum + item.modal, 0);
   const totalTerjual = keuntunganData.reduce((sum, item) => sum + item.harga_jual, 0);
-  const totalProfit = keuntunganData.reduce((sum, item) => sum + item.profit, 0);
+  const { totalKeuntungan: totalProfit } = calculateStandardProfitTotals(keuntunganData);
   const totalUnit = keuntunganData.length;
 
   // Perhitungan metrik finansial berdasarkan data yang sudah difilter per periode
@@ -940,7 +913,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-            <Label htmlFor="period">Periode</Label>
+              <Label htmlFor="period">Periode</Label>
               <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih periode" />
@@ -1016,19 +989,14 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Unit
-              {['this_month', 'last_month', 'this_week', 'last_week', 'today', 'yesterday'].includes(selectedPeriod) && 
-                <span className="text-xs text-blue-500 block">(YTD)</span>
-              }
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Total Unit</CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{displayTotalUnit}</div>
             <p className="text-xs text-muted-foreground">
               {['this_month', 'last_month', 'this_week', 'last_week', 'today', 'yesterday'].includes(selectedPeriod) 
-                ? 'Unit terjual dari awal tahun' 
+                ? 'Unit terjual periode ini (reset saat close month)' 
                 : 'Unit terjual'
               }
             </p>
@@ -1046,7 +1014,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
             }`}>
               {formatCurrency(totalModalKalkulasi)}
             </div>
-            <p className="text-xs text-muted-foreground">Modal kerja aktual</p>
+            <p className="text-xs text-muted-foreground">Modal kerja aktual (akumulatif, tidak reset saat close month)</p>
           </CardContent>
         </Card>
 
@@ -1064,8 +1032,8 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
             <div className="text-2xl font-bold text-red-600">{formatCurrency(displayTotalPembelian)}</div>
             <p className="text-xs text-muted-foreground">
               {['this_month', 'last_month', 'this_week', 'last_week', 'today', 'yesterday'].includes(selectedPeriod) 
-                ? 'Modal investasi dari awal tahun' 
-                : 'Modal investasi'
+                ? 'Modal investasi dari Januari sampai periode ini (akumulatif, tidak reset saat close month)' 
+                : 'Modal investasi (Ready: harga final/beli + Booked: harga beli)'
               }
             </p>
           </CardContent>
@@ -1085,7 +1053,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
             <div className="text-2xl font-bold text-blue-600">{formatCurrency(displayTotalBooked)}</div>
             <p className="text-xs text-muted-foreground">
               {['this_month', 'last_month', 'this_week', 'last_week', 'today', 'yesterday'].includes(selectedPeriod) 
-                ? 'Uang muka dari awal tahun' 
+                ? 'Uang muka dari semua status booked (akumulatif, tidak reset saat close month)' 
                 : 'Uang muka diterima'
               }
             </p>
@@ -1099,7 +1067,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">{formatCurrency(totalOperasional)}</div>
-            <p className="text-xs text-muted-foreground">Biaya operasional</p>
+            <p className="text-xs text-muted-foreground">Biaya operasional periode ini (reset saat close month)</p>
           </CardContent>
         </Card>
 
@@ -1110,7 +1078,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{formatCurrency(totalProfit)}</div>
-            <p className="text-xs text-muted-foreground">Profit kotor</p>
+            <p className="text-xs text-muted-foreground">Profit kotor periode ini (reset saat close month)</p>
           </CardContent>
         </Card>
       </div>
@@ -1176,13 +1144,10 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Net Business Value</CardTitle>
-            {netBusinessValue >= 0 ? 
-              <TrendingUp className="h-4 w-4 text-green-500" /> : 
-              <TrendingDown className="h-4 w-4 text-red-500" />
-            }
+            <PieChart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${
@@ -1192,7 +1157,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
             </div>
             <p className="text-xs text-muted-foreground">Nilai bisnis bersih</p>
           </CardContent>
-        </Card>
+         </Card>
       </div>
 
       {/* Data Table */}

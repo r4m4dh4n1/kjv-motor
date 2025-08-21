@@ -190,6 +190,33 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
         if (modalUpdateError) throw modalUpdateError;
 
+        // Update pembukuan entry - delete old and create new
+        await supabase
+          .from('pembukuan')
+          .delete()
+          .eq('keterangan', `like ${editingOperational.kategori} - ${editingOperational.deskripsi}%`);
+
+        const { error: pembukuanError } = await supabase
+          .from('pembukuan')
+          .insert({
+            tanggal: formData.tanggal,
+            divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
+            keterangan: `${formData.kategori} - ${formData.deskripsi}`,
+            debit: nominalAmount,
+            kredit: 0,
+            cabang_id: 1,
+            company_id: parseInt(formData.sumber_dana)
+          });
+
+        if (pembukuanError) {
+          console.error('Error updating pembukuan entry:', pembukuanError);
+          toast({
+            title: "Warning",
+            description: "Data operasional berhasil diubah tapi gagal mengupdate pembukuan",
+            variant: "destructive"
+          });
+        }
+
         toast({
           title: "Berhasil",
           description: "Data operasional berhasil diperbarui",
@@ -217,6 +244,28 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         });
 
         if (modalUpdateError) throw modalUpdateError;
+
+        // Create pembukuan entry for operational expense
+        const { error: pembukuanError } = await supabase
+          .from('pembukuan')
+          .insert({
+            tanggal: formData.tanggal,
+            divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
+            keterangan: `${formData.kategori} - ${formData.deskripsi}`,
+            debit: nominalAmount,
+            kredit: 0,
+            cabang_id: 1,
+            company_id: parseInt(formData.sumber_dana)
+          });
+
+        if (pembukuanError) {
+          console.error('Error creating pembukuan entry:', pembukuanError);
+          toast({
+            title: "Warning",
+            description: "Data operasional berhasil ditambah tapi gagal mencatat pembukuan",
+            variant: "destructive"
+          });
+        }
 
         toast({
           title: "Berhasil",
@@ -266,6 +315,12 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         .eq('id', id.toString());
 
       if (deleteError) throw deleteError;
+
+      // Delete pembukuan entry first
+      await supabase
+        .from('pembukuan')
+        .delete()
+        .eq('keterangan', `like ${operationalToDelete.kategori} - ${operationalToDelete.deskripsi}%`);
 
       // Restore company modal using the database function
       if (operationalToDelete.company_id) {

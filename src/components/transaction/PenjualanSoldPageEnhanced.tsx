@@ -13,6 +13,7 @@ import { useCabangData } from "./hooks/usePembelianData";
 import PenjualanSoldTable from "./PenjualanSoldTable";
 import { formatCurrency } from "@/utils/formatUtils";
 import { usePagination } from "@/hooks/usePagination";
+import { calculateStandardProfitTotals } from '@/utils/profitCalculationUtils';
 
 interface PenjualanSoldPageEnhancedProps {
   selectedDivision: string;
@@ -115,16 +116,8 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
     totalItems
   } = usePagination(filteredData, pageSize);
 
-  // Calculate totals
-  const calculateTotals = () => {
-    const totalPenjualan = filteredData.reduce((sum, item) => sum + (item.harga_jual || 0), 0);
-    const totalKeuntungan = filteredData.reduce((sum, item) => sum + (item.keuntungan || 0), 0);
-    const totalUnit = filteredData.length;
-
-    return { totalPenjualan, totalKeuntungan, totalUnit };
-  };
-
-  const { totalPenjualan, totalKeuntungan, totalUnit } = calculateTotals();
+  // Calculate totals using shared utility function
+  const { totalPenjualan, totalKeuntungan, totalUnit } = calculateStandardProfitTotals(filteredData);
 
   const resetFilters = () => {
     setSearchTerm("");
