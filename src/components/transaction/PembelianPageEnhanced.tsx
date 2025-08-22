@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subWeeks, subMonths, subYears, addDays } from "date-fns";
@@ -48,6 +47,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   const [isQCDialogOpen, setIsQCDialogOpen] = useState(false);
   const [isQcHistoryDialogOpen, setIsQcHistoryDialogOpen] = useState(false);
   const [isPriceHistoryDialogOpen, setIsPriceHistoryDialogOpen] = useState(false);
+  const [isUpdateHargaCalendarOpen, setIsUpdateHargaCalendarOpen] = useState(false);
   const [editingPembelian, setEditingPembelian] = useState<Pembelian | null>(null);
   const [viewingPembelian, setViewingPembelian] = useState<Pembelian | null>(null);
   const [updatingHargaPembelian, setUpdatingHargaPembelian] = useState<Pembelian | null>(null);
@@ -390,6 +390,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   const closeAllDialogs = () => {
     setIsViewDialogOpen(false);
     setIsUpdateHargaDialogOpen(false);
+    setIsUpdateHargaCalendarOpen(false);
     setIsQCDialogOpen(false);
     setIsQcHistoryDialogOpen(false);
     setIsPriceHistoryDialogOpen(false);
@@ -1023,7 +1024,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
             {/* Tanggal Update Field */}
             <div>
               <Label htmlFor="tanggal-update">Tanggal Update *</Label>
-              <Popover>
+              <Popover open={isUpdateHargaCalendarOpen} onOpenChange={setIsUpdateHargaCalendarOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -1046,6 +1047,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                           ...prev,
                           tanggal_update: date.toISOString().split('T')[0]
                         }));
+                        setIsUpdateHargaCalendarOpen(false); // Tutup calendar setelah memilih
                       }
                     }}
                     initialFocus
