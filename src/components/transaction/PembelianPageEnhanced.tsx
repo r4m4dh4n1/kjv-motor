@@ -486,7 +486,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
           keterangan: `Update harga motor ${updatingHargaPembelian.plat_nomor} - ${updateHargaForm.reason}`,
           debit: selisihHarga,
           pembelian_id: updatingHargaPembelian.id,
-          company_id: updatingHargaPembelian.sumber_dana_1_id
+          company_id: parseInt(updateHargaForm.company_id)
         };
 
         const { error: pembukuanError } = await supabase
@@ -495,19 +495,19 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
         
         if (pembukuanError) throw pembukuanError;
 
-        // Kurangi modal dari company yang menjadi sumber dana utama
-        const { data: company, error: companyFetchError } = await supabase
-          .from("companies")
-          .select("modal")
-          .eq("id", updatingHargaPembelian.sumber_dana_1_id)
-          .single();
-        
-        if (companyFetchError) throw companyFetchError;
+        // Kurangi modal dari company yang dipilih user untuk update harga
+      const { data: company, error: companyFetchError } = await supabase
+        .from("companies")
+        .select("modal")
+        .eq("id", parseInt(updateHargaForm.company_id))
+        .single();
+      
+      if (companyFetchError) throw companyFetchError;
 
-        const { error: updateModalError } = await supabase
-          .from("companies")
-          .update({ modal: company.modal - selisihHarga })
-          .eq("id", updatingHargaPembelian.sumber_dana_1_id);
+      const { error: updateModalError } = await supabase
+        .from("companies")
+        .update({ modal: company.modal - selisihHarga })
+        .eq("id", parseInt(updateHargaForm.company_id));
         
         if (updateModalError) throw updateModalError;
       }
