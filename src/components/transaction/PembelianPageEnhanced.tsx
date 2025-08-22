@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subWeeks, subMonths, subYears, addDays } from "date-fns";
@@ -39,6 +40,7 @@ import {
   transformPembelianToFormData
 } from "./utils/formUtils";
 import { supabase } from "@/integrations/supabase/client";
+
 
 const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -817,10 +819,10 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
+                    <CalendarComponent
                       mode="single"
-                      selected={customStartDate}
-                      onSelect={setCustomStartDate}
+                      selected={customEndDate}
+                      onSelect={setCustomEndDate}
                       initialFocus
                       className="p-3 pointer-events-auto"
                     />
@@ -1038,7 +1040,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
+                  <CalendarComponent
                     mode="single"
                     selected={updateHargaForm.tanggal_update ? new Date(updateHargaForm.tanggal_update) : undefined}
                     onSelect={(date) => {
@@ -1047,7 +1049,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                           ...prev,
                           tanggal_update: date.toISOString().split('T')[0]
                         }));
-                        setIsUpdateHargaCalendarOpen(false); // Tutup calendar setelah memilih
+                        setIsUpdateHargaCalendarOpen(false);
                       }
                     }}
                     initialFocus
