@@ -4,10 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface SoldUpdateHargaData {
   penjualan_id: number;
-  biaya_tambahan: number; // Can be negative for reduction
+  biaya_tambahan: number;
   reason: string;
   keterangan?: string;
   operation_mode: 'tambah' | 'kurang';
+  tanggal_update: string;
+  sumber_dana_id: number;
 }
 
 export const useSoldUpdateHarga = () => {
@@ -103,19 +105,20 @@ export const useSoldUpdateHarga = () => {
         }
       }
 
+      // Di dalam mutationFn:
       // 4. Create pembukuan entry
       if (updateData.biaya_tambahan !== 0) {
         const isAddition = updateData.biaya_tambahan > 0;
         const amount = Math.abs(updateData.biaya_tambahan);
         
         const pembukuanData = {
-          tanggal: new Date().toISOString().split('T')[0],
+          tanggal: updateData.tanggal_update, // Gunakan tanggal yang dipilih
           divisi: currentPenjualan.divisi,
           keterangan: `${updateData.operation_mode === 'tambah' ? 'Biaya Tambahan' : 'Pengurangan Biaya'} - ${updateData.reason} (${currentPenjualan.plat})`,
           debit: isAddition ? amount : 0,
           kredit: isAddition ? 0 : amount,
           cabang_id: currentPenjualan.cabang_id,
-          company_id: companyId,
+          company_id: updateData.sumber_dana_id, // Gunakan sumber dana yang dipilih
           pembelian_id: currentPenjualan.pembelian_id
         };
 
@@ -143,7 +146,7 @@ export const useSoldUpdateHarga = () => {
         biaya_lain_lain: updateData.operation_mode === 'tambah' ? Math.abs(updateData.biaya_tambahan) : -Math.abs(updateData.biaya_tambahan),
         reason: `${updateData.operation_mode === 'tambah' ? 'Penambahan' : 'Pengurangan'} Biaya: ${updateData.reason}`,
         keterangan_biaya_lain: updateData.keterangan || null,
-        company_id: companyId
+        company_id: updateData.sumber_dana_id
       };
 
       const { error: historyError } = await supabase

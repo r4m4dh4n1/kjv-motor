@@ -91,30 +91,39 @@ export const usePenjualanActions = () => {
         .insert({
           pembelian_id: selectedPenjualanForUpdate.pembelian_id,
           harga_jual_lama: selectedPenjualanForUpdate.harga_jual,
-          harga_jual_baru: selectedPenjualanForUpdate.harga_jual, // Harga jual tetap sama untuk booked
+          harga_jual_baru: selectedPenjualanForUpdate.harga_jual,
           biaya_pajak: updateData.biaya_pajak,
           biaya_qc: updateData.biaya_qc,
           biaya_lain_lain: updateData.biaya_lain_lain,
           keterangan_biaya_lain: updateData.keterangan_biaya_lain,
-          reason: updateData.reason
+          reason: updateData.reason,
+          tanggal_update: updateData.tanggal_update,
+          company_id: updateData.sumber_dana_id
         });
-
+    
       if (historyError) {
         console.error('Error saving price history:', historyError);
         // Don't throw error, just log it
       }
-
-      // 4. TAMBAHAN: Catat ke pembukuan sebagai pengeluaran (debit)
-      const pembukuanEntry = createUpdateHargaPembukuanEntry(updateData, selectedPenjualanForUpdate);
+    
+      // 4. TAMBAHAN: Catat ke pembukuan dengan tanggal dan sumber dana yang dipilih
+      const pembukuanEntry = {
+        tanggal: updateData.tanggal_update,
+        divisi: selectedPenjualanForUpdate.divisi,
+        cabang_id: selectedPenjualanForUpdate.cabang_id,
+        keterangan: `Update Harga Penjualan Booked - ${updateData.reason} (${selectedPenjualanForUpdate.plat})`,
+        debit: totalBiayaTambahan,
+        company_id: updateData.sumber_dana_id,
+        pembelian_id: selectedPenjualanForUpdate.pembelian_id
+      };
       
-      if (pembukuanEntry) {
+      if (pembukuanEntry && totalBiayaTambahan > 0) {
         const { error: pembukuanError } = await supabase
           .from('pembukuan')
           .insert([pembukuanEntry]);
-
+    
         if (pembukuanError) {
           console.error('Error saving to pembukuan:', pembukuanError);
-          // Don't throw error, just log it
         }
       }
 

@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { parseFormattedNumber } from "@/utils/formatUtils";
+import { Calendar, CalendarDays } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useCompaniesData } from "../hooks/usePembelianData";
 import MotorInfoSection from "./MotorInfoSection";
 import PriceDisplaySection from "./PriceDisplaySection";
 import AdditionalCostsSection from "./AdditionalCostsSection";
 import PriceSummarySection from "./PriceSummarySection";
 import ReasonSection from "./ReasonSection";
+import { Label } from "@/components/ui/label";
+import { formatCurrency } from "@/utils/formatUtils";
 
 export interface UpdateHargaData {
   harga_jual_baru: number;
@@ -14,6 +23,8 @@ export interface UpdateHargaData {
   biaya_lain_lain: number;
   keterangan_biaya_lain: string;
   reason: string;
+  tanggal_update: string;
+  sumber_dana_id: number;
 }
 
 interface UpdateHargaFormProps {
@@ -29,8 +40,15 @@ const UpdateHargaForm = ({ penjualan, onSubmit, onCancel }: UpdateHargaFormProps
     biaya_qc: "0", 
     biaya_lain_lain: "0",
     keterangan_biaya_lain: "",
-    reason: ""
+    reason: "",
+    tanggal_update: new Date().toISOString().split('T')[0],
+    sumber_dana_id: ""
   });
+  
+  const [tanggalOpen, setTanggalOpen] = useState(false);
+  
+  // Fetch companies data
+  const { data: companiesData = [] } = useCompaniesData(penjualan?.divisi);
 
   useEffect(() => {
     if (penjualan) {
@@ -40,7 +58,9 @@ const UpdateHargaForm = ({ penjualan, onSubmit, onCancel }: UpdateHargaFormProps
         biaya_qc: "0",
         biaya_lain_lain: "0", 
         keterangan_biaya_lain: "",
-        reason: ""
+        reason: "",
+        tanggal_update: new Date().toISOString().split('T')[0],
+        sumber_dana_id: penjualan.company_id?.toString() || ""
       });
     }
   }, [penjualan]);
@@ -91,12 +111,14 @@ const UpdateHargaForm = ({ penjualan, onSubmit, onCancel }: UpdateHargaFormProps
     }
 
     const submitData: UpdateHargaData = {
-      harga_jual_baru: penjualan.harga_jual, // Harga jual tidak berubah
+      harga_jual_baru: penjualan.harga_jual,
       biaya_pajak: parseFormattedNumber(formData.biaya_pajak),
       biaya_qc: parseFormattedNumber(formData.biaya_qc),
       biaya_lain_lain: parseFormattedNumber(formData.biaya_lain_lain),
       keterangan_biaya_lain: formData.keterangan_biaya_lain,
-      reason: formData.reason
+      reason: formData.reason,
+      tanggal_update: formData.tanggal_update,
+      sumber_dana_id: parseInt(formData.sumber_dana_id)
     };
 
     onSubmit(submitData);
@@ -121,6 +143,62 @@ const UpdateHargaForm = ({ penjualan, onSubmit, onCancel }: UpdateHargaFormProps
         onInputChange={handleInputChange}
         onTextChange={handleTextChange}
       />
+
+      <div className="space-y-4">
+        {/* Date Picker */}
+        <div className="space-y-2">
+          <Label htmlFor="tanggal_update">Tanggal Update</Label>
+          <Popover open={tanggalOpen} onOpenChange={setTanggalOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-start text-left font-normal"
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                {formData.tanggal_update
+                  ? format(new Date(formData.tanggal_update), "dd MMMM yyyy", { locale: id })
+                  : "Pilih tanggal"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent
+                mode="single"
+                selected={formData.tanggal_update ? new Date(formData.tanggal_update) : undefined}
+                onSelect={(date) => {
+                  if (date) {
+                    setFormData(prev => ({
+                      ...prev,
+                      tanggal_update: date.toISOString().split('T')[0]
+                    }));
+                    setTanggalOpen(false);
+                  }
+                }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* Sumber Dana */}
+        <div className="space-y-2">
+          <Label htmlFor="sumber_dana_id">Sumber Dana</Label>
+          <Select
+            value={formData.sumber_dana_id}
+            onValueChange={(value) => setFormData(prev => ({ ...prev, sumber_dana_id: value }))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Pilih sumber dana" />
+            </SelectTrigger>
+            <SelectContent>
+              {companiesData.map((company) => (
+                <SelectItem key={company.id} value={company.id.toString()}>
+                  {company.nama_perusahaan} - {formatCurrency(company.modal)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       {/* Ringkasan Perhitungan */}
       <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
