@@ -161,14 +161,21 @@ const UpdateHargaForm = ({ penjualan, onSubmit, onCancel }: UpdateHargaFormProps
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
+              // Di bagian onSelect, ganti dengan format lokal:
               <CalendarComponent
                 mode="single"
                 selected={formData.tanggal_update ? new Date(formData.tanggal_update) : undefined}
                 onSelect={(date) => {
                   if (date) {
+                    // Gunakan format lokal tanpa konversi UTC
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const localDateString = `${year}-${month}-${day}`;
+                    
                     setFormData(prev => ({
                       ...prev,
-                      tanggal_update: date.toISOString().split('T')[0]
+                      tanggal_update: localDateString
                     }));
                     setTanggalOpen(false);
                   }

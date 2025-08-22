@@ -186,12 +186,19 @@ const UpdateHargaSoldModal = ({
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
+                  // Di bagian onSelect, ganti dengan format lokal:
                   <CalendarComponent
                     mode="single"
                     selected={tanggalUpdate ? new Date(tanggalUpdate) : undefined}
                     onSelect={(date) => {
                       if (date) {
-                        setTanggalUpdate(date.toISOString().split('T')[0]);
+                        // Gunakan format lokal tanpa konversi UTC
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const localDateString = `${year}-${month}-${day}`;
+                        
+                        setTanggalUpdate(localDateString);
                         setTanggalOpen(false);
                       }
                     }}

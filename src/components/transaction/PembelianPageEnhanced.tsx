@@ -400,6 +400,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     setUpdatingHargaPembelian(null);
     setQCPembelian(null);
     setUpdateHargaForm({
+      tanggal_update: new Date().toISOString().split('T')[0],
       harga_beli_dasar: "",
       biaya_pajak: "",
       biaya_qc: "",
@@ -426,15 +427,6 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       });
       return;
     }
-
-    if (!updateHargaForm.harga_beli_dasar || !updateHargaForm.reason || !updateHargaForm.company_id || !updatingHargaPembelian) {
-    toast({
-      title: "Error",
-      description: "Mohon lengkapi field yang wajib diisi (Harga Beli Dasar, Perusahaan, dan Alasan Update)",
-      variant: "destructive"
-    });
-    return;
-  }
 
     const hargaBeliBaru = parseFloat(parseNumericInput(updateHargaForm.harga_beli_dasar));
     const biayaPajak = parseFloat(parseNumericInput(updateHargaForm.biaya_pajak)) || 0;
