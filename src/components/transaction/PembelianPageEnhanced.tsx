@@ -454,7 +454,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
 
     // Hitung harga final
     const hargaFinal = hargaBeliBaru + biayaPajak + biayaQC + biayaLainLain;
-    const hargaLama = updatingHargaPembelian.harga_beli || 0;
+     const hargaLama = updatingHargaPembelian.harga_final || updatingHargaPembelian.harga_beli || 0;
     const selisihHarga = hargaFinal - hargaLama;
 
     try {
