@@ -454,7 +454,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
 
     // Hitung harga final
     const hargaFinal = hargaBeliBaru + biayaPajak + biayaQC + biayaLainLain;
-     const hargaLama = updatingHargaPembelian.harga_final || updatingHargaPembelian.harga_beli || 0;
+    const hargaLama = updatingHargaPembelian.harga_final || updatingHargaPembelian.harga_beli || 0;
     const selisihHarga = hargaFinal - hargaLama;
 
     console.log('Debug Update Harga:', {
@@ -468,7 +468,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     });
 
     try {
-      // Insert ke price_histories_pembelian
+      // 1. Insert ke price_histories_pembelian dulu
       const { error: historyError } = await supabase
         .from('price_histories_pembelian')
         .insert({
@@ -481,16 +481,42 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
           keterangan_biaya_lain: updateHargaForm.keterangan_biaya_lain || null,
           reason: updateHargaForm.reason,
           company_id: parseInt(updateHargaForm.company_id),
-          tanggal_update: updateHargaForm.tanggal_update, // Gunakan tanggal yang dipilih
+          tanggal_update: updateHargaForm.tanggal_update,
           user_id: null
         });
-
+      
       if (historyError) throw historyError;
 
-      // Jika ada selisih harga (kenaikan), catat ke pembukuan dan kurangi modal
+      // 2. Update harga_final di pembelian
+      await new Promise((resolve, reject) => {
+        updateMutation.mutate(
+          { id: updatingHargaPembelian.id, data: { harga_final: hargaFinal } },
+          {
+            onSuccess: () => resolve(true),
+            onError: (error) => reject(error)
+          }
+        );
+      });
+
+      // 3. Baru insert ke pembukuan dan update modal (di akhir)
       if (selisihHarga !== 0) {
-        console.log('Masuk ke blok pembukuan, selisihHarga:', selisihHarga);
+        // Update modal company
+        const { data: company, error: companyFetchError } = await supabase
+          .from("companies")
+          .select("modal")
+          .eq("id", parseInt(updateHargaForm.company_id))
+          .single();
         
+        if (companyFetchError) throw companyFetchError;
+
+        const { error: updateModalError } = await supabase
+          .from("companies")
+          .update({ modal: company.modal - selisihHarga })
+          .eq("id", parseInt(updateHargaForm.company_id));
+          
+        if (updateModalError) throw updateModalError;
+
+        // Insert ke pembukuan di akhir
         const pembukuanData = {
           tanggal: updateHargaForm.tanggal_update,
           divisi: updatingHargaPembelian.divisi,
@@ -500,77 +526,36 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
           pembelian_id: updatingHargaPembelian.id,
           company_id: parseInt(updateHargaForm.company_id)
         };
-        
-        console.log('Data pembukuan yang akan diinsert:', pembukuanData);
-
-        // Validasi data sebelum insert
-        if (!pembukuanData.tanggal || !pembukuanData.divisi || !pembukuanData.cabang_id || !pembukuanData.company_id) {
-          console.error('Data pembukuan tidak lengkap:', pembukuanData);
-          throw new Error('Data pembukuan tidak lengkap');
-        }
 
         const { data: insertResult, error: pembukuanError } = await supabase
           .from("pembukuan")
           .insert([pembukuanData])
-          .select(); // Tambahkan select untuk melihat hasil insert
+          .select();
         
         if (pembukuanError) {
           console.error('Error insert pembukuan:', pembukuanError);
-          console.error('Detail error:', JSON.stringify(pembukuanError, null, 2));
           throw pembukuanError;
-        } else {
-          console.log('Berhasil insert ke pembukuan:', insertResult);
         }
-
-        // Kurangi modal dari company yang dipilih user untuk update harga
-      const { data: company, error: companyFetchError } = await supabase
-        .from("companies")
-        .select("modal")
-        .eq("id", parseInt(updateHargaForm.company_id))
-        .single();
-      
-      if (companyFetchError) throw companyFetchError;
-
-      const { error: updateModalError } = await supabase
-        .from("companies")
-        .update({ modal: company.modal - selisihHarga })
-        .eq("id", parseInt(updateHargaForm.company_id));
         
-        if (updateModalError) throw updateModalError;
+        console.log('Berhasil insert ke pembukuan:', insertResult);
       }
 
-      // Update harga_final di tabel pembelian
-      updateMutation.mutate(
-        { 
-          id: updatingHargaPembelian.id, 
-          data: { harga_final: hargaFinal } 
-        },
-        {
-          onSuccess: () => {
-            toast({
-              title: "Sukses",
-              description: selisihHarga > 0 
-                ? "Harga berhasil diupdate, history tersimpan, dan modal telah dikurangi"
-                : "Harga berhasil diupdate dan history tersimpan"
-            });
-            closeAllDialogs();
-          },
-          onError: () => {
-            toast({
-              title: "Error",
-              description: "Gagal mengupdate harga",
-              variant: "destructive"
-            });
-          }
-        }
-      );
+      // Success toast
+      toast({
+        title: "Sukses",
+        description: selisihHarga > 0 
+          ? "Harga berhasil diupdate, history tersimpan, dan modal telah dikurangi"
+          : "Harga berhasil diupdate dan history tersimpan"
+      });
+      closeAllDialogs();
+
     } catch (error) {
+      console.error('Error dalam update harga:', error);
       toast({
         title: "Error",
         description: "Gagal menyimpan history harga atau update pembukuan",
         variant: "destructive"
       });
-      console.error(error);
     }
   };
 
