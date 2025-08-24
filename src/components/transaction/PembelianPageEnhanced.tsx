@@ -503,15 +503,23 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
         
         console.log('Data pembukuan yang akan diinsert:', pembukuanData);
 
-        const { error: pembukuanError } = await supabase
+        // Validasi data sebelum insert
+        if (!pembukuanData.tanggal || !pembukuanData.divisi || !pembukuanData.cabang_id || !pembukuanData.company_id) {
+          console.error('Data pembukuan tidak lengkap:', pembukuanData);
+          throw new Error('Data pembukuan tidak lengkap');
+        }
+
+        const { data: insertResult, error: pembukuanError } = await supabase
           .from("pembukuan")
-          .insert([pembukuanData]);
+          .insert([pembukuanData])
+          .select(); // Tambahkan select untuk melihat hasil insert
         
         if (pembukuanError) {
           console.error('Error insert pembukuan:', pembukuanError);
+          console.error('Detail error:', JSON.stringify(pembukuanError, null, 2));
           throw pembukuanError;
         } else {
-          console.log('Berhasil insert ke pembukuan');
+          console.log('Berhasil insert ke pembukuan:', insertResult);
         }
 
         // Kurangi modal dari company yang dipilih user untuk update harga
