@@ -66,19 +66,17 @@ export const useBookedUpdateHarga = () => {
       }
 
       // Create pembukuan entry for the additional costs
-      if (totalBiayaTambahan > 0) {
-        // Update interface UpdateHargaData untuk include tanggal_update dan sumber_dana_id
-        // Kemudan gunakan dalam pembukuan:
+      if (totalBiayaTambahan > 0) { // MASALAH: Hanya jika > 0
         const { error: pembukuanError } = await supabase
           .from('pembukuan')
           .insert({
-            tanggal: data.tanggal_update, // Gunakan tanggal dari form
+            tanggal: data.tanggal_update,
             divisi: currentPenjualan.divisi,
-            keterangan: `Update Harga Booked - ${data.reason} (${currentPenjualan.plat})`,
+            keterangan: `Update Harga Booked - ${currentPenjualan.brands?.name || ''} - ${currentPenjualan.jenis_motor?.jenis_motor || ''} - ${currentPenjualan.plat} - ${data.reason}`,
             debit: totalBiayaTambahan,
             kredit: 0,
             cabang_id: currentPenjualan.cabang_id,
-            company_id: data.sumber_dana_id, // Gunakan sumber dana dari form
+            company_id: data.sumber_dana_id,
             pembelian_id: currentPenjualan.pembelian_id
           });
         

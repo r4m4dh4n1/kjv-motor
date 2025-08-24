@@ -117,10 +117,18 @@ export const usePenjualanActions = () => {
         pembelian_id: selectedPenjualanForUpdate.pembelian_id
       };
       
-      if (pembukuanEntry && totalBiayaTambahan > 0) {
+      if (pembukuanEntry && totalBiayaTambahan > 0) { // MASALAH: Hanya jika > 0
         const { error: pembukuanError } = await supabase
           .from('pembukuan')
-          .insert([pembukuanEntry]);
+          .insert([{
+            tanggal: updateData.tanggal_update,
+            divisi: selectedPenjualanForUpdate.divisi,
+            cabang_id: selectedPenjualanForUpdate.cabang_id,
+            keterangan: `Update Harga Penjualan Booked - ${selectedPenjualanForUpdate.brands?.name || ''} - ${selectedPenjualanForUpdate.jenis_motor?.jenis_motor || ''} - ${selectedPenjualanForUpdate.plat} - ${updateData.reason}`,
+            debit: totalBiayaTambahan,
+            company_id: updateData.sumber_dana_id,
+            pembelian_id: selectedPenjualanForUpdate.pembelian_id
+          }]);
     
         if (pembukuanError) {
           console.error('Error saving to pembukuan:', pembukuanError);

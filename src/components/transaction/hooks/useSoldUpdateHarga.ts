@@ -107,18 +107,15 @@ export const useSoldUpdateHarga = () => {
 
       // Di dalam mutationFn:
       // 4. Create pembukuan entry
-      if (updateData.biaya_tambahan !== 0) {
-        const isAddition = updateData.biaya_tambahan > 0;
-        const amount = Math.abs(updateData.biaya_tambahan);
-        
+      if (updateData.biaya_tambahan !== 0) { // Kondisi yang benar
         const pembukuanData = {
-          tanggal: updateData.tanggal_update, // Gunakan tanggal yang dipilih
+          tanggal: updateData.tanggal_update,
           divisi: currentPenjualan.divisi,
-          keterangan: `${updateData.operation_mode === 'tambah' ? 'Biaya Tambahan' : 'Pengurangan Biaya'} - ${updateData.reason} (${currentPenjualan.plat})`,
+          keterangan: `${updateData.operation_mode === 'tambah' ? 'Biaya Tambahan' : 'Pengurangan Biaya'} - ${currentPenjualan.brands?.name || ''} - ${currentPenjualan.jenis_motor?.jenis_motor || ''} - ${currentPenjualan.plat} - ${updateData.reason}`,
           debit: isAddition ? amount : 0,
           kredit: isAddition ? 0 : amount,
           cabang_id: currentPenjualan.cabang_id,
-          company_id: updateData.sumber_dana_id, // Gunakan sumber dana yang dipilih
+          company_id: updateData.sumber_dana_id,
           pembelian_id: currentPenjualan.pembelian_id
         };
 

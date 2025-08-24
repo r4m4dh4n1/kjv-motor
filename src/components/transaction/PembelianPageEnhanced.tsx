@@ -521,7 +521,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
           tanggal: updateHargaForm.tanggal_update,
           divisi: updatingHargaPembelian.divisi,
           cabang_id: updatingHargaPembelian.cabang_id,
-          keterangan: `Update harga motor ${updatingHargaPembelian.plat_nomor} - ${updateHargaForm.reason}`,
+          keterangan: `Update harga motor ${updatingHargaPembelian.brands?.name || ''} ${updatingHargaPembelian.jenis_motor?.jenis_motor || ''} ${updatingHargaPembelian.plat_nomor} - ${updateHargaForm.reason}`,
           debit: selisihHarga,
           pembelian_id: updatingHargaPembelian.id,
           company_id: parseInt(updateHargaForm.company_id)
