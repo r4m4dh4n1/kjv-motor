@@ -489,8 +489,10 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
 
       // Jika ada selisih harga (kenaikan), catat ke pembukuan dan kurangi modal
       if (selisihHarga !== 0) {
+        console.log('Masuk ke blok pembukuan, selisihHarga:', selisihHarga);
+        
         const pembukuanData = {
-          tanggal: updateHargaForm.tanggal_update, // Gunakan tanggal yang dipilih
+          tanggal: updateHargaForm.tanggal_update,
           divisi: updatingHargaPembelian.divisi,
           cabang_id: updatingHargaPembelian.cabang_id,
           keterangan: `Update harga motor ${updatingHargaPembelian.plat_nomor} - ${updateHargaForm.reason}`,
@@ -498,12 +500,19 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
           pembelian_id: updatingHargaPembelian.id,
           company_id: parseInt(updateHargaForm.company_id)
         };
+        
+        console.log('Data pembukuan yang akan diinsert:', pembukuanData);
 
         const { error: pembukuanError } = await supabase
           .from("pembukuan")
           .insert([pembukuanData]);
         
-        if (pembukuanError) throw pembukuanError;
+        if (pembukuanError) {
+          console.error('Error insert pembukuan:', pembukuanError);
+          throw pembukuanError;
+        } else {
+          console.log('Berhasil insert ke pembukuan');
+        }
 
         // Kurangi modal dari company yang dipilih user untuk update harga
       const { data: company, error: companyFetchError } = await supabase
