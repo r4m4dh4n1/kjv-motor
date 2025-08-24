@@ -457,6 +457,16 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
      const hargaLama = updatingHargaPembelian.harga_final || updatingHargaPembelian.harga_beli || 0;
     const selisihHarga = hargaFinal - hargaLama;
 
+    console.log('Debug Update Harga:', {
+      hargaLama,
+      hargaFinal,
+      selisihHarga,
+      updatingHargaPembelian: {
+        harga_final: updatingHargaPembelian.harga_final,
+        harga_beli: updatingHargaPembelian.harga_beli
+      }
+    });
+
     try {
       // Insert ke price_histories_pembelian
       const { error: historyError } = await supabase
