@@ -14,19 +14,20 @@ export const useBiroJasaData = (selectedDivision: string) => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch biro jasa data without joins to brands and jenis_motor tables
-      // since we're using manual input for brand_name and jenis_motor
+      // Fetch biro jasa data with companies join for division filtering
       let biroJasaQuery = supabase
         .from('biro_jasa')
         .select(`
           *,
-          companies:rekening_tujuan_id(nama_perusahaan)
+          companies:rekening_tujuan_id(nama_perusahaan, divisi)
         `)
         .order('created_at', { ascending: false });
-
+  
       if (selectedDivision !== 'all') {
-        // Add division filter if needed based on your business logic
-        // For now, we'll fetch all data since biro_jasa doesn't have division column
+        // Filter berdasarkan divisi dari tabel companies
+        biroJasaQuery = biroJasaQuery
+          .not('rekening_tujuan_id', 'is', null)
+          .eq('companies.divisi', selectedDivision);
       }
 
       const { data: biroJasaResult, error: biroJasaError } = await biroJasaQuery;
