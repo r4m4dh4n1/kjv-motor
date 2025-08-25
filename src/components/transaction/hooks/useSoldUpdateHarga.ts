@@ -107,7 +107,10 @@ export const useSoldUpdateHarga = () => {
 
       // Di dalam mutationFn:
       // 4. Create pembukuan entry
-      if (updateData.biaya_tambahan !== 0) { // Kondisi yang benar
+      if (updateData.biaya_tambahan !== 0) {
+        const isAddition = updateData.operation_mode === 'tambah';
+        const amount = Math.abs(updateData.biaya_tambahan);
+        
         const pembukuanData = {
           tanggal: updateData.tanggal_update,
           divisi: currentPenjualan.divisi,
