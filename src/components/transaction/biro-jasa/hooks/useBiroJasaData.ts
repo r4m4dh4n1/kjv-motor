@@ -14,22 +14,29 @@ export const useBiroJasaData = (selectedDivision: string) => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch biro jasa data with companies join for division filtering
-      let biroJasaQuery = supabase
-        .from('biro_jasa')
-        .select(`
-          *,
-          companies:rekening_tujuan_id(nama_perusahaan, divisi)
-        `)
-        .order('created_at', { ascending: false });
-  
+      let biroJasaQuery;
+      
       if (selectedDivision !== 'all') {
-        // Filter berdasarkan divisi dari tabel companies
-        biroJasaQuery = biroJasaQuery
-          .not('rekening_tujuan_id', 'is', null)
-          .eq('companies.divisi', selectedDivision);
+        // Query dengan inner join untuk filter divisi
+        biroJasaQuery = supabase
+          .from('biro_jasa')
+          .select(`
+            *,
+            companies!inner(nama_perusahaan, divisi)
+          `)
+          .eq('companies.divisi', selectedDivision)
+          .order('created_at', { ascending: false });
+      } else {
+        // Query normal tanpa filter divisi
+        biroJasaQuery = supabase
+          .from('biro_jasa')
+          .select(`
+            *,
+            companies:rekening_tujuan_id(nama_perusahaan, divisi)
+          `)
+          .order('created_at', { ascending: false });
       }
-
+  
       const { data: biroJasaResult, error: biroJasaError } = await biroJasaQuery;
       if (biroJasaError) throw biroJasaError;
 
