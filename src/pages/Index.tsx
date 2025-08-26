@@ -30,6 +30,7 @@ import PenjualanCanceledBookedPage from "@/components/transaction/PenjualanCance
 import CloseMonthPage from "@/components/finance/CloseMonthPage";
 import { ProfitDistributionPage } from "@/components/finance/ProfitDistributionPage";
 import { PencatatanAssetPage } from "@/components/transaction/PencatatanAssetPage";
+import PriceHistoryUploadPage from "@/components/transaction/PriceHistoryUploadPage";
 
 
 const Index = () => {
@@ -95,6 +96,8 @@ case 'fee-penjualan':
           return <CloseMonthPage />;
         case "pencatatan-asset":
           return <PencatatanAssetPage selectedDivision={selectedDivision} />;
+        case "price-history-upload":
+          return <PriceHistoryUploadPage selectedDivision={selectedDivision} />;
         default:
         return <Dashboard selectedDivision={selectedDivision} />;
     }

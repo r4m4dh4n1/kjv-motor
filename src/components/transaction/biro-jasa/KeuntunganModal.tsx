@@ -59,7 +59,7 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
       const biayaModal = parseCurrency(formData.biaya_modal);
       const keuntungan = parseCurrency(formData.keuntungan);
 
-      // Update biro jasa with cost and profit (HANYA simpan di tabel biro_jasa)
+      // Update biro jasa with cost and profit
       const { error: updateError } = await supabase
         .from("biro_jasa")
         .update({
@@ -70,8 +70,30 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
 
       if (updateError) throw updateError;
 
-      // HAPUS: Pencatatan keuntungan ke pembukuan untuk menghindari duplikasi
-      // Keuntungan hanya disimpan di tabel biro_jasa untuk tracking
+      // Catat biaya modal ke pembukuan sebagai debit (pengeluaran)
+      if (biayaModal > 0) {
+        const { error: pembukuanError } = await supabase
+          .from("pembukuan")
+          .insert({
+            tanggal: getCurrentDate(),
+            keterangan: `Biaya Modal Biro Jasa - ${biroJasa.jenis_pengurusan} - ${biroJasa.plat_nomor}`,
+            debit: biayaModal,
+            kredit: 0,
+            divisi: selectedDivision,
+            kategori: "Biaya Modal Biro Jasa",
+            referensi_id: biroJasa.id,
+            referensi_tabel: "biro_jasa"
+          });
+
+        if (pembukuanError) {
+          console.warn("Warning: Gagal mencatat biaya modal ke pembukuan:", pembukuanError);
+          toast({
+            title: "Peringatan",
+            description: "Data tersimpan, namun gagal mencatat biaya modal ke pembukuan",
+            variant: "destructive",
+          });
+        }
+      }
 
       toast({
         title: "Berhasil",

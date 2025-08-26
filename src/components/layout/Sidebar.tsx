@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronDown, ChevronRight, Home, Settings, Building, Car, Briefcase, Package, MapPin, ShoppingCart, CreditCard, FileText, BookOpen, Calculator, Cog, Users, UserCog, Shield, DollarSign, Pin, PinOff, TrendingUp, CheckCircle, Calendar, XCircle } from "lucide-react";
+import { ChevronDown, ChevronRight, Home, Settings, Building, Car, Briefcase, Package, MapPin, ShoppingCart, CreditCard, FileText, BookOpen, Calculator, Cog, Users, UserCog, Shield, DollarSign, Pin, PinOff, TrendingUp, CheckCircle, Calendar, XCircle, Upload } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +59,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
     { id: "biro-jasa", label: "Biro Jasa", icon: FileText },
     { id: "pencatatan-asset", label: "Pencatatan Asset", icon: Package },
     { id: "fee-penjualan", label: "Fee Penjualan", icon: DollarSign },
+    { id: "price-history-upload", label: "Upload Price History", icon: Upload },
   ];
 
   const financeMenuItems = [

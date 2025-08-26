@@ -51,7 +51,9 @@ const handleUpdateHargaConfirm = (data: UpdateHargaSoldData) => {
       biaya_tambahan: data.biaya_tambahan,
       reason: data.reason,
       keterangan: data.keterangan,
-      operation_mode: data.operation_mode
+      operation_mode: data.operation_mode,
+      tanggal_update: data.tanggal_update, // ✅ TAMBAHKAN
+      sumber_dana_id: data.sumber_dana_id  // ✅ TAMBAHKAN
     }, {
       onSuccess: () => {
         setIsUpdateHargaOpen(false);
