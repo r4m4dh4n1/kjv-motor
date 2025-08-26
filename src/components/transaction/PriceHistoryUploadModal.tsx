@@ -15,13 +15,14 @@ import { formatCurrency } from '@/utils/formatUtils';
 interface PriceHistoryUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  
 }
 
 const PriceHistoryUploadModal = ({ isOpen, onClose }: PriceHistoryUploadModalProps) => {
   const { unuploadedHistories, uploadMutation } = usePriceHistoryUpload();
   // State untuk menyimpan ID histories yang dipilih
   const [selectedHistories, setSelectedHistories] = useState<number[]>([]);
+  const [tanggal, setTanggal] = useState(new Date());
+  const [calendarOpen, setCalendarOpen] = useState(false);
   
   // Fungsi untuk select all
   const handleSelectAll = (checked: boolean) => {
@@ -42,37 +43,6 @@ const PriceHistoryUploadModal = ({ isOpen, onClose }: PriceHistoryUploadModalPro
   };
   
   // Upload hanya data yang dipilih
-  const handleUpload = () => {
-    const selectedData = unuploadedHistories.filter(h => selectedHistories.includes(h.id));
-    uploadMutation.mutate({
-      histories: selectedData,
-      tanggal: format(tanggal, 'yyyy-MM-dd')
-    }, {
-      onSuccess: () => {
-        setSelectedHistories([]);
-        onClose();
-      }
-    });
-  };
-  const [tanggal, setTanggal] = useState(new Date());
-  const [calendarOpen, setCalendarOpen] = useState(false);
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedHistories(unuploadedHistories.map(h => h.id));
-    } else {
-      setSelectedHistories([]);
-    }
-  };
-
-  const handleSelectHistory = (historyId: number, checked: boolean) => {
-    if (checked) {
-      setSelectedHistories(prev => [...prev, historyId]);
-    } else {
-      setSelectedHistories(prev => prev.filter(id => id !== historyId));
-    }
-  };
-
   const handleUpload = () => {
     const selectedData = unuploadedHistories.filter(h => selectedHistories.includes(h.id));
     uploadMutation.mutate({
