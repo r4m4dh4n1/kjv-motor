@@ -56,4 +56,6 @@ export interface UpdateBiayaFormData {
 export interface KeuntunganFormData {
   biaya_modal: string;
   keuntungan: string;
+  sumber_dana: string;
+  tanggal: string;
 }

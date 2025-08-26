@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { BiroJasaItem, KeuntunganFormData } from "./types";
@@ -20,8 +22,38 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
   const [formData, setFormData] = useState<KeuntunganFormData>({
     biaya_modal: formatCurrency(biroJasa?.biaya_modal?.toString() || "0"),
     keuntungan: "0",
+    sumber_dana: "",
+    tanggal: getCurrentDate(),
   });
+  const [companiesData, setCompaniesData] = useState([]);
   const { toast } = useToast();
+
+  // Fetch companies data for sumber dana dropdown
+  useEffect(() => {
+    if (isOpen) {
+      fetchCompaniesData();
+    }
+  }, [isOpen, selectedDivision]);
+
+  const fetchCompaniesData = async () => {
+    let query = supabase
+      .from('companies')
+      .select('*')
+      .eq('status', 'active')
+      .order('nama_perusahaan');
+
+    if (selectedDivision !== 'all') {
+      query = query.eq('divisi', selectedDivision);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('Error fetching companies:', error);
+      return;
+    }
+
+    setCompaniesData(data || []);
+  };
 
   // Calculate profit when biaya_modal changes
   useEffect(() => {
@@ -47,6 +79,8 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
       setFormData({
         biaya_modal: formatCurrency(biroJasa.biaya_modal?.toString() || "0"),
         keuntungan: formatCurrency(biroJasa.keuntungan?.toString() || "0"),
+        sumber_dana: "",
+        tanggal: getCurrentDate(),
       });
     }
   }, [biroJasa]);
@@ -75,14 +109,15 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
         const { error: pembukuanError } = await supabase
           .from("pembukuan")
           .insert({
-            tanggal: getCurrentDate(),
+            tanggal: formData.tanggal,
             keterangan: `Biaya Modal Biro Jasa - ${biroJasa.jenis_pengurusan} - ${biroJasa.plat_nomor}`,
             debit: biayaModal,
             kredit: 0,
             divisi: selectedDivision,
             kategori: "Biaya Modal Biro Jasa",
             referensi_id: biroJasa.id,
-            referensi_tabel: "biro_jasa"
+            referensi_tabel: "biro_jasa",
+            company_id: formData.sumber_dana ? parseInt(formData.sumber_dana) : null
           });
 
         if (pembukuanError) {
@@ -159,6 +194,36 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
               className="bg-muted"
             />
           </div>
+          
+          <div>
+            <Label htmlFor="tanggal">Tanggal *</Label>
+            <div className="mt-1">
+              <DatePicker
+                id="tanggal"
+                value={formData.tanggal}
+                onChange={(value) => setFormData(prev => ({ ...prev, tanggal: value }))}
+                placeholder="Pilih tanggal"
+                required
+              />
+            </div>
+          </div>
+          
+          <div>
+            <Label htmlFor="sumber_dana">Sumber Dana *</Label>
+            <Select value={formData.sumber_dana} onValueChange={(value) => setFormData(prev => ({ ...prev, sumber_dana: value }))}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Pilih sumber dana" />
+              </SelectTrigger>
+              <SelectContent>
+                {companiesData.map((company) => (
+                  <SelectItem key={company.id} value={company.id.toString()}>
+                    {company.nama_perusahaan}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
           <div>
             <Label htmlFor="biaya_modal">Biaya Modal *</Label>
             <Input
