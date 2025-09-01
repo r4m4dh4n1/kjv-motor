@@ -88,11 +88,19 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!biroJasa) return;
-
+  
     try {
       const biayaModal = parseCurrency(formData.biaya_modal);
       const keuntungan = parseCurrency(formData.keuntungan);
-
+      
+      // Debug logging
+      console.log('Debug biaya modal:', {
+        biayaModal,
+        formData_biaya_modal: formData.biaya_modal,
+        sumber_dana: formData.sumber_dana,
+        tanggal: formData.tanggal
+      });
+  
       // Update biro jasa with cost and profit
       const { error: updateError } = await supabase
         .from("biro_jasa")
@@ -101,11 +109,12 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
           keuntungan: keuntungan,
         })
         .eq("id", biroJasa.id);
-
+  
       if (updateError) throw updateError;
-
+  
       // Catat biaya modal ke pembukuan sebagai debit (pengeluaran)
       if (biayaModal > 0) {
+        console.log('Mencatat biaya modal ke pembukuan:', biayaModal);
         const { error: pembukuanError } = await supabase
           .from("pembukuan")
           .insert({
@@ -119,33 +128,38 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
             referensi_tabel: "biro_jasa",
             company_id: formData.sumber_dana ? parseInt(formData.sumber_dana) : null
           });
-
+  
         if (pembukuanError) {
+          console.error('Error pembukuan:', pembukuanError);
           console.warn("Warning: Gagal mencatat biaya modal ke pembukuan:", pembukuanError);
           toast({
             title: "Peringatan",
             description: "Data tersimpan, namun gagal mencatat biaya modal ke pembukuan",
             variant: "destructive",
           });
+        } else {
+          console.log('Biaya modal berhasil dicatat ke pembukuan');
         }
+      } else {
+        console.log('Biaya modal tidak dicatat karena nilai <= 0:', biayaModal);
       }
-
-      toast({
-        title: "Berhasil",
-        description: "Data keuntungan berhasil disimpan",
-      });
-
-      onSuccess();
-      onClose();
-    } catch (error) {
-      console.error("Error saving profit:", error);
-      toast({
-        title: "Error",
-        description: "Gagal menyimpan data keuntungan",
-        variant: "destructive",
-      });
     }
-  };
+
+    toast({
+      title: "Berhasil",
+      description: "Data keuntungan berhasil disimpan",
+    });
+
+    onSuccess();
+    onClose();
+  } catch (error) {
+    console.error("Error saving profit:", error);
+    toast({
+      title: "Error",
+      description: "Gagal menyimpan data keuntungan",
+      variant: "destructive",
+    });
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

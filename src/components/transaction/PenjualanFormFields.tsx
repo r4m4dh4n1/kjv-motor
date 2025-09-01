@@ -8,6 +8,11 @@ import { useEffect } from "react";
 import { formatNumber, parseFormattedNumber, handleNumericInput } from "@/utils/formatUtils";
 import { DatePicker } from "@/components/ui/date-picker";
 
+// Tambahkan function formatCurrency
+const formatCurrency = (value: number): string => {
+  return value.toString();
+};
+
 interface PenjualanFormFieldsProps {
   formData: any;
   setFormData: (data: any) => void;
@@ -106,13 +111,31 @@ const PenjualanFormFields = ({
     }
   }, [formData.harga_jual, formData.dp, formData.jenis_pembayaran]);
 
-  // Auto-calculate sisa ongkir when total ongkir or titip ongkir changes
+  // PERBAIKAN: Pisahkan useEffect untuk ongkir dan tambahkan validasi
   useEffect(() => {
-    const totalOngkir = parseFormattedNumber(formData.total_ongkir);
-    const titipOngkir = parseFormattedNumber(formData.titip_ongkir);
-    const sisaOngkir = totalOngkir - titipOngkir;
-    setFormData({ ...formData, sisa_ongkir: sisaOngkir.toString() });
-  }, [formData.total_ongkir, formData.titip_ongkir]);
+    if (formData.total_ongkir) {
+      const totalOngkir = parseFormattedNumber(formData.total_ongkir);
+      const titipOngkir = parseFormattedNumber(formData.titip_ongkir) || 0;
+      const subsidiOngkir = parseFormattedNumber(formData.subsidi_ongkir) || 0;
+      
+      // Hitung total pembayaran ongkir (titip + subsidi)
+      const totalPembayaranOngkir = titipOngkir + subsidiOngkir;
+      
+      // Validasi: pastikan total pembayaran tidak melebihi total_ongkir
+      const validTotalPembayaran = Math.min(totalPembayaranOngkir, totalOngkir);
+      const sisaOngkir = Math.max(0, totalOngkir - validTotalPembayaran); // Mencegah nilai negatif
+      
+      const isOngkirLunas = sisaOngkir <= 0;
+      const tanggalLunasOngkir = isOngkirLunas && !formData.ongkir_dibayar ? new Date().toISOString().split('T')[0] : formData.tanggal_lunas_ongkir;
+      
+      setFormData(prev => ({
+        ...prev,
+        sisa_ongkir: formatCurrency(sisaOngkir),
+        ongkir_dibayar: isOngkirLunas,
+        tanggal_lunas_ongkir: tanggalLunasOngkir
+      }));
+    }
+  }, [formData.total_ongkir, formData.titip_ongkir, formData.subsidi_ongkir]);
 
   // Reset payment fields when payment type changes (hanya jika bukan mode edit)
   useEffect(() => {
@@ -479,6 +502,25 @@ const PenjualanFormFields = ({
         </div>
       )}
 
+      {/* Row 6.5: Subsidi Ongkir (FIELD BARU) */}
+      <div>
+        <Label htmlFor="subsidi_ongkir">Subsidi Ongkir</Label>
+        <div className="relative mt-1">
+          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Rp</span>
+          <Input
+            id="subsidi_ongkir"
+            type="text"
+            value={formatNumber(formData.subsidi_ongkir)}
+            onChange={(e) => handleNumericInput(e.target.value, (val) => setFormData({ ...formData, subsidi_ongkir: val }))}
+            className="pl-10"
+            placeholder="0"
+          />
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          Jumlah subsidi ongkir yang ditanggung perusahaan (opsional)
+        </p>
+      </div>
+
       {/* Row 7: Total Ongkir, Titip Ongkir, Sisa Ongkir */}
       <div className="grid grid-cols-3 gap-4">
         <div>
@@ -503,11 +545,29 @@ const PenjualanFormFields = ({
               id="titip_ongkir"
               type="text"
               value={formatNumber(formData.titip_ongkir)}
-              onChange={(e) => handleNumericInput(e.target.value, (val) => setFormData({ ...formData, titip_ongkir: val }))}
+              onChange={(e) => {
+                const value = e.target.value;
+                const numericValue = parseFormattedNumber(value);
+                const totalOngkir = parseFormattedNumber(formData.total_ongkir);
+                
+                // Validasi: titip_ongkir tidak boleh melebihi total_ongkir
+                if (totalOngkir && numericValue > totalOngkir) {
+                  // Tampilkan peringatan atau batasi nilai
+                  return;
+                }
+                
+                handleNumericInput(value, (val) => setFormData({ ...formData, titip_ongkir: val }));
+              }}
               className="pl-10"
               placeholder="0"
             />
           </div>
+          {formData.total_ongkir && formData.titip_ongkir && 
+           parseFormattedNumber(formData.titip_ongkir) > parseFormattedNumber(formData.total_ongkir) && (
+            <p className="text-xs text-red-500 mt-1">
+              Titip ongkir tidak boleh melebihi total ongkir
+            </p>
+          )}
         </div>
         <div>
           <Label htmlFor="sisa_ongkir">Sisa Ongkir</Label>
@@ -522,8 +582,41 @@ const PenjualanFormFields = ({
               placeholder="Otomatis terhitung"
             />
           </div>
+          {formData.ongkir_dibayar && (
+            <div className="flex items-center mt-1">
+              <span className="text-xs text-green-600 font-medium">✓ Ongkir Lunas</span>
+              {formData.tanggal_lunas_ongkir && (
+                <span className="text-xs text-gray-500 ml-2">
+                  ({new Date(formData.tanggal_lunas_ongkir).toLocaleDateString('id-ID')})
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Row 7.5: Tanggal Lunas Ongkir (Conditional) */}
+      {formData.ongkir_dibayar && (
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="tanggal_lunas_ongkir">Tanggal Lunas Ongkir</Label>
+            <div className="mt-1">
+              <DatePicker
+                id="tanggal_lunas_ongkir"
+                value={formData.tanggal_lunas_ongkir}
+                onChange={(value) => setFormData({ ...formData, tanggal_lunas_ongkir: value })}
+                placeholder="Pilih tanggal lunas ongkir"
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Tanggal ketika ongkir dinyatakan lunas
+            </p>
+          </div>
+          <div>
+            {/* Kolom kosong untuk spacing */}
+          </div>
+        </div>
+      )}
 
       {/* Row 8: Status, Company */}
       <div className="grid grid-cols-2 gap-4">

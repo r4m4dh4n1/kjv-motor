@@ -771,6 +771,57 @@ export type Database = {
         }
         Relationships: []
       }
+      ongkir_cicilan: {
+        Row: {
+          created_at: string
+          id: number
+          jumlah_bayar: number
+          keterangan: string | null
+          penjualan_id: number
+          sisa_ongkir_setelah_bayar: number
+          tanggal_bayar: string
+          tujuan_pembayaran_id: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          jumlah_bayar?: number
+          keterangan?: string | null
+          penjualan_id: number
+          sisa_ongkir_setelah_bayar?: number
+          tanggal_bayar: string
+          tujuan_pembayaran_id?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          jumlah_bayar?: number
+          keterangan?: string | null
+          penjualan_id?: number
+          sisa_ongkir_setelah_bayar?: number
+          tanggal_bayar?: string
+          tujuan_pembayaran_id?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ongkir_cicilan_penjualan_id_fkey"
+            columns: ["penjualan_id"]
+            isOneToOne: false
+            referencedRelation: "penjualans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ongkir_cicilan_tujuan_pembayaran_id_fkey"
+            columns: ["tujuan_pembayaran_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operational: {
         Row: {
           cabang_id: number
@@ -1022,7 +1073,7 @@ export type Database = {
           divisi: string
           harga_beli: number
           harga_final?: number | null
-          id: number
+          id?: number
           jenis_motor_id: number
           jenis_pembelian: string
           keterangan?: string | null
@@ -1312,6 +1363,7 @@ export type Database = {
           tahun: number
           tanggal: string
           tanggal_lunas: string | null
+          tanggal_lunas_ongkir: string | null
           titip_ongkir: number | null
           total_ongkir: number | null
           tt: string | null
@@ -1353,6 +1405,7 @@ export type Database = {
           tahun: number
           tanggal: string
           tanggal_lunas?: string | null
+          tanggal_lunas_ongkir?: string | null
           titip_ongkir?: number | null
           total_ongkir?: number | null
           tt?: string | null
@@ -1394,6 +1447,7 @@ export type Database = {
           tahun?: number
           tanggal?: string
           tanggal_lunas?: string | null
+          tanggal_lunas_ongkir?: string | null
           titip_ongkir?: number | null
           total_ongkir?: number | null
           tt?: string | null
@@ -1680,6 +1734,7 @@ export type Database = {
           keterangan_biaya_lain: string | null
           pembelian_id: number
           reason: string | null
+          tanggal_update: string | null
           updated_at: string
           user_id: number | null
         }
@@ -1695,6 +1750,7 @@ export type Database = {
           keterangan_biaya_lain?: string | null
           pembelian_id: number
           reason?: string | null
+          tanggal_update?: string | null
           updated_at?: string
           user_id?: number | null
         }
@@ -1710,6 +1766,7 @@ export type Database = {
           keterangan_biaya_lain?: string | null
           pembelian_id?: number
           reason?: string | null
+          tanggal_update?: string | null
           updated_at?: string
           user_id?: number | null
         }
