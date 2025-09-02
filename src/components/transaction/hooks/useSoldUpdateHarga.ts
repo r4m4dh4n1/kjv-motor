@@ -114,7 +114,7 @@ export const useSoldUpdateHarga = () => {
         const pembukuanData = {
           tanggal: updateData.tanggal_update,
           divisi: currentPenjualan.divisi,
-          keterangan: `${updateData.operation_mode === 'tambah' ? 'Biaya Tambahan' : 'Pengurangan Biaya'} - ${currentPenjualan.brands?.name || ''} - ${currentPenjualan.jenis_motor?.jenis_motor || ''} - ${currentPenjualan.plat} - ${updateData.reason}`,
+          keterangan: `${updateData.operation_mode === 'tambah' ? 'Biaya Tambahan' : 'Pengurangan Biaya'} - ${currentPenjualan.plat} - ${updateData.reason}`,
           debit: isAddition ? amount : 0,
           kredit: isAddition ? 0 : amount,
           cabang_id: currentPenjualan.cabang_id,

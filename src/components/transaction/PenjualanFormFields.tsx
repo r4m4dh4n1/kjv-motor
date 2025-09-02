@@ -106,13 +106,14 @@ const PenjualanFormFields = ({
     }
   }, [formData.harga_jual, formData.dp, formData.jenis_pembayaran]);
 
-  // Auto-calculate sisa ongkir when total ongkir or titip ongkir changes
+  // Auto-calculate sisa ongkir when total ongkir, subsidi ongkir, or titip ongkir changes
   useEffect(() => {
     const totalOngkir = parseFormattedNumber(formData.total_ongkir);
+    const subsidiOngkir = parseFormattedNumber(formData.subsidi_ongkir);
     const titipOngkir = parseFormattedNumber(formData.titip_ongkir);
-    const sisaOngkir = totalOngkir - titipOngkir;
+    const sisaOngkir = totalOngkir - (subsidiOngkir + titipOngkir);
     setFormData({ ...formData, sisa_ongkir: sisaOngkir.toString() });
-  }, [formData.total_ongkir, formData.titip_ongkir]);
+  }, [formData.total_ongkir, formData.subsidi_ongkir, formData.titip_ongkir]);
 
   // Reset payment fields when payment type changes (hanya jika bukan mode edit)
   useEffect(() => {
@@ -479,8 +480,22 @@ const PenjualanFormFields = ({
         </div>
       )}
 
-      {/* Row 7: Total Ongkir, Titip Ongkir, Sisa Ongkir */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* Row 7: Ongkir fields with new layout */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="subsidi_ongkir">Subsidi Ongkir</Label>
+          <div className="relative mt-1">
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Rp</span>
+            <Input
+              id="subsidi_ongkir"
+              type="text"
+              value={formatNumber(formData.subsidi_ongkir)}
+              onChange={(e) => handleNumericInput(e.target.value, (val) => setFormData({ ...formData, subsidi_ongkir: val }))}
+              className="pl-10"
+              placeholder="0"
+            />
+          </div>
+        </div>
         <div>
           <Label htmlFor="total_ongkir">Total Ongkir</Label>
           <div className="relative mt-1">
@@ -495,6 +510,10 @@ const PenjualanFormFields = ({
             />
           </div>
         </div>
+      </div>
+
+      {/* Row 8: Titip Ongkir, Sisa Ongkir */}
+      <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="titip_ongkir">Titip Ongkir</Label>
           <div className="relative mt-1">
@@ -525,7 +544,7 @@ const PenjualanFormFields = ({
         </div>
       </div>
 
-      {/* Row 8: Status, Company */}
+      {/* Row 9: Status, Company */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="status">Status *</Label>

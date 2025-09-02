@@ -97,7 +97,7 @@ case 'fee-penjualan':
         case "pencatatan-asset":
           return <PencatatanAssetPage selectedDivision={selectedDivision} />;
         case "price-history-upload":
-          return <PriceHistoryUploadPage selectedDivision={selectedDivision} />;
+          return <PriceHistoryUploadPage />;
         default:
         return <Dashboard selectedDivision={selectedDivision} />;
     }

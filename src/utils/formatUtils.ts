@@ -43,3 +43,11 @@ export const handleCurrencyInput = (value: string): string => {
   if (!numericValue) return '';
   return formatCurrency(numericValue);
 };
+
+// Format date to Indonesian locale
+export const formatDate = (date: Date | string): string => {
+  if (!date) return "";
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString('id-ID');
+};

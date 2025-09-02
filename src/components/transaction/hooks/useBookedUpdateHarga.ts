@@ -66,44 +66,27 @@ export const useBookedUpdateHarga = () => {
       }
 
       // Create pembukuan entry for the additional costs
-      if (totalBiayaTambahan > 0) { // MASALAH: Hanya jika > 0
-        const { error: pembukuanError } = await supabase
-          .from('pembukuan')
-          .insert({
-            tanggal: data.tanggal_update,
-            divisi: currentPenjualan.divisi,
-            keterangan: `Update Harga Booked - ${currentPenjualan.brands?.name || ''} - ${currentPenjualan.jenis_motor?.jenis_motor || ''} - ${currentPenjualan.plat} - ${data.reason}`,
-            debit: totalBiayaTambahan,
-            kredit: 0,
-            cabang_id: currentPenjualan.cabang_id,
-            company_id: data.sumber_dana_id,
-            pembelian_id: currentPenjualan.pembelian_id
-          });
-        
-        // Dan dalam price history:
-        const { error: historyError } = await supabase
-          .from('price_histories_pembelian')
-          .insert({
-            pembelian_id: currentPenjualan.pembelian_id,
-            harga_beli_lama: originalHargaBeli,
-            harga_beli_baru: newHargaBeli,
-            biaya_qc: data.biaya_qc,
-            biaya_pajak: data.biaya_pajak,
-            biaya_lain_lain: data.biaya_lain_lain,
-            keterangan_biaya_lain: data.keterangan_biaya_lain,
-            reason: data.reason,
-            tanggal_update: data.tanggal_update, // Tambahkan field ini
-            company_id: data.sumber_dana_id // Gunakan sumber dana dari form
-          });
-
-        if (pembukuanError) {
-          console.error('Error creating pembukuan entry:', pembukuanError);
-          toast({
-            title: "Warning",
-            description: "Harga berhasil diupdate tapi gagal mencatat pembukuan",
-            variant: "destructive"
-          });
-        }
+      // PERBAIKAN: Selalu buat entry pembukuan, tidak peduli positif atau negatif
+      const { error: pembukuanError } = await supabase
+        .from('pembukuan')
+        .insert({
+          tanggal: data.tanggal_update,
+          divisi: currentPenjualan.divisi,
+          keterangan: `Update Harga Booked - ${currentPenjualan.plat} - ${data.reason}`,
+          debit: totalBiayaTambahan > 0 ? totalBiayaTambahan : 0,
+          kredit: totalBiayaTambahan < 0 ? Math.abs(totalBiayaTambahan) : 0,
+          cabang_id: currentPenjualan.cabang_id,
+          company_id: data.sumber_dana_id,
+          pembelian_id: currentPenjualan.pembelian_id
+        });
+      
+      if (pembukuanError) {
+        console.error('Error creating pembukuan entry:', pembukuanError);
+        toast({
+          title: "Warning",
+          description: "Harga berhasil diupdate tapi gagal mencatat pembukuan",
+          variant: "destructive"
+        });
       }
 
       // Create price history record in price_histories_pembelian
