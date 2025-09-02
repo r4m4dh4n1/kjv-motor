@@ -41,6 +41,7 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
     tujuan_pembayaran_id: ''
   });
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   // State untuk filter yang ditingkatkan
@@ -61,6 +62,8 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
 
   const fetchData = async () => {
     setLoading(true);
+    setIsSubmitting(true); // Set loading state
+
     try {
       await Promise.all([
         fetchCicilanData(),
@@ -322,6 +325,9 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Prevent double submission
+    if (isSubmitting) return;
+    
     if (!formData.penjualan_id || !formData.tanggal_bayar || !formData.jumlah_bayar) {
       toast({
         title: "Error",
@@ -507,6 +513,8 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
         description: "Gagal menyimpan data cicilan",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false); // Reset loading state
     }
   };
 
@@ -666,7 +674,7 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { color: "bg-yellow-100 text-yellow-800", icon: Clock, label: "Pending" },
+      pending: { color: "bg-yellow-100 text-yellow-800", icon: Clock, label: "Belum Lunas" },
       completed: { color: "bg-green-100 text-green-800", icon: CheckCircle, label: "Selesai" },
       overdue: { color: "bg-red-100 text-red-800", icon: AlertCircle, label: "Terlambat" }
     };
@@ -807,8 +815,12 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Batal
                 </Button>
-                <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                  Simpan Pembayaran
+                <Button 
+                  type="submit" 
+                  className="bg-blue-600 hover:bg-blue-700"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Menyimpan..." : "Simpan Pembayaran"}
                 </Button>
               </div>
             </form>
@@ -873,7 +885,7 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Semua Status</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="pending">Belum Lunas</SelectItem>
                       <SelectItem value="completed">Selesai</SelectItem>
                       <SelectItem value="overdue">Terlambat</SelectItem>
                     </SelectContent>
