@@ -6,12 +6,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subWeeks, subMonths, subYears, addDays } from "date-fns";
-import { Search, Filter, CheckCircle, DollarSign } from "lucide-react";
+import { Search, Filter, CheckCircle, DollarSign, Truck } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { usePenjualanData } from "./hooks/usePenjualanData";
 import { useCabangData } from "./hooks/usePembelianData";
+import { useCompaniesData } from "@/hooks/useCompaniesData";
 import PenjualanSoldTable from "./PenjualanSoldTable";
-import { formatCurrency } from "@/utils/formatUtils";
+import { formatCurrency, parseFormattedNumber } from "@/utils/formatUtils";
 import { usePagination } from "@/hooks/usePagination";
 import { calculateStandardProfitTotals } from '@/utils/profitCalculationUtils';
 
@@ -30,9 +34,22 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
   // Pagination
   const [pageSize, setPageSize] = useState(10);
 
+  // Keluar Ongkir states
+  const [isOngkirDialogOpen, setIsOngkirDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [ongkirFormData, setOngkirFormData] = useState({
+    tanggal: new Date().toISOString().split('T')[0],
+    penjualan_id: "",
+    titip_ongkir: "",
+    keterangan: "",
+    company_id: ""
+  });
+
   // Data queries
-  const { penjualanData } = usePenjualanData(selectedDivision);
+  const { penjualanData, refetch: refetchPenjualan } = usePenjualanData(selectedDivision);
   const { data: cabangData = [] } = useCabangData();
+  const { companiesData } = useCompaniesData(selectedDivision);
+  const { toast } = useToast();
 
   // Date range calculation based on filter
   const getDateRange = () => {
@@ -128,10 +145,247 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
     resetPage();
   };
 
+  const resetOngkirForm = () => {
+    setOngkirFormData({
+      tanggal: new Date().toISOString().split('T')[0],
+      penjualan_id: "",
+      titip_ongkir: "",
+      keterangan: "",
+      company_id: ""
+    });
+  };
+
+  const handleOngkirSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Validasi input
+      if (!ongkirFormData.penjualan_id || !ongkirFormData.titip_ongkir || !ongkirFormData.company_id) {
+        toast({
+          title: "Error",
+          description: "Mohon lengkapi semua field yang wajib diisi",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const titipOngkirAmount = parseFormattedNumber(ongkirFormData.titip_ongkir);
+      if (titipOngkirAmount <= 0) {
+        toast({
+          title: "Error",
+          description: "Nominal titip ongkir harus lebih dari 0",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Ambil data penjualan untuk mendapatkan brand, jenis_motor, dan plat
+      const selectedPenjualan = penjualanData.find(p => p.id.toString() === ongkirFormData.penjualan_id);
+      if (!selectedPenjualan) {
+        toast({
+          title: "Error",
+          description: "Data penjualan tidak ditemukan",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Generate keterangan dengan format: "pengeluaran dana titip ongkir brand-jenis_motor-plat"
+      const brand = selectedPenjualan.brands?.name || 'Unknown';
+      const jenisMotor = selectedPenjualan.jenis_motor?.jenis_motor || 'Unknown';
+      const plat = selectedPenjualan.plat || 'Unknown';
+      const generatedKeterangan = `pengeluaran dana titip ongkir ${brand}-${jenisMotor}-${plat}`;
+      const finalKeterangan = ongkirFormData.keterangan.trim() || generatedKeterangan;
+
+      // Insert ke tabel pembukuan
+      const pembukuanData = {
+        tanggal: ongkirFormData.tanggal,
+        divisi: selectedDivision,
+        cabang_id: selectedPenjualan.cabang_id,
+        keterangan: finalKeterangan,
+        debit: titipOngkirAmount,
+        kredit: 0,
+        company_id: parseInt(ongkirFormData.company_id),
+        pembelian_id: selectedPenjualan.pembelian_id
+      };
+
+      const { error: pembukuanError } = await supabase
+        .from('pembukuan')
+        .insert([pembukuanData]);
+
+      if (pembukuanError) {
+        console.error('Error inserting pembukuan:', pembukuanError);
+        throw pembukuanError;
+      }
+
+      // Update modal perusahaan (mengurangi modal sebesar titip ongkir)
+      const { error: modalError } = await supabase.rpc('update_company_modal', {
+        company_id: parseInt(ongkirFormData.company_id),
+        amount: -titipOngkirAmount
+      });
+
+      if (modalError) {
+        console.error('Error updating company modal:', modalError);
+        toast({
+          title: "Warning",
+          description: "Data tersimpan tapi gagal mengurangi modal perusahaan",
+          variant: "destructive"
+        });
+      }
+
+      toast({
+        title: "Berhasil",
+        description: "Data keluar ongkir berhasil disimpan"
+      });
+
+      // Reset form dan tutup dialog
+      resetOngkirForm();
+      setIsOngkirDialogOpen(false);
+      refetchPenjualan();
+
+    } catch (error: any) {
+      console.error('Error saving keluar ongkir:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Gagal menyimpan data keluar ongkir",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Auto-fill company_id when penjualan is selected
+  const handlePenjualanSelect = (penjualanId: string) => {
+    const selectedPenjualan = penjualanData.find(p => p.id.toString() === penjualanId);
+    if (selectedPenjualan) {
+      setOngkirFormData(prev => ({
+        ...prev,
+        penjualan_id: penjualanId,
+        company_id: selectedPenjualan.company_id?.toString() || ""
+      }));
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Data Penjualan - Sold</h1>
+        <Dialog open={isOngkirDialogOpen} onOpenChange={setIsOngkirDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={resetOngkirForm} className="bg-orange-600 hover:bg-orange-700">
+              <Truck className="mr-2 h-4 w-4" />
+              Keluar Ongkir
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Keluar Ongkir</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleOngkirSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="tanggal">Tanggal *</Label>
+                <Input
+                  id="tanggal"
+                  type="date"
+                  value={ongkirFormData.tanggal}
+                  onChange={(e) => setOngkirFormData(prev => ({ ...prev, tanggal: e.target.value }))}
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="penjualan_id">Pilih Penjualan *</Label>
+                <Select
+                  value={ongkirFormData.penjualan_id}
+                  onValueChange={handlePenjualanSelect}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih penjualan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredData.map((penjualan) => (
+                      <SelectItem key={penjualan.id} value={penjualan.id.toString()}>
+                        {penjualan.brands?.name} {penjualan.jenis_motor?.jenis_motor} - {penjualan.plat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="titip_ongkir">Nominal Titip Ongkir *</Label>
+                <Input
+                  id="titip_ongkir"
+                  type="text"
+                  placeholder="Masukkan nominal"
+                  value={ongkirFormData.titip_ongkir}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, '');
+                    const formatted = value ? parseInt(value).toLocaleString('id-ID') : '';
+                    setOngkirFormData(prev => ({ ...prev, titip_ongkir: formatted }));
+                  }}
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="company_id">No. Rekening (Company) *</Label>
+                <Select
+                  value={ongkirFormData.company_id}
+                  onValueChange={(value) => setOngkirFormData(prev => ({ ...prev, company_id: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companiesData.map((company) => (
+                      <SelectItem key={company.id} value={company.id.toString()}>
+                        {company.nama_perusahaan}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="keterangan">Keterangan (Opsional)</Label>
+                <Input
+                  id="keterangan"
+                  type="text"
+                  placeholder="Keterangan tambahan (opsional)"
+                  value={ongkirFormData.keterangan}
+                  onChange={(e) => setOngkirFormData(prev => ({ ...prev, keterangan: e.target.value }))}
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Jika kosong, akan otomatis diisi: "pengeluaran dana titip ongkir brand-jenis_motor-plat"
+                </p>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsOngkirDialogOpen(false)}
+                  disabled={isSubmitting}
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="bg-orange-600 hover:bg-orange-700"
+                >
+                  {isSubmitting ? "Menyimpan..." : "Simpan"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Filter Section */}
