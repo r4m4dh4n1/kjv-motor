@@ -141,23 +141,23 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
       } else {
         console.log('Biaya modal tidak dicatat karena nilai <= 0:', biayaModal);
       }
+
+      toast({
+        title: "Berhasil",
+        description: "Data keuntungan berhasil disimpan",
+      });
+
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error("Error saving profit:", error);
+      toast({
+        title: "Error",
+        description: "Gagal menyimpan data keuntungan",
+        variant: "destructive",
+      });
     }
-
-    toast({
-      title: "Berhasil",
-      description: "Data keuntungan berhasil disimpan",
-    });
-
-    onSuccess();
-    onClose();
-  } catch (error) {
-    console.error("Error saving profit:", error);
-    toast({
-      title: "Error",
-      description: "Gagal menyimpan data keuntungan",
-      variant: "destructive",
-    });
-  }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

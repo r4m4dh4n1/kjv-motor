@@ -8,11 +8,6 @@ import { useEffect } from "react";
 import { formatNumber, parseFormattedNumber, handleNumericInput } from "@/utils/formatUtils";
 import { DatePicker } from "@/components/ui/date-picker";
 
-// Tambahkan function formatCurrency
-const formatCurrency = (value: number): string => {
-  return value.toString();
-};
-
 interface PenjualanFormFieldsProps {
   formData: any;
   setFormData: (data: any) => void;
@@ -111,31 +106,14 @@ const PenjualanFormFields = ({
     }
   }, [formData.harga_jual, formData.dp, formData.jenis_pembayaran]);
 
-  // PERBAIKAN: Pisahkan useEffect untuk ongkir dan tambahkan validasi
+  // Auto-calculate sisa ongkir when total ongkir, subsidi ongkir, or titip ongkir changes
   useEffect(() => {
-    if (formData.total_ongkir) {
-      const totalOngkir = parseFormattedNumber(formData.total_ongkir);
-      const titipOngkir = parseFormattedNumber(formData.titip_ongkir) || 0;
-      const subsidiOngkir = parseFormattedNumber(formData.subsidi_ongkir) || 0;
-      
-      // Hitung total pembayaran ongkir (titip + subsidi)
-      const totalPembayaranOngkir = titipOngkir + subsidiOngkir;
-      
-      // Validasi: pastikan total pembayaran tidak melebihi total_ongkir
-      const validTotalPembayaran = Math.min(totalPembayaranOngkir, totalOngkir);
-      const sisaOngkir = Math.max(0, totalOngkir - validTotalPembayaran); // Mencegah nilai negatif
-      
-      const isOngkirLunas = sisaOngkir <= 0;
-      const tanggalLunasOngkir = isOngkirLunas && !formData.ongkir_dibayar ? new Date().toISOString().split('T')[0] : formData.tanggal_lunas_ongkir;
-      
-      setFormData(prev => ({
-        ...prev,
-        sisa_ongkir: formatCurrency(sisaOngkir),
-        ongkir_dibayar: isOngkirLunas,
-        tanggal_lunas_ongkir: tanggalLunasOngkir
-      }));
-    }
-  }, [formData.total_ongkir, formData.titip_ongkir, formData.subsidi_ongkir]);
+    const totalOngkir = parseFormattedNumber(formData.total_ongkir);
+    const subsidiOngkir = parseFormattedNumber(formData.subsidi_ongkir);
+    const titipOngkir = parseFormattedNumber(formData.titip_ongkir);
+    const sisaOngkir = totalOngkir - (subsidiOngkir + titipOngkir);
+    setFormData({ ...formData, sisa_ongkir: sisaOngkir.toString() });
+  }, [formData.total_ongkir, formData.subsidi_ongkir, formData.titip_ongkir]);
 
   // Reset payment fields when payment type changes (hanya jika bukan mode edit)
   useEffect(() => {
@@ -502,93 +480,71 @@ const PenjualanFormFields = ({
         </div>
       )}
 
-      {/* Row 6.5: Subsidi Ongkir (FIELD BARU) */}
-      <div>
-        <Label htmlFor="subsidi_ongkir">Subsidi Ongkir</Label>
-        <div className="relative mt-1">
-          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Rp</span>
-          <Input
-            id="subsidi_ongkir"
-            type="text"
-            value={formatNumber(formData.subsidi_ongkir)}
-            onChange={(e) => handleNumericInput(e.target.value, (val) => setFormData({ ...formData, subsidi_ongkir: val }))}
-            className="pl-10"
-            placeholder="0"
-          />
-        </div>
-        <p className="text-xs text-gray-500 mt-1">
-          Jumlah subsidi ongkir yang ditanggung perusahaan (opsional)
-        </p>
-      </div>
-
-      {/* Row 7: Ongkir Fields with Company Source */}
-      <div>
-        <Label htmlFor="sumber_dana_ongkir">Sumber Dana (Company) *</Label>
-        <Select 
-          value={formData.sumber_dana_company_id} 
-          onValueChange={(value) => setFormData({ ...formData, sumber_dana_company_id: value })}
-        >
-          <SelectTrigger className="mt-1">
-            <SelectValue placeholder="Pilih perusahaan sumber dana" />
-          </SelectTrigger>
-          <SelectContent>
-            {filteredCompanies.map((company) => (
-              <SelectItem key={company.id} value={company.id.toString()}>
-                {company.nama_perusahaan}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-gray-500 mt-1">
-          Pilih perusahaan yang modalnya akan digunakan
-        </p>
-      </div>
-
-      {/* Row 7: Add Pelunasan Ongkir Fields */}
-      {parseFormattedNumbeacr(formData.sisa_ongkir) > 0 && (
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <Label htmlFor="sumber_dana_ongkir">Sumber Dana Pelunasan</Label>
-            <Select 
-              value={formData.sumber_dana_ongkir} 
-              onValueChange={(value) => setFormData({ ...formData, sumber_dana_ongkir: value })}
-            >
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Pilih sumber dana" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="kas">Kas</SelectItem>
-                <SelectItem value="bank">Bank</SelectItem>
-                <SelectItem value="lainnya">Lainnya</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="tanggal_pelunasan_ongkir">Tanggal Pelunasan</Label>
-            <div className="mt-1">
-              <DatePicker
-                id="tanggal_pelunasan_ongkir"
-                value={formData.tanggal_pelunasan_ongkir}
-                onChange={(value) => setFormData({ ...formData, tanggal_pelunasan_ongkir: value })}
-                placeholder="Pilih tanggal"
-              />
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="no_bukti_pelunasan_ongkir">No. Bukti Pelunasan</Label>
+      {/* Row 7: Ongkir fields with new layout */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="subsidi_ongkir">Subsidi Ongkir</Label>
+          <div className="relative mt-1">
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Rp</span>
             <Input
-              id="no_bukti_pelunasan_ongkir"
+              id="subsidi_ongkir"
               type="text"
-              value={formData.no_bukti_pelunasan_ongkir}
-              onChange={(e) => setFormData({ ...formData, no_bukti_pelunasan_ongkir: e.target.value })}
-              className="mt-1"
-              placeholder="Masukkan nomor bukti"
+              value={formatNumber(formData.subsidi_ongkir)}
+              onChange={(e) => handleNumericInput(e.target.value, (val) => setFormData({ ...formData, subsidi_ongkir: val }))}
+              className="pl-10"
+              placeholder="0"
             />
           </div>
         </div>
-      )}
+        <div>
+          <Label htmlFor="total_ongkir">Total Ongkir</Label>
+          <div className="relative mt-1">
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Rp</span>
+            <Input
+              id="total_ongkir"
+              type="text"
+              value={formatNumber(formData.total_ongkir)}
+              onChange={(e) => handleNumericInput(e.target.value, (val) => setFormData({ ...formData, total_ongkir: val }))}
+              className="pl-10"
+              placeholder="0"
+            />
+          </div>
+        </div>
+      </div>
 
-      {/* Row 8: Status, Company */}
+      {/* Row 8: Titip Ongkir, Sisa Ongkir */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="titip_ongkir">Titip Ongkir</Label>
+          <div className="relative mt-1">
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Rp</span>
+            <Input
+              id="titip_ongkir"
+              type="text"
+              value={formatNumber(formData.titip_ongkir)}
+              onChange={(e) => handleNumericInput(e.target.value, (val) => setFormData({ ...formData, titip_ongkir: val }))}
+              className="pl-10"
+              placeholder="0"
+            />
+          </div>
+        </div>
+        <div>
+          <Label htmlFor="sisa_ongkir">Sisa Ongkir</Label>
+          <div className="relative mt-1">
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Rp</span>
+            <Input
+              id="sisa_ongkir"
+              type="text"
+              value={formatNumber(formData.sisa_ongkir)}
+              readOnly
+              className="pl-10 bg-gray-100"
+              placeholder="Otomatis terhitung"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Row 9: Status, Company */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="status">Status *</Label>
