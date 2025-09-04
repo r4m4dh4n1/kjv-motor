@@ -107,8 +107,9 @@ const CloseMonthPage = () => {
       <Alert className="border-amber-200 bg-amber-50">
         <AlertTriangle className="h-4 w-4 text-amber-600" />
         <AlertDescription className="text-amber-800">
-          <strong>Peringatan:</strong> Proses close month akan memindahkan semua data transaksi yang sudah selesai ke tabel history. 
-          Hanya pembelian dengan status "ready" dan penjualan dengan status "booked" yang akan tetap di tabel aktif.
+          <strong>Peringatan:</strong> Proses close month akan memindahkan data transaksi yang sudah selesai ke tabel history. 
+          Data yang tetap aktif: pembelian "ready", penjualan "booked", dan cicilan "pending" akan pindah ke bulan berikutnya. 
+          Modal company tidak terpengaruh.
         </AlertDescription>
       </Alert>
 

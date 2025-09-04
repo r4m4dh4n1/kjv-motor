@@ -14,6 +14,7 @@ import PenjualanTable from "./PenjualanTable";
 import UpdateHargaModal from "./UpdateHargaModal";
 import PriceHistoryModal from "./PriceHistoryModal";
 import DpCancellationModal from "./DpCancellationModal";
+import TitipOngkirPayoutModal from "./TitipOngkirPayoutModal";
 import { Penjualan, PenjualanFormData } from "./penjualan-types";
 import { formatCurrency } from "@/utils/formatUtils";
 import { usePagination } from "@/hooks/usePagination";
@@ -26,6 +27,7 @@ import { usePenjualanData } from "./hooks/usePenjualanData";
 import { usePenjualanCreate, usePenjualanDelete } from "./hooks/usePenjualanMutations";
 import { usePenjualanActions } from "./hooks/usePenjualanActions";
 import { useDpCancellation } from "./hooks/useDpCancellation";
+import { supabase } from "@/integrations/supabase/client";
 import {
   createInitialPenjualanFormData,
   validatePenjualanFormData,
@@ -44,6 +46,11 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
   // DP Cancellation states
   const [isDpCancelModalOpen, setIsDpCancelModalOpen] = useState(false);
   const [selectedPenjualanForCancel, setSelectedPenjualanForCancel] = useState<any>(null);
+  
+  // Titip Ongkir Payout states
+  const [isTitipOngkirModalOpen, setIsTitipOngkirModalOpen] = useState(false);
+  const [selectedPenjualanForOngkir, setSelectedPenjualanForOngkir] = useState<any>(null);
+  const [ongkirPaymentStatus, setOngkirPaymentStatus] = useState<Record<number, boolean>>({});
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -75,6 +82,27 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
   const createPenjualanMutation = usePenjualanCreate();
   const deletePenjualanMutation = usePenjualanDelete();
   const dpCancellationMutation = useDpCancellation();
+
+  const checkOngkirPaymentStatus = async (penjualanIds: number[]) => {
+    try {
+      if (penjualanIds.length === 0) return;
+
+      const { data, error } = await supabase
+        .from('ongkir_payments')
+        .select('penjualan_id')
+        .in('penjualan_id', penjualanIds);
+
+      if (error) throw error;
+
+      const paymentStatusMap: Record<number, boolean> = {};
+      data?.forEach((payment) => {
+        paymentStatusMap[payment.penjualan_id] = true;
+      });
+      setOngkirPaymentStatus(paymentStatusMap);
+    } catch (error) {
+      console.error('Error checking ongkir payment status:', error);
+    }
+  };
   
   // Actions
   const {
@@ -171,6 +199,14 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
     totalItems
   } = usePagination(filteredData, pageSize);
 
+  // Fetch ongkir payment status for filtered data
+  useEffect(() => {
+    if (filteredData.length > 0) {
+      const penjualanIds = filteredData.map((item: any) => item.id);
+      checkOngkirPaymentStatus(penjualanIds);
+    }
+  }, [filteredData.length]);
+
   // Calculate totals
   const calculateTotals = () => {
     const totalPenjualan = filteredData.reduce((sum, item) => sum + (item.harga_jual || 0), 0);
@@ -254,6 +290,19 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
     } catch (error) {
       // Error handling is done in the mutation
     }
+  };
+
+  const handleTitipOngkirPayout = (penjualan: any) => {
+    setSelectedPenjualanForOngkir(penjualan);
+    setIsTitipOngkirModalOpen(true);
+  };
+
+  const handleTitipOngkirPayoutSuccess = () => {
+    setIsTitipOngkirModalOpen(false);
+    setSelectedPenjualanForOngkir(null);
+    const penjualanIds = filteredData.map((item: any) => item.id);
+    checkOngkirPaymentStatus(penjualanIds); // Refresh payment status
+    refetchPenjualan();
   };
 
   return (
@@ -488,7 +537,10 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
         handleUpdateHarga={handleUpdateHarga}
         handleRiwayatHarga={handleRiwayatHarga}
         handleCancelDp={handleCancelDp}
+        handleTitipOngkirPayout={handleTitipOngkirPayout}
+        ongkirPaymentStatus={ongkirPaymentStatus}
         showCancelDp={true}
+        showTitipOngkirPayout={true}
       />
 
       {/* Pagination Controls */}
@@ -551,6 +603,16 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
         penjualan={selectedPenjualanForCancel}
         onConfirm={handleDpCancellationConfirm}
         isLoading={dpCancellationMutation.isPending}
+      />
+
+      <TitipOngkirPayoutModal
+        isOpen={isTitipOngkirModalOpen}
+        onClose={() => {
+          setIsTitipOngkirModalOpen(false);
+          setSelectedPenjualanForOngkir(null);
+        }}
+        penjualan={selectedPenjualanForOngkir}
+        onPayoutSuccess={handleTitipOngkirPayoutSuccess}
       />
     </div>
   );

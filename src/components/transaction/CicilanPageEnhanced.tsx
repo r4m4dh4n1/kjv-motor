@@ -62,7 +62,6 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
 
   const fetchData = async () => {
     setLoading(true);
-    setIsSubmitting(true); // Set loading state
 
     try {
       await Promise.all([
@@ -80,6 +79,7 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
       });
     } finally {
       setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -674,7 +674,7 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { color: "bg-yellow-100 text-yellow-800", icon: Clock, label: "Belum Lunas" },
+      pending: { color: "bg-yellow-100 text-yellow-800", icon: Clock, label: "Pending" },
       completed: { color: "bg-green-100 text-green-800", icon: CheckCircle, label: "Selesai" },
       overdue: { color: "bg-red-100 text-red-800", icon: AlertCircle, label: "Terlambat" }
     };
@@ -885,7 +885,7 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Semua Status</SelectItem>
-                      <SelectItem value="pending">Belum Lunas</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
                       <SelectItem value="completed">Selesai</SelectItem>
                       <SelectItem value="overdue">Terlambat</SelectItem>
                     </SelectContent>
