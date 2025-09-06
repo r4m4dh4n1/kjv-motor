@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { format } from 'date-fns';
 import { Search, Filter } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatUtils';
-import { supabase } from '@/integrations/supabase/client';
+import { cascadingSearch, getDateColumn } from '@/utils/cascadingSearchUtils';
 import { useQuery } from '@tanstack/react-query';
 
 interface CicilanHistoryTableProps {
@@ -22,19 +22,35 @@ const CicilanHistoryTable = ({ selectedDivision }: CicilanHistoryTableProps) => 
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [pageSize, setPageSize] = useState(10);
 
-  // Query untuk data history cicilan
-  const { data: historyData = [], isLoading } = useQuery({
-    queryKey: ['cicilan_history', selectedDivision],
+  // Enhanced query with cascading search
+  const { data: queryResult, isLoading } = useQuery({
+    queryKey: ['cicilan_cascading', selectedDivision, selectedMonth, selectedYear],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('cicilan_history')
-        .select('*')
-        .order('created_at', { ascending: false });
+      console.log('🔍 Cicilan cascading search starting...', {
+        selectedDivision,
+        selectedMonth,
+        selectedYear
+      });
+
+      const result = await cascadingSearch({
+        tableName: 'cicilan',
+        selectedDivision,
+        selectedMonth,
+        selectedYear,
+        dateColumn: getDateColumn('cicilan')
+      });
       
-      if (error) throw error;
-      return data || [];
+      console.log('✅ Cicilan cascading search completed:', {
+        source: result.source,
+        totalFound: result.totalFound
+      });
+      
+      return result;
     }
   });
+
+  const historyData = queryResult?.data || [];
+  const dataSource = queryResult?.source || 'master';
 
   // Filter data berdasarkan search term
   const filteredData = historyData.filter((item: any) => {
@@ -153,6 +169,9 @@ const CicilanHistoryTable = ({ selectedDivision }: CicilanHistoryTableProps) => 
             </Button>
             <div className="text-sm text-muted-foreground">
               Menampilkan {paginatedData.length} dari {totalItems} data
+              <Badge variant="outline" className="ml-2">
+                Sumber: {dataSource === 'master' ? 'Aktif' : dataSource === 'history' ? 'History' : 'Gabungan'}
+              </Badge>
             </div>
           </div>
         </CardContent>

@@ -93,12 +93,32 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
       const biayaModal = parseCurrency(formData.biaya_modal);
       const keuntungan = parseCurrency(formData.keuntungan);
       
-      // Debug logging
-      console.log('Debug biaya modal:', {
+      // Validate required fields
+      if (!formData.sumber_dana) {
+        toast({
+          title: "Error",
+          description: "Sumber dana harus dipilih",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (biayaModal <= 0) {
+        toast({
+          title: "Error",
+          description: "Biaya modal harus lebih dari 0",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log('🚀 Starting biro jasa profit submission:', {
+        biroJasaId: biroJasa.id,
         biayaModal,
-        formData_biaya_modal: formData.biaya_modal,
-        sumber_dana: formData.sumber_dana,
-        tanggal: formData.tanggal
+        keuntungan,
+        sumberDana: formData.sumber_dana,
+        tanggal: formData.tanggal,
+        selectedDivision
       });
   
       // Update biro jasa with cost and profit
@@ -110,47 +130,50 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
         })
         .eq("id", biroJasa.id);
   
-      if (updateError) throw updateError;
-  
-      // Catat biaya modal ke pembukuan sebagai debit (pengeluaran)
-      if (biayaModal > 0) {
-        console.log('Mencatat biaya modal ke pembukuan:', biayaModal);
-        const { error: pembukuanError } = await supabase
-          .from("pembukuan")
-          .insert({
-            tanggal: formData.tanggal,
-            keterangan: `Biaya Modal Biro Jasa - ${biroJasa.jenis_pengurusan} - ${biroJasa.plat_nomor}`,
-            debit: biayaModal,
-            kredit: 0,
-            divisi: selectedDivision,
-            company_id: formData.sumber_dana ? parseInt(formData.sumber_dana) : null,
-            cabang_id: 1
-          });
-  
-        if (pembukuanError) {
-          console.error('Error pembukuan:', pembukuanError);
-          console.warn("Warning: Gagal mencatat biaya modal ke pembukuan:", pembukuanError);
-          toast({
-            title: "Peringatan",
-            description: "Data tersimpan, namun gagal mencatat biaya modal ke pembukuan",
-            variant: "destructive",
-          });
-        } else {
-          console.log('Biaya modal berhasil dicatat ke pembukuan');
-        }
-      } else {
-        console.log('Biaya modal tidak dicatat karena nilai <= 0:', biayaModal);
+      if (updateError) {
+        console.error('❌ Error updating biro_jasa:', updateError);
+        throw updateError;
       }
 
-      toast({
-        title: "Berhasil",
-        description: "Data keuntungan berhasil disimpan",
-      });
+      console.log('✅ Biro jasa updated successfully');
+  
+      // Catat biaya modal ke pembukuan sebagai debit (pengeluaran)
+      const pembukuanData = {
+        tanggal: formData.tanggal,
+        keterangan: `Biaya Modal Biro Jasa - ${biroJasa.jenis_pengurusan} - ${biroJasa.plat_nomor || 'N/A'}`,
+        debit: biayaModal,
+        kredit: 0,
+        divisi: selectedDivision,
+        company_id: parseInt(formData.sumber_dana),
+        cabang_id: 1
+      };
+
+      console.log('💰 Inserting pembukuan entry:', pembukuanData);
+
+      const { error: pembukuanError, data: pembukuanResult } = await supabase
+        .from("pembukuan")
+        .insert(pembukuanData)
+        .select();
+
+      if (pembukuanError) {
+        console.error('❌ Error inserting pembukuan:', pembukuanError);
+        toast({
+          title: "Peringatan",
+          description: `Data biro jasa tersimpan, namun gagal mencatat ke pembukuan: ${pembukuanError.message}`,
+          variant: "destructive",
+        });
+      } else {
+        console.log('✅ Pembukuan entry created:', pembukuanResult);
+        toast({
+          title: "Berhasil",
+          description: "Data keuntungan dan pembukuan berhasil disimpan",
+        });
+      }
 
       onSuccess();
       onClose();
     } catch (error) {
-      console.error("Error saving profit:", error);
+      console.error("❌ Error saving profit:", error);
       toast({
         title: "Error",
         description: "Gagal menyimpan data keuntungan",

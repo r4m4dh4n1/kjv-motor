@@ -16,10 +16,12 @@ export const formatCurrency = (value: string | number): string => {
   });
 };
 
-// Parse formatted number
+// Parse formatted number - Fixed for Indonesian format
 export const parseCurrency = (value: string): number => {
   if (!value) return 0;
-  return parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
+  // Remove all non-numeric characters for Indonesian format (1.500.000)
+  const cleanValue = value.replace(/[^0-9]/g, '');
+  return parseInt(cleanValue) || 0;
 };
 
 // Handle numeric input with formatting

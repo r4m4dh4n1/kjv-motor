@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { format } from 'date-fns';
 import { Search, Filter } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatUtils';
-import { supabase } from '@/integrations/supabase/client';
+import { cascadingSearch, getDateColumn } from '@/utils/cascadingSearchUtils';
 import { useQuery } from '@tanstack/react-query';
 
 interface BiroJasaHistoryTableProps {
@@ -22,19 +22,35 @@ const BiroJasaHistoryTable = ({ selectedDivision }: BiroJasaHistoryTableProps) =
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [pageSize, setPageSize] = useState(10);
 
-  // Query untuk data history biro jasa
-  const { data: historyData = [], isLoading } = useQuery({
-    queryKey: ['biro_jasa_history', selectedDivision],
+  // Enhanced query with cascading search
+  const { data: queryResult, isLoading } = useQuery({
+    queryKey: ['biro_jasa_cascading', selectedDivision, selectedMonth, selectedYear],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('biro_jasa_history')
-        .select('*')
-        .order('created_at', { ascending: false });
+      console.log('🔍 BiroJasa cascading search starting...', {
+        selectedDivision,
+        selectedMonth,
+        selectedYear
+      });
+
+      const result = await cascadingSearch({
+        tableName: 'biro_jasa',
+        selectedDivision,
+        selectedMonth,
+        selectedYear,
+        dateColumn: getDateColumn('biro_jasa')
+      });
       
-      if (error) throw error;
-      return data || [];
+      console.log('✅ BiroJasa cascading search completed:', {
+        source: result.source,
+        totalFound: result.totalFound
+      });
+      
+      return result;
     }
   });
+
+  const historyData = queryResult?.data || [];
+  const dataSource = queryResult?.source || 'master';
 
   // Filter data berdasarkan search term
   const filteredData = historyData.filter((item: any) => {
@@ -153,6 +169,9 @@ const BiroJasaHistoryTable = ({ selectedDivision }: BiroJasaHistoryTableProps) =
             </Button>
             <div className="text-sm text-muted-foreground">
               Menampilkan {paginatedData.length} dari {totalItems} data
+              <Badge variant="outline" className="ml-2">
+                Sumber: {dataSource === 'master' ? 'Aktif' : dataSource === 'history' ? 'History' : 'Gabungan'}
+              </Badge>
             </div>
           </div>
         </CardContent>
