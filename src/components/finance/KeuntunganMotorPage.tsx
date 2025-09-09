@@ -513,12 +513,11 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       operasionalQuery = operasionalQuery.eq('divisi', selectedDivision);
     }
 
-    // 6. Query untuk pencatatan asset (PERBAIKAN: gunakan 'debit, kredit' bukan 'jumlah')
+    // 6. Query untuk pencatatan asset (PERBAIKAN: hapus jenis_transaksi, gunakan keterangan)
     let pencatatanAssetQuery = supabase
       .from('pembukuan')
-      .select('debit, kredit, tanggal, divisi, cabang_id, jenis_transaksi')
-      .eq('jenis_transaksi', 'pengeluaran')
-      .ilike('keterangan', '%asset%');
+      .select('debit, kredit, tanggal, divisi, cabang_id, keterangan')
+      .or('keterangan.ilike.%asset%,keterangan.ilike.%aset%,keterangan.ilike.%pengeluaran%');
 
     if (selectedDivision !== 'all') {
       pencatatanAssetQuery = pencatatanAssetQuery.eq('divisi', selectedDivision);
@@ -548,7 +547,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     if (operasionalResult.error) throw operasionalResult.error;
     if (pencatatanAssetResult.error) throw pencatatanAssetResult.error;
 
-    // Filter data berdasarkan tanggal dan cabang di frontend
+    // Filter data berdasarkan periode dan cabang di frontend
     const filteredKeuntungan = keuntunganResult.data?.filter(item => {
       const itemDate = new Date(item.tanggal);
       const matchesDate = itemDate >= startDate && itemDate <= endDate;
@@ -592,48 +591,54 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       const itemDate = new Date(item.tanggal);
       const matchesDate = itemDate >= startDate && itemDate <= endDate;
       const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
-      return matchesDate && matchesCabang;
+      // Filter berdasarkan keterangan yang mengandung kata kunci asset/pengeluaran
+      const isAssetExpense = item.keterangan?.toLowerCase().includes('asset') || 
+                            item.keterangan?.toLowerCase().includes('aset') ||
+                            (item.keterangan?.toLowerCase().includes('pengeluaran') && 
+                             item.keterangan?.toLowerCase().includes('asset'));
+      return matchesDate && matchesCabang && isAssetExpense;
     }) || [];
 
-    // Transform data keuntungan
-    const transformedKeuntunganData: KeuntunganData[] = filteredKeuntungan.map(item => ({
+    // Hitung totals
+    const totalBooked = filteredBooked.reduce((sum, item) => sum + (item.dp || 0), 0);
+    const totalBookedHargaBeli = filteredBookedHargaBeli.reduce((sum, item) => sum + (item.harga_beli || 0), 0);
+    const totalPembelianReady = filteredPembelianReady.reduce((sum, item) => sum + (item.harga_final || item.harga_beli || 0), 0);
+    const totalOperasional = filteredOperasional.reduce((sum, item) => sum + (item.nominal || 0), 0);
+    const totalPencatatanAsset = filteredPencatatanAsset.reduce((sum, item) => {
+      // Untuk pengeluaran asset, gunakan debit (keluar)
+      return sum + (item.debit || 0);
+    }, 0);
+
+    // Transform data keuntungan untuk display
+    const keuntunganData: KeuntunganData[] = filteredKeuntungan.map(item => ({
       id: item.id,
-      nama_motor: `${item.brands?.name || 'Unknown'} ${item.jenis_motor?.jenis_motor || 'Unknown'} ${item.tahun || ''} ${item.warna || ''} ${item.kilometer || ''}km`.trim(),
-      modal: item.harga_beli || item.pembelian?.harga_final || item.pembelian?.harga_beli || 0,
+      nama_motor: `${item.brands?.name || 'Unknown'} ${item.jenis_motor?.jenis_motor || 'Unknown'} ${item.tahun || ''} ${item.warna || ''}`.trim(),
+      modal: item.harga_beli || 0,
       harga_jual: item.harga_jual || 0,
       profit: item.keuntungan || 0,
       tanggal_jual: item.tanggal,
       cabang: item.cabang?.nama || 'Unknown',
-      divisi: item.divisi || 'Unknown'
+      divisi: item.divisi
     }));
 
-    // Hitung totals (PERBAIKAN: gunakan kolom yang benar)
-    const totalBooked = filteredBooked.reduce((sum, item) => sum + (item.dp || 0), 0);
-    const totalOperasional = filteredOperasional.reduce((sum, item) => sum + (item.nominal || 0), 0);
-    const totalBookedHargaBeli = filteredBookedHargaBeli.reduce((sum, item) => sum + (item.harga_beli || 0), 0);
-    const totalPembelianReady = filteredPembelianReady.reduce((sum, item) => sum + (item.harga_final || item.harga_beli || 0), 0);
-    const totalPencatatanAsset = filteredPencatatanAsset.reduce((sum, item) => {
-      // Untuk pengeluaran asset, gunakan debit
-      return sum + (item.debit || 0);
-    }, 0);
-    const totalProfitFiltered = transformedKeuntunganData.reduce((sum, item) => sum + item.profit, 0);
+    const totalProfitFiltered = keuntunganData.reduce((sum, item) => sum + item.profit, 0);
 
     console.log('🔍 Period filtered data results:', {
       totalBooked,
-      totalOperasional,
       totalBookedHargaBeli,
       totalPembelianReady,
+      totalOperasional,
       totalPencatatanAsset,
       totalProfitFiltered,
-      keuntunganRecords: transformedKeuntunganData.length,
+      keuntunganRecords: keuntunganData.length,
       bookedRecords: filteredBooked.length,
-      operasionalRecords: filteredOperasional.length,
       pembelianReadyRecords: filteredPembelianReady.length,
+      operasionalRecords: filteredOperasional.length,
       pencatatanAssetRecords: filteredPencatatanAsset.length
     });
 
     return {
-      keuntunganData: transformedKeuntunganData,
+      keuntunganData,
       totalBooked,
       totalOperasional,
       totalPembelianReady,
@@ -645,17 +650,16 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
 
   // Fungsi untuk mengambil data kumulatif (modal perusahaan)
   const fetchCumulativeData = async (): Promise<CumulativeData> => {
-    console.log('💰 Fetching cumulative data (modal perusahaan):', {
+    console.log('💰 Fetching cumulative data:', {
       division: selectedDivision,
       cabang: selectedCabang
     });
 
-    // Query untuk modal perusahaan dari pembukuan (PERBAIKAN: gunakan 'debit, kredit' bukan 'jumlah')
+    // Query untuk modal perusahaan dari pembukuan (PERBAIKAN: hapus jenis_transaksi, gunakan keterangan)
     let modalQuery = supabase
       .from('pembukuan')
-      .select('debit, kredit, divisi, cabang_id, jenis_transaksi')
-      .eq('jenis_transaksi', 'pemasukan')
-      .ilike('keterangan', '%modal%');
+      .select('debit, kredit, divisi, cabang_id, keterangan')
+      .or('keterangan.ilike.%modal%,keterangan.ilike.%pemasukan%,keterangan.ilike.%setoran%');
 
     if (selectedDivision !== 'all') {
       modalQuery = modalQuery.eq('divisi', selectedDivision);
@@ -668,13 +672,15 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     // Filter berdasarkan cabang di frontend
     const filteredModal = modalResult.data?.filter(item => {
       const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
-      return matchesCabang;
+      // Filter berdasarkan keterangan yang mengandung kata kunci modal/pemasukan
+      const isModalIncome = item.keterangan?.toLowerCase().includes('modal') || 
+                           item.keterangan?.toLowerCase().includes('pemasukan') ||
+                           item.keterangan?.toLowerCase().includes('setoran');
+      return matchesCabang && isModalIncome;
     }) || [];
 
-    const totalModalPerusahaan = filteredModal.reduce((sum, item) => {
-      // Untuk pemasukan modal, gunakan kredit
-      return sum + (item.kredit || 0);
-    }, 0);
+    // Hitung total modal perusahaan (kredit = pemasukan)
+    const totalModalPerusahaan = filteredModal.reduce((sum, item) => sum + (item.kredit || 0), 0);
 
     console.log('💰 Cumulative data results:', {
       totalModalPerusahaan,
@@ -686,7 +692,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     };
   };
 
-  // Fungsi utama untuk fetch data
+  // Fungsi utama untuk mengambil semua data
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -695,16 +701,8 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       
       // Dapatkan range tanggal akumulatif (semua data)
       const accumulativeDateRange = getAccumulativeDateRange(selectedPeriod);
-      
-      console.log('🚀 Starting data fetch:', {
-        selectedPeriod,
-        selectedDivision,
-        selectedCabang,
-        periodDateRange,
-        accumulativeDateRange
-      });
 
-      // Fetch data secara paralel
+      // Fetch semua data secara paralel
       const [periodData, cumulativeData, accumulativeData] = await Promise.all([
         fetchPeriodFilteredData(periodDateRange),
         fetchCumulativeData(),
@@ -717,20 +715,23 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       setTotalOperasional(periodData.totalOperasional);
       setTotalPembelianGabungan(periodData.totalPembelianReady + periodData.totalBookedHargaBeli);
       setTotalPencatatanAsset(periodData.totalPencatatanAsset);
-      
+
       // Set data kumulatif
       setTotalModalPerusahaan(cumulativeData.totalModalPerusahaan);
-      
+
       // Set data akumulatif untuk display
       setDisplayTotalUnit(accumulativeData.totalUnitYTD);
       setDisplayTotalPembelian(accumulativeData.totalPembelianYTD);
       setDisplayTotalBooked(accumulativeData.totalBookedYTD);
-      
+
       // Hitung total modal kalkulasi
-      const modalKalkulasi = periodData.totalBooked + periodData.totalPembelianReady + periodData.totalBookedHargaBeli + cumulativeData.totalModalPerusahaan;
+      const modalKalkulasi = periodData.totalBooked + 
+                            periodData.totalPembelianReady + 
+                            periodData.totalBookedHargaBeli + 
+                            cumulativeData.totalModalPerusahaan;
       setTotalModalKalkulasi(modalKalkulasi);
-      
-      console.log('✅ Data fetch completed successfully:', {
+
+      console.log('✅ All data fetched successfully:', {
         periodData: {
           keuntunganRecords: periodData.keuntunganData.length,
           totalBooked: periodData.totalBooked,
@@ -742,17 +743,14 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         },
         cumulativeData,
         accumulativeData,
-        calculatedValues: {
-          totalPembelianGabungan: periodData.totalPembelianReady + periodData.totalBookedHargaBeli,
-          modalKalkulasi
-        }
+        totalModalKalkulasi: modalKalkulasi
       });
-      
+
     } catch (error) {
       console.error('❌ Error fetching data:', error);
       toast({
         title: "Error",
-        description: "Gagal mengambil data keuntungan motor",
+        description: "Gagal mengambil data keuntungan",
         variant: "destructive",
       });
     } finally {
@@ -770,17 +768,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     if (cabangList.length > 0) {
       fetchData();
     }
-  }, [selectedPeriod, selectedDivision, selectedCabang, customStartDate, customEndDate, cabangList]);
-
-  // Fungsi untuk format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  }, [selectedPeriod, selectedCabang, selectedDivision, customStartDate, customEndDate, cabangList]);
 
   // Fungsi untuk print
   const handlePrint = () => {
@@ -795,21 +783,28 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     });
   };
 
-  // Kalkulasi untuk profit analysis
-  const totalProfit = keuntunganData.reduce((sum, item) => sum + item.profit, 0);
-  const totalModal = totalModalKalkulasi;
-  const totalPengeluaran = totalOperasional + totalPencatatanAsset;
-  const netProfit = totalProfit - totalPengeluaran;
-  const profitMargin = totalModal > 0 ? (netProfit / totalModal) * 100 : 0;
+  // Format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  // Hitung profit margin
+  const profitMargin = totalModalKalkulasi > 0 ? 
+    ((keuntunganData.reduce((sum, item) => sum + item.profit, 0) / totalModalKalkulasi) * 100) : 0;
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Analisis Keuntungan Motor</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Laporan Keuntungan Motor</h1>
           <p className="text-muted-foreground">
-            Analisis komprehensif keuntungan dan performa bisnis motor
+            Analisis keuntungan dan profitabilitas penjualan motor
           </p>
         </div>
         <div className="flex gap-2">
@@ -824,14 +819,14 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         </div>
       </div>
 
-      {/* Filter Controls */}
+      {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle>Filter & Kontrol</CardTitle>
+          <CardTitle>Filter Data</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Periode Filter */}
+            {/* Period Filter */}
             <div className="space-y-2">
               <Label htmlFor="period">Periode</Label>
               <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
@@ -874,18 +869,18 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
             {selectedPeriod === 'custom' && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="startDate">Tanggal Mulai</Label>
+                  <Label htmlFor="start-date">Tanggal Mulai</Label>
                   <Input
-                    id="startDate"
+                    id="start-date"
                     type="date"
                     value={customStartDate}
                     onChange={(e) => setCustomStartDate(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="endDate">Tanggal Akhir</Label>
+                  <Label htmlFor="end-date">Tanggal Akhir</Label>
                   <Input
-                    id="endDate"
+                    id="end-date"
                     type="date"
                     value={customEndDate}
                     onChange={(e) => setCustomEndDate(e.target.value)}
@@ -899,7 +894,6 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Unit Terjual */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Unit Terjual</CardTitle>
@@ -908,12 +902,11 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
           <CardContent>
             <div className="text-2xl font-bold">{displayTotalUnit}</div>
             <p className="text-xs text-muted-foreground">
-              Unit yang telah selesai terjual
+              Unit yang telah selesai
             </p>
           </CardContent>
         </Card>
 
-        {/* Total Pembelian */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Pembelian</CardTitle>
@@ -922,167 +915,178 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(displayTotalPembelian)}</div>
             <p className="text-xs text-muted-foreground">
-              Total investasi pembelian motor
+              Akumulasi pembelian motor
             </p>
           </CardContent>
         </Card>
 
-        {/* Total Booked */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Booked</CardTitle>
-            <PieChart className="h-4 w-4 text-muted-foreground" />
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(displayTotalBooked)}</div>
             <p className="text-xs text-muted-foreground">
-              Total DP dari penjualan booked
+              DP dari penjualan booked
             </p>
           </CardContent>
         </Card>
 
-        {/* Net Profit */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
-            {netProfit >= 0 ? (
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            ) : (
-              <TrendingDown className="h-4 w-4 text-red-600" />
-            )}
+            <CardTitle className="text-sm font-medium">Profit Margin</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${
-              netProfit >= 0 ? 'text-green-600' : 'text-red-600'
-            }`}>
-              {formatCurrency(netProfit)}
-            </div>
+            <div className="text-2xl font-bold">{profitMargin.toFixed(2)}%</div>
             <p className="text-xs text-muted-foreground">
-              Profit margin: {profitMargin.toFixed(2)}%
+              Persentase keuntungan
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Detailed Analysis Cards */}
+      {/* Financial Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Analysis */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              Analisis Pendapatan
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Total Profit Penjualan</span>
-              <span className="text-lg font-bold text-green-600">
-                {formatCurrency(totalProfit)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Total Booked (Periode)</span>
-              <span className="text-lg font-bold">
-                {formatCurrency(totalBooked)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Total Modal Kalkulasi</span>
-              <span className="text-lg font-bold">
-                {formatCurrency(totalModal)}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Cost Analysis */}
+        {/* Modal & Operasional */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calculator className="h-5 w-5" />
-              Analisis Biaya
+              Modal & Operasional
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Total Operasional</span>
-              <span className="text-lg font-bold text-red-600">
-                {formatCurrency(totalOperasional)}
+              <span className="text-sm font-medium">Modal Perusahaan</span>
+              <span className="font-bold">{formatCurrency(totalModalPerusahaan)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Pembelian (Periode)</span>
+              <span className="font-bold">{formatCurrency(totalPembelianGabungan)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Booked (Periode)</span>
+              <span className="font-bold">{formatCurrency(totalBooked)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Operasional (Periode)</span>
+              <span className="font-bold text-red-600">{formatCurrency(totalOperasional)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Pencatatan Asset (Periode)</span>
+              <span className="font-bold text-red-600">{formatCurrency(totalPencatatanAsset)}</span>
+            </div>
+            <div className="border-t pt-4">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-bold">Total Modal Kalkulasi</span>
+                <span className="text-lg font-bold">{formatCurrency(totalModalKalkulasi)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Profit Summary */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PieChart className="h-5 w-5" />
+              Ringkasan Keuntungan
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Total Keuntungan (Periode)</span>
+              <span className="font-bold text-green-600">
+                {formatCurrency(keuntunganData.reduce((sum, item) => sum + item.profit, 0))}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Pencatatan Asset</span>
-              <span className="text-lg font-bold text-red-600">
-                {formatCurrency(totalPencatatanAsset)}
+              <span className="text-sm font-medium">Unit Terjual (Periode)</span>
+              <span className="font-bold">{keuntunganData.length}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Rata-rata Keuntungan per Unit</span>
+              <span className="font-bold">
+                {formatCurrency(keuntunganData.length > 0 ? 
+                  keuntunganData.reduce((sum, item) => sum + item.profit, 0) / keuntunganData.length : 0
+                )}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Total Pengeluaran</span>
-              <span className="text-lg font-bold text-red-600">
-                {formatCurrency(totalPengeluaran)}
+              <span className="text-sm font-medium">ROI (Return on Investment)</span>
+              <span className="font-bold">
+                {totalModalKalkulasi > 0 ? 
+                  ((keuntunganData.reduce((sum, item) => sum + item.profit, 0) / totalModalKalkulasi) * 100).toFixed(2) : 0
+                }%
               </span>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Detailed Transaction Table */}
+      {/* Detail Table */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
-            Detail Transaksi Keuntungan
+            Detail Keuntungan Motor
           </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex justify-center items-center h-32">
-              <div className="text-lg">Loading...</div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>No</TableHead>
-                    <TableHead>Tanggal</TableHead>
                     <TableHead>Motor</TableHead>
-                    <TableHead>Modal</TableHead>
-                    <TableHead>Harga Jual</TableHead>
-                    <TableHead>Profit</TableHead>
                     <TableHead>Cabang</TableHead>
                     <TableHead>Divisi</TableHead>
+                    <TableHead className="text-right">Modal</TableHead>
+                    <TableHead className="text-right">Harga Jual</TableHead>
+                    <TableHead className="text-right">Keuntungan</TableHead>
+                    <TableHead className="text-right">Margin (%)</TableHead>
+                    <TableHead>Tanggal Jual</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {keuntunganData.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         Tidak ada data keuntungan untuk periode yang dipilih
                       </TableCell>
                     </TableRow>
                   ) : (
-                    keuntunganData.map((item, index) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{index + 1}</TableCell>
-                        <TableCell>
-                          {new Date(item.tanggal_jual).toLocaleDateString('id-ID')}
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {item.nama_motor}
-                        </TableCell>
-                        <TableCell>{formatCurrency(item.modal)}</TableCell>
-                        <TableCell>{formatCurrency(item.harga_jual)}</TableCell>
-                        <TableCell className={`font-medium ${
-                          item.profit >= 0 ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {formatCurrency(item.profit)}
-                        </TableCell>
-                        <TableCell>{item.cabang}</TableCell>
-                        <TableCell>{item.divisi}</TableCell>
-                      </TableRow>
-                    ))
+                    keuntunganData.map((item) => {
+                      const margin = item.modal > 0 ? ((item.profit / item.modal) * 100) : 0;
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.nama_motor}</TableCell>
+                          <TableCell>{item.cabang}</TableCell>
+                          <TableCell>{item.divisi}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(item.modal)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(item.harga_jual)}</TableCell>
+                          <TableCell className="text-right">
+                            <span className={item.profit >= 0 ? 'text-green-600' : 'text-red-600'}>
+                              {formatCurrency(item.profit)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className={margin >= 0 ? 'text-green-600' : 'text-red-600'}>
+                              {margin.toFixed(2)}%
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(item.tanggal_jual).toLocaleDateString('id-ID')}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
