@@ -443,8 +443,8 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         cabang_id,
         divisi,
         brand_id,
-        jenis_motor_id
-      `);
+      jenis_id
+    `);
 
     if (selectedDivision !== 'all') {
       keuntunganQuery = keuntunganQuery.eq('divisi', selectedDivision);
@@ -481,7 +481,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       ...item,
       cabang: cabangMap.get(item.cabang_id) || { nama: `Cabang ID: ${item.cabang_id}` },
       brands: brandsMap.get(item.brand_id) || { name: 'Unknown' },
-      jenis_motor: jenisMotorMap.get(item.jenis_motor_id) || { jenis_motor: 'Unknown' }
+      jenis_motor: jenisMotorMap.get(item.jenis_id) || { jenis_motor: 'Unknown' } // Menggunakan jenis_id
     }));
 
     // Query untuk data lainnya (sama seperti sebelumnya)
