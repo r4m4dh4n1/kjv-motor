@@ -1097,7 +1097,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
                   <SelectItem value="custom">📊 Custom</SelectItem>
                 </SelectContent>
               </Select>
-              {/* ✅ TAMBAHAN: Info periode yang menggunakan combined view */}
+                            {/* ✅ TAMBAHAN: Info periode yang menggunakan combined view */}
               {shouldUseCombined && (
                 <p className="text-xs text-blue-600 mt-1">
                   📊 Menggunakan data gabungan (active + history)
@@ -1105,7 +1105,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
               )}
             </div>
 
-                                   {/* Cabang Filter */}
+            {/* Cabang Filter */}
             <div className="space-y-2">
               <Label htmlFor="cabang">Cabang</Label>
               <Select value={selectedCabang} onValueChange={setSelectedCabang}>
@@ -1117,8 +1117,8 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
                   {cabangOptions.map((cabang) => (
                     <SelectItem key={cabang} value={cabang}>
                       {cabang}
-                                        </SelectItem>
-                                    ))}  
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
