@@ -19,6 +19,7 @@ interface KeuntunganData {
   tanggal_jual: string;
   cabang: string;
   divisi: string;
+  data_source?: string; // ✅ TAMBAHAN: Indikator sumber data
 }
 
 interface CabangData {
@@ -85,6 +86,9 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
   const [displayTotalPembelian, setDisplayTotalPembelian] = useState(0);
   const [displayTotalBooked, setDisplayTotalBooked] = useState(0);
 
+  // ✅ TAMBAHAN: Logika untuk menentukan penggunaan combined view
+  const shouldUseCombined = ['last_month', 'this_year', 'last_year', 'custom'].includes(selectedPeriod);
+
   // Helper function untuk konversi timezone Indonesia
   const getIndonesiaDate = () => {
     const now = new Date();
@@ -116,7 +120,8 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       currentDateUTC: new Date().toISOString(),
       currentMonth: nowIndonesia.getMonth() + 1,
       currentYear: nowIndonesia.getFullYear(),
-      timezone: 'Asia/Jakarta (UTC+7)'
+      timezone: 'Asia/Jakarta (UTC+7)',
+      useCombined: shouldUseCombined
     });
     
     let startUTC: Date;
@@ -275,7 +280,8 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       endString,
       startIndonesia: new Date(startUTC.getTime() + (7 * 60 * 60 * 1000)).toLocaleString('id-ID'),
       endIndonesia: new Date(endUTC.getTime() + (7 * 60 * 60 * 1000)).toLocaleString('id-ID'),
-      daysDifference: Math.ceil((endUTC.getTime() - startUTC.getTime()) / (1000 * 60 * 60 * 24))
+      daysDifference: Math.ceil((endUTC.getTime() - startUTC.getTime()) / (1000 * 60 * 60 * 24)),
+      useCombined: shouldUseCombined
     });
     
     return { start: startString, end: endString };
@@ -324,122 +330,225 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     }
   };
 
-  // Fungsi untuk mengambil data akumulatif (dari awal tahun sampai periode yang dipilih)
-  const fetchAccumulativeData = async (dateRange: DateRange): Promise<AccumulativeData> => {
-    console.log('🏦 Fetching accumulative data:', {
+  // ✅ FUNGSI BARU: Fetch dari combined views
+  const fetchFromCombinedViews = async (dateRange: DateRange): Promise<PeriodFilteredData> => {
+    console.log('📊 Fetching from combined views:', {
       period: selectedPeriod,
       dateRange,
       division: selectedDivision,
       cabang: selectedCabang
     });
 
-    // Convert string dates back to Date objects for comparison
-    const startDate = new Date(`${dateRange.start}T00:00:00.000Z`);
-    const endDate = new Date(`${dateRange.end}T23:59:59.999Z`);
+    try {
+      // 1. Query untuk data keuntungan dari penjualans_combined
+      let keuntunganQuery = supabase
+        .from('penjualans_combined')
+        .select(`
+          id,
+          pembelian_id,
+          harga_beli,
+          harga_jual,
+          keuntungan,
+          status,
+          tanggal,
+          tahun,
+          warna,
+          kilometer,
+          cabang:cabang_id(nama),
+          divisi,
+          brands(name),
+          jenis_motor(jenis_motor),
+          pembelian:pembelian_id(harga_final, harga_beli),
+          cabang_id,
+          data_source,
+          closed_month,
+          closed_year
+        `)
+        .eq('status', 'selesai')
+        .gte('tanggal', dateRange.start)
+        .lte('tanggal', dateRange.end);
 
-    // 1. Query untuk total unit YTD (penjualan selesai) - ambil semua data
-    let unitYTDQuery = supabase
-      .from('penjualans')
-      .select('id, status, tanggal, cabang_id, divisi');
+      if (selectedDivision !== 'all') {
+        keuntunganQuery = keuntunganQuery.eq('divisi', selectedDivision);
+      }
 
-    if (selectedDivision !== 'all') {
-      unitYTDQuery = unitYTDQuery.eq('divisi', selectedDivision);
+      if (selectedCabang !== 'all') {
+        keuntunganQuery = keuntunganQuery.eq('cabang_id', parseInt(selectedCabang));
+      }
+
+      // 2. Query untuk total booked dari penjualans_combined
+      let bookedQuery = supabase
+        .from('penjualans_combined')
+        .select('dp, tanggal, id, cabang_id, divisi, status, data_source')
+        .neq('status', 'selesai')
+        .gte('tanggal', dateRange.start)
+        .lte('tanggal', dateRange.end);
+
+      if (selectedDivision !== 'all') {
+        bookedQuery = bookedQuery.eq('divisi', selectedDivision);
+      }
+
+      if (selectedCabang !== 'all') {
+        bookedQuery = bookedQuery.eq('cabang_id', parseInt(selectedCabang));
+      }
+
+      // 3. Query untuk harga_beli dari penjualans_combined (status booked)
+      let bookedHargaBeliQuery = supabase
+        .from('penjualans_combined')
+        .select('harga_beli, tanggal, id, cabang_id, divisi, status, data_source')
+        .neq('status', 'selesai')
+        .gte('tanggal', dateRange.start)
+        .lte('tanggal', dateRange.end);
+
+      if (selectedDivision !== 'all') {
+        bookedHargaBeliQuery = bookedHargaBeliQuery.eq('divisi', selectedDivision);
+      }
+
+      if (selectedCabang !== 'all') {
+        bookedHargaBeliQuery = bookedHargaBeliQuery.eq('cabang_id', parseInt(selectedCabang));
+      }
+
+      // 4. Query untuk pembelian dari pembelian_combined
+      let pembelianReadyQuery = supabase
+        .from('pembelian_combined')
+        .select('harga_beli, harga_final, divisi, tanggal_pembelian, id, cabang_id, status, data_source')
+        .eq('status', 'ready')
+        .gte('tanggal_pembelian', dateRange.start)
+        .lte('tanggal_pembelian', dateRange.end);
+
+      if (selectedDivision !== 'all') {
+        pembelianReadyQuery = pembelianReadyQuery.eq('divisi', selectedDivision);
+      }
+
+      if (selectedCabang !== 'all') {
+        pembelianReadyQuery = pembelianReadyQuery.eq('cabang_id', parseInt(selectedCabang));
+      }
+
+      // 5. Query untuk operational (masih dari tabel aktif karena belum ada combined view)
+      let operasionalQuery = supabase
+        .from('operational')
+        .select('nominal, tanggal, divisi, cabang_id')
+        .gte('tanggal', dateRange.start)
+        .lte('tanggal', dateRange.end);
+
+      if (selectedDivision !== 'all') {
+        operasionalQuery = operasionalQuery.eq('divisi', selectedDivision);
+      }
+
+      if (selectedCabang !== 'all') {
+        operasionalQuery = operasionalQuery.eq('cabang_id', parseInt(selectedCabang));
+      }
+
+      // 6. Query untuk pembukuan dari pembukuan_combined
+      let pencatatanAssetQuery = supabase
+        .from('pembukuan_combined')
+        .select('debit, kredit, tanggal, divisi, cabang_id, keterangan, data_source')
+        .or('keterangan.ilike.%asset%,keterangan.ilike.%aset%,keterangan.ilike.%pengeluaran%')
+        .gte('tanggal', dateRange.start)
+        .lte('tanggal', dateRange.end);
+
+      if (selectedDivision !== 'all') {
+        pencatatanAssetQuery = pencatatanAssetQuery.eq('divisi', selectedDivision);
+      }
+
+      if (selectedCabang !== 'all') {
+        pencatatanAssetQuery = pencatatanAssetQuery.eq('cabang_id', parseInt(selectedCabang));
+      }
+
+      // Execute all queries
+      const [
+        keuntunganResult,
+        bookedResult,
+        bookedHargaBeliResult,
+        pembelianReadyResult,
+        operasionalResult,
+        pencatatanAssetResult
+      ] = await Promise.all([
+        keuntunganQuery,
+        bookedQuery,
+        bookedHargaBeliQuery,
+        pembelianReadyQuery,
+        operasionalQuery,
+        pencatatanAssetQuery
+      ]);
+
+      // Error handling
+      if (keuntunganResult.error) throw keuntunganResult.error;
+      if (bookedResult.error) throw bookedResult.error;
+      if (bookedHargaBeliResult.error) throw bookedHargaBeliResult.error;
+      if (pembelianReadyResult.error) throw pembelianReadyResult.error;
+      if (operasionalResult.error) throw operasionalResult.error;
+      if (pencatatanAssetResult.error) throw pencatatanAssetResult.error;
+
+      // Process data (tidak perlu filter tanggal lagi karena sudah di query)
+      const filteredKeuntungan = keuntunganResult.data || [];
+      const filteredBooked = bookedResult.data?.filter(item => item.status === 'booked') || [];
+      const filteredBookedHargaBeli = bookedHargaBeliResult.data?.filter(item => item.status === 'booked') || [];
+      const filteredPembelianReady = pembelianReadyResult.data || [];
+      const filteredOperasional = operasionalResult.data || [];
+      const filteredPencatatanAsset = pencatatanAssetResult.data?.filter(item => {
+        const isAssetExpense = item.keterangan?.toLowerCase().includes('asset') || 
+                              item.keterangan?.toLowerCase().includes('aset') ||
+                              (item.keterangan?.toLowerCase().includes('pengeluaran') && 
+                               item.keterangan?.toLowerCase().includes('asset'));
+        return isAssetExpense;
+      }) || [];
+
+      // Hitung totals
+      const totalBooked = filteredBooked.reduce((sum, item) => sum + (item.dp || 0), 0);
+      const totalBookedHargaBeli = filteredBookedHargaBeli.reduce((sum, item) => sum + (item.harga_beli || 0), 0);
+      const totalPembelianReady = filteredPembelianReady.reduce((sum, item) => sum + (item.harga_final || item.harga_beli || 0), 0);
+      const totalOperasional = filteredOperasional.reduce((sum, item) => sum + (item.nominal || 0), 0);
+      const totalPencatatanAsset = filteredPencatatanAsset.reduce((sum, item) => sum + (item.debit || 0), 0);
+
+      // Transform data keuntungan untuk display
+      const keuntunganData: KeuntunganData[] = filteredKeuntungan.map(item => ({
+        id: item.id,
+        nama_motor: `${item.brands?.name || 'Unknown'} ${item.jenis_motor?.jenis_motor || 'Unknown'} ${item.tahun || ''} ${item.warna || ''}`.trim(),
+        modal: item.harga_beli || 0,
+        harga_jual: item.harga_jual || 0,
+        profit: item.keuntungan || 0,
+        tanggal_jual: item.tanggal,
+        cabang: item.cabang?.nama || 'Unknown',
+        divisi: item.divisi,
+        data_source: item.data_source // ✅ TAMBAHAN: Sumber data
+      }));
+
+      const totalProfitFiltered = keuntunganData.reduce((sum, item) => sum + item.profit, 0);
+
+      console.log('📊 Combined view data results:', {
+        totalBooked,
+        totalBookedHargaBeli,
+        totalPembelianReady,
+        totalOperasional,
+        totalPencatatanAsset,
+        totalProfitFiltered,
+        keuntunganRecords: keuntunganData.length,
+        bookedRecords: filteredBooked.length,
+        pembelianReadyRecords: filteredPembelianReady.length,
+        operasionalRecords: filteredOperasional.length,
+        pencatatanAssetRecords: filteredPencatatanAsset.length
+      });
+
+      return {
+        keuntunganData,
+        totalBooked,
+        totalOperasional,
+        totalPembelianReady,
+        totalBookedHargaBeli,
+        totalPencatatanAsset,
+        totalProfitFiltered
+      };
+
+    } catch (error) {
+      console.error('❌ Error fetching combined view data:', error);
+      throw error;
     }
-
-    // 2. Query untuk total pembelian YTD (pembelian ready) - ambil semua data
-    let pembelianYTDQuery = supabase
-      .from('pembelian')
-      .select('harga_beli, harga_final, tanggal_pembelian, cabang_id, divisi, status');
-
-    if (selectedDivision !== 'all') {
-      pembelianYTDQuery = pembelianYTDQuery.eq('divisi', selectedDivision);
-    }
-
-    // 2b. Query untuk total pembelian YTD dari penjualans (status booked) - ambil semua data
-    let penjualansBookedYTDQuery = supabase
-      .from('penjualans')
-      .select('harga_beli, tanggal, cabang_id, divisi, status');
-
-    if (selectedDivision !== 'all') {
-      penjualansBookedYTDQuery = penjualansBookedYTDQuery.eq('divisi', selectedDivision);
-    }
-
-    // 3. Query untuk total booked YTD (DP dari penjualan booked) - ambil semua data
-    let bookedYTDQuery = supabase
-      .from('penjualans')
-      .select('dp, tanggal, cabang_id, divisi, status');
-
-    if (selectedDivision !== 'all') {
-      bookedYTDQuery = bookedYTDQuery.eq('divisi', selectedDivision);
-    }
-
-    const [unitYTDResult, pembelianYTDResult, penjualansBookedYTDResult, bookedYTDResult] = await Promise.all([
-      unitYTDQuery,
-      pembelianYTDQuery,
-      penjualansBookedYTDQuery,
-      bookedYTDQuery
-    ]);
-
-    // Error handling
-    if (unitYTDResult.error) throw unitYTDResult.error;
-    if (pembelianYTDResult.error) throw pembelianYTDResult.error;
-    if (penjualansBookedYTDResult.error) throw penjualansBookedYTDResult.error;
-    if (bookedYTDResult.error) throw bookedYTDResult.error;
-
-    // Filter data berdasarkan cabang SAJA di frontend (TANPA FILTER TANGGAL)
-    const filteredUnits = unitYTDResult.data?.filter(item => {
-      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
-      const matchesStatus = item.status === 'selesai';
-      return matchesCabang && matchesStatus;
-    }) || [];
-
-    const filteredPembelian = pembelianYTDResult.data?.filter(item => {
-      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
-      const matchesStatus = item.status === 'ready';
-      return matchesCabang && matchesStatus;
-    }) || [];
-
-    const filteredPenjualansBooked = penjualansBookedYTDResult.data?.filter(item => {
-      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
-      const matchesStatus = item.status === 'booked';
-      return matchesCabang && matchesStatus;
-    }) || [];
-
-    const filteredBooked = bookedYTDResult.data?.filter(item => {
-      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
-      const matchesStatus = item.status === 'booked';
-      return matchesCabang && matchesStatus;
-    }) || [];
-
-    // Hitung totals
-    const totalUnitYTD = filteredUnits.length;
-    const totalPembelianFromPembelian = filteredPembelian.reduce((sum, item) => sum + (item.harga_final || item.harga_beli || 0), 0);
-    const totalPembelianFromPenjualans = filteredPenjualansBooked.reduce((sum, item) => sum + (item.harga_beli || 0), 0);
-    const totalPembelianYTD = totalPembelianFromPembelian + totalPembelianFromPenjualans;
-    const totalBookedYTD = filteredBooked.reduce((sum, item) => sum + (item.dp || 0), 0);
-
-    console.log('📊 Accumulative data results:', {
-      totalUnitYTD,
-      totalPembelianYTD,
-      totalPembelianFromPembelian,
-      totalPembelianFromPenjualans,
-      totalBookedYTD,
-      unitRecords: filteredUnits.length,
-      pembelianRecords: filteredPembelian.length,
-      penjualansBookedRecords: filteredPenjualansBooked.length,
-      bookedRecords: filteredBooked.length
-    });
-
-    return {
-      totalUnitYTD,
-      totalPembelianYTD,
-      totalBookedYTD
-    };
   };
 
-  // Fungsi untuk mengambil data yang difilter berdasarkan periode
-  const fetchPeriodFilteredData = async (dateRange: DateRange): Promise<PeriodFilteredData> => {
-    console.log('🔍 Fetching period filtered data:', {
+  // ✅ FUNGSI EXISTING: Fetch dari tabel aktif (untuk periode pendek)
+  const fetchFromActiveTables = async (dateRange: DateRange): Promise<PeriodFilteredData> => {
+    console.log('🔍 Fetching from active tables:', {
       period: selectedPeriod,
       dateRange,
       division: selectedDivision,
@@ -618,12 +727,13 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       profit: item.keuntungan || 0,
       tanggal_jual: item.tanggal,
       cabang: item.cabang?.nama || 'Unknown',
-      divisi: item.divisi
+      divisi: item.divisi,
+      data_source: 'active' // ✅ TAMBAHAN: Sumber data
     }));
 
     const totalProfitFiltered = keuntunganData.reduce((sum, item) => sum + item.profit, 0);
 
-    console.log('🔍 Period filtered data results:', {
+    console.log('🔍 Active tables data results:', {
       totalBooked,
       totalBookedHargaBeli,
       totalPembelianReady,
@@ -648,6 +758,143 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     };
   };
 
+  // ✅ PERBAIKAN: Fungsi fetch dengan logika combined view
+  const fetchPeriodFilteredData = async (dateRange: DateRange): Promise<PeriodFilteredData> => {
+    console.log('🔍 Fetching period filtered data:', {
+      period: selectedPeriod,
+      table: shouldUseCombined ? 'combined_views' : 'active_tables',
+      dateRange,
+      division: selectedDivision,
+      cabang: selectedCabang
+    });
+
+    if (shouldUseCombined) {
+      // ✅ STRATEGI BARU: Fetch dari combined views untuk periode panjang
+      return await fetchFromCombinedViews(dateRange);
+    } else {
+      // ✅ STRATEGI LAMA: Fetch dari tabel aktif untuk periode pendek
+      return await fetchFromActiveTables(dateRange);
+    }
+  };
+
+  // Fungsi untuk mengambil data akumulatif (dari awal tahun sampai periode yang dipilih)
+  const fetchAccumulativeData = async (dateRange: DateRange): Promise<AccumulativeData> => {
+    console.log('🏦 Fetching accumulative data:', {
+      period: selectedPeriod,
+      dateRange,
+      division: selectedDivision,
+      cabang: selectedCabang
+    });
+
+    // Convert string dates back to Date objects for comparison
+    const startDate = new Date(`${dateRange.start}T00:00:00.000Z`);
+    const endDate = new Date(`${dateRange.end}T23:59:59.999Z`);
+
+    // ✅ PERBAIKAN: Gunakan combined view jika diperlukan
+    const penjualansTable = shouldUseCombined ? 'penjualans_combined' : 'penjualans';
+    const pembelianTable = shouldUseCombined ? 'pembelian_combined' : 'pembelian';
+
+    // 1. Query untuk total unit YTD (penjualan selesai) - ambil semua data
+    let unitYTDQuery = supabase
+      .from(penjualansTable)
+      .select('id, status, tanggal, cabang_id, divisi');
+
+    if (selectedDivision !== 'all') {
+      unitYTDQuery = unitYTDQuery.eq('divisi', selectedDivision);
+    }
+
+    // 2. Query untuk total pembelian YTD (pembelian ready) - ambil semua data
+    let pembelianYTDQuery = supabase
+      .from(pembelianTable)
+      .select('harga_beli, harga_final, tanggal_pembelian, cabang_id, divisi, status');
+
+    if (selectedDivision !== 'all') {
+      pembelianYTDQuery = pembelianYTDQuery.eq('divisi', selectedDivision);
+    }
+
+    // 2b. Query untuk total pembelian YTD dari penjualans (status booked) - ambil semua data
+    let penjualansBookedYTDQuery = supabase
+      .from(penjualansTable)
+      .select('harga_beli, tanggal, cabang_id, divisi, status');
+
+    if (selectedDivision !== 'all') {
+      penjualansBookedYTDQuery = penjualansBookedYTDQuery.eq('divisi', selectedDivision);
+    }
+
+    // 3. Query untuk total booked YTD (DP dari penjualan booked) - ambil semua data
+    let bookedYTDQuery = supabase
+      .from(penjualansTable)
+      .select('dp, tanggal, cabang_id, divisi, status');
+
+    if (selectedDivision !== 'all') {
+      bookedYTDQuery = bookedYTDQuery.eq('divisi', selectedDivision);
+    }
+
+    const [unitYTDResult, pembelianYTDResult, penjualansBookedYTDResult, bookedYTDResult] = await Promise.all([
+      unitYTDQuery,
+      pembelianYTDQuery,
+      penjualansBookedYTDQuery,
+      bookedYTDQuery
+    ]);
+
+    // Error handling
+    if (unitYTDResult.error) throw unitYTDResult.error;
+    if (pembelianYTDResult.error) throw pembelianYTDResult.error;
+    if (penjualansBookedYTDResult.error) throw penjualansBookedYTDResult.error;
+    if (bookedYTDResult.error) throw bookedYTDResult.error;
+
+    // Filter data berdasarkan cabang SAJA di frontend (TANPA FILTER TANGGAL)
+    const filteredUnits = unitYTDResult.data?.filter(item => {
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      const matchesStatus = item.status === 'selesai';
+      return matchesCabang && matchesStatus;
+    }) || [];
+
+    const filteredPembelian = pembelianYTDResult.data?.filter(item => {
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      const matchesStatus = item.status === 'ready';
+      return matchesCabang && matchesStatus;
+    }) || [];
+
+    const filteredPenjualansBooked = penjualansBookedYTDResult.data?.filter(item => {
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      const matchesStatus = item.status === 'booked';
+      return matchesCabang && matchesStatus;
+    }) || [];
+
+    const filteredBooked = bookedYTDResult.data?.filter(item => {
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      const matchesStatus = item.status === 'booked';
+      return matchesCabang && matchesStatus;
+    }) || [];
+
+    // Hitung totals
+    const totalUnitYTD = filteredUnits.length;
+    const totalPembelianFromPembelian = filteredPembelian.reduce((sum, item) => sum + (item.harga_final || item.harga_beli || 0), 0);
+    const totalPembelianFromPenjualans = filteredPenjualansBooked.reduce((sum, item) => sum + (item.harga_beli || 0), 0);
+    const totalPembelianYTD = totalPembelianFromPembelian + totalPembelianFromPenjualans;
+    const totalBookedYTD = filteredBooked.reduce((sum, item) => sum + (item.dp || 0), 0);
+
+    console.log('📊 Accumulative data results:', {
+      totalUnitYTD,
+      totalPembelianYTD,
+      totalPembelianFromPembelian,
+      totalPembelianFromPenjualans,
+      totalBookedYTD,
+      unitRecords: filteredUnits.length,
+      pembelianRecords: filteredPembelian.length,
+      penjualansBookedRecords: filteredPenjualansBooked.length,
+      bookedRecords: filteredBooked.length,
+      useCombined: shouldUseCombined
+    });
+
+    return {
+      totalUnitYTD,
+      totalPembelianYTD,
+      totalBookedYTD
+    };
+  };
+
   // Fungsi untuk mengambil data kumulatif (modal perusahaan)
   const fetchCumulativeData = async (): Promise<CumulativeData> => {
     console.log('💰 Fetching cumulative data:', {
@@ -655,9 +902,12 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       cabang: selectedCabang
     });
 
+    // ✅ PERBAIKAN: Gunakan combined view jika diperlukan
+    const pembukuanTable = shouldUseCombined ? 'pembukuan_combined' : 'pembukuan';
+
     // Query untuk modal perusahaan dari pembukuan (PERBAIKAN: hapus jenis_transaksi, gunakan keterangan)
     let modalQuery = supabase
-      .from('pembukuan')
+      .from(pembukuanTable)
       .select('debit, kredit, divisi, cabang_id, keterangan')
       .or('keterangan.ilike.%modal%,keterangan.ilike.%pemasukan%,keterangan.ilike.%setoran%');
 
@@ -684,7 +934,8 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
 
     console.log('💰 Cumulative data results:', {
       totalModalPerusahaan,
-      modalRecords: filteredModal.length
+      modalRecords: filteredModal.length,
+      useCombined: shouldUseCombined
     });
 
     return {
@@ -743,7 +994,8 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         },
         cumulativeData,
         accumulativeData,
-        totalModalKalkulasi: modalKalkulasi
+        totalModalKalkulasi: modalKalkulasi,
+        useCombined: shouldUseCombined
       });
 
     } catch (error) {
@@ -834,20 +1086,26 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
                   <SelectValue placeholder="Pilih periode" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="today">Hari Ini</SelectItem>
-                  <SelectItem value="yesterday">Kemarin</SelectItem>
-                  <SelectItem value="this_week">Minggu Ini</SelectItem>
-                  <SelectItem value="last_week">Minggu Lalu</SelectItem>
-                  <SelectItem value="this_month">Bulan Ini</SelectItem>
-                  <SelectItem value="last_month">Bulan Lalu</SelectItem>
-                  <SelectItem value="this_year">Tahun Ini</SelectItem>
-                  <SelectItem value="last_year">Tahun Lalu</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
+                  <SelectItem value="today">📅 Hari Ini</SelectItem>
+                  <SelectItem value="yesterday">📅 Kemarin</SelectItem>
+                  <SelectItem value="this_week">📅 Minggu Ini</SelectItem>
+                  <SelectItem value="last_week">📅 Minggu Lalu</SelectItem>
+                  <SelectItem value="this_month">📅 Bulan Ini</SelectItem>
+                  <SelectItem value="last_month">📊 Bulan Lalu</SelectItem>
+                  <SelectItem value="this_year">📊 Tahun Ini</SelectItem>
+                  <SelectItem value="last_year">📊 Tahun Lalu</SelectItem>
+                  <SelectItem value="custom">📊 Custom</SelectItem>
                 </SelectContent>
               </Select>
+              {/* ✅ TAMBAHAN: Info periode yang menggunakan combined view */}
+              {shouldUseCombined && (
+                <p className="text-xs text-blue-600 mt-1">
+                  📊 Menggunakan data gabungan (active + history)
+                </p>
+              )}
             </div>
 
-            {/* Cabang Filter */}
+                        {/* Cabang Filter */}
             <div className="space-y-2">
               <Label htmlFor="cabang">Cabang</Label>
               <Select value={selectedCabang} onValueChange={setSelectedCabang}>
@@ -856,246 +1114,114 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Cabang</SelectItem>
-                  {cabangList.map((cabang) => (
-                    <SelectItem key={cabang.id} value={cabang.id.toString()}>
-                      {cabang.nama}
+                  {cabangOptions.map((cabang) => (
+                    <SelectItem key={cabang} value={cabang}>
+                      {cabang}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Custom Date Range */}
-            {selectedPeriod === 'custom' && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="start-date">Tanggal Mulai</Label>
-                  <Input
-                    id="start-date"
-                    type="date"
-                    value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="end-date">Tanggal Akhir</Label>
-                  <Input
-                    id="end-date"
-                    type="date"
-                    value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Unit Terjual</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{displayTotalUnit}</div>
-            <p className="text-xs text-muted-foreground">
-              Unit yang telah selesai
-            </p>
-          </CardContent>
-        </Card>
+        {/* Ringkasan Keuangan */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-2">Total Modal</h3>
+            <p className="text-2xl font-bold text-blue-600">{formatCurrency(totalModal)}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-2">Total Harga Jual</h3>
+            <p className="text-2xl font-bold text-green-600">{formatCurrency(totalHargaJual)}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-2">Total Keuntungan</h3>
+            <p className="text-2xl font-bold text-purple-600">{formatCurrency(totalKeuntungan)}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-2">ROI</h3>
+            <p className="text-2xl font-bold text-orange-600">{roi}%</p>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Pembelian</CardTitle>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(displayTotalPembelian)}</div>
-            <p className="text-xs text-muted-foreground">
-              Akumulasi pembelian motor
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Booked</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(displayTotalBooked)}</div>
-            <p className="text-xs text-muted-foreground">
-              DP dari penjualan booked
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Profit Margin</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{profitMargin.toFixed(2)}%</div>
-            <p className="text-xs text-muted-foreground">
-              Persentase keuntungan
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Financial Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Modal & Operasional */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calculator className="h-5 w-5" />
-              Modal & Operasional
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Modal Perusahaan</span>
-              <span className="font-bold">{formatCurrency(totalModalPerusahaan)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Pembelian (Periode)</span>
-              <span className="font-bold">{formatCurrency(totalPembelianGabungan)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Booked (Periode)</span>
-              <span className="font-bold">{formatCurrency(totalBooked)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Operasional (Periode)</span>
-              <span className="font-bold text-red-600">{formatCurrency(totalOperasional)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Pencatatan Asset (Periode)</span>
-              <span className="font-bold text-red-600">{formatCurrency(totalPencatatanAsset)}</span>
-            </div>
-            <div className="border-t pt-4">
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-bold">Total Modal Kalkulasi</span>
-                <span className="text-lg font-bold">{formatCurrency(totalModalKalkulasi)}</span>
+        {/* Detail Informasi */}
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h3 className="text-lg font-semibold mb-4">Detail Informasi Keuangan</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Total Booked:</span> {formatCurrency(totalBooked)}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Harga Beli Booked:</span> {formatCurrency(hargaBeliBooked)}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Pembelian Ready:</span> {formatCurrency(pembelianReady)}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Operasional:</span> {formatCurrency(operasional)}
               </div>
             </div>
-          </CardContent>
-        </Card>
+            <div className="space-y-2">
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Pencatatan Asset:</span> {formatCurrency(pencatatanAsset)}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Modal Perusahaan:</span> {formatCurrency(modalPerusahaan)}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Total Modal:</span> {formatCurrency(totalModal)}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Total Harga Jual:</span> {formatCurrency(totalHargaJual)}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Total Keuntungan:</span> {formatCurrency(totalKeuntungan)}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">ROI:</span> {roi}%
+              </div>
+            </div>
+          </div>
+        </div>
 
-        {/* Profit Summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PieChart className="h-5 w-5" />
-              Ringkasan Keuntungan
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Total Keuntungan (Periode)</span>
-              <span className="font-bold text-green-600">
-                {formatCurrency(keuntunganData.reduce((sum, item) => sum + item.profit, 0))}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Unit Terjual (Periode)</span>
-              <span className="font-bold">{keuntunganData.length}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Rata-rata Keuntungan per Unit</span>
-              <span className="font-bold">
-                {formatCurrency(keuntunganData.length > 0 ? 
-                  keuntunganData.reduce((sum, item) => sum + item.profit, 0) / keuntunganData.length : 0
-                )}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">ROI (Return on Investment)</span>
-              <span className="font-bold">
-                {totalModalKalkulasi > 0 ? 
-                  ((keuntunganData.reduce((sum, item) => sum + item.profit, 0) / totalModalKalkulasi) * 100).toFixed(2) : 0
-                }%
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Tabel Detail Keuntungan Motor */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">Detail Keuntungan Motor</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Motor</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Cabang</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Divisi</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Modal</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Harga Jual</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Keuntungan</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Margin (%)</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Tanggal Jual</th>
+                </tr>
+              </thead>
+              <tbody>
+                {keuntunganData.map((item, index) => (
+                  <tr key={index} className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-2 text-sm">{item.motor}</td>
+                    <td className="px-4 py-2 text-sm">{item.cabang}</td>
+                    <td className="px-4 py-2 text-sm">{item.divisi}</td>
+                    <td className="px-4 py-2 text-sm">{formatCurrency(item.modal)}</td>
+                    <td className="px-4 py-2 text-sm">{formatCurrency(item.harga_jual)}</td>
+                    <td className="px-4 py-2 text-sm">{formatCurrency(item.keuntungan)}</td>
+                    <td className="px-4 py-2 text-sm">{item.margin.toFixed(2)}%</td>
+                    <td className="px-4 py-2 text-sm">{new Date(item.tanggal_jual).toLocaleDateString('id-ID')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
+    );
+  };
 
-      {/* Detail Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Detail Keuntungan Motor
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex justify-center items-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Motor</TableHead>
-                    <TableHead>Cabang</TableHead>
-                    <TableHead>Divisi</TableHead>
-                    <TableHead className="text-right">Modal</TableHead>
-                    <TableHead className="text-right">Harga Jual</TableHead>
-                    <TableHead className="text-right">Keuntungan</TableHead>
-                    <TableHead className="text-right">Margin (%)</TableHead>
-                    <TableHead>Tanggal Jual</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {keuntunganData.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                        Tidak ada data keuntungan untuk periode yang dipilih
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    keuntunganData.map((item) => {
-                      const margin = item.modal > 0 ? ((item.profit / item.modal) * 100) : 0;
-                      return (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.nama_motor}</TableCell>
-                          <TableCell>{item.cabang}</TableCell>
-                          <TableCell>{item.divisi}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(item.modal)}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(item.harga_jual)}</TableCell>
-                          <TableCell className="text-right">
-                            <span className={item.profit >= 0 ? 'text-green-600' : 'text-red-600'}>
-                              {formatCurrency(item.profit)}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <span className={margin >= 0 ? 'text-green-600' : 'text-red-600'}>
-                              {margin.toFixed(2)}%
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {new Date(item.tanggal_jual).toLocaleDateString('id-ID')}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-export default KeuntunganMotorPage;
+  export default KeuntunganMotorPage;
