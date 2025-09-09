@@ -208,12 +208,17 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
   };
 
   // ✅ PERBAIKAN: Fungsi fetch dari combined views dengan manual join
-  const fetchFromCombinedViews = async () => {
+  // ... existing code ...
+
+// ✅ PERBAIKAN: Fungsi fetch dari combined views dengan manual join
+const fetchFromCombinedViews = async () => {
   try {
-    setIsLoading(true);
+    setLoading(true); // ✅ Gunakan setLoading, bukan setIsLoading
     console.log('🔄 Fetching from combined views...');
 
-    const { startDate, endDate } = getDateRange();
+    const dateRange = getDateRange(selectedPeriod);
+    const startDate = new Date(`${dateRange.start}T00:00:00.000Z`);
+    const endDate = new Date(`${dateRange.end}T23:59:59.999Z`);
     
     // Query keuntungan dengan manual join
     let keuntunganQuery = supabase
@@ -241,17 +246,17 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     if (jenisMotorResult.error) throw jenisMotorResult.error;
 
     // Buat mapping untuk data referensi
-    const cabangMap = new Map(cabangResult.data.map(c => [c.id, c]));
-    const brandsMap = new Map(brandsResult.data.map(b => [b.id, b]));
-    const jenisMotorMap = new Map(jenisMotorResult.data.map(j => [j.id, j]));
+    const cabangMap = new Map(cabangResult.data?.map(c => [c.id, c]) || []);
+    const brandsMap = new Map(brandsResult.data?.map(b => [b.id, b]) || []);
+    const jenisMotorMap = new Map(jenisMotorResult.data?.map(j => [j.id, j]) || []);
 
     // Enrich data keuntungan dengan informasi relasi
-    const enrichedKeuntungan = keuntunganResult.data.map(item => ({
+    const enrichedKeuntungan = keuntunganResult.data?.map(item => ({
       ...item,
       cabang: cabangMap.get(item.cabang_id),
       brands: brandsMap.get(item.brand_id),
-      jenis_motor: jenisMotorMap.get(item.jenis_id) // Menggunakan jenis_id
-    }));
+      jenis_motor: jenisMotorMap.get(item.jenis_id)
+    })) || [];
 
     // Filter berdasarkan tanggal
     const filteredKeuntungan = enrichedKeuntungan.filter(item => {
@@ -328,40 +333,40 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     if (pencatatanAssetResult.error) throw pencatatanAssetResult.error;
 
     // Filter semua data berdasarkan tanggal dan cabang
-    const filteredBooked = bookedResult.data.filter(item => {
+    const filteredBooked = bookedResult.data?.filter(item => {
       const itemDate = new Date(item.tanggal);
       const matchesDate = itemDate >= startDate && itemDate <= endDate;
       const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
       return matchesDate && matchesCabang;
-    });
+    }) || [];
 
-    const filteredBookedHargaBeli = bookedHargaBeliResult.data.filter(item => {
+    const filteredBookedHargaBeli = bookedHargaBeliResult.data?.filter(item => {
       const itemDate = new Date(item.tanggal);
       const matchesDate = itemDate >= startDate && itemDate <= endDate;
       const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
       return matchesDate && matchesCabang;
-    });
+    }) || [];
 
-    const filteredPembelianReady = pembelianReadyResult.data.filter(item => {
+    const filteredPembelianReady = pembelianReadyResult.data?.filter(item => {
       const itemDate = new Date(item.tanggal_pembelian);
       const matchesDate = itemDate >= startDate && itemDate <= endDate;
       const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
       return matchesDate && matchesCabang;
-    });
+    }) || [];
 
-    const filteredOperasional = operasionalResult.data.filter(item => {
+    const filteredOperasional = operasionalResult.data?.filter(item => {
       const itemDate = new Date(item.tanggal);
       const matchesDate = itemDate >= startDate && itemDate <= endDate;
       const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
       return matchesDate && matchesCabang;
-    });
+    }) || [];
 
-    const filteredPencatatanAsset = pencatatanAssetResult.data.filter(item => {
+    const filteredPencatatanAsset = pencatatanAssetResult.data?.filter(item => {
       const itemDate = new Date(item.tanggal);
       const matchesDate = itemDate >= startDate && itemDate <= endDate;
       const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
       return matchesDate && matchesCabang;
-    });
+    }) || [];
 
     // Hitung totals
     const totalBooked = filteredBooked.reduce((sum, item) => sum + (item.dp || 0), 0);
@@ -397,10 +402,21 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
 
     // Update state
     setKeuntunganData(keuntunganData);
+    setTotalBooked(totalBooked);
     setTotalPembelianGabungan(totalPembelianReady);
     setTotalOperasional(totalOperasional);
     setTotalPencatatanAsset(totalPencatatanAsset);
     setTotalModalPerusahaan(totalBooked + totalBookedHargaBeli);
+
+    return {
+      keuntunganData,
+      totalBooked,
+      totalOperasional,
+      totalPembelianReady,
+      totalBookedHargaBeli,
+      totalPencatatanAsset,
+      totalProfitFiltered
+    };
 
   } catch (error) {
     console.error('❌ Error fetching combined data:', error);
@@ -409,10 +425,13 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       description: "Gagal mengambil data gabungan. Silakan coba lagi.",
       variant: "destructive",
     });
+    throw error;
   } finally {
-    setIsLoading(false);
+    setLoading(false); // ✅ Gunakan setLoading, bukan setIsLoading
   }
 };
+
+// ... existing code ...
 
   // ✅ FUNGSI EXISTING: Fetch dari tabel aktif (untuk periode pendek)
   const fetchFromActiveTables = async (dateRange: DateRange): Promise<PeriodFilteredData> => {
