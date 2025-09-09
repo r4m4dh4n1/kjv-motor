@@ -845,9 +845,11 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
 
     // Filter data berdasarkan cabang SAJA di frontend (TANPA FILTER TANGGAL)
     const filteredUnits = unitYTDResult.data?.filter(item => {
+      const itemDate = new Date(item.tanggal);
+      const matchesDate = itemDate >= startDate && itemDate <= endDate;
       const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
       const matchesStatus = item.status === 'selesai';
-      return matchesCabang && matchesStatus;
+      return matchesDate && matchesCabang && matchesStatus;
     }) || [];
 
     const filteredPembelian = pembelianYTDResult.data?.filter(item => {
