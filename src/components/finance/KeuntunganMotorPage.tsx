@@ -1117,7 +1117,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
                   {cabangOptions.map((cabang) => (
                     <SelectItem key={cabang} value={cabang}>
                       {cabang}
-                    </SelectItem>
+                                        </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -1238,6 +1238,6 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         </Card>
       </div>
     );
-  };
+};
 
-  export default KeuntunganMotorPage;
+export default KeuntunganMotorPage;
