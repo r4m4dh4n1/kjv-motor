@@ -208,231 +208,211 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
   };
 
   // ✅ PERBAIKAN: Fungsi fetch dari combined views dengan manual join
-  const fetchFromCombinedViews = async (dateRange: DateRange): Promise<PeriodFilteredData> => {
-    console.log('📊 Fetching from combined views:', {
-      period: selectedPeriod,
-      dateRange,
-      division: selectedDivision,
-      cabang: selectedCabang
+  const fetchFromCombinedViews = async () => {
+  try {
+    setIsLoading(true);
+    console.log('🔄 Fetching from combined views...');
+
+    const { startDate, endDate } = getDateRange();
+    
+    // Query keuntungan dengan manual join
+    let keuntunganQuery = supabase
+      .from('penjualans_combined')
+      .select(`
+        id, tanggal, cabang_id, brand_id, jenis_id, tahun, warna, divisi,
+        harga_beli, harga_jual, keuntungan, data_source
+      `);
+
+    if (selectedDivision !== 'all') {
+      keuntunganQuery = keuntunganQuery.eq('divisi', selectedDivision);
+    }
+
+    // Query data referensi secara terpisah
+    const [keuntunganResult, cabangResult, brandsResult, jenisMotorResult] = await Promise.all([
+      keuntunganQuery,
+      supabase.from('cabang').select('id, nama'),
+      supabase.from('brands').select('id, name'),
+      supabase.from('jenis_motor').select('id, jenis_motor')
+    ]);
+
+    if (keuntunganResult.error) throw keuntunganResult.error;
+    if (cabangResult.error) throw cabangResult.error;
+    if (brandsResult.error) throw brandsResult.error;
+    if (jenisMotorResult.error) throw jenisMotorResult.error;
+
+    // Buat mapping untuk data referensi
+    const cabangMap = new Map(cabangResult.data.map(c => [c.id, c]));
+    const brandsMap = new Map(brandsResult.data.map(b => [b.id, b]));
+    const jenisMotorMap = new Map(jenisMotorResult.data.map(j => [j.id, j]));
+
+    // Enrich data keuntungan dengan informasi relasi
+    const enrichedKeuntungan = keuntunganResult.data.map(item => ({
+      ...item,
+      cabang: cabangMap.get(item.cabang_id),
+      brands: brandsMap.get(item.brand_id),
+      jenis_motor: jenisMotorMap.get(item.jenis_id) // Menggunakan jenis_id
+    }));
+
+    // Filter berdasarkan tanggal
+    const filteredKeuntungan = enrichedKeuntungan.filter(item => {
+      const itemDate = new Date(item.tanggal);
+      return itemDate >= startDate && itemDate <= endDate;
     });
 
-    try {
-      const startDate = new Date(`${dateRange.start}T00:00:00.000Z`);
-      const endDate = new Date(`${dateRange.end}T23:59:59.999Z`);
+    // Filter berdasarkan cabang
+    const cabangFilteredKeuntungan = selectedCabang === 'all' 
+      ? filteredKeuntungan 
+      : filteredKeuntungan.filter(item => item.cabang_id.toString() === selectedCabang);
 
-      // ✅ PERBAIKAN: Query tanpa relasi foreign key
-      let keuntunganQuery = supabase
-        .from('penjualans_combined')
-        .select(`
-          id,
-          pembelian_id,
-          harga_beli,
-          harga_jual,
-          keuntungan,
-          status,
-          tanggal,
-          tahun,
-          warna,
-          kilometer,
-          cabang_id,
-          divisi,
-          brand_id,
-          jenis_motor_id,
-          data_source,
-          closed_month,
-          closed_year
-        `);
+    // Query untuk data lainnya (booked, pembelian, operasional, dll)
+    let bookedQuery = supabase
+      .from('penjualans_combined')
+      .select('dp, tanggal, id, cabang_id, divisi, status');
 
-      if (selectedDivision !== 'all') {
-        keuntunganQuery = keuntunganQuery.eq('divisi', selectedDivision);
-      }
-
-      // Query untuk data referensi
-      const [keuntunganResult, cabangResult, brandsResult, jenisMotorResult] = await Promise.all([
-        keuntunganQuery,
-        supabase.from('cabang').select('id, nama'),
-        supabase.from('brands').select('id, name'),
-        supabase.from('jenis_motor').select('id, jenis_motor')
-      ]);
-
-      if (keuntunganResult.error) throw keuntunganResult.error;
-      if (cabangResult.error) throw cabangResult.error;
-      if (brandsResult.error) throw brandsResult.error;
-      if (jenisMotorResult.error) throw jenisMotorResult.error;
-
-      // Buat mapping untuk data referensi
-      const cabangMap = new Map(cabangResult.data?.map(c => [c.id, c]) || []);
-      const brandsMap = new Map(brandsResult.data?.map(b => [b.id, b]) || []);
-      const jenisMotorMap = new Map(jenisMotorResult.data?.map(j => [j.id, j]) || []);
-
-      // Filter dan enrich data keuntungan
-      const filteredKeuntungan = keuntunganResult.data?.filter(item => {
-        const itemDate = new Date(item.tanggal);
-        const matchesDate = itemDate >= startDate && itemDate <= endDate;
-        const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
-        const matchesStatus = item.status === 'selesai';
-        return matchesDate && matchesCabang && matchesStatus;
-      }) || [];
-
-      const enrichedKeuntungan = filteredKeuntungan.map(item => ({
-        ...item,
-        cabang: cabangMap.get(item.cabang_id) || { nama: `Cabang ID: ${item.cabang_id}` },
-        brands: brandsMap.get(item.brand_id) || { name: 'Unknown' },
-        jenis_motor: jenisMotorMap.get(item.jenis_motor_id) || { jenis_motor: 'Unknown' }
-      }));
-
-      // Query untuk data lainnya (sama seperti sebelumnya)
-      let bookedQuery = supabase
-        .from('penjualans_combined')
-        .select('dp, tanggal, id, cabang_id, divisi, status');
-
-      if (selectedDivision !== 'all') {
-        bookedQuery = bookedQuery.eq('divisi', selectedDivision);
-      }
-
-      let bookedHargaBeliQuery = supabase
-        .from('penjualans_combined')
-        .select('harga_beli, tanggal, id, cabang_id, divisi, status');
-
-      if (selectedDivision !== 'all') {
-        bookedHargaBeliQuery = bookedHargaBeliQuery.eq('divisi', selectedDivision);
-      }
-
-      let pembelianReadyQuery = supabase
-        .from('pembelian_combined')
-        .select('harga_beli, harga_final, divisi, tanggal_pembelian, id, cabang_id, status');
-
-      if (selectedDivision !== 'all') {
-        pembelianReadyQuery = pembelianReadyQuery.eq('divisi', selectedDivision);
-      }
-
-      let operasionalQuery = supabase
-        .from('operational')
-        .select('nominal, tanggal, divisi, cabang_id');
-
-      if (selectedDivision !== 'all') {
-        operasionalQuery = operasionalQuery.eq('divisi', selectedDivision);
-      }
-
-      let pencatatanAssetQuery = supabase
-        .from('pembukuan_combined')
-        .select('debit, kredit, tanggal, divisi, cabang_id, keterangan')
-        .or('keterangan.ilike.%asset%,keterangan.ilike.%aset%,keterangan.ilike.%pengeluaran%');
-
-      if (selectedDivision !== 'all') {
-        pencatatanAssetQuery = pencatatanAssetQuery.eq('divisi', selectedDivision);
-      }
-
-      const [
-        bookedResult,
-        bookedHargaBeliResult,
-        pembelianReadyResult,
-        operasionalResult,
-        pencatatanAssetResult
-      ] = await Promise.all([
-        bookedQuery,
-        bookedHargaBeliQuery,
-        pembelianReadyQuery,
-        operasionalQuery,
-        pencatatanAssetQuery
-      ]);
-
-      if (bookedResult.error) throw bookedResult.error;
-      if (bookedHargaBeliResult.error) throw bookedHargaBeliResult.error;
-      if (pembelianReadyResult.error) throw pembelianReadyResult.error;
-      if (operasionalResult.error) throw operasionalResult.error;
-      if (pencatatanAssetResult.error) throw pencatatanAssetResult.error;
-
-      // Filter data berdasarkan periode dan cabang
-      const filteredBooked = bookedResult.data?.filter(item => {
-        const itemDate = new Date(item.tanggal);
-        const matchesDate = itemDate >= startDate && itemDate <= endDate;
-        const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
-        const matchesStatus = item.status === 'booked';
-        return matchesDate && matchesCabang && matchesStatus;
-      }) || [];
-
-      const filteredBookedHargaBeli = bookedHargaBeliResult.data?.filter(item => {
-        const itemDate = new Date(item.tanggal);
-        const matchesDate = itemDate >= startDate && itemDate <= endDate;
-        const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
-        const matchesStatus = item.status === 'booked';
-        return matchesDate && matchesCabang && matchesStatus;
-      }) || [];
-
-      const filteredPembelianReady = pembelianReadyResult.data?.filter(item => {
-        const itemDate = new Date(item.tanggal_pembelian);
-        const matchesDate = itemDate >= startDate && itemDate <= endDate;
-        const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
-        const matchesStatus = item.status === 'ready';
-        return matchesDate && matchesCabang && matchesStatus;
-      }) || [];
-
-      const filteredOperasional = operasionalResult.data?.filter(item => {
-        const itemDate = new Date(item.tanggal);
-        const matchesDate = itemDate >= startDate && itemDate <= endDate;
-        const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
-        return matchesDate && matchesCabang;
-      }) || [];
-
-      const filteredPencatatanAsset = pencatatanAssetResult.data?.filter(item => {
-        const itemDate = new Date(item.tanggal);
-        const matchesDate = itemDate >= startDate && itemDate <= endDate;
-        const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
-        const isAssetExpense = item.keterangan?.toLowerCase().includes('asset') || 
-                              item.keterangan?.toLowerCase().includes('aset') ||
-                              (item.keterangan?.toLowerCase().includes('pengeluaran') && 
-                               item.keterangan?.toLowerCase().includes('asset'));
-        return matchesDate && matchesCabang && isAssetExpense;
-      }) || [];
-
-      // Hitung totals
-      const totalBooked = filteredBooked.reduce((sum, item) => sum + (item.dp || 0), 0);
-      const totalBookedHargaBeli = filteredBookedHargaBeli.reduce((sum, item) => sum + (item.harga_beli || 0), 0);
-      const totalPembelianReady = filteredPembelianReady.reduce((sum, item) => sum + (item.harga_final || item.harga_beli || 0), 0);
-      const totalOperasional = filteredOperasional.reduce((sum, item) => sum + (item.nominal || 0), 0);
-      const totalPencatatanAsset = filteredPencatatanAsset.reduce((sum, item) => sum + (item.debit || 0), 0);
-
-      // Transform data keuntungan untuk display
-      const keuntunganData: KeuntunganData[] = enrichedKeuntungan.map(item => ({
-        id: item.id,
-        nama_motor: `${item.brands?.name || 'Unknown'} ${item.jenis_motor?.jenis_motor || 'Unknown'} ${item.tahun || ''} ${item.warna || ''}`.trim(),
-        modal: item.harga_beli || 0,
-        harga_jual: item.harga_jual || 0,
-        profit: item.keuntungan || 0,
-        tanggal_jual: item.tanggal,
-        cabang: item.cabang?.nama || `Cabang ID: ${item.cabang_id}`,
-        divisi: item.divisi,
-        data_source: item.data_source || 'combined'
-      }));
-
-      const totalProfitFiltered = keuntunganData.reduce((sum, item) => sum + item.profit, 0);
-
-      console.log('📊 Combined view data results:', {
-        totalBooked,
-        totalBookedHargaBeli,
-        totalPembelianReady,
-        totalOperasional,
-        totalPencatatanAsset,
-        totalProfitFiltered,
-        keuntunganRecords: keuntunganData.length
-      });
-
-      return {
-        keuntunganData,
-        totalBooked,
-        totalOperasional,
-        totalPembelianReady,
-        totalBookedHargaBeli,
-        totalPencatatanAsset,
-        totalProfitFiltered
-      };
-
-    } catch (error) {
-      console.error('❌ Error fetching combined view data:', error);
-      throw error;
+    if (selectedDivision !== 'all') {
+      bookedQuery = bookedQuery.eq('divisi', selectedDivision);
     }
-  };
+
+    let bookedHargaBeliQuery = supabase
+      .from('penjualans_combined')
+      .select('harga_beli, tanggal, id, cabang_id, divisi, status');
+
+    if (selectedDivision !== 'all') {
+      bookedHargaBeliQuery = bookedHargaBeliQuery.eq('divisi', selectedDivision);
+    }
+
+    let pembelianReadyQuery = supabase
+      .from('pembelian_combined')
+      .select('harga_beli, harga_final, divisi, tanggal_pembelian, id, cabang_id, status');
+
+    if (selectedDivision !== 'all') {
+      pembelianReadyQuery = pembelianReadyQuery.eq('divisi', selectedDivision);
+    }
+
+    let operasionalQuery = supabase
+      .from('operational')
+      .select('nominal, tanggal, divisi, cabang_id');
+
+    if (selectedDivision !== 'all') {
+      operasionalQuery = operasionalQuery.eq('divisi', selectedDivision);
+    }
+
+    let pencatatanAssetQuery = supabase
+      .from('pembukuan_combined')
+      .select('debit, kredit, tanggal, divisi, cabang_id, keterangan')
+      .or('keterangan.ilike.%asset%,keterangan.ilike.%aset%,keterangan.ilike.%pengeluaran%');
+
+    if (selectedDivision !== 'all') {
+      pencatatanAssetQuery = pencatatanAssetQuery.eq('divisi', selectedDivision);
+    }
+
+    const [
+      bookedResult,
+      bookedHargaBeliResult,
+      pembelianReadyResult,
+      operasionalResult,
+      pencatatanAssetResult
+    ] = await Promise.all([
+      bookedQuery,
+      bookedHargaBeliQuery,
+      pembelianReadyQuery,
+      operasionalQuery,
+      pencatatanAssetQuery
+    ]);
+
+    // Error handling untuk semua query
+    if (bookedResult.error) throw bookedResult.error;
+    if (bookedHargaBeliResult.error) throw bookedHargaBeliResult.error;
+    if (pembelianReadyResult.error) throw pembelianReadyResult.error;
+    if (operasionalResult.error) throw operasionalResult.error;
+    if (pencatatanAssetResult.error) throw pencatatanAssetResult.error;
+
+    // Filter semua data berdasarkan tanggal dan cabang
+    const filteredBooked = bookedResult.data.filter(item => {
+      const itemDate = new Date(item.tanggal);
+      const matchesDate = itemDate >= startDate && itemDate <= endDate;
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      return matchesDate && matchesCabang;
+    });
+
+    const filteredBookedHargaBeli = bookedHargaBeliResult.data.filter(item => {
+      const itemDate = new Date(item.tanggal);
+      const matchesDate = itemDate >= startDate && itemDate <= endDate;
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      return matchesDate && matchesCabang;
+    });
+
+    const filteredPembelianReady = pembelianReadyResult.data.filter(item => {
+      const itemDate = new Date(item.tanggal_pembelian);
+      const matchesDate = itemDate >= startDate && itemDate <= endDate;
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      return matchesDate && matchesCabang;
+    });
+
+    const filteredOperasional = operasionalResult.data.filter(item => {
+      const itemDate = new Date(item.tanggal);
+      const matchesDate = itemDate >= startDate && itemDate <= endDate;
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      return matchesDate && matchesCabang;
+    });
+
+    const filteredPencatatanAsset = pencatatanAssetResult.data.filter(item => {
+      const itemDate = new Date(item.tanggal);
+      const matchesDate = itemDate >= startDate && itemDate <= endDate;
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
+      return matchesDate && matchesCabang;
+    });
+
+    // Hitung totals
+    const totalBooked = filteredBooked.reduce((sum, item) => sum + (item.dp || 0), 0);
+    const totalBookedHargaBeli = filteredBookedHargaBeli.reduce((sum, item) => sum + (item.harga_beli || 0), 0);
+    const totalPembelianReady = filteredPembelianReady.reduce((sum, item) => sum + (item.harga_final || item.harga_beli || 0), 0);
+    const totalOperasional = filteredOperasional.reduce((sum, item) => sum + (item.nominal || 0), 0);
+    const totalPencatatanAsset = filteredPencatatanAsset.reduce((sum, item) => sum + (item.debit || 0), 0);
+
+    // Transform data keuntungan untuk display
+    const keuntunganData: KeuntunganData[] = cabangFilteredKeuntungan.map(item => ({
+      id: item.id,
+      nama_motor: `${item.brands?.name || 'Unknown'} ${item.jenis_motor?.jenis_motor || 'Unknown'} ${item.tahun || ''} ${item.warna || ''}`.trim(),
+      modal: item.harga_beli || 0,
+      harga_jual: item.harga_jual || 0,
+      profit: item.keuntungan || 0,
+      tanggal_jual: item.tanggal,
+      cabang: item.cabang?.nama || `Cabang ID: ${item.cabang_id}`,
+      divisi: item.divisi,
+      data_source: item.data_source || 'combined'
+    }));
+
+    const totalProfitFiltered = keuntunganData.reduce((sum, item) => sum + item.profit, 0);
+
+    console.log('📊 Combined view data results:', {
+      totalBooked,
+      totalBookedHargaBeli,
+      totalPembelianReady,
+      totalOperasional,
+      totalPencatatanAsset,
+      totalProfitFiltered,
+      keuntunganCount: keuntunganData.length
+    });
+
+    // Update state
+    setKeuntunganData(keuntunganData);
+    setTotalPembelianGabungan(totalPembelianReady);
+    setTotalOperasional(totalOperasional);
+    setTotalPencatatanAsset(totalPencatatanAsset);
+    setTotalModalPerusahaan(totalBooked + totalBookedHargaBeli);
+
+  } catch (error) {
+    console.error('❌ Error fetching combined data:', error);
+    toast({
+      title: "Error",
+      description: "Gagal mengambil data gabungan. Silakan coba lagi.",
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // ✅ FUNGSI EXISTING: Fetch dari tabel aktif (untuk periode pendek)
   const fetchFromActiveTables = async (dateRange: DateRange): Promise<PeriodFilteredData> => {
