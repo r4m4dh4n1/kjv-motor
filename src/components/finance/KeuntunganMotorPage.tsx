@@ -1105,7 +1105,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
               )}
             </div>
 
-            {/* Cabang Filter */}
+                       {/* Cabang Filter */}
             <div className="space-y-2">
               <Label htmlFor="cabang">Cabang</Label>
               <Select value={selectedCabang} onValueChange={setSelectedCabang}>
@@ -1122,122 +1122,145 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
                 </SelectContent>
               </Select>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Ringkasan Keuangan */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-2">Total Modal</h3>
-              <p className="text-2xl font-bold text-blue-600">{formatCurrency(totalModal)}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-2">Total Harga Jual</h3>
-              <p className="text-2xl font-bold text-green-600">{formatCurrency(totalHargaJual)}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-2">Total Keuntungan</h3>
-              <p className="text-2xl font-bold text-purple-600">{formatCurrency(totalKeuntungan)}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-2">ROI</h3>
-              <p className="text-2xl font-bold text-orange-600">{roi}%</p>
-            </CardContent>
-          </Card>
-        </div>
+            {/* Custom Date Range - hanya tampil jika period = custom */}
+            {selectedPeriod === 'custom' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="startDate">Tanggal Mulai</Label>
+                  <Input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="endDate">Tanggal Akhir</Label>
+                  <Input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Detail Informasi */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Detail Informasi Keuangan</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Total Booked:</span> {formatCurrency(totalBooked)}
-                </div>
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Harga Beli Booked:</span> {formatCurrency(hargaBeliBooked)}
-                </div>
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Pembelian Ready:</span> {formatCurrency(pembelianReady)}
-                </div>
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Operasional:</span> {formatCurrency(operasional)}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Pencatatan Asset:</span> {formatCurrency(pencatatanAsset)}
-                </div>
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Modal Perusahaan:</span> {formatCurrency(modalPerusahaan)}
-                </div>
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Total Modal:</span> {formatCurrency(totalModal)}
-                </div>
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Total Harga Jual:</span> {formatCurrency(totalHargaJual)}
-                </div>
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Total Keuntungan:</span> {formatCurrency(totalKeuntungan)}
-                </div>
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">ROI:</span> {roi}%
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Tabel Detail Keuntungan Motor */}
+      {/* Ringkasan Keuangan */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
         <Card>
-          <CardHeader>
-            <CardTitle>Detail Keuntungan Motor</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Motor</TableHead>
-                    <TableHead>Cabang</TableHead>
-                    <TableHead>Divisi</TableHead>
-                    <TableHead>Modal</TableHead>
-                    <TableHead>Harga Jual</TableHead>
-                    <TableHead>Keuntungan</TableHead>
-                    <TableHead>Margin (%)</TableHead>
-                    <TableHead>Tanggal Jual</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {keuntunganData.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{item.nama_motor}</TableCell>
-                      <TableCell>{item.cabang}</TableCell>
-                      <TableCell>{item.divisi}</TableCell>
-                      <TableCell>{formatCurrency(item.modal)}</TableCell>
-                      <TableCell>{formatCurrency(item.harga_jual)}</TableCell>
-                      <TableCell>{formatCurrency(item.profit)}</TableCell>
-                      <TableCell>{((item.profit / item.modal) * 100).toFixed(2)}%</TableCell>
-                      <TableCell>{new Date(item.tanggal_jual).toLocaleDateString('id-ID')}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+          <CardContent className="p-6">
+            <h3 className="text-lg font-semibold mb-2">Total Modal</h3>
+            <p className="text-2xl font-bold text-blue-600">{formatCurrency(totalModal)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <h3 className="text-lg font-semibold mb-2">Total Harga Jual</h3>
+            <p className="text-2xl font-bold text-green-600">{formatCurrency(totalHargaJual)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <h3 className="text-lg font-semibold mb-2">Total Keuntungan</h3>
+            <p className="text-2xl font-bold text-purple-600">{formatCurrency(totalKeuntungan)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <h3 className="text-lg font-semibold mb-2">ROI</h3>
+            <p className="text-2xl font-bold text-orange-600">{roi}%</p>
           </CardContent>
         </Card>
       </div>
-    );
+
+      {/* Detail Informasi */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Detail Informasi Keuangan</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Total Booked:</span> {formatCurrency(totalBooked)}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Harga Beli Booked:</span> {formatCurrency(hargaBeliBooked)}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Pembelian Ready:</span> {formatCurrency(pembelianReady)}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Operasional:</span> {formatCurrency(operasional)}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Pencatatan Asset:</span> {formatCurrency(pencatatanAsset)}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Modal Perusahaan:</span> {formatCurrency(modalPerusahaan)}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Total Modal:</span> {formatCurrency(totalModal)}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Total Harga Jual:</span> {formatCurrency(totalHargaJual)}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Total Keuntungan:</span> {formatCurrency(totalKeuntungan)}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">ROI:</span> {roi}%
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Tabel Detail Keuntungan Motor */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Detail Keuntungan Motor</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Motor</TableHead>
+                  <TableHead>Cabang</TableHead>
+                  <TableHead>Divisi</TableHead>
+                  <TableHead>Modal</TableHead>
+                  <TableHead>Harga Jual</TableHead>
+                  <TableHead>Keuntungan</TableHead>
+                  <TableHead>Margin (%)</TableHead>
+                  <TableHead>Tanggal Jual</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {keuntunganData.map((item, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{item.nama_motor}</TableCell>
+                    <TableCell>{item.cabang}</TableCell>
+                    <TableCell>{item.divisi}</TableCell>
+                    <TableCell>{formatCurrency(item.modal)}</TableCell>
+                    <TableCell>{formatCurrency(item.harga_jual)}</TableCell>
+                    <TableCell>{formatCurrency(item.profit)}</TableCell>
+                    <TableCell>{((item.profit / item.modal) * 100).toFixed(2)}%</TableCell>
+                    <TableCell>{new Date(item.tanggal_jual).toLocaleDateString('id-ID')}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 };
 
 export default KeuntunganMotorPage;
