@@ -524,14 +524,15 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       const totalPencatatanAsset = filteredPencatatanAsset.reduce((sum, item) => sum + (item.debit || 0), 0);
 
       // Transform data keuntungan untuk display
-      const keuntunganData: KeuntunganData[] = filteredKeuntungan.map(item => ({
+      const keuntunganData: KeuntunganData[] = enrichedKeuntungan.map(item => ({
         id: item.id,
         nama_motor: `${item.brands?.name || 'Unknown'} ${item.jenis_motor?.jenis_motor || 'Unknown'} ${item.tahun || ''} ${item.warna || ''}`.trim(),
         modal: item.harga_beli || 0,
         harga_jual: item.harga_jual || 0,
         profit: item.keuntungan || 0,
         tanggal_jual: item.tanggal,
-        cabang: item.cabang?.nama || 'Unknown',
+        cabang: item.cabang?.nama || `Cabang ID: ${item.cabang_id}`,
+      data_source: item.data_source || 'active',
         divisi: item.divisi,
         data_source: item.data_source // ✅ TAMBAHAN: Sumber data
       }));
@@ -584,7 +585,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     // Ambil semua data tanpa filter tanggal (sama seperti PembelianPageEnhanced)
     // 1. Query untuk data keuntungan (penjualan yang selesai)
     let keuntunganQuery = supabase
-      .from('penjualans')
+      .from('penjualans_combined')
       .select(`
         id,
         pembelian_id,
@@ -596,12 +597,14 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         tahun,
         warna,
         kilometer,
-        cabang:cabang_id(nama),
+        cabang_id,
         divisi,
         brands(name),
         jenis_motor(jenis_motor),
         pembelian:pembelian_id(harga_final, harga_beli),
-        cabang_id
+        data_source,
+        closed_month,
+        closed_year
       `);
 
     if (selectedDivision !== 'all') {
@@ -679,6 +682,14 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     if (pencatatanAssetResult.error) throw pencatatanAssetResult.error;
 
     // Filter data berdasarkan periode dan cabang di frontend
+    // Get cabang data
+    const { data: cabangData } = await supabase
+      .from('cabang')
+      .select('id, nama');
+
+    // Create mapping
+    const cabangMap = new Map(cabangData?.map(c => [c.id, c]) || []);
+
     const filteredKeuntungan = keuntunganResult.data?.filter(item => {
       const itemDate = new Date(item.tanggal);
       const matchesDate = itemDate >= startDate && itemDate <= endDate;
@@ -686,6 +697,12 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       const matchesStatus = item.status === 'selesai';
       return matchesDate && matchesCabang && matchesStatus;
     }) || [];
+
+    // Enrich data with cabang info
+    const enrichedKeuntungan = filteredKeuntungan.map(item => ({
+      ...item,
+      cabang: cabangMap.get(item.cabang_id) || { nama: `Cabang ID: ${item.cabang_id}` }
+    }));
 
     const filteredBooked = bookedResult.data?.filter(item => {
       const itemDate = new Date(item.tanggal);
