@@ -61,6 +61,31 @@ interface DateRange {
 }
 
 const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => {
+  // ✅ TAMBAHAN: Definisi variabel yang hilang
+  const cabangOptions = cabangList.map(cabang => cabang.id.toString());
+
+  // ✅ TAMBAHAN: Definisi variabel yang hilang
+  const cabangOptions = cabangList.map(cabang => cabang.id.toString());
+
+  // Hitung total dari data keuntungan
+  const totalModal = keuntunganData.reduce((sum, item) => sum + item.modal, 0);
+  const totalHargaJual = keuntunganData.reduce((sum, item) => sum + item.harga_jual, 0);
+  const totalKeuntungan = keuntunganData.reduce((sum, item) => sum + item.profit, 0);
+
+  // Hitung ROI
+  const roi = totalModal > 0 ? ((totalKeuntungan / totalModal) * 100).toFixed(2) : '0.00';
+
+  // Variabel untuk detail informasi
+  const hargaBeliBooked = totalPembelianGabungan;
+  const pembelianReady = totalPembelianGabungan;
+  const operasional = totalOperasional;
+  const pencatatanAsset = totalPencatatanAsset;
+  const modalPerusahaan = totalModalPerusahaan;
+  const totalModal_detail = totalModalKalkulasi; // Untuk bagian detail
+
+  // Hitung profit margin
+  const profitMargin = totalModalKalkulasi > 0 ? 
+    ((keuntunganData.reduce((sum, item) => sum + item.profit, 0) / totalModalKalkulasi) * 100) : 0;
   const [keuntunganData, setKeuntunganData] = useState<KeuntunganData[]>([]);
   const [cabangList, setCabangList] = useState<CabangData[]>([]);
   const [loading, setLoading] = useState(false);
