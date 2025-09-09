@@ -100,7 +100,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
   // Hitung ROI
   const roi = totalModal > 0 ? ((totalKeuntungan / totalModal) * 100).toFixed(2) : '0.00';
   
-  // Hitung profit margin
+  // Hitung profit margin (keep this one)
   const profitMargin = totalModalKalkulasi > 0 ? 
     ((keuntunganData.reduce((sum, item) => sum + item.profit, 0) / totalModalKalkulasi) * 100) : 0;
   
@@ -1068,10 +1068,6 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       maximumFractionDigits: 0,
     }).format(amount);
   };
-
-  // Hitung profit margin
-  const profitMargin = totalModalKalkulasi > 0 ? 
-    ((keuntunganData.reduce((sum, item) => sum + item.profit, 0) / totalModalKalkulasi) * 100) : 0;
 
   return (
     <div className="space-y-6">
