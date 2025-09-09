@@ -63,19 +63,37 @@ export const createPembukuanEntries = (submitData: any, formData: any, selectedM
         company_id: submitData.company_id
       });
     } else if (submitData.jenis_pembayaran === 'cash_bertahap') {
-      // Case 2: Cash bertahap - DP + subsidi ongkir + titip ongkir masuk kredit
-      const totalKredit = (submitData.dp || 0) + parseFormattedNumber(formData.subsidi_ongkir || "0") + parseFormattedNumber(formData.titip_ongkir || "0");
-      pembukuanEntries.push({
-        tanggal: submitData.tanggal_penjualan,
-        divisi: submitData.divisi,
-        cabang_id: submitData.cabang_id,
-        keterangan: `DP dari ${brandName} - ${jenisMotor} - ${platNomor}`,
-        debit: 0,
-        kredit: totalKredit,
-        saldo: 0,
-        pembelian_id: parseInt(formData.selected_motor_id),
-        company_id: submitData.company_id
-      });
+      // Entry 1: DP + subsidi ongkir masuk kredit
+      const dpKredit = (submitData.dp || 0) + parseFormattedNumber(formData.subsidi_ongkir || "0");
+      if (dpKredit > 0) {
+        pembukuanEntries.push({
+          tanggal: submitData.tanggal_penjualan,
+          divisi: submitData.divisi,
+          cabang_id: submitData.cabang_id,
+          keterangan: `DP dari ${brandName} - ${jenisMotor} - ${platNomor}`,
+          debit: 0,
+          kredit: dpKredit,
+          saldo: 0,
+          pembelian_id: parseInt(formData.selected_motor_id),
+          company_id: submitData.company_id
+        });
+      }
+      
+      // Entry 2: Titip ongkir masuk kredit (entry terpisah)
+      const titipOngkir = parseFormattedNumber(formData.titip_ongkir || "0");
+      if (titipOngkir > 0) {
+        pembukuanEntries.push({
+          tanggal: submitData.tanggal_penjualan,
+          divisi: submitData.divisi,
+          cabang_id: submitData.cabang_id,
+          keterangan: `Titip Ongkir - ${brandName} - ${jenisMotor} - ${platNomor}`,
+          debit: 0,
+          kredit: titipOngkir, // Titip ongkir masuk KREDIT sebagai entry terpisah
+          saldo: 0,
+          pembelian_id: parseInt(formData.selected_motor_id),
+          company_id: submitData.company_id
+        });
+      }
     } else if (submitData.jenis_pembayaran === 'kredit') {
       // Case 3: Kredit - DP + subsidi ongkir + titip ongkir masuk kredit
       const totalKredit = (submitData.dp || 0) + parseFormattedNumber(formData.subsidi_ongkir || "0") + parseFormattedNumber(formData.titip_ongkir || "0");
