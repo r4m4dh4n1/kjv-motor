@@ -1118,7 +1118,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
                     <SelectItem key={cabang} value={cabang}>
                       {cabang}
                                         </SelectItem>
-                  ))}
+                                    ))}  
                 </SelectContent>
               </Select>
             </div>
