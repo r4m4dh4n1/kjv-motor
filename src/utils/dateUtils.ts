@@ -36,13 +36,31 @@ export function getDateRange(
       end = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
       break;
 
+    // Tambahkan case yang hilang:
+    case 'last_month': {
+      const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      start = new Date(lastMonth);
+      end = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+      break;
+    }
+
+    case 'this_year':
+      start = new Date(today.getFullYear(), 0, 1); // 1 Januari tahun ini
+      end = new Date(today.getFullYear(), 11, 31, 23, 59, 59, 999); // 31 Desember tahun ini
+      break;
+
+    case 'last_year':
+      start = new Date(today.getFullYear() - 1, 0, 1); // 1 Januari tahun lalu
+      end = new Date(today.getFullYear() - 1, 11, 31, 23, 59, 59, 999); // 31 Desember tahun lalu
+      break;
+
     case 'custom': {
       if (customStartDate && customEndDate) {
-        // Buat tanggal berdasarkan WIB dan konversi ke UTC
+        // Gunakan format timezone yang valid
         const startLocal = new Date(`${customStartDate}T00:00:00+07:00`);
         const endLocal = new Date(`${customEndDate}T23:59:59.999+07:00`);
-        start = toUTCFromWIB(startLocal);
-        end = toUTCFromWIB(endLocal);
+        start = new Date(startLocal.getTime() - (7 * 60 * 60 * 1000));
+        end = new Date(endLocal.getTime() - (7 * 60 * 60 * 1000));
       } else {
         start = new Date(startOfToday);
         end = new Date(startOfToday);

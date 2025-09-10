@@ -89,6 +89,23 @@ export const useBookedUpdateHarga = () => {
         });
       }
 
+      // TAMBAHAN: Update modal perusahaan
+      if (totalBiayaTambahan !== 0 && data.sumber_dana_id) {
+        const { error: modalError } = await supabase.rpc('update_company_modal', {
+          company_id: data.sumber_dana_id,
+          amount: -totalBiayaTambahan // Negative untuk mengurangi modal
+        });
+
+        if (modalError) {
+          console.error('Error updating company modal:', modalError);
+          toast({
+            title: "Warning",
+            description: `Harga diupdate tapi gagal mengupdate modal perusahaan: ${modalError.message}`,
+            variant: "destructive"
+          });
+        }
+      }
+
       // Create price history record in price_histories_pembelian
       const { error: historyError } = await supabase
         .from('price_histories_pembelian')

@@ -31,7 +31,8 @@ import CloseMonthPage from "@/components/finance/CloseMonthPage";
 import { ProfitDistributionPage } from "@/components/finance/ProfitDistributionPage";
 import { PencatatanAssetPage } from "@/components/transaction/PencatatanAssetPage";
 import PriceHistoryUploadPage from "@/components/transaction/PriceHistoryUploadPage";
-
+// Tambahkan import di bagian atas
+import LabaRugiPage from "@/components/finance/LabaRugiPage";
 
 const Index = () => {
   const [activeMenu, setActiveMenu] = useState("dashboard");
@@ -98,6 +99,8 @@ case 'fee-penjualan':
           return <PencatatanAssetPage selectedDivision={selectedDivision} />;
         case "price-history-upload":
           return <PriceHistoryUploadPage />;
+        case "laba-rugi":
+          return <LabaRugiPage selectedDivision={selectedDivision} />;
         default:
         return <Dashboard selectedDivision={selectedDivision} />;
     }

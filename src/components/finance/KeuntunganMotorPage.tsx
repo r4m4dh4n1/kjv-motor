@@ -75,6 +75,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
   const [totalPencatatanAsset, setTotalPencatatanAsset] = useState(0);
   const [totalModalPerusahaan, setTotalModalPerusahaan] = useState(0);
   const [totalModalKalkulasi, setTotalModalKalkulasi] = useState(0);
+  const [totalModalCompanies, setTotalModalCompanies] = useState(0);
 
   // State untuk display akumulatif
   const [displayTotalUnit, setDisplayTotalUnit] = useState(0);
@@ -800,6 +801,38 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     };
   };
 
+  // Fungsi untuk mengambil total modal dari tabel companies
+  const fetchTotalModalCompanies = async (): Promise<number> => {
+    console.log('🏢 Fetching total modal companies:', {
+      division: selectedDivision,
+      cabang: selectedCabang
+    });
+
+    let companiesQuery = supabase
+      .from('companies')
+      .select('modal, divisi');
+
+    if (selectedDivision !== 'all') {
+      companiesQuery = companiesQuery.eq('divisi', selectedDivision);
+    }
+
+    const { data: companiesData, error } = await companiesQuery;
+
+    if (error) {
+      console.error('Error fetching companies data:', error);
+      throw error;
+    }
+
+    const totalModal = companiesData?.reduce((sum, company) => sum + Number(company.modal || 0), 0) || 0;
+
+    console.log('🏢 Total modal companies result:', {
+      totalModal,
+      companiesCount: companiesData?.length || 0
+    });
+
+    return totalModal;
+  };
+
   // Fungsi utama untuk mengambil semua data
   const fetchData = async () => {
     setLoading(true);
@@ -807,10 +840,11 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       const periodDateRange = getDateRange(selectedPeriod);
       const accumulativeDateRange = getAccumulativeDateRange(selectedPeriod);
 
-      const [periodData, cumulativeData, accumulativeData] = await Promise.all([
+      const [periodData, cumulativeData, accumulativeData, modalCompanies] = await Promise.all([
         fetchPeriodFilteredData(periodDateRange),
         fetchCumulativeData(),
-        fetchAccumulativeData(accumulativeDateRange)
+        fetchAccumulativeData(accumulativeDateRange),
+        fetchTotalModalCompanies() // Tambahkan pemanggilan fungsi baru
       ]);
 
       setKeuntunganData(periodData.keuntunganData);
@@ -820,12 +854,13 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       setTotalPencatatanAsset(periodData.totalPencatatanAsset);
 
       setTotalModalPerusahaan(cumulativeData.totalModalPerusahaan);
+      setTotalModalCompanies(modalCompanies); //
 
       setDisplayTotalUnit(accumulativeData.totalUnitYTD);
       setDisplayTotalPembelian(accumulativeData.totalPembelianYTD);
       setDisplayTotalBooked(accumulativeData.totalBookedYTD);
 
-      const modalKalkulasi = periodData.totalBooked + 
+       const modalKalkulasi = periodData.totalBooked + 
                             periodData.totalPembelianReady + 
                             periodData.totalBookedHargaBeli + 
                             cumulativeData.totalModalPerusahaan;
@@ -844,6 +879,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         cumulativeData,
         accumulativeData,
         totalModalKalkulasi: modalKalkulasi,
+        totalModalCompanies: modalCompanies, // Log nilai baru
         useCombined: shouldUseCombined
       });
 
@@ -1006,7 +1042,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       )}
 
       {/* Ringkasan Keuangan */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
         <Card>
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold mb-2">Total Modal</h3>
@@ -1029,6 +1065,12 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold mb-2">ROI</h3>
             <p className="text-2xl font-bold text-orange-600">{roi}%</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <h3 className="text-lg font-semibold mb-2">Total Modal Company</h3>
+            <p className="text-2xl font-bold text-indigo-600">{formatCurrency(totalModalCompanies)}</p>
           </CardContent>
         </Card>
       </div>

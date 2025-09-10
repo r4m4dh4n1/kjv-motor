@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { ChevronDown, ChevronRight, Home, Settings, Building, Car, Briefcase, Package, MapPin, ShoppingCart, CreditCard, FileText, BookOpen, Calculator, Cog, Users, UserCog, Shield, DollarSign, Pin, PinOff, TrendingUp, CheckCircle, Calendar, XCircle, Upload } from "lucide-react";
+import { ChevronDown, ChevronRight, Home, Settings, Building, Building2, Car, Briefcase, Package, MapPin, ShoppingCart, CreditCard, FileText, BookOpen, Calculator, Cog, Users, UserCog, Shield, DollarSign, Pin, PinOff, TrendingUp, CheckCircle, Calendar, XCircle, Upload } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { BarChart3 } from "lucide-react";
 
 interface SidebarProps {
   activeMenu: string;
@@ -67,7 +68,10 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
     { id: "breakdown-percabang", label: "Breakdown Percabang", icon: TrendingUp },
     { id: "keuntungan-motor", label: "Pembukuan", icon: DollarSign },
     { id: "reports", label: "Analisis Motor", icon: FileText },
+    { id: "laba-rugi", label: "Laba Rugi", icon: BarChart3 },
     { id: "profit-distribution", label: "Distribusi Profit", icon: DollarSign },
+    { id: "modal-reduction", label: "Pengurangan Modal", icon: Building2 },
+    { id: "modal-history", label: "History Modal", icon: FileText },
     { id: "close-month", label: "Close Month", icon: Calendar },
   ];
 
