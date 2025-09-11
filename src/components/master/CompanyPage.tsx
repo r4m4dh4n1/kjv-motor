@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Edit, Trash2, Building, DollarSign, History } from "lucide-react";
+import { Plus, Edit, Trash2, Building, DollarSign, History, Minus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePagination } from '@/hooks/usePagination';
 import { 
@@ -21,6 +21,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import ModalHistoryPage from "./ModalHistoryPage";
+import ModalReductionPage from "@/components/finance/ModalReductionPage";
+import { formatNumber, parseFormattedNumber, handleNumericInput, formatCurrency } from "@/utils/formatUtils";
 
 type Company = Tables<"companies">;
 type ModalHistory = Tables<"modal_history">;
@@ -47,7 +49,11 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
   const [isModalInjectionOpen, setIsModalInjectionOpen] = useState(false);
   const [selectedCompanyForModal, setSelectedCompanyForModal] = useState<Company | null>(null);
   const [modalAmount, setModalAmount] = useState("");
+  const [formattedModalAmount, setFormattedModalAmount] = useState("");
   const [modalDescription, setModalDescription] = useState("");
+  
+  // Modal reduction states
+  const [isModalReductionOpen, setIsModalReductionOpen] = useState(false);
   
   const { toast } = useToast();
 
@@ -67,16 +73,29 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
 
   const fetchCompanies = async () => {
     try {
-      let query = supabase.from('companies').select('*');
+      let query = supabase.from('companies').select(`
+        *,
+        total_modal:modal_history(jumlah)
+      `);
       
-      if (selectedDivision !== 'all') {
+      if (selectedDivision && selectedDivision !== 'all') {
         query = query.eq('divisi', selectedDivision);
       }
       
       const { data, error } = await query.order('id', { ascending: true });
-
+      
       if (error) throw error;
-      setCompanies(data || []);
+      
+      // Calculate current modal for each company
+      const companiesWithCurrentModal = data?.map(company => {
+        const totalInjection = company.total_modal?.reduce((sum: number, history: any) => sum + history.jumlah, 0) || 0;
+        return {
+          ...company,
+          current_modal: company.modal + totalInjection
+        };
+      }) || [];
+      
+      setCompanies(companiesWithCurrentModal);
       resetPage();
     } catch (error) {
       console.error('Error fetching companies:', error);
@@ -198,6 +217,16 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
     }
   };
 
+  // Handler untuk formatting input modal amount
+  const handleModalAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const numericValue = handleNumericInput(value);
+    const formattedValue = formatNumber(numericValue);
+    
+    setModalAmount(numericValue.toString());
+    setFormattedModalAmount(formattedValue);
+  };
+
   const handleModalInjection = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -211,7 +240,9 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
     }
 
     try {
-      const amount = parseFloat(modalAmount);
+      // Parse the formatted number back to actual number
+      const amount = parseFormattedNumber(formattedModalAmount || modalAmount);
+      
       if (isNaN(amount) || amount <= 0) {
         toast({
           title: "Error",
@@ -248,6 +279,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
       });
 
       setModalAmount("");
+      setFormattedModalAmount("");
       setModalDescription("");
       setSelectedCompanyForModal(null);
       setIsModalInjectionOpen(false);
@@ -292,14 +324,6 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
     setDivisi("");
     setStatus("");
     setEditingCompany(null);
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(amount);
   };
 
   const getRowNumber = (index: number) => {
@@ -523,7 +547,8 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                 <TableHead>No</TableHead>
                 <TableHead>Nama Perusahaan</TableHead>
                 <TableHead>No. Rekening</TableHead>
-                <TableHead>Modal</TableHead>
+                <TableHead>Modal Awal</TableHead>
+                <TableHead>Modal Saat Ini</TableHead>
                 <TableHead>Divisi</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Aksi</TableHead>
@@ -532,7 +557,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
             <TableBody>
               {paginatedData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                     Tidak ada data perusahaan
                   </TableCell>
                 </TableRow>
@@ -543,6 +568,9 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                     <TableCell className="font-medium">{company.nama_perusahaan}</TableCell>
                     <TableCell>{company.nomor_rekening}</TableCell>
                     <TableCell>{formatCurrency(company.modal)}</TableCell>
+                    <TableCell className="font-semibold text-green-600">
+                      {formatCurrency(company.current_modal || company.modal)}
+                    </TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         company.divisi === 'sport' 
@@ -562,40 +590,105 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedCompanyForModal(company);
-                            setIsModalInjectionOpen(true);
-                          }}
-                          title="Suntik Modal"
-                        >
-                          <DollarSign className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleViewHistory(company)}
-                          title="Lihat History Modal"
-                        >
-                          <History className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEdit(company)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDelete(company.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                      <div className="flex gap-1 justify-end flex-wrap">
+                        {/* Desktop buttons */}
+                        <div className="hidden md:flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedCompanyForModal(company);
+                              setIsModalInjectionOpen(true);
+                            }}
+                            title="Suntik Modal"
+                          >
+                            <DollarSign className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setIsModalReductionOpen(true)}
+                            title="Adjustment Modal"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleViewHistory(company)}
+                            title="History Modal"
+                          >
+                            <History className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEdit(company)}
+                            title="Edit"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDelete(company.id)}
+                            title="Hapus"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        
+                        {/* Mobile buttons - more compact */}
+                        <div className="flex md:hidden gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedCompanyForModal(company);
+                              setIsModalInjectionOpen(true);
+                            }}
+                            title="Suntik"
+                            className="px-2"
+                          >
+                            <DollarSign className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setIsModalReductionOpen(true)}
+                            title="Adjust"
+                            className="px-2"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleViewHistory(company)}
+                            title="History"
+                            className="px-2"
+                          >
+                            <History className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEdit(company)}
+                            title="Edit"
+                            className="px-2"
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDelete(company.id)}
+                            title="Hapus"
+                            className="px-2"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -622,12 +715,17 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
               <Label htmlFor="modalAmount">Jumlah Modal</Label>
               <Input
                 id="modalAmount"
-                type="number"
-                value={modalAmount}
-                onChange={(e) => setModalAmount(e.target.value)}
-                placeholder="Masukkan jumlah modal"
+                type="text"
+                value={formattedModalAmount || modalAmount}
+                onChange={handleModalAmountChange}
+                placeholder="Masukkan jumlah modal (contoh: 1.000.000)"
                 className="mt-1"
               />
+              {formattedModalAmount && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Nilai: {formatCurrency(parseFormattedNumber(formattedModalAmount))}
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="modalDescription">Keterangan</Label>
@@ -649,6 +747,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                 onClick={() => {
                   setIsModalInjectionOpen(false);
                   setModalAmount("");
+                  setFormattedModalAmount("");
                   setModalDescription("");
                   setSelectedCompanyForModal(null);
                 }}
@@ -660,6 +759,19 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
         </DialogContent>
       </Dialog>
 
+      {/* Modal Reduction Dialog */}
+      <Dialog open={isModalReductionOpen} onOpenChange={setIsModalReductionOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Minus className="w-5 h-5" />
+              Adjustment Modal Perusahaan
+            </DialogTitle>
+          </DialogHeader>
+          <ModalReductionPage />
+        </DialogContent>
+      </Dialog>
+      
       {/* Modal History */}
       <ModalHistoryPage
         isOpen={isHistoryOpen}
