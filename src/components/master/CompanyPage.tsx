@@ -217,13 +217,13 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
     }
   };
 
-  // Handler untuk formatting input modal amount
+  // Handler untuk formatting input modal amount - DIPERBAIKI
   const handleModalAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     const numericValue = handleNumericInput(value);
     const formattedValue = formatNumber(numericValue);
     
-    setModalAmount(numericValue.toString());
+    setModalAmount(numericValue);
     setFormattedModalAmount(formattedValue);
   };
 

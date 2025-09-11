@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { formatNumber, parseFormattedNumber, handleNumericInput, formatCurrency } from '@/utils/formatUtils';
 
 interface Company {
   id: number;
@@ -14,16 +15,28 @@ interface Company {
   divisi: string;
 }
 
-export default function ModalReductionPage() {
+interface ModalReductionPageProps {
+  preSelectedCompany?: Company;
+}
+
+export default function ModalReductionPage({ preSelectedCompany }: ModalReductionPageProps) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
+  const [formattedAmount, setFormattedAmount] = useState<string>(''); // Tambahkan state untuk formatted amount
   const [keterangan, setKeterangan] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchCompanies();
   }, []);
+
+  // Tambahkan useEffect untuk pre-selected company
+  useEffect(() => {
+    if (preSelectedCompany) {
+      setSelectedCompany(preSelectedCompany.id.toString());
+    }
+  }, [preSelectedCompany]);
 
   const fetchCompanies = async () => {
     const { data, error } = await supabase
@@ -40,6 +53,16 @@ export default function ModalReductionPage() {
     setCompanies(data || []);
   };
 
+  // Tambahkan handler untuk formatting amount
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const numericValue = handleNumericInput(value);
+    const formattedValue = formatNumber(numericValue);
+    
+    setAmount(numericValue);
+    setFormattedAmount(formattedValue);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -48,7 +71,8 @@ export default function ModalReductionPage() {
       return;
     }
 
-    const reductionAmount = parseFloat(amount);
+    // Parse the formatted number back to actual number
+    const reductionAmount = parseFormattedNumber(formattedAmount || amount);
     if (reductionAmount <= 0) {
       toast.error('Jumlah pengurangan harus lebih dari 0');
       return;
@@ -93,6 +117,7 @@ export default function ModalReductionPage() {
       // Reset form
       setSelectedCompany('');
       setAmount('');
+      setFormattedAmount('');
       setKeterangan('');
       
       // Refresh data
@@ -143,13 +168,16 @@ export default function ModalReductionPage() {
             <div>
               <label className="block text-sm font-medium mb-2">Jumlah Pengurangan</label>
               <Input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="Masukkan jumlah pengurangan"
-                min="1"
-                max={selectedCompanyData?.modal || undefined}
+                type="text"
+                value={formattedAmount || amount}
+                onChange={handleAmountChange}
+                placeholder="Masukkan jumlah pengurangan (contoh: 1.000.000)"
               />
+              {formattedAmount && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Nilai: {formatCurrency(parseFormattedNumber(formattedAmount))}
+                </p>
+              )}
             </div>
 
             <div>
