@@ -1,15 +1,17 @@
 // Utility untuk format angka dengan separator ribuan
 export const formatNumber = (value: string | number): string => {
   if (!value) return '';
-  const numValue = typeof value === 'string' ? parseFloat(value.replace(/[^0-9.-]/g, '')) : value;
+  const numValue = typeof value === 'string' ? parseInt(value.replace(/[^0-9]/g, '')) : value;
   if (isNaN(numValue)) return '';
   return numValue.toLocaleString('id-ID');
 };
 
-// Utility untuk parse angka dari format display
+// Utility untuk parse angka dari format display - DIPERBAIKI
 export const parseFormattedNumber = (value: string): number => {
   if (!value) return 0;
-  return parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
+  // Hapus semua karakter kecuali angka untuk format Indonesia
+  const cleanValue = value.replace(/[^0-9]/g, '');
+  return parseInt(cleanValue) || 0;
 };
 
 // Utility untuk format input angka
@@ -18,10 +20,10 @@ export const handleNumericInput = (value: string, setter: (val: string) => void)
   setter(numericValue);
 };
 
-// Format number with thousand separators
+// Format number with thousand separators - DIPERBAIKI
 export const formatCurrency = (value: string | number): string => {
   if (!value) return '';
-  const numValue = typeof value === 'string' ? parseFloat(value.replace(/[^0-9.-]/g, '')) : value;
+  const numValue = typeof value === 'string' ? parseInt(value.replace(/[^0-9]/g, '')) : value;
   if (isNaN(numValue)) return '';
   return numValue.toLocaleString('id-ID', {
     minimumFractionDigits: 0,
@@ -29,7 +31,7 @@ export const formatCurrency = (value: string | number): string => {
   });
 };
 
-// Parse formatted number - PERBAIKAN UTAMA
+// Parse formatted number - SUDAH BENAR
 export const parseCurrency = (value: string): number => {
   if (!value) return 0;
   // Hapus semua karakter kecuali angka, untuk format Indonesia (1.000.000)
