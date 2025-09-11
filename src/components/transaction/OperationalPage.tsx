@@ -5,118 +5,231 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Plus, Settings, Edit, Trash2, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { DatePicker } from "@/components/ui/date-picker";
+import { toast } from "@/hooks/use-toast";
+import { Trash2, Edit, Plus, Filter, Calendar } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 interface OperationalPageProps {
   selectedDivision: string;
 }
 
+interface OperationalData {
+  id: number;
+  tanggal: string;
+  kategori: string;
+  nominal: number;
+  deskripsi: string;
+  sumber_dana: string;
+  data_source?: string;
+}
+
+interface CompanyData {
+  id: number;
+  name: string;
+}
+
 const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
-  const [operationalData, setOperationalData] = useState([]);
-  const [companiesData, setCompaniesData] = useState([]);
+  // State untuk data
+  const [operationalData, setOperationalData] = useState<OperationalData[]>([]);
+  const [companies, setCompanies] = useState<CompanyData[]>([]);
+  const [loading, setLoading] = useState(false);
+  
+  // State untuk dialog dan editing
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingOperational, setEditingOperational] = useState(null);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  
+  // ✅ TAMBAHAN: State untuk filter periode (mengganti dateFrom dan dateTo)
+  const [dateFilter, setDateFilter] = useState('this_month');
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>();
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>();
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  
+  // State untuk form data
   const [formData, setFormData] = useState({
     tanggal: new Date().toISOString().split('T')[0],
-    kategori: "",
-    nominal: "",
-    deskripsi: "",
-    sumber_dana: ""
+    kategori: '',
+    nominal: '',
+    deskripsi: '',
+    sumber_dana: '',
+    company_id: ''
   });
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
-  const categories = [
-    "Operasional Kantor",
-    "Transportasi",
-    "Komunikasi",
-    "Listrik & Air",
-    "Maintenance",
-    "Marketing",
-    "Gaji & Tunjangan",
-    "Pajak & Retribusi",
-    "Asuransi",
-    "Lain-lain"
-  ];
+  // ✅ TAMBAHAN: Tentukan apakah menggunakan combined view
+  const shouldUseCombined = ['last_month', 'this_year', 'last_year'].includes(dateFilter) || 
+                           (dateFilter === 'custom' && customStartDate && customEndDate);
 
+  // ✅ TAMBAHAN: Fungsi untuk mendapatkan range tanggal berdasarkan periode
+  const getDateRange = () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (dateFilter) {
+      case 'today':
+        return {
+          start: today.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+      case 'yesterday':
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        return {
+          start: yesterday.toISOString().split('T')[0],
+          end: yesterday.toISOString().split('T')[0]
+        };
+      case 'this_week':
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay());
+        return {
+          start: startOfWeek.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+      case 'last_week':
+        const lastWeekEnd = new Date(today);
+        lastWeekEnd.setDate(today.getDate() - today.getDay() - 1);
+        const lastWeekStart = new Date(lastWeekEnd);
+        lastWeekStart.setDate(lastWeekEnd.getDate() - 6);
+        return {
+          start: lastWeekStart.toISOString().split('T')[0],
+          end: lastWeekEnd.toISOString().split('T')[0]
+        };
+      case 'this_month':
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        return {
+          start: startOfMonth.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+      case 'last_month':
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+        return {
+          start: lastMonthStart.toISOString().split('T')[0],
+          end: lastMonthEnd.toISOString().split('T')[0]
+        };
+      case 'this_year':
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+        return {
+          start: startOfYear.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+      case 'last_year':
+        const lastYearStart = new Date(now.getFullYear() - 1, 0, 1);
+        const lastYearEnd = new Date(now.getFullYear() - 1, 11, 31);
+        return {
+          start: lastYearStart.toISOString().split('T')[0],
+          end: lastYearEnd.toISOString().split('T')[0]
+        };
+      case 'custom':
+        return {
+          start: customStartDate ? customStartDate.toISOString().split('T')[0] : today.toISOString().split('T')[0],
+          end: customEndDate ? customEndDate.toISOString().split('T')[0] : today.toISOString().split('T')[0]
+        };
+      default:
+        return {
+          start: today.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+    }
+  };
+
+  // ✅ UPDATE: useEffect dengan dependencies yang benar
   useEffect(() => {
     fetchInitialData();
-    // Set default date range (current month)
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    setDateFrom(firstDay.toISOString().split('T')[0]);
-    setDateTo(today.toISOString().split('T')[0]);
   }, []);
 
   useEffect(() => {
-    if (dateFrom && dateTo) {
-      fetchOperationalData();
-    }
-  }, [dateFrom, dateTo, selectedDivision, selectedCategory]);
+    fetchOperationalData();
+  }, [dateFilter, customStartDate, customEndDate, selectedDivision, selectedCategory]);
 
+  // Fungsi untuk mengambil data awal
   const fetchInitialData = async () => {
     try {
-      let companiesQuery = supabase.from('companies').select('*').order('nama_perusahaan');
-      
-      if (selectedDivision !== 'all') {
-        companiesQuery = companiesQuery.eq('divisi', selectedDivision);
-      }
+      const { data: companiesData, error: companiesError } = await supabase
+        .from('companies')
+        .select('id, name')
+        .order('name');
 
-      const { data: companiesResult, error: companiesError } = await companiesQuery;
       if (companiesError) throw companiesError;
-
-      setCompaniesData(companiesResult || []);
+      setCompanies(companiesData || []);
     } catch (error) {
       console.error('Error fetching initial data:', error);
       toast({
         title: "Error",
-        description: "Gagal memuat data awal",
+        description: "Gagal mengambil data awal",
         variant: "destructive",
       });
     }
   };
 
+  // ✅ UPDATE: Fungsi fetchOperationalData dengan logika combined view
   const fetchOperationalData = async () => {
-    setLoading(true);
     try {
-      // Use the operational table
-      let query = supabase
-        .from('operational')
-        .select(`
-          *,
-          companies:company_id(nama_perusahaan),
-          cabang:cabang_id(nama)
-        `)
-        .gte('tanggal', dateFrom)
-        .lte('tanggal', dateTo)
-        .order('tanggal', { ascending: false });
+      setLoading(true);
+      
+      const dateRange = getDateRange();
+      const startDate = new Date(`${dateRange.start}T00:00:00.000Z`);
+      const endDate = new Date(`${dateRange.end}T23:59:59.999Z`);
+      
+      console.log('🔍 Fetching operational data:', {
+        period: dateFilter,
+        table: shouldUseCombined ? 'operational_combined' : 'operational',
+        dateRange,
+        division: selectedDivision,
+        category: selectedCategory
+      });
 
+      // ✅ TAMBAHAN: Pilih tabel berdasarkan periode
+      const tableName = shouldUseCombined ? 'operational_combined' : 'operational';
+      
+      let query = supabase
+        .from(tableName)
+        .select(`
+          id, tanggal, kategori, nominal, deskripsi, 
+          companies!operational_company_id_fkey(name),
+          ${shouldUseCombined ? 'data_source,' : ''}
+          cabang_id
+        `);
+
+      // Filter berdasarkan divisi
       if (selectedDivision !== 'all') {
         query = query.eq('divisi', selectedDivision);
       }
 
+      // Filter berdasarkan kategori
+      if (selectedCategory !== 'all') {
+        query = query.eq('kategori', selectedCategory);
+      }
+
+      // Filter berdasarkan tanggal
+      query = query
+        .gte('tanggal', dateRange.start)
+        .lte('tanggal', dateRange.end)
+        .order('tanggal', { ascending: false });
+
       const { data, error } = await query;
+
       if (error) throw error;
 
-      // Filter by category if selected
-      const filteredData = selectedCategory !== 'all' 
-        ? (data || []).filter(item => item.kategori === selectedCategory)
-        : (data || []);
+      // Transform data untuk display
+      const transformedData = data?.map((item: any) => ({
+        id: item.id,
+        tanggal: item.tanggal,
+        kategori: item.kategori,
+        nominal: item.nominal,
+        deskripsi: item.deskripsi,
+        sumber_dana: item.companies?.name || 'Unknown',
+        data_source: item.data_source || 'active'
+      })) || [];
 
-      setOperationalData(filteredData);
+      setOperationalData(transformedData);
     } catch (error) {
       console.error('Error fetching operational data:', error);
       toast({
         title: "Error",
-        description: "Gagal memuat data operasional",
+        description: "Gagal mengambil data operasional",
         variant: "destructive",
       });
     } finally {
@@ -124,151 +237,51 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     }
   };
 
+  // ✅ TAMBAHAN: Fungsi reset filter
+  const resetFilters = () => {
+    setDateFilter('this_month');
+    setCustomStartDate(undefined);
+    setCustomEndDate(undefined);
+    setSelectedCategory('all');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.tanggal || !formData.kategori || !formData.nominal || !formData.deskripsi || !formData.sumber_dana) {
-      toast({
-        title: "Error",
-        description: "Mohon lengkapi semua field yang wajib diisi",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const nominalAmount = parseFloat(parseNumericInput(formData.nominal));
-    if (isNaN(nominalAmount) || nominalAmount <= 0) {
-      toast({
-        title: "Error",
-        description: "Nominal harus berupa angka yang valid dan lebih dari 0",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
-      // Get company data to check modal
-      const { data: company, error: companyError } = await supabase
-        .from('companies')
-        .select('modal, nama_perusahaan')
-        .eq('id', parseInt(formData.sumber_dana))
-        .single();
+      setLoading(true);
+      
+      const operationalPayload = {
+        tanggal: formData.tanggal,
+        divisi: selectedDivision,
+        kategori: formData.kategori,
+        nominal: parseFloat(formData.nominal),
+        deskripsi: formData.deskripsi,
+        company_id: parseInt(formData.company_id),
+        cabang_id: 1
+      };
 
-      if (companyError) throw companyError;
-
-      if (company.modal < nominalAmount) {
-        toast({
-          title: "Error",
-          description: `Modal ${company.nama_perusahaan} tidak mencukupi. Modal tersedia: ${formatCurrency(company.modal)}`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (editingOperational) {
-        // Update existing record
-        const { error: updateError } = await supabase
+      if (editingId) {
+        const { error } = await supabase
           .from('operational')
-          .update({
-            tanggal: formData.tanggal,
-            kategori: formData.kategori,
-            deskripsi: formData.deskripsi,
-            nominal: nominalAmount,
-            company_id: parseInt(formData.sumber_dana),
-            divisi: selectedDivision !== 'all' ? selectedDivision : 'sport'
-          })
-          .eq('id', editingOperational.id);
+          .update(operationalPayload)
+          .eq('id', editingId);
 
-        if (updateError) throw updateError;
-
-        // Update company modal (restore old amount and deduct new amount)
-        const modalDifference = editingOperational.nominal - nominalAmount;
-        const { error: modalUpdateError } = await supabase.rpc('update_company_modal', {
-          company_id: parseInt(formData.sumber_dana),
-          amount: modalDifference
-        });
-
-        if (modalUpdateError) throw modalUpdateError;
-
-        // Update pembukuan entry - delete old and create new
-        await supabase
-          .from('pembukuan')
-          .delete()
-          .eq('keterangan', `like ${editingOperational.kategori} - ${editingOperational.deskripsi}%`);
-
-        const { error: pembukuanError } = await supabase
-          .from('pembukuan')
-          .insert({
-            tanggal: formData.tanggal,
-            divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
-            keterangan: `${formData.kategori} - ${formData.deskripsi}`,
-            debit: nominalAmount,
-            kredit: 0,
-            cabang_id: 1,
-            company_id: parseInt(formData.sumber_dana)
-          });
-
-        if (pembukuanError) {
-          console.error('Error updating pembukuan entry:', pembukuanError);
-          toast({
-            title: "Warning",
-            description: "Data operasional berhasil diubah tapi gagal mengupdate pembukuan",
-            variant: "destructive"
-          });
-        }
-
+        if (error) throw error;
+        
         toast({
-          title: "Berhasil",
+          title: "Sukses",
           description: "Data operasional berhasil diperbarui",
         });
       } else {
-        // Insert new record
-        const { error: insertError } = await supabase
+        const { error } = await supabase
           .from('operational')
-          .insert([{
-            tanggal: formData.tanggal,
-            kategori: formData.kategori,
-            deskripsi: formData.deskripsi,
-            nominal: nominalAmount,
-            divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
-            cabang_id: 1, // Default cabang
-            company_id: parseInt(formData.sumber_dana)
-          }]);
+          .insert([operationalPayload]);
 
-        if (insertError) throw insertError;
-
-        // Update company modal using the database function
-        const { error: modalUpdateError } = await supabase.rpc('update_company_modal', {
-          company_id: parseInt(formData.sumber_dana),
-          amount: -nominalAmount // Negative to deduct from modal
-        });
-
-        if (modalUpdateError) throw modalUpdateError;
-
-        // Create pembukuan entry for operational expense
-        const { error: pembukuanError } = await supabase
-          .from('pembukuan')
-          .insert({
-            tanggal: formData.tanggal,
-            divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
-            keterangan: `${formData.kategori} - ${formData.deskripsi}`,
-            debit: nominalAmount,
-            kredit: 0,
-            cabang_id: 1,
-            company_id: parseInt(formData.sumber_dana)
-          });
-
-        if (pembukuanError) {
-          console.error('Error creating pembukuan entry:', pembukuanError);
-          toast({
-            title: "Warning",
-            description: "Data operasional berhasil ditambah tapi gagal mencatat pembukuan",
-            variant: "destructive"
-          });
-        }
-
+        if (error) throw error;
+        
         toast({
-          title: "Berhasil",
+          title: "Sukses",
           description: "Data operasional berhasil ditambahkan",
         });
       }
@@ -276,7 +289,6 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       resetForm();
       setIsDialogOpen(false);
       fetchOperationalData();
-      fetchInitialData(); // Refresh companies data to show updated modal
     } catch (error) {
       console.error('Error saving operational data:', error);
       toast({
@@ -284,6 +296,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         description: "Gagal menyimpan data operasional",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -360,289 +374,245 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     setEditingOperational(null);
   };
 
-  // PERBAIKAN UTAMA: Fungsi untuk membuka dialog baru
-  const handleOpenNewDialog = () => {
-    resetForm();
-    setIsDialogOpen(true);
-  };
-
-  // Helper functions for numeric formatting
-  const formatNumberInput = (value: string): string => {
-    if (!value) return "";
-    const numericValue = value.replace(/[^0-9]/g, "");
-    if (!numericValue) return "";
-    return parseInt(numericValue).toLocaleString("id-ID");
-  };
-
-  const parseNumericInput = (value: string): string => {
-    return value.replace(/[^0-9]/g, "");
-  };
-
-  const handleNumericChange = (value: string) => {
-    const numericValue = parseNumericInput(value);
-    const formattedValue = formatNumberInput(numericValue);
-    setFormData({ ...formData, nominal: numericValue });
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID');
-  };
-
-  const getTotalOperational = () => {
-    return operationalData.reduce((total, item) => total + item.nominal, 0);
-  };
-
-  const getCategoryStats = () => {
-    const stats = {};
-    operationalData.forEach(item => {
-      stats[item.kategori] = (stats[item.kategori] || 0) + item.nominal;
-    });
-    return stats;
-  };
-
-  const filteredCompanies = companiesData.filter(company => 
-    selectedDivision === 'all' || company.divisi.toLowerCase() === selectedDivision.toLowerCase()
-  );
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <Settings className="w-8 h-8 text-purple-600" />
-            Operasional
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Kelola pengeluaran operasional harian
-          </p>
-        </div>
-        
-        {/* PERBAIKAN: Hapus DialogTrigger dan gunakan manual control */}
-        <Button 
-          onClick={handleOpenNewDialog}
-          className="bg-purple-600 hover:bg-purple-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Tambah Operasional
-        </Button>
-      </div>
-
-      {/* PERBAIKAN: Dialog tanpa DialogTrigger */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {editingOperational ? "Edit Operasional" : "Tambah Operasional Baru"}
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="tanggal">Tanggal *</Label>
-              <div className="mt-1">
-                <DatePicker
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Operational Management</h1>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => {
+              resetForm();
+              setEditingId(null);
+            }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Tambah Operasional
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {editingId ? 'Edit Operasional' : 'Tambah Operasional'}
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="tanggal">Tanggal</Label>
+                <Input
                   id="tanggal"
+                  type="date"
                   value={formData.tanggal}
-                  onChange={(value) => setFormData({...formData, tanggal: value})}
-                  placeholder="Pilih tanggal operasional"
+                  onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
                   required
                 />
               </div>
-            </div>
-
-            <div>
-              <Label htmlFor="kategori">Kategori *</Label>
-              <Select value={formData.kategori} onValueChange={(value) => setFormData({...formData, kategori: value})}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Pilih kategori" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="nominal">Nominal *</Label>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Rp</span>
+              <div>
+                <Label htmlFor="kategori">Kategori</Label>
+                <Select value={formData.kategori} onValueChange={(value) => setFormData({ ...formData, kategori: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih kategori" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="operasional">Operasional</SelectItem>
+                    <SelectItem value="maintenance">Maintenance</SelectItem>
+                    <SelectItem value="marketing">Marketing</SelectItem>
+                    <SelectItem value="administrasi">Administrasi</SelectItem>
+                    <SelectItem value="lainnya">Lainnya</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="nominal">Nominal</Label>
                 <Input
                   id="nominal"
-                  type="text"
-                  value={formatNumberInput(formData.nominal)}
-                  onChange={(e) => handleNumericChange(e.target.value)}
-                  className="pl-10"
-                  placeholder="1.000.000"
+                  type="number"
+                  value={formData.nominal}
+                  onChange={(e) => setFormData({ ...formData, nominal: e.target.value })}
+                  required
                 />
               </div>
-            </div>
+              <div>
+                <Label htmlFor="deskripsi">Deskripsi</Label>
+                <Input
+                  id="deskripsi"
+                  value={formData.deskripsi}
+                  onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="company_id">Sumber Dana</Label>
+                <Select value={formData.company_id} onValueChange={(value) => setFormData({ ...formData, company_id: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih sumber dana" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map((company) => (
+                      <SelectItem key={company.id} value={company.id.toString()}>
+                        {company.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Batal
+                </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? 'Menyimpan...' : editingId ? 'Update' : 'Simpan'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
 
-            <div>
-              <Label htmlFor="deskripsi">Deskripsi *</Label>
-              <Textarea
-                id="deskripsi"
-                value={formData.deskripsi}
-                onChange={(e) => setFormData({...formData, deskripsi: e.target.value})}
-                placeholder="Masukkan deskripsi pengeluaran operasional"
-                className="mt-1"
-                rows={3}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="sumber_dana">Sumber Dana *</Label>
-              <Select value={formData.sumber_dana} onValueChange={(value) => setFormData({...formData, sumber_dana: value})}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Pilih sumber dana" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredCompanies.map((company) => (
-                    <SelectItem key={company.id} value={company.id.toString()}>
-                      {company.nama_perusahaan}
-                      <br />
-                      <small className="text-gray-500">
-                        Modal: {formatCurrency(company.modal)}
-                      </small>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex gap-2 pt-4">
-              <Button type="submit" className="bg-purple-600 hover:bg-purple-700">
-                {editingOperational ? "Update" : "Simpan"}
-              </Button>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setIsDialogOpen(false)}
-              >
-                Batal
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Filter Controls */}
+      {/* ✅ UPDATE: Filter Controls dengan periode */}
       <Card>
         <CardHeader>
-          <CardTitle>Filter Data</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filter Data
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <Label htmlFor="dateFrom">Tanggal Mulai</Label>
-              <Input
-                id="dateFrom"
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="mt-1"
-              />
+            {/* Filter Periode */}
+            <div className="space-y-2">
+              <Label htmlFor="dateFilter">Periode</Label>
+              <Select value={dateFilter} onValueChange={setDateFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih periode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">📅 Hari Ini</SelectItem>
+                  <SelectItem value="yesterday">📅 Kemarin</SelectItem>
+                  <SelectItem value="this_week">📅 Minggu Ini</SelectItem>
+                  <SelectItem value="last_week">📅 Minggu Lalu</SelectItem>
+                  <SelectItem value="this_month">📅 Bulan Ini</SelectItem>
+                  <SelectItem value="last_month">📊 Bulan Lalu</SelectItem>
+                  <SelectItem value="this_year">📊 Tahun Ini</SelectItem>
+                  <SelectItem value="last_year">📊 Tahun Lalu</SelectItem>
+                  <SelectItem value="custom">📊 Custom</SelectItem>
+                </SelectContent>
+              </Select>
+              {/* ✅ TAMBAHAN: Info periode yang menggunakan combined view */}
+              {shouldUseCombined && (
+                <p className="text-xs text-blue-600 mt-1">
+                  📊 Menggunakan data gabungan (active + history)
+                </p>
+              )}
             </div>
-            <div>
-              <Label htmlFor="dateTo">Tanggal Selesai</Label>
-              <Input
-                id="dateTo"
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="selectedCategory">Kategori</Label>
+
+            {/* ✅ TAMBAHAN: Custom Date Range Picker */}
+            {dateFilter === 'custom' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Tanggal Mulai</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {customStartDate ? format(customStartDate, "dd/MM/yyyy") : "Pilih tanggal"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={customStartDate}
+                        onSelect={setCustomStartDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-2">
+                  <Label>Tanggal Selesai</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {customEndDate ? format(customEndDate, "dd/MM/yyyy") : "Pilih tanggal"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={customEndDate}
+                        onSelect={setCustomEndDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </>
+            )}
+
+            {/* Filter Kategori */}
+            <div className="space-y-2">
+              <Label htmlFor="category">Kategori</Label>
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="mt-1">
+                <SelectTrigger>
                   <SelectValue placeholder="Pilih kategori" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Kategori</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="operasional">Operasional</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                  <SelectItem value="marketing">Marketing</SelectItem>
+                  <SelectItem value="administrasi">Administrasi</SelectItem>
+                  <SelectItem value="lainnya">Lainnya</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-end">
-              <Button onClick={fetchOperationalData} disabled={loading} className="w-full">
-                {loading ? "Loading..." : "Filter"}
-              </Button>
-            </div>
+          </div>
+          
+          {/* ✅ TAMBAHAN: Tombol Reset Filter */}
+          <div className="mt-4">
+            <Button variant="outline" onClick={resetFilters}>
+              Reset Filter
+            </Button>
           </div>
         </CardContent>
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Operasional</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {formatCurrency(getTotalOperational())}
-                </p>
-              </div>
-              <TrendingDown className="w-8 h-8 text-red-600" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Operasional</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              Rp {totalOperational.toLocaleString('id-ID')}
             </div>
           </CardContent>
         </Card>
-
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Transaksi</p>
-                <p className="text-2xl font-bold text-purple-600">
-                  {operationalData.length}
-                </p>
-              </div>
-              <Settings className="w-8 h-8 text-purple-600" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Transaksi</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalTransactions}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Rata-rata per Transaksi</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              Rp {averagePerTransaction.toLocaleString('id-ID')}
             </div>
           </CardContent>
         </Card>
-
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Rata-rata per Transaksi</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {formatCurrency(operationalData.length > 0 ? getTotalOperational() / operationalData.length : 0)}
-                </p>
-              </div>
-              <DollarSign className="w-8 h-8 text-blue-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Kategori Terbanyak</p>
-                <p className="text-lg font-bold text-green-600">
-                  {Object.entries(getCategoryStats()).sort(([,a], [,b]) => (b as number) - (a as number))[0]?.[0] || '-'}
-                </p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-green-600" />
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Kategori Terbanyak</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{mostFrequentCategory}</div>
           </CardContent>
         </Card>
       </div>
@@ -654,7 +624,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-8">Loading...</div>
+            <div className="text-center py-4">Loading...</div>
           ) : (
             <Table>
               <TableHeader>
@@ -665,51 +635,52 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                   <TableHead>Nominal</TableHead>
                   <TableHead>Deskripsi</TableHead>
                   <TableHead>Sumber Dana</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
+                  {shouldUseCombined && <TableHead>Source</TableHead>}
+                  <TableHead>Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {operationalData.map((item, index) => (
                   <TableRow key={item.id}>
                     <TableCell>{index + 1}</TableCell>
-                    <TableCell>{formatDate(item.tanggal)}</TableCell>
+                    <TableCell>{new Date(item.tanggal).toLocaleDateString('id-ID')}</TableCell>
+                    <TableCell>{item.kategori}</TableCell>
+                    <TableCell>Rp {item.nominal.toLocaleString('id-ID')}</TableCell>
+                    <TableCell>{item.deskripsi}</TableCell>
+                    <TableCell>{item.sumber_dana}</TableCell>
+                    {shouldUseCombined && (
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          item.data_source === 'active' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {item.data_source === 'active' ? 'Active' : 'History'}
+                        </span>
+                      </TableCell>
+                    )}
                     <TableCell>
-                      <span className="px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800">
-                        {item.kategori}
-                      </span>
-                    </TableCell>
-                    <TableCell className="font-semibold text-red-600">
-                      {formatCurrency(item.nominal)}
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate">{item.deskripsi}</TableCell>
-                    <TableCell>{item.companies?.nama_perusahaan || '-'}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex gap-2 justify-end">
+                      <div className="flex space-x-2">
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleEdit(item)}
+                          disabled={shouldUseCombined && item.data_source === 'history'}
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit className="h-4 w-4" />
                         </Button>
                         <Button
                           size="sm"
-                          variant="destructive"
+                          variant="outline"
                           onClick={() => handleDelete(item.id)}
+                          disabled={shouldUseCombined && item.data_source === 'history'}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
                   </TableRow>
                 ))}
-                {operationalData.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                      Tidak ada data operasional
-                    </TableCell>
-                  </TableRow>
-                )}
               </TableBody>
             </Table>
           )}

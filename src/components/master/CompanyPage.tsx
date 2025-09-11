@@ -23,6 +23,13 @@ import type { Tables } from "@/integrations/supabase/types";
 import ModalHistoryPage from "./ModalHistoryPage";
 import ModalReductionPage from "@/components/finance/ModalReductionPage";
 import { formatNumber, parseFormattedNumber, handleNumericInput, formatCurrency } from "@/utils/formatUtils";
+import { MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type Company = Tables<"companies">;
 type ModalHistory = Tables<"modal_history">;
@@ -607,7 +614,10 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => setIsModalReductionOpen(true)}
+                            onClick={() => {
+                              setSelectedCompanyForModal(company);
+                              setIsModalReductionOpen(true);
+                            }}
                             title="Adjustment Modal"
                           >
                             <Minus className="w-4 h-4" />
@@ -638,56 +648,54 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                           </Button>
                         </div>
                         
-                        {/* Mobile buttons - more compact */}
-                        <div className="flex md:hidden gap-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedCompanyForModal(company);
-                              setIsModalInjectionOpen(true);
-                            }}
-                            title="Suntik"
-                            className="px-2"
-                          >
-                            <DollarSign className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setIsModalReductionOpen(true)}
-                            title="Adjust"
-                            className="px-2"
-                          >
-                            <Minus className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleViewHistory(company)}
-                            title="History"
-                            className="px-2"
-                          >
-                            <History className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEdit(company)}
-                            title="Edit"
-                            className="px-2"
-                          >
-                            <Edit className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleDelete(company.id)}
-                            title="Hapus"
-                            className="px-2"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
+                        {/* Mobile dropdown - more compact */}
+                        <div className="flex md:hidden">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm" className="px-2">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedCompanyForModal(company);
+                                  setIsModalInjectionOpen(true);
+                                }}
+                              >
+                                <DollarSign className="w-4 h-4 mr-2" />
+                                Suntik Modal
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedCompanyForModal(company);
+                                  setIsModalReductionOpen(true);
+                                }}
+                              >
+                                <Minus className="w-4 h-4 mr-2" />
+                                Adjustment Modal
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleViewHistory(company)}
+                              >
+                                <History className="w-4 h-4 mr-2" />
+                                History Modal
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleEdit(company)}
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(company.id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Hapus
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     </TableCell>
@@ -768,7 +776,13 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
               Adjustment Modal Perusahaan
             </DialogTitle>
           </DialogHeader>
-          <ModalReductionPage />
+          <ModalReductionPage 
+            preSelectedCompany={selectedCompanyForModal}
+            onClose={() => {
+              setIsModalReductionOpen(false);
+              setSelectedCompanyForModal(null);
+            }}
+          />
         </DialogContent>
       </Dialog>
       

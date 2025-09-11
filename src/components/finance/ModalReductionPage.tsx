@@ -17,9 +17,10 @@ interface Company {
 
 interface ModalReductionPageProps {
   preSelectedCompany?: Company;
+  onClose?: () => void;
 }
 
-export default function ModalReductionPage({ preSelectedCompany }: ModalReductionPageProps) {
+export default function ModalReductionPage({ preSelectedCompany, onClose }: ModalReductionPageProps) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
@@ -141,23 +142,36 @@ export default function ModalReductionPage({ preSelectedCompany }: ModalReductio
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Perusahaan</label>
-              <Select value={selectedCompany} onValueChange={setSelectedCompany}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih perusahaan" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id.toString()}>
-                      {company.nama_perusahaan} - {company.divisi} (Modal: Rp {company.modal.toLocaleString()})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!preSelectedCompany && (
+              <div>
+                <label className="block text-sm font-medium mb-2">Perusahaan</label>
+                <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih perusahaan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map((company) => (
+                      <SelectItem key={company.id} value={company.id.toString()}>
+                        {company.nama_perusahaan} - {company.divisi} (Modal: Rp {company.modal.toLocaleString()})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
-            {selectedCompanyData && (
+            {preSelectedCompany && (
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-700">
+                  Perusahaan: <span className="font-semibold">{preSelectedCompany.nama_perusahaan}</span>
+                </p>
+                <p className="text-sm text-blue-700">
+                  Modal saat ini: <span className="font-semibold">Rp {preSelectedCompany.modal.toLocaleString()}</span>
+                </p>
+              </div>
+            )}
+
+            {selectedCompanyData && !preSelectedCompany && (
               <div className="p-3 bg-blue-50 rounded-lg">
                 <p className="text-sm text-blue-700">
                   Modal saat ini: <span className="font-semibold">Rp {selectedCompanyData.modal.toLocaleString()}</span>
@@ -193,6 +207,12 @@ export default function ModalReductionPage({ preSelectedCompany }: ModalReductio
             <Button type="submit" disabled={loading} className="w-full">
               {loading ? 'Memproses...' : 'Kurangi Modal'}
             </Button>
+            
+            {onClose && (
+              <Button type="button" variant="outline" onClick={onClose} className="w-full">
+                Batal
+              </Button>
+            )}
           </form>
         </CardContent>
       </Card>
