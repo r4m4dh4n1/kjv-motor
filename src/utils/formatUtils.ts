@@ -7,11 +7,13 @@ export const formatNumber = (value: string | number): string => {
 };
 
 // Utility untuk parse angka dari format display - DIPERBAIKI
-export const parseFormattedNumber = (value: string): number => {
+export const parseFormattedNumber = (value: string | number): number => {
+  if (typeof value === 'number') return value;
   if (!value) return 0;
-  // Hapus semua karakter kecuali angka untuk format Indonesia
-  const cleanValue = value.replace(/[^0-9]/g, '');
-  return parseInt(cleanValue) || 0;
+  
+  // Hapus semua karakter non-angka (termasuk titik pemisah ribuan)
+  const cleanValue = value.toString().replace(/[^0-9]/g, '');
+  return cleanValue ? parseInt(cleanValue, 10) : 0;
 };
 
 // Utility untuk format input angka
