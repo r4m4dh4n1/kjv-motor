@@ -33,6 +33,8 @@ import { PencatatanAssetPage } from "@/components/transaction/PencatatanAssetPag
 import PriceHistoryUploadPage from "@/components/transaction/PriceHistoryUploadPage";
 // Tambahkan import di bagian atas
 import LabaRugiPage from "@/components/finance/LabaRugiPage";
+import ModalReductionPage from "@/components/finance/ModalReductionPage"; // ✅ Tambahkan ini
+import ModalHistoryPage from "@/components/finance/ModalHistoryPage"; // ✅ Tambahkan ini juga
 
 const Index = () => {
   const [activeMenu, setActiveMenu] = useState("dashboard");
@@ -101,8 +103,12 @@ case 'fee-penjualan':
           return <PriceHistoryUploadPage />;
         case "laba-rugi":
           return <LabaRugiPage selectedDivision={selectedDivision} />;
+        case "modal-reduction": // ✅ Tambahkan case ini
+          return <ModalReductionPage />;
+        case "modal-history": // ✅ Tambahkan case ini juga
+          return <ModalHistoryPage />;
         default:
-        return <Dashboard selectedDivision={selectedDivision} />;
+          return <Dashboard selectedDivision={selectedDivision} />;
     }
   };
 

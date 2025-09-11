@@ -25,6 +25,7 @@ import {
 } from "./hooks/usePembelianData";
 import { usePenjualanData } from "./hooks/usePenjualanData";
 import { usePenjualanCreate, usePenjualanDelete } from "./hooks/usePenjualanMutations";
+import { usePenjualanEdit } from "./hooks/usePenjualanEditMutation"; // ✅ Tambahkan ini
 import { usePenjualanActions } from "./hooks/usePenjualanActions";
 import { useDpCancellation } from "./hooks/useDpCancellation";
 import { supabase } from "@/integrations/supabase/client";
@@ -81,6 +82,7 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
   // Mutations
   const createPenjualanMutation = usePenjualanCreate();
   const deletePenjualanMutation = usePenjualanDelete();
+  const editPenjualanMutation = usePenjualanEdit(); // ✅ Tambahkan ini
   const dpCancellationMutation = useDpCancellation();
 
   const checkOngkirPaymentStatus = async (penjualanIds: number[]) => {
@@ -230,9 +232,19 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
       });
       return;
     }
-
+  
     try {
-      await createPenjualanMutation.mutateAsync({ formData, pembelianData });
+      if (editingPenjualan) {
+        // ✅ Use edit mutation for existing penjualan
+        await editPenjualanMutation.mutateAsync({ 
+          penjualanId: editingPenjualan.id,
+          formData, 
+          pembelianData 
+        });
+      } else {
+        // ✅ Use create mutation for new penjualan
+        await createPenjualanMutation.mutateAsync({ formData, pembelianData });
+      }
       resetForm();
       refetchPenjualan();
     } catch (error) {

@@ -58,6 +58,8 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
     { id: "cicilan", label: "Cash Bertahap", icon: Calculator },
     { id: "operational", label: "Operational", icon: Cog },
     { id: "biro-jasa", label: "Biro Jasa", icon: FileText },
+    { id: "modal-reduction", label: "Pengurangan Modal", icon: Building2 },
+    { id: "modal-history", label: "History Modal", icon: FileText },
     { id: "pencatatan-asset", label: "Pencatatan Asset", icon: Package },
     { id: "fee-penjualan", label: "Fee Penjualan", icon: DollarSign },
     { id: "price-history-upload", label: "Upload Price History", icon: Upload },
@@ -70,8 +72,6 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
     { id: "reports", label: "Analisis Motor", icon: FileText },
     { id: "laba-rugi", label: "Laba Rugi", icon: BarChart3 },
     { id: "profit-distribution", label: "Distribusi Profit", icon: DollarSign },
-    { id: "modal-reduction", label: "Pengurangan Modal", icon: Building2 },
-    { id: "modal-history", label: "History Modal", icon: FileText },
     { id: "close-month", label: "Close Month", icon: Calendar },
   ];
 
