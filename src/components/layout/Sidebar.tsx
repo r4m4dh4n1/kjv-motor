@@ -58,8 +58,6 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
     { id: "cicilan", label: "Cash Bertahap", icon: Calculator },
     { id: "operational", label: "Operational", icon: Cog },
     { id: "biro-jasa", label: "Biro Jasa", icon: FileText },
-    { id: "modal-reduction", label: "Adjustment Modal", icon: Building2 },
-    { id: "modal-history", label: "History Modal", icon: FileText },
     { id: "pencatatan-asset", label: "Pencatatan Asset", icon: Package },
     { id: "fee-penjualan", label: "Fee Penjualan", icon: DollarSign },
     { id: "price-history-upload", label: "Upload Price History", icon: Upload },

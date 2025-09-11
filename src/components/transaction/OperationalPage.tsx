@@ -41,6 +41,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   // State untuk dialog dan editing
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  // ✅ TAMBAHAN: State yang hilang untuk editing
+  const [editingOperational, setEditingOperational] = useState<OperationalData | null>(null);
   
   // ✅ TAMBAHAN: State untuk filter periode (mengganti dateFrom dan dateTo)
   const [dateFilter, setDateFilter] = useState('this_month');
@@ -369,7 +371,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       kategori: "",
       nominal: "",
       deskripsi: "",
-      sumber_dana: ""
+      sumber_dana: "",
+      company_id: "" // ✅ PERBAIKAN: Tambahkan company_id yang hilang
     });
     setEditingOperational(null);
   };
@@ -691,3 +694,18 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 };
 
 export default OperationalPage;
+
+// ✅ TAMBAHAN: Hitung summary statistics
+const totalOperational = operationalData.reduce((sum, item) => sum + item.nominal, 0);
+const totalTransactions = operationalData.length;
+const averagePerTransaction = totalTransactions > 0 ? totalOperational / totalTransactions : 0;
+
+// Hitung kategori yang paling sering muncul
+const categoryCount = operationalData.reduce((acc, item) => {
+  acc[item.kategori] = (acc[item.kategori] || 0) + 1;
+  return acc;
+}, {} as Record<string, number>);
+
+const mostFrequentCategory = Object.keys(categoryCount).length > 0 
+  ? Object.entries(categoryCount).reduce((a, b) => categoryCount[a[0]] > categoryCount[b[0]] ? a : b)[0]
+  : 'Tidak ada data';

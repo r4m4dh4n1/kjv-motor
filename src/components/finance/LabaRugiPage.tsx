@@ -36,6 +36,11 @@ interface LabaRugiData {
   totalBiayaLain: number;
   totalBiayaOperasi: number;
   
+  // ✅ TAMBAHAN: Breakdown per kategori
+  biayaPerKategori: {
+    [key: string]: number;
+  };
+  
   // LABA BERSIH
   labaBersih: number;
   
@@ -214,7 +219,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
     }
   };
 
-  // Perbaiki fetchBiayaData untuk menggunakan nama tabel yang benar
   const fetchBiayaData = async (dateRange: { start: Date; end: Date }) => {
     try {
       // Konversi Date ke ISO string untuk Supabase
@@ -251,7 +255,15 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         throw pembukuanError;
       }
   
-      // Hitung total operasional - gunakan kategori sebagai pengganti jenis_biaya
+      // ✅ TAMBAHAN: Hitung total per kategori
+      const biayaPerKategori: { [key: string]: number } = {};
+      
+      operationalData?.forEach((item) => {
+        const kategori = item.kategori || 'Lain-lain';
+        biayaPerKategori[kategori] = (biayaPerKategori[kategori] || 0) + (item.nominal || 0);
+      });
+  
+      // Hitung total operasional
       const totalOperasional = operationalData?.reduce((sum, item) => {
         return sum + (item.nominal || 0);
       }, 0) || 0;
@@ -266,7 +278,8 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         pembukuan: pembukuanData || [],
         totalOperasional,
         totalPembukuan,
-        totalBiaya: totalOperasional + totalPembukuan
+        totalBiaya: totalOperasional + totalPembukuan,
+        biayaPerKategori // ✅ TAMBAHAN
       };
     } catch (error) {
       console.error('Error in fetchBiayaData:', error);
@@ -274,7 +287,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
     }
   };
 
-  // Perbaiki fungsi calculateLabaRugi
   const calculateLabaRugi = (pendapatanData: any, biayaData: any): LabaRugiData => {
     const totalPendapatan = pendapatanData.totalPenjualan;
     const totalHPP = pendapatanData.totalHargaBeli;
@@ -297,12 +309,13 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       totalBiayaPembelian: 0,
       totalHPP: totalHPP,
       labaKotor,
-      totalBiayaOperasional, // Sekarang akan menampilkan nilai yang benar
+      totalBiayaOperasional,
       totalBiayaAdministrasi: 0,
       totalBiayaPenjualan: 0,
-      totalBiayaLain, // Sekarang akan menampilkan nilai yang benar
+      totalBiayaLain,
       totalBiayaOperasi,
-      labaBersih, // Sekarang tidak akan NaN
+      biayaPerKategori: biayaData.biayaPerKategori || {}, // ✅ TAMBAHAN
+      labaBersih,
       marginKotor,
       marginBersih
     };
@@ -471,10 +484,23 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                 <TableRow className="bg-orange-50">
                   <TableCell className="font-bold" colSpan={2}>BIAYA OPERASIONAL</TableCell>
                 </TableRow>
-                <TableRow>
-                  <TableCell className="pl-6">Biaya Operasional</TableCell>
-                  <TableCell className="text-right">{formatCurrency(labaRugiData.totalBiayaOperasional)}</TableCell>
+                
+                {/* ✅ TAMBAHAN: Breakdown per kategori */}
+                {Object.entries(labaRugiData.biayaPerKategori).map(([kategori, nominal]) => (
+                  <TableRow key={kategori}>
+                    <TableCell className="pl-6">
+                      {kategori.charAt(0).toUpperCase() + kategori.slice(1)}
+                    </TableCell>
+                    <TableCell className="text-right">{formatCurrency(nominal)}</TableCell>
+                  </TableRow>
+                ))}
+                
+                {/* Subtotal Biaya Operasional */}
+                <TableRow className="bg-orange-100">
+                  <TableCell className="pl-6 font-semibold">Subtotal Biaya Operasional</TableCell>
+                  <TableCell className="text-right font-semibold">{formatCurrency(labaRugiData.totalBiayaOperasional)}</TableCell>
                 </TableRow>
+                
                 <TableRow>
                   <TableCell className="pl-6">Biaya Administrasi</TableCell>
                   <TableCell className="text-right">{formatCurrency(labaRugiData.totalBiayaAdministrasi)}</TableCell>
