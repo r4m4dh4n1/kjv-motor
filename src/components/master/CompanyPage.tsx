@@ -100,7 +100,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
   
       const { data: rolesData, error: rolesError } = await supabase
         .from("roles")
-        .select("role_id, role_name"); // Hapus 'permissions'
+        .select("role_id, role_name"); // ✅ Hapus 'permissions'
   
       if (rolesError) throw rolesError;
   
@@ -110,7 +110,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
           user_id: userRole.user_id,
           role_id: userRole.role_id,
           role_name: role?.role_name || 'Unknown'
-          // Hapus permissions
+          // ✅ Remove the permissions line completely
         };
       }) || [];
   
