@@ -514,7 +514,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                   <TableCell className="text-right">{formatCurrency(labaRugiData.totalBiayaLain)}</TableCell>
                 </TableRow>
                 <TableRow className="border-b-2">
-                  <TableCell className="font-semibold">Total Biaya Operasi</TableCell>
+                  <TableCell className="font-semibold">Total Biaya Operasional</TableCell>
                   <TableCell className="text-right font-semibold">{formatCurrency(labaRugiData.totalBiayaOperasi)}</TableCell>
                 </TableRow>
 
