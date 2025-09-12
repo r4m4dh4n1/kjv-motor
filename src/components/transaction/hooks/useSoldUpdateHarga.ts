@@ -108,20 +108,18 @@ export const useSoldUpdateHarga = () => {
       // Di dalam mutationFn:
       // 4. Create pembukuan entry
       if (updateData.biaya_tambahan !== 0) {
-        const isAddition = updateData.operation_mode === 'tambah';
-        const amount = Math.abs(updateData.biaya_tambahan);
-        
+        // PERBAIKAN: Selalu buat entry pembukuan untuk tracking
         const pembukuanData = {
           tanggal: updateData.tanggal_update,
           divisi: currentPenjualan.divisi,
           keterangan: `${updateData.operation_mode === 'tambah' ? 'Biaya Tambahan' : 'Pengurangan Biaya'} - ${currentPenjualan.plat} - ${updateData.reason}`,
-          debit: isAddition ? amount : 0,
-          kredit: isAddition ? 0 : amount,
+          debit: updateData.biaya_tambahan > 0 ? Math.abs(updateData.biaya_tambahan) : 0,
+          kredit: updateData.biaya_tambahan < 0 ? Math.abs(updateData.biaya_tambahan) : 0,
           cabang_id: currentPenjualan.cabang_id,
           company_id: updateData.sumber_dana_id,
           pembelian_id: currentPenjualan.pembelian_id
         };
-
+        
         const { error: pembukuanError } = await supabase
           .from('pembukuan')
           .insert(pembukuanData);
