@@ -98,18 +98,18 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
   
       if (userRolesError) throw userRolesError;
   
+      // Solusi sederhana - hapus kolom permissions
       const { data: rolesData, error: rolesError } = await supabase
         .from("roles")
-        .select("role_id, role_name, permissions");
-  
-      if (rolesError) throw rolesError;
-  
+        .select("role_id, role_name"); // Hapus 'permissions'
+      
+      // Dan update mapping
       const userRolesWithDetails = userRolesData?.map(userRole => {
         const roleDetail = rolesData?.find(role => role.role_id === userRole.role_id);
         return {
           ...userRole,
-          role_name: roleDetail?.role_name,
-          permissions: roleDetail?.permissions
+          role_name: roleDetail?.role_name
+          // Hapus permissions jika tidak diperlukan
         };
       }) || [];
   
@@ -120,6 +120,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
   
       if (modalHistoryError) throw modalHistoryError;
   
+      // Hapus bagian ini dari fetchCompanies:
       const companiesWithCurrentModal = companiesData?.map(company => {
         const companyHistory = modalHistoryData?.filter(h => h.company_id === company.id) || [];
         const totalModalFromHistory = companyHistory.reduce((sum, h) => sum + (h.jumlah || 0), 0);
@@ -129,9 +130,10 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
           current_modal: totalModalFromHistory
         };
       }) || [];
-  
-      setCompanies(companiesWithCurrentModal);
-      setData(companiesWithCurrentModal);
+      
+      // Ganti dengan:
+      setCompanies(companiesData || []);
+      setData(companiesData || []);
     } catch (error) {
       console.error("Error fetching companies:", error);
       toast({
@@ -282,6 +284,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
         return;
       }
 
+      // 1. Insert ke modal_history
       const { error: historyError } = await supabase
         .from("modal_history")
         .insert({
@@ -289,14 +292,23 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
           jumlah: amount,
           keterangan: modalDescription,
         });
-
+  
       if (historyError) throw historyError;
-
+  
+      // 2. Update modal di tabel companies
+      const newModalAmount = (selectedCompanyForModal.modal || 0) + amount;
+      const { error: updateError } = await supabase
+        .from("companies")
+        .update({ modal: newModalAmount })
+        .eq("id", selectedCompanyForModal.id);
+  
+      if (updateError) throw updateError;
+  
       toast({
         title: "Berhasil",
         description: `Modal berhasil disuntikkan ke ${selectedCompanyForModal.nama_perusahaan}`,
       });
-
+  
       setIsModalInjectionOpen(false);
       setModalAmount("");
       setFormattedModalAmount("");
