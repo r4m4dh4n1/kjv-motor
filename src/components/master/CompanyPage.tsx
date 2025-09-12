@@ -122,7 +122,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
       .select(`
         user_id, 
         role_id,
-        roles!fk_user_roles_role_id(role_id, role_name)
+        roles!user_roles_role_id_fkey(role_id, role_name)
       `);
   
       if (userRolesError) throw userRolesError;
