@@ -92,47 +92,15 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
   
       if (companiesError) throw companiesError;
   
-      const { data: userRolesData, error: userRolesError } = await supabase
-        .from("user_roles")
-        .select("user_id, role_id");
-  
-      if (userRolesError) throw userRolesError;
-  
-      const { data: rolesData, error: rolesError } = await supabase
-        .from("roles")
-        .select("role_id, role_name"); // ✅ Hapus 'permissions'
-  
-      if (rolesError) throw rolesError;
-  
-      const joinedData = userRolesData?.map(userRole => {
-        const role = rolesData?.find(r => r.role_id === userRole.role_id);
-        return {
-          user_id: userRole.user_id,
-          role_id: userRole.role_id,
-          role_name: role?.role_name || 'Unknown'
-          // ✅ Remove the permissions line completely
-        };
-      }) || [];
-  
+      // Hapus query user_roles dan roles yang tidak diperlukan
+      
       const { data: modalHistoryData, error: modalHistoryError } = await supabase
         .from("modal_history")
         .select("company_id, jumlah")
         .in("company_id", companiesData?.map(c => c.id) || []);
   
       if (modalHistoryError) throw modalHistoryError;
-  
-      // Hapus bagian ini dari fetchCompanies:
-      const companiesWithCurrentModal = companiesData?.map(company => {
-        const companyHistory = modalHistoryData?.filter(h => h.company_id === company.id) || [];
-        const totalModalFromHistory = companyHistory.reduce((sum, h) => sum + (h.jumlah || 0), 0);
-        
-        return {
-          ...company,
-          current_modal: totalModalFromHistory
-        };
-      }) || [];
       
-      // Ganti dengan:
       setCompanies(companiesData || []);
       setData(companiesData || []);
     } catch (error) {
@@ -151,25 +119,21 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
     try {
       const { data: userRolesData, error: userRolesError } = await supabase
       .from("user_roles")
-      .select("user_id, role_id");
-
-    if (userRolesError) throw userRolesError;
-
-    const { data: rolesData, error: rolesError } = await supabase
-      .from("roles")
-      .select("role_id, role_name"); // ✅ Hapus 'permissions'
-
-    if (rolesError) throw rolesError;
-
-    const joinedData = userRolesData?.map(userRole => {
-      const role = rolesData?.find(r => r.role_id === userRole.role_id);
-      return {
-        user_id: userRole.user_id,
-        role_id: userRole.role_id,
-        role_name: role?.role_name || 'Unknown'
-        // ✅ Hapus baris permissions: role?.permissions || []
-      };
-    }) || [];
+      .select(`
+        user_id, 
+        role_id,
+        roles!fk_user_roles_role_id(role_id, role_name)
+      `);
+  
+      if (userRolesError) throw userRolesError;
+  
+      const joinedData = userRolesData?.map(userRole => {
+        return {
+          user_id: userRole.user_id,
+          role_id: userRole.role_id,
+          role_name: userRole.roles?.role_name || 'Unknown'
+        };
+      }) || [];
   
       return joinedData;
     } catch (error) {
