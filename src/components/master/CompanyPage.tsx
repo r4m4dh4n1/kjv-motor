@@ -92,17 +92,46 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
   
       if (companiesError) throw companiesError;
   
-      // Hapus query user_roles dan roles yang tidak diperlukan
-      
+      const { data: userRolesData, error: userRolesError } = await supabase
+        .from("user_roles")
+        .select("user_id, role_id");
+  
+      if (userRolesError) throw userRolesError;
+  
+      const { data: rolesData, error: rolesError } = await supabase
+        .from("roles")
+        .select("role_id, role_name, permissions");
+  
+      if (rolesError) throw rolesError;
+  
+      const userRolesWithDetails = userRolesData?.map(userRole => {
+        const roleDetail = rolesData?.find(role => role.role_id === userRole.role_id);
+        return {
+          ...userRole,
+          role_name: roleDetail?.role_name,
+          permissions: roleDetail?.permissions
+        };
+      }) || [];
+  
       const { data: modalHistoryData, error: modalHistoryError } = await supabase
         .from("modal_history")
         .select("company_id, jumlah")
         .in("company_id", companiesData?.map(c => c.id) || []);
   
       if (modalHistoryError) throw modalHistoryError;
-      
-      setCompanies(companiesData || []);
-      setData(companiesData || []);
+  
+      const companiesWithCurrentModal = companiesData?.map(company => {
+        const companyHistory = modalHistoryData?.filter(h => h.company_id === company.id) || [];
+        const totalModalFromHistory = companyHistory.reduce((sum, h) => sum + (h.jumlah || 0), 0);
+        
+        return {
+          ...company,
+          current_modal: totalModalFromHistory
+        };
+      }) || [];
+  
+      setCompanies(companiesWithCurrentModal);
+      setData(companiesWithCurrentModal);
     } catch (error) {
       console.error("Error fetching companies:", error);
       toast({
@@ -118,23 +147,27 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
   const fetchUserRolesWithDetails = async () => {
     try {
       const { data: userRolesData, error: userRolesError } = await supabase
-      .from("user_roles")
-      .select(`
-        user_id, 
-        role_id,
-        roles!user_roles_role_id_fkey(role_id, role_name)
-      `);
-  
+        .from("user_roles")
+        .select("user_id, role_id");
+
       if (userRolesError) throw userRolesError;
-  
+
+      const { data: rolesData, error: rolesError } = await supabase
+        .from("roles")
+        .select("role_id, role_name, permissions");
+
+      if (rolesError) throw rolesError;
+
       const joinedData = userRolesData?.map(userRole => {
+        const role = rolesData?.find(r => r.role_id === userRole.role_id);
         return {
           user_id: userRole.user_id,
           role_id: userRole.role_id,
-          role_name: userRole.roles?.role_name || 'Unknown'
+          role_name: role?.role_name || 'Unknown',
+          permissions: role?.permissions || []
         };
       }) || [];
-  
+
       return joinedData;
     } catch (error) {
       console.error("Error fetching user roles:", error);
