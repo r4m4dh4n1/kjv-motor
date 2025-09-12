@@ -16,9 +16,18 @@ export const parseFormattedNumber = (value: string | number): number => {
   return cleanValue ? parseInt(cleanValue, 10) : 0;
 };
 
-// Utility untuk format input angka - DIPERBAIKI
-export const handleNumericInput = (value: string): string => {
-  return value.replace(/[^0-9]/g, '');
+// Utility untuk format input angka - DIPERBAIKI dengan backward compatibility
+export const handleNumericInput = (value: string, callback?: (val: number) => void): string => {
+  const cleanValue = value.replace(/[^0-9]/g, '');
+  
+  // Jika ada callback, panggil dengan nilai numerik
+  if (callback) {
+    const numericValue = cleanValue ? parseInt(cleanValue, 10) : 0;
+    callback(numericValue);
+  }
+  
+  // Kembalikan string yang sudah dibersihkan untuk penggunaan lama
+  return cleanValue;
 };
 
 // Format number with thousand separators - DIPERBAIKI
