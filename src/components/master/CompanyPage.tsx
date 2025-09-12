@@ -40,16 +40,18 @@ interface CompanyPageProps {
 
 const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
   const [companies, setCompanies] = useState<Company[]>([]);
+  // Tambahkan state untuk user roles
   const [userRoles, setUserRoles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [formData, setFormData] = useState({
     nama_perusahaan: "",
-    nomor_rekening: "",
+    alamat: "",
+    telepon: "",
+    email: "",
     divisi: "",
     modal: "",
-    status: "aktif",
   });
   const [formattedModal, setFormattedModal] = useState("");
   const { toast } = useToast();
@@ -84,6 +86,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
     try {
       setIsLoading(true);
       
+      // Fetch companies tanpa embedding
       const { data: companiesData, error: companiesError } = await supabase
         .from("companies")
         .select("*")
@@ -92,18 +95,21 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
   
       if (companiesError) throw companiesError;
   
+      // Fetch user_roles secara terpisah
       const { data: userRolesData, error: userRolesError } = await supabase
         .from("user_roles")
         .select("user_id, role_id");
   
       if (userRolesError) throw userRolesError;
   
+      // Fetch roles secara terpisah
       const { data: rolesData, error: rolesError } = await supabase
         .from("roles")
         .select("role_id, role_name, permissions");
   
       if (rolesError) throw rolesError;
   
+      // Manual join di JavaScript
       const userRolesWithDetails = userRolesData?.map(userRole => {
         const roleDetail = rolesData?.find(role => role.role_id === userRole.role_id);
         return {
@@ -113,6 +119,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
         };
       }) || [];
   
+      // Fetch modal history to calculate current modal
       const { data: modalHistoryData, error: modalHistoryError } = await supabase
         .from("modal_history")
         .select("company_id, jumlah")
@@ -120,6 +127,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
   
       if (modalHistoryError) throw modalHistoryError;
   
+      // Calculate current modal for each company
       const companiesWithCurrentModal = companiesData?.map(company => {
         const companyHistory = modalHistoryData?.filter(h => h.company_id === company.id) || [];
         const totalModalFromHistory = companyHistory.reduce((sum, h) => sum + (h.jumlah || 0), 0);
@@ -144,43 +152,9 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
     }
   };
 
-  const fetchUserRolesWithDetails = async () => {
-    try {
-      const { data: userRolesData, error: userRolesError } = await supabase
-        .from("user_roles")
-        .select("user_id, role_id");
-
-      if (userRolesError) throw userRolesError;
-
-      const { data: rolesData, error: rolesError } = await supabase
-        .from("roles")
-        .select("role_id, role_name, permissions");
-
-      if (rolesError) throw rolesError;
-
-      const joinedData = userRolesData?.map(userRole => {
-        const role = rolesData?.find(r => r.role_id === userRole.role_id);
-        return {
-          user_id: userRole.user_id,
-          role_id: userRole.role_id,
-          role_name: role?.role_name || 'Unknown',
-          permissions: role?.permissions || []
-        };
-      }) || [];
-
-      return joinedData;
-    } catch (error) {
-      console.error("Error fetching user roles:", error);
-      return [];
-    }
-  };
-
   useEffect(() => {
     if (selectedDivision) {
       fetchCompanies();
-      fetchUserRolesWithDetails().then(data => {
-        setUserRoles(data);
-      });
     }
   }, [selectedDivision]);
 
@@ -192,10 +166,11 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
       
       const companyData = {
         nama_perusahaan: formData.nama_perusahaan,
-        nomor_rekening: formData.nomor_rekening,
+        alamat: formData.alamat,
+        telepon: formData.telepon,
+        email: formData.email,
         divisi: formData.divisi || selectedDivision,
         modal: modalValue,
-        status: formData.status,
       };
 
       if (editingCompany) {
@@ -219,6 +194,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
 
         if (error) throw error;
 
+        // Insert initial modal to modal_history
         if (modalValue > 0) {
           const { error: historyError } = await supabase
             .from("modal_history")
@@ -226,6 +202,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
               company_id: newCompany.id,
               jumlah: modalValue,
               keterangan: "Modal awal perusahaan",
+              jenis_transaksi: "injection"
             });
 
           if (historyError) throw historyError;
@@ -241,10 +218,11 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
       setEditingCompany(null);
       setFormData({
         nama_perusahaan: "",
-        nomor_rekening: "",
+        alamat: "",
+        telepon: "",
+        email: "",
         divisi: "",
         modal: "",
-        status: "aktif",
       });
       setFormattedModal("");
       fetchCompanies();
@@ -282,37 +260,31 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
         return;
       }
 
-      // 1. Insert ke modal_history
+      // Insert to modal_history only (mutable modal approach)
       const { error: historyError } = await supabase
         .from("modal_history")
         .insert({
           company_id: selectedCompanyForModal.id,
-          jumlah: amount,
+          jumlah: amount, // Positive value for injection
           keterangan: modalDescription,
+          jenis_transaksi: "injection"
         });
-  
+
       if (historyError) throw historyError;
-  
-      // 2. Update modal di tabel companies
-      const newModalAmount = (selectedCompanyForModal.modal || 0) + amount;
-      const { error: updateError } = await supabase
-        .from("companies")
-        .update({ modal: newModalAmount })
-        .eq("id", selectedCompanyForModal.id);
-  
-      if (updateError) throw updateError;
-  
+
       toast({
         title: "Berhasil",
         description: `Modal berhasil disuntikkan ke ${selectedCompanyForModal.nama_perusahaan}`,
       });
-  
+
+      // Reset form and close dialog
       setIsModalInjectionOpen(false);
       setModalAmount("");
       setFormattedModalAmount("");
       setModalDescription("");
       setSelectedCompanyForModal(null);
       
+      // Refresh companies data
       fetchCompanies();
     } catch (error) {
       console.error("Error injecting modal:", error);
@@ -351,10 +323,11 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
     setEditingCompany(company);
     setFormData({
       nama_perusahaan: company.nama_perusahaan || "",
-      nomor_rekening: company.nomor_rekening || "",
+      alamat: company.alamat || "",
+      telepon: company.telepon || "",
+      email: company.email || "",
       divisi: company.divisi || "",
       modal: company.modal?.toString() || "",
-      status: company.status || "aktif",
     });
     setFormattedModal(company.modal ? formatNumber(company.modal) : "");
     setIsDialogOpen(true);
@@ -503,12 +476,30 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="nomor_rekening">Nomor Rekening</Label>
+                    <Label htmlFor="alamat">Alamat</Label>
                     <Input
-                      id="nomor_rekening"
-                      value={formData.nomor_rekening}
-                      onChange={(e) => setFormData({ ...formData, nomor_rekening: e.target.value })}
-                      required
+                      id="alamat"
+                      value={formData.alamat}
+                      onChange={(e) => setFormData({ ...formData, alamat: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="telepon">Telepon</Label>
+                    <Input
+                      id="telepon"
+                      value={formData.telepon}
+                      onChange={(e) => setFormData({ ...formData, telepon: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       className="mt-1"
                     />
                   </div>
@@ -543,21 +534,6 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                       </p>
                     )}
                   </div>
-                  <div>
-                    <Label htmlFor="status">Status</Label>
-                    <Select
-                      value={formData.status}
-                      onValueChange={(value) => setFormData({ ...formData, status: value })}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Pilih status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="aktif">Aktif</SelectItem>
-                        <SelectItem value="nonaktif">Non-aktif</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
                   <div className="flex gap-2 pt-4">
                     <Button type="submit" className="flex-1">
                       {editingCompany ? "Perbarui" : "Tambah"}
@@ -570,10 +546,11 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                         setEditingCompany(null);
                         setFormData({
                           nama_perusahaan: "",
-                          nomor_rekening: "",
+                          alamat: "",
+                          telepon: "",
+                          email: "",
                           divisi: "",
                           modal: "",
-                          status: "aktif",
                         });
                         setFormattedModal("");
                       }}
@@ -592,73 +569,152 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
             <TableHeader>
               <TableRow>
                 <TableHead>Nama Perusahaan</TableHead>
-                <TableHead>Nomor Rekening</TableHead>
-                <TableHead>Modal</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Aksi</TableHead>
+                <TableHead className="hidden md:table-cell">Alamat</TableHead>
+                <TableHead className="hidden lg:table-cell">Telepon</TableHead>
+                <TableHead className="hidden lg:table-cell">Email</TableHead>
+                <TableHead>Modal Saat Ini</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedCompanies.map((company) => (
-                <TableRow key={company.id}>
-                  <TableCell>{company.nama_perusahaan}</TableCell>
-                  <TableCell>{company.nomor_rekening}</TableCell>
-                  <TableCell>{formatCurrency(company.modal)}</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      company.status === 'aktif' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {company.status}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(company)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => {
-                            setSelectedCompanyForModal(company);
-                            setIsModalInjectionOpen(true);
-                          }}
-                        >
-                          <DollarSign className="mr-2 h-4 w-4" />
-                          Suntik Modal
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => {
-                            setSelectedCompanyForModal(company);
-                            setIsModalReductionOpen(true);
-                          }}
-                        >
-                          <Minus className="mr-2 h-4 w-4" />
-                          Kurangi Modal
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleViewHistory(company)}>
-                          <History className="mr-2 h-4 w-4" />
-                          Riwayat Modal
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => handleDelete(company.id)}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Hapus
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    Loading...
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : paginatedCompanies.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    Tidak ada data perusahaan
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedCompanies.map((company) => (
+                  <TableRow key={company.id}>
+                    <TableCell className="font-medium">
+                      {company.nama_perusahaan}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {company.alamat || "-"}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {company.telepon || "-"}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {company.email || "-"}
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-semibold text-green-600">
+                        {formatCurrency(company.current_modal || 0)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end">
+                        {/* Desktop buttons */}
+                        <div className="hidden md:flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedCompanyForModal(company);
+                              setIsModalInjectionOpen(true);
+                            }}
+                            title="Suntik Modal"
+                          >
+                            <DollarSign className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedCompanyForModal(company);
+                              setIsModalReductionOpen(true);
+                            }}
+                            title="Adjustment Modal"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleViewHistory(company)}
+                            title="History Modal"
+                          >
+                            <History className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEdit(company)}
+                            title="Edit"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDelete(company.id)}
+                            title="Hapus"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        
+                        {/* Mobile dropdown - more compact */}
+                        <div className="flex md:hidden">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm" className="px-2">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedCompanyForModal(company);
+                                  setIsModalInjectionOpen(true);
+                                }}
+                              >
+                                <DollarSign className="w-4 h-4 mr-2" />
+                                Suntik Modal
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedCompanyForModal(company);
+                                  setIsModalReductionOpen(true);
+                                }}
+                              >
+                                <Minus className="w-4 h-4 mr-2" />
+                                Adjustment Modal
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleViewHistory(company)}
+                              >
+                                <History className="w-4 h-4 mr-2" />
+                                History Modal
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleEdit(company)}
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(company.id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Hapus
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
           
@@ -668,19 +724,14 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
 
       {/* Modal Injection Dialog */}
       <Dialog open={isModalInjectionOpen} onOpenChange={setIsModalInjectionOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Suntik Modal</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <DollarSign className="w-5 h-5" />
+              Suntik Modal - {selectedCompanyForModal?.nama_perusahaan}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleModalInjection} className="space-y-4">
-            <div>
-              <Label>Perusahaan</Label>
-              <Input
-                value={selectedCompanyForModal?.nama_perusahaan || ""}
-                disabled
-                className="mt-1 bg-gray-50"
-              />
-            </div>
             <div>
               <Label htmlFor="modalAmount">Jumlah Modal</Label>
               <Input
@@ -688,8 +739,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                 type="text"
                 value={formattedModalAmount || modalAmount}
                 onChange={handleModalAmountChange}
-                placeholder="Masukkan jumlah modal"
-                required
+                placeholder="Masukkan jumlah modal (contoh: 1.000.000)"
                 className="mt-1"
               />
               {formattedModalAmount && (
@@ -705,12 +755,11 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                 value={modalDescription}
                 onChange={(e) => setModalDescription(e.target.value)}
                 placeholder="Masukkan keterangan"
-                required
                 className="mt-1"
               />
             </div>
             <div className="flex gap-2 pt-4">
-              <Button type="submit" className="flex-1">
+              <Button type="submit" className="bg-green-600 hover:bg-green-700">
                 Suntik Modal
               </Button>
               <Button 
@@ -723,7 +772,6 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                   setModalDescription("");
                   setSelectedCompanyForModal(null);
                 }}
-                className="flex-1"
               >
                 Batal
               </Button>
@@ -733,35 +781,32 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
       </Dialog>
 
       {/* Modal Reduction Dialog */}
-      {selectedCompanyForModal && (
-        <ModalReductionPage
-          isOpen={isModalReductionOpen}
-          onClose={() => {
-            setIsModalReductionOpen(false);
-            setSelectedCompanyForModal(null);
-          }}
-          company={selectedCompanyForModal}
-          onSuccess={() => {
-            fetchCompanies();
-            setIsModalReductionOpen(false);
-            setSelectedCompanyForModal(null);
-          }}
-        />
-      )}
-
-      {/* Modal History Dialog */}
-      {selectedCompany && (
-        <ModalHistoryPage
-          isOpen={isHistoryOpen}
-          onClose={() => {
-            setIsHistoryOpen(false);
-            setSelectedCompany(null);
-            setModalHistory([]);
-          }}
-          company={selectedCompany}
-          modalHistory={modalHistory}
-        />
-      )}
+      <Dialog open={isModalReductionOpen} onOpenChange={setIsModalReductionOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Minus className="w-5 h-5" />
+              Adjustment Modal Perusahaan
+            </DialogTitle>
+          </DialogHeader>
+          <ModalReductionPage 
+            preSelectedCompany={selectedCompanyForModal}
+            onClose={() => {
+              setIsModalReductionOpen(false);
+              setSelectedCompanyForModal(null);
+              fetchCompanies(); // Refresh data after modal reduction
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+      
+      {/* Modal History */}
+      <ModalHistoryPage
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        company={selectedCompany}
+        history={modalHistory}
+      />
     </div>
   );
 };
