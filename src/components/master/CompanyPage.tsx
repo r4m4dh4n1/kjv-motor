@@ -98,18 +98,19 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
   
       if (userRolesError) throw userRolesError;
   
-      // Solusi sederhana - hapus kolom permissions
       const { data: rolesData, error: rolesError } = await supabase
         .from("roles")
         .select("role_id, role_name"); // Hapus 'permissions'
-      
-      // Dan update mapping
-      const userRolesWithDetails = userRolesData?.map(userRole => {
-        const roleDetail = rolesData?.find(role => role.role_id === userRole.role_id);
+  
+      if (rolesError) throw rolesError;
+  
+      const joinedData = userRolesData?.map(userRole => {
+        const role = rolesData?.find(r => r.role_id === userRole.role_id);
         return {
-          ...userRole,
-          role_name: roleDetail?.role_name
-          // Hapus permissions jika tidak diperlukan
+          user_id: userRole.user_id,
+          role_id: userRole.role_id,
+          role_name: role?.role_name || 'Unknown'
+          // Hapus permissions
         };
       }) || [];
   
@@ -151,15 +152,15 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
       const { data: userRolesData, error: userRolesError } = await supabase
         .from("user_roles")
         .select("user_id, role_id");
-
+  
       if (userRolesError) throw userRolesError;
-
+  
       const { data: rolesData, error: rolesError } = await supabase
         .from("roles")
-        .select("role_id, role_name, permissions");
-
+        .select("role_id, role_name"); // ✅ Hapus 'permissions'
+  
       if (rolesError) throw rolesError;
-
+  
       const joinedData = userRolesData?.map(userRole => {
         const role = rolesData?.find(r => r.role_id === userRole.role_id);
         return {
@@ -169,7 +170,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
           permissions: role?.permissions || []
         };
       }) || [];
-
+  
       return joinedData;
     } catch (error) {
       console.error("Error fetching user roles:", error);
