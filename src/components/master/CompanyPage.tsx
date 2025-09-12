@@ -150,26 +150,26 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
   const fetchUserRolesWithDetails = async () => {
     try {
       const { data: userRolesData, error: userRolesError } = await supabase
-        .from("user_roles")
-        .select("user_id, role_id");
-  
-      if (userRolesError) throw userRolesError;
-  
-      const { data: rolesData, error: rolesError } = await supabase
-        .from("roles")
-        .select("role_id, role_name"); // ✅ Hapus 'permissions'
-  
-      if (rolesError) throw rolesError;
-  
-      const joinedData = userRolesData?.map(userRole => {
-        const role = rolesData?.find(r => r.role_id === userRole.role_id);
-        return {
-          user_id: userRole.user_id,
-          role_id: userRole.role_id,
-          role_name: role?.role_name || 'Unknown',
-          permissions: role?.permissions || []
-        };
-      }) || [];
+      .from("user_roles")
+      .select("user_id, role_id");
+
+    if (userRolesError) throw userRolesError;
+
+    const { data: rolesData, error: rolesError } = await supabase
+      .from("roles")
+      .select("role_id, role_name"); // ✅ Hapus 'permissions'
+
+    if (rolesError) throw rolesError;
+
+    const joinedData = userRolesData?.map(userRole => {
+      const role = rolesData?.find(r => r.role_id === userRole.role_id);
+      return {
+        user_id: userRole.user_id,
+        role_id: userRole.role_id,
+        role_name: role?.role_name || 'Unknown'
+        // ✅ Hapus baris permissions: role?.permissions || []
+      };
+    }) || [];
   
       return joinedData;
     } catch (error) {
