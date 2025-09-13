@@ -34,6 +34,7 @@ import {
   validatePenjualanFormData,
   transformPenjualanToFormData
 } from "./utils/penjualanFormUtils";
+import { useBookedUpdateHarga } from "./hooks/useBookedUpdateHarga";
 
 interface PenjualanBookedPageEnhancedProps {
   selectedDivision: string;
@@ -107,6 +108,10 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
   };
   
   // Actions
+  // Ganti usePenjualanActions dengan useBookedUpdateHarga untuk update harga
+  const bookedUpdateHarga = useBookedUpdateHarga();
+  
+  // Actions untuk modal dan state management
   const {
     isUpdateHargaOpen,
     setIsUpdateHargaOpen,
@@ -119,8 +124,33 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
     handleUpdateHarga,
     handleLihatDetail,
     handleRiwayatHarga,
-    handleSubmitUpdateHarga
+    // HAPUS handleSubmitUpdateHarga dari sini
   } = usePenjualanActions();
+  
+  // Buat fungsi handleSubmitUpdateHarga baru yang menggunakan useBookedUpdateHarga
+  const handleSubmitUpdateHarga = async (updateData: any, onRefresh: () => void) => {
+    if (!selectedPenjualanForUpdate) return;
+    
+    try {
+      await bookedUpdateHarga.mutateAsync({
+        penjualan_id: selectedPenjualanForUpdate.id,
+        harga_jual_baru: updateData.harga_jual_baru,
+        biaya_pajak: updateData.biaya_pajak,
+        biaya_qc: updateData.biaya_qc,
+        biaya_lain_lain: updateData.biaya_lain_lain,
+        keterangan_biaya_lain: updateData.keterangan_biaya_lain,
+        reason: updateData.reason,
+        tanggal_update: updateData.tanggal_update,
+        sumber_dana_id: updateData.sumber_dana_id
+      });
+      
+      setIsUpdateHargaOpen(false);
+      setSelectedPenjualanForUpdate(null);
+      onRefresh();
+    } catch (error) {
+      // Error handling sudah ada di hook
+    }
+  };
 
   // Date range calculation based on filter
   const getDateRange = () => {
