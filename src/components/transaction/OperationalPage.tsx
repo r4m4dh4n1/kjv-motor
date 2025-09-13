@@ -56,10 +56,10 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     nominal: '',
     deskripsi: '',
     sumber_dana: '',
-    company_id: '' // ✅ PERBAIKAN: Tambahkan company_id
+    company_id: ''
   });
 
-  // ✅ PERBAIKAN: Pindahkan shouldUseCombined ke dalam useMemo untuk menghindari re-calculation
+  // ✅ PERBAIKAN: Pindahkan shouldUseCombined ke dalam useMemo
   const shouldUseCombined = useMemo(() => {
     return ['last_month', 'this_year', 'last_year'].includes(dateFilter) || 
            (dateFilter === 'custom' && customStartDate && customEndDate);
@@ -204,7 +204,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       })) || [];
 
       setOperationalData(transformedData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching operational data:', error);
       toast({
         title: "Error",
@@ -216,7 +216,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     } finally {
       setLoading(false);
     }
-  }, [dateFilter, customStartDate, customEndDate, selectedDivision, selectedCategory, shouldUseCombined, getDateRange, toast]);
+  }, [dateFilter, customStartDate, customEndDate, selectedDivision, selectedCategory, shouldUseCombined, getDateRange]);
 
   // ✅ PERBAIKAN: Fungsi fetchInitialData dengan useCallback
   const fetchInitialData = useCallback(async () => {
@@ -228,7 +228,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       if (companiesError) throw companiesError;
       setCompanies(companiesData || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching initial data:', error);
       toast({
         title: "Error",
@@ -236,7 +236,148 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         variant: "destructive",
       });
     }
-  }, [toast]);
+  }, []);
+
+  // ✅ TAMBAHAN: Fungsi handleSubmit yang hilang
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.kategori || !formData.nominal || !formData.deskripsi || !formData.company_id) {
+      toast({
+        title: "Error",
+        description: "Semua field harus diisi",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      const operationalPayload = {
+        tanggal: formData.tanggal,
+        kategori: formData.kategori,
+        nominal: parseFloat(formData.nominal),
+        deskripsi: formData.deskripsi,
+        company_id: parseInt(formData.company_id),
+        divisi: selectedDivision !== 'all' ? selectedDivision : 'umum'
+      };
+
+      if (editingId) {
+        // Update existing record
+        const { error } = await supabase
+          .from('operational')
+          .update(operationalPayload)
+          .eq('id', editingId);
+
+        if (error) throw error;
+
+        toast({
+          title: "Sukses",
+          description: "Data operasional berhasil diupdate",
+        });
+      } else {
+        // Create new record
+        const { error } = await supabase
+          .from('operational')
+          .insert([operationalPayload]);
+
+        if (error) throw error;
+
+        toast({
+          title: "Sukses",
+          description: "Data operasional berhasil ditambahkan",
+        });
+      }
+
+      // Reset form and close dialog
+      resetForm();
+      setIsDialogOpen(false);
+      
+      // Refresh data
+      await fetchOperationalData();
+      
+    } catch (error: any) {
+      console.error('Error saving operational data:', error);
+      toast({
+        title: "Error",
+        description: `Gagal menyimpan data: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [formData, editingId, selectedDivision, fetchOperationalData]);
+
+  // ✅ TAMBAHAN: Fungsi handleDelete yang hilang
+  const handleDelete = useCallback(async (id: number) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase
+        .from('operational')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sukses",
+        description: "Data operasional berhasil dihapus",
+      });
+
+      // Refresh data
+      await fetchOperationalData();
+      
+    } catch (error: any) {
+      console.error('Error deleting operational data:', error);
+      toast({
+        title: "Error",
+        description: `Gagal menghapus data: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchOperationalData]);
+
+  // ✅ TAMBAHAN: Fungsi resetFilters yang hilang
+  const resetFilters = useCallback(() => {
+    setDateFilter('this_month');
+    setCustomStartDate(undefined);
+    setCustomEndDate(undefined);
+    setSelectedCategory('all');
+  }, []);
+
+  // ✅ TAMBAHAN: Variabel summary yang hilang
+  const totalOperational = useMemo(() => {
+    return operationalData.reduce((sum, item) => sum + item.nominal, 0);
+  }, [operationalData]);
+
+  const totalTransactions = useMemo(() => {
+    return operationalData.length;
+  }, [operationalData]);
+
+  const averagePerTransaction = useMemo(() => {
+    return totalTransactions > 0 ? totalOperational / totalTransactions : 0;
+  }, [totalOperational, totalTransactions]);
+
+  const mostFrequentCategory = useMemo(() => {
+    if (operationalData.length === 0) return 'N/A';
+    
+    const categoryCount = operationalData.reduce((acc, item) => {
+      acc[item.kategori] = (acc[item.kategori] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return Object.entries(categoryCount).reduce((a, b) => 
+      categoryCount[a[0]] > categoryCount[b[0]] ? a : b
+    )[0];
+  }, [operationalData]);
 
   // ✅ PERBAIKAN: useEffect dengan dependencies yang benar
   useEffect(() => {
@@ -247,20 +388,20 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     fetchOperationalData();
   }, [fetchOperationalData]); // Dependency pada callback yang sudah di-memoize
 
-  // ✅ PERBAIKAN: Tambahkan import yang diperlukan
-  // Tambahkan di bagian atas file:
-  // import React, { useState, useEffect, useCallback, useMemo } from "react";
-
   const handleEdit = (operational: OperationalData) => {
     setEditingOperational(operational);
-    setEditingId(operational.id); // ✅ PERBAIKAN: Set editingId juga
+    setEditingId(operational.id);
+    
+    // Find company_id from companies array
+    const company = companies.find(c => c.name === operational.sumber_dana);
+    
     setFormData({
       tanggal: operational.tanggal,
       kategori: operational.kategori,
       nominal: operational.nominal.toString(),
       deskripsi: operational.deskripsi,
       sumber_dana: operational.sumber_dana,
-      company_id: '' // ✅ PERBAIKAN: Perlu mapping yang benar dari company
+      company_id: company ? company.id.toString() : ''
     });
     setIsDialogOpen(true);
   };
@@ -275,7 +416,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       company_id: ""
     });
     setEditingOperational(null);
-    setEditingId(null); // ✅ PERBAIKAN: Reset editingId juga
+    setEditingId(null);
   };
 
   return (
@@ -372,7 +513,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         </Dialog>
       </div>
 
-      {/* ✅ UPDATE: Filter Controls dengan periode */}
+      {/* Filter Controls */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -401,7 +542,6 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                   <SelectItem value="custom">📊 Custom</SelectItem>
                 </SelectContent>
               </Select>
-              {/* ✅ TAMBAHAN: Info periode yang menggunakan combined view */}
               {shouldUseCombined && (
                 <p className="text-xs text-blue-600 mt-1">
                   📊 Menggunakan data gabungan (active + history)
@@ -409,7 +549,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
               )}
             </div>
 
-            {/* ✅ TAMBAHAN: Custom Date Range Picker */}
+            {/* Custom Date Range Picker */}
             {dateFilter === 'custom' && (
               <>
                 <div className="space-y-2">
@@ -472,7 +612,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
             </div>
           </div>
           
-          {/* ✅ TAMBAHAN: Tombol Reset Filter */}
+          {/* Tombol Reset Filter */}
           <div className="mt-4">
             <Button variant="outline" onClick={resetFilters}>
               Reset Filter
