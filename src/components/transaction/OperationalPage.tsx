@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,10 +41,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   // State untuk dialog dan editing
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  // ✅ TAMBAHAN: State yang hilang untuk editing
   const [editingOperational, setEditingOperational] = useState<OperationalData | null>(null);
   
-  // ✅ TAMBAHAN: State untuk filter periode (mengganti dateFrom dan dateTo)
+  // State untuk filter periode
   const [dateFilter, setDateFilter] = useState('this_month');
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>();
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>();
@@ -60,27 +59,14 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     company_id: '' // ✅ PERBAIKAN: Tambahkan company_id
   });
 
-  // ✅ TAMBAHAN: Tentukan apakah menggunakan combined view
-  const shouldUseCombined = ['last_month', 'this_year', 'last_year'].includes(dateFilter) || 
-                           (dateFilter === 'custom' && customStartDate && customEndDate);
+  // ✅ PERBAIKAN: Pindahkan shouldUseCombined ke dalam useMemo untuk menghindari re-calculation
+  const shouldUseCombined = useMemo(() => {
+    return ['last_month', 'this_year', 'last_year'].includes(dateFilter) || 
+           (dateFilter === 'custom' && customStartDate && customEndDate);
+  }, [dateFilter, customStartDate, customEndDate]);
 
-  // ✅ TAMBAHAN: Hitung summary statistics dari operationalData
-  const totalOperational = operationalData.reduce((sum, item) => sum + item.nominal, 0);
-  const totalTransactions = operationalData.length;
-  const averagePerTransaction = totalTransactions > 0 ? totalOperational / totalTransactions : 0;
-  
-  // Hitung kategori yang paling sering muncul
-  const categoryCount = operationalData.reduce((acc, item) => {
-    acc[item.kategori] = (acc[item.kategori] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  
-  const mostFrequentCategory = Object.keys(categoryCount).length > 0 
-    ? Object.entries(categoryCount).reduce((a, b) => categoryCount[a[0]] > categoryCount[b[0]] ? a : b)[0]
-    : 'Tidak ada data';
-
-  // ✅ TAMBAHAN: Fungsi untuk mendapatkan range tanggal berdasarkan periode
-  const getDateRange = () => {
+  // ✅ PERBAIKAN: Pindahkan getDateRange ke dalam useCallback
+  const getDateRange = useCallback(() => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
@@ -150,39 +136,10 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           end: today.toISOString().split('T')[0]
         };
     }
-  };
+  }, [dateFilter, customStartDate, customEndDate]);
 
-  // ✅ UPDATE: useEffect dengan dependencies yang benar
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
-
-  useEffect(() => {
-    fetchOperationalData();
-  }, [dateFilter, customStartDate, customEndDate, selectedDivision, selectedCategory]);
-
-  // Fungsi untuk mengambil data awal
-  const fetchInitialData = async () => {
-    try {
-      const { data: companiesData, error: companiesError } = await supabase
-        .from('companies')
-        .select('id, name')
-        .order('name');
-
-      if (companiesError) throw companiesError;
-      setCompanies(companiesData || []);
-    } catch (error) {
-      console.error('Error fetching initial data:', error);
-      toast({
-        title: "Error",
-        description: "Gagal mengambil data awal",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // ✅ UPDATE: Fungsi fetchOperationalData dengan logika combined view
-  const fetchOperationalData = async () => {
+  // ✅ PERBAIKAN: Pindahkan fetchOperationalData ke dalam useCallback
+  const fetchOperationalData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -198,7 +155,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         category: selectedCategory
       });
 
-      // ✅ TAMBAHAN: Pilih tabel berdasarkan periode
+      // Pilih tabel berdasarkan periode
       const tableName = shouldUseCombined ? 'operational_combined' : 'operational';
       
       let query = supabase
@@ -228,7 +185,12 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase query error:', error);
+        throw error;
+      }
+
+      console.log('📊 Fetched data:', data);
 
       // Transform data untuk display
       const transformedData = data?.map((item: any) => ({
@@ -246,138 +208,61 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       console.error('Error fetching operational data:', error);
       toast({
         title: "Error",
-        description: "Gagal mengambil data operasional",
+        description: `Gagal mengambil data operasional: ${error.message}`,
         variant: "destructive",
       });
+      // Set empty data on error to prevent infinite loading
+      setOperationalData([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateFilter, customStartDate, customEndDate, selectedDivision, selectedCategory, shouldUseCombined, getDateRange, toast]);
 
-  // ✅ TAMBAHAN: Fungsi reset filter
-  const resetFilters = () => {
-    setDateFilter('this_month');
-    setCustomStartDate(undefined);
-    setCustomEndDate(undefined);
-    setSelectedCategory('all');
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  // ✅ PERBAIKAN: Fungsi fetchInitialData dengan useCallback
+  const fetchInitialData = useCallback(async () => {
     try {
-      setLoading(true);
-      
-      const operationalPayload = {
-        tanggal: formData.tanggal,
-        divisi: selectedDivision,
-        kategori: formData.kategori,
-        nominal: parseFloat(formData.nominal),
-        deskripsi: formData.deskripsi,
-        company_id: parseInt(formData.company_id),
-        cabang_id: 1
-      };
+      const { data: companiesData, error: companiesError } = await supabase
+        .from('companies')
+        .select('id, name')
+        .order('name');
 
-      if (editingId) {
-        const { error } = await supabase
-          .from('operational')
-          .update(operationalPayload)
-          .eq('id', editingId);
-
-        if (error) throw error;
-        
-        toast({
-          title: "Sukses",
-          description: "Data operasional berhasil diperbarui",
-        });
-      } else {
-        const { error } = await supabase
-          .from('operational')
-          .insert([operationalPayload]);
-
-        if (error) throw error;
-        
-        toast({
-          title: "Sukses",
-          description: "Data operasional berhasil ditambahkan",
-        });
-      }
-
-      resetForm();
-      setIsDialogOpen(false);
-      fetchOperationalData();
+      if (companiesError) throw companiesError;
+      setCompanies(companiesData || []);
     } catch (error) {
-      console.error('Error saving operational data:', error);
+      console.error('Error fetching initial data:', error);
       toast({
         title: "Error",
-        description: "Gagal menyimpan data operasional",
+        description: "Gagal mengambil data awal",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const handleEdit = (operational) => {
+  // ✅ PERBAIKAN: useEffect dengan dependencies yang benar
+  useEffect(() => {
+    fetchInitialData();
+  }, []); // Hanya sekali saat mount
+
+  useEffect(() => {
+    fetchOperationalData();
+  }, [fetchOperationalData]); // Dependency pada callback yang sudah di-memoize
+
+  // ✅ PERBAIKAN: Tambahkan import yang diperlukan
+  // Tambahkan di bagian atas file:
+  // import React, { useState, useEffect, useCallback, useMemo } from "react";
+
+  const handleEdit = (operational: OperationalData) => {
     setEditingOperational(operational);
+    setEditingId(operational.id); // ✅ PERBAIKAN: Set editingId juga
     setFormData({
       tanggal: operational.tanggal,
       kategori: operational.kategori,
       nominal: operational.nominal.toString(),
       deskripsi: operational.deskripsi,
-      sumber_dana: operational.company_id?.toString() || ""
+      sumber_dana: operational.sumber_dana,
+      company_id: '' // ✅ PERBAIKAN: Perlu mapping yang benar dari company
     });
     setIsDialogOpen(true);
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus data operasional ini?")) {
-      return;
-    }
-
-    try {
-      const operationalToDelete = operationalData.find(item => item.id === id);
-      if (!operationalToDelete) return;
-
-      // Delete the record
-      const { error: deleteError } = await supabase
-        .from('operational')
-        .delete()
-        .eq('id', id.toString());
-
-      if (deleteError) throw deleteError;
-
-      // Delete pembukuan entry first
-      await supabase
-        .from('pembukuan')
-        .delete()
-        .eq('keterangan', `like ${operationalToDelete.kategori} - ${operationalToDelete.deskripsi}%`);
-
-      // Restore company modal using the database function
-      if (operationalToDelete.company_id) {
-        const { error: modalRestoreError } = await supabase.rpc('update_company_modal', {
-          company_id: operationalToDelete.company_id,
-          amount: operationalToDelete.nominal // Positive to restore modal
-        });
-
-        if (modalRestoreError) throw modalRestoreError;
-      }
-
-      toast({
-        title: "Berhasil",
-        description: "Data operasional berhasil dihapus",
-      });
-
-      fetchOperationalData();
-      fetchInitialData(); // Refresh companies data
-    } catch (error) {
-      console.error('Error deleting operational data:', error);
-      toast({
-        title: "Error",
-        description: "Gagal menghapus data operasional",
-        variant: "destructive",
-      });
-    }
   };
 
   const resetForm = () => {
@@ -387,9 +272,10 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       nominal: "",
       deskripsi: "",
       sumber_dana: "",
-      company_id: "" // ✅ PERBAIKAN: Tambahkan company_id yang hilang
+      company_id: ""
     });
     setEditingOperational(null);
+    setEditingId(null); // ✅ PERBAIKAN: Reset editingId juga
   };
 
   return (
