@@ -1089,8 +1089,8 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
         <Card>
           <CardContent className="p-6">
-            <h3 className="text-lg font-semibold mb-2">Total Modal</h3>
-            <p className="text-2xl font-bold text-blue-600">{formatCurrency(totalModal)}</p>
+            <h3 className="text-lg font-semibold mb-2">Total Pembelian</h3>
+            <p className="text-2xl font-bold text-blue-600">{formatCurrency(totalPembelianGabungan)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -1138,7 +1138,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
                   <span className="font-medium">{formatCurrency(totalModalCompanies)}</span>
                 </div>
                 <div className="flex justify-between items-center p-2 bg-white rounded border">
-                  <span className="text-green-600">+ Pembelian Ready:</span>
+                  <span className="text-green-600">+ Pembelian Ready+Booked:</span>
                   <span className="font-medium">{formatCurrency(totalPembelianGabungan)}</span>
                 </div>
                 <div className="flex justify-between items-center p-2 bg-white rounded border">
