@@ -308,7 +308,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
           </h1>
           <p className="text-muted-foreground mt-2 flex items-center gap-2">
             <Activity className="w-4 h-4" />
-            Data bulan {new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })} - Real-time insights untuk KJV Motor
+            Data bulan {new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })} - Real-time insights untuk KJV Motor Divisi {selectedDivision}
           </p>
         </div>
         
