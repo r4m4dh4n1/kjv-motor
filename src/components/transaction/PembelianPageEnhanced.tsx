@@ -488,15 +488,12 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       if (historyError) throw historyError;
 
       // 2. Update harga_final di pembelian
-      await new Promise((resolve, reject) => {
-        updateMutation.mutate(
-          { id: updatingHargaPembelian.id, data: { harga_final: hargaFinal } },
-          {
-            onSuccess: () => resolve(true),
-            onError: (error) => reject(error)
-          }
-        );
-      });
+      const { error: updateHargaError } = await supabase
+        .from("pembelian")
+        .update({ harga_final: hargaFinal })
+        .eq("id", updatingHargaPembelian.id);
+
+      if (updateHargaError) throw updateHargaError;
 
       // 3. Selalu buat entry pembukuan untuk tracking, tidak peduli selisih harga
       // Update modal company
