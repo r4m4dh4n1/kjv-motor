@@ -39,6 +39,7 @@ interface PeriodFilteredData {
   totalBookedHargaBeli: number;
   totalPencatatanAsset: number;
   totalProfitFiltered: number;
+  totalKeuntunganBiroJasa: number;
 }
 
 interface CumulativeData {
@@ -76,6 +77,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
   const [totalModalPerusahaan, setTotalModalPerusahaan] = useState(0);
   const [totalModalKalkulasi, setTotalModalKalkulasi] = useState(0);
   const [totalModalCompanies, setTotalModalCompanies] = useState(0);
+  const [totalKeuntunganBiroJasa, setTotalKeuntunganBiroJasa] = useState(0);
 
   // State untuk display akumulatif
   const [displayTotalUnit, setDisplayTotalUnit] = useState(0);
@@ -87,6 +89,14 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
   const totalHargaJual = keuntunganData.reduce((sum, item) => sum + item.harga_jual, 0);
   const totalKeuntungan = keuntunganData.reduce((sum, item) => sum + item.profit, 0);
   const roi = totalModal > 0 ? ((totalKeuntungan / totalModal) * 100).toFixed(2) : '0.00';
+
+  // ← TAMBAHAN BARU: Rumus Cash Flow Operasional
+  const cashFlowOperasional = totalModalCompanies + 
+                            totalPembelianGabungan + 
+                            totalBooked + 
+                            totalKeuntungan + 
+                            totalKeuntunganBiroJasa - 
+                            totalOperasional;
 
   // Computed values untuk detail informasi
   const hargaBeliBooked = totalPembelianGabungan;
@@ -206,6 +216,39 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         variant: "destructive",
       });
     }
+  };
+
+  // Fungsi untuk mengambil keuntungan biro jasa
+  const fetchBiroJasaKeuntungan = async (dateRange: DateRange): Promise<number> => {
+    const startDate = new Date(`${dateRange.start}T00:00:00.000Z`);
+    const endDate = new Date(`${dateRange.end}T23:59:59.999Z`);
+    
+    const biroJasaTable = shouldUseCombined ? 'biro_jasa_history' : 'biro_jasa';
+    
+    let biroJasaQuery = supabase
+      .from(biroJasaTable)
+      .select('keuntungan, tanggal, cabang_id, divisi')
+      .eq('status', 'Selesai');
+      
+    if (selectedDivision !== 'all') {
+      biroJasaQuery = biroJasaQuery.eq('divisi', selectedDivision);
+    }
+    
+    const { data, error } = await biroJasaQuery;
+    
+    if (error) {
+      console.error('Error fetching biro jasa data:', error);
+      return 0;
+    }
+    
+    const filteredData = data?.filter(item => {
+      const itemDate = new Date(item.tanggal);
+      const matchesDate = itemDate >= startDate && itemDate <= endDate;
+      const matchesCabang = selectedCabang === 'all' || item.cabang_id?.toString() === selectedCabang;
+      return matchesDate && matchesCabang;
+    }) || [];
+    
+    return filteredData.reduce((sum, item) => sum + (item.keuntungan || 0), 0);
   };
 
   // ✅ PERBAIKAN: Fungsi fetch dari combined views dengan manual join
@@ -330,24 +373,20 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
 
       // Filter semua data berdasarkan tanggal dan cabang
       const filteredBooked = bookedResult.data?.filter(item => {
-        const itemDate = new Date(item.tanggal);
-        const matchesDate = itemDate >= startDate && itemDate <= endDate;
         const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
-        return matchesDate && matchesCabang;
+        // Hapus filter tanggal, hanya filter cabang
+        return matchesCabang;
       }) || [];
 
       const filteredBookedHargaBeli = bookedHargaBeliResult.data?.filter(item => {
-        const itemDate = new Date(item.tanggal);
-        const matchesDate = itemDate >= startDate && itemDate <= endDate;
         const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
-        return matchesDate && matchesCabang;
+        return matchesCabang;
       }) || [];
 
       const filteredPembelianReady = pembelianReadyResult.data?.filter(item => {
-        const itemDate = new Date(item.tanggal_pembelian);
-        const matchesDate = itemDate >= startDate && itemDate <= endDate;
         const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
-        return matchesDate && matchesCabang;
+        // Hapus filter tanggal, hanya filter cabang
+        return matchesCabang;
       }) || [];
 
       const filteredOperasional = operasionalResult.data?.filter(item => {
@@ -386,6 +425,8 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
 
       const totalProfitFiltered = keuntunganData.reduce((sum, item) => sum + item.profit, 0);
 
+      const totalKeuntunganBiroJasa = await fetchBiroJasaKeuntungan(dateRange);
+
       console.log('📊 Combined view data results:', {
         totalBooked,
         totalBookedHargaBeli,
@@ -393,6 +434,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         totalOperasional,
         totalPencatatanAsset,
         totalProfitFiltered,
+        totalKeuntunganBiroJasa,
         keuntunganCount: keuntunganData.length
       });
 
@@ -403,7 +445,8 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         totalPembelianReady,
         totalBookedHargaBeli,
         totalPencatatanAsset,
-        totalProfitFiltered
+        totalProfitFiltered,
+        totalKeuntunganBiroJasa
       };
 
     } catch (error) {
@@ -551,27 +594,23 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
 
     // Filter data berdasarkan periode dan cabang
     const filteredBooked = bookedResult.data?.filter(item => {
-      const itemDate = new Date(item.tanggal);
-      const matchesDate = itemDate >= startDate && itemDate <= endDate;
       const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
       const matchesStatus = item.status === 'booked';
-      return matchesDate && matchesCabang && matchesStatus;
+      // Hapus filter tanggal, hanya filter cabang dan status
+      return matchesCabang && matchesStatus;
     }) || [];
 
     const filteredBookedHargaBeli = bookedHargaBeliResult.data?.filter(item => {
-      const itemDate = new Date(item.tanggal);
-      const matchesDate = itemDate >= startDate && itemDate <= endDate;
       const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
       const matchesStatus = item.status === 'booked';
-      return matchesDate && matchesCabang && matchesStatus;
+      return matchesCabang && matchesStatus;
     }) || [];
 
     const filteredPembelianReady = pembelianReadyResult.data?.filter(item => {
-      const itemDate = new Date(item.tanggal_pembelian);
-      const matchesDate = itemDate >= startDate && itemDate <= endDate;
       const matchesCabang = selectedCabang === 'all' || item.cabang_id.toString() === selectedCabang;
       const matchesStatus = item.status === 'ready';
-      return matchesDate && matchesCabang && matchesStatus;
+      // Hapus filter tanggal, hanya filter cabang dan status
+      return matchesCabang && matchesStatus;
     }) || [];
 
     const filteredOperasional = operasionalResult.data?.filter(item => {
@@ -614,6 +653,8 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
 
     const totalProfitFiltered = keuntunganData.reduce((sum, item) => sum + item.profit, 0);
 
+    const totalKeuntunganBiroJasa = await fetchBiroJasaKeuntungan(dateRange);
+
     console.log('🔍 Active tables data results:', {
       totalBooked,
       totalBookedHargaBeli,
@@ -621,6 +662,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       totalOperasional,
       totalPencatatanAsset,
       totalProfitFiltered,
+      totalKeuntunganBiroJasa,
       keuntunganRecords: keuntunganData.length
     });
 
@@ -631,7 +673,8 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       totalPembelianReady,
       totalBookedHargaBeli,
       totalPencatatanAsset,
-      totalProfitFiltered
+      totalProfitFiltered,
+      totalKeuntunganBiroJasa
     };
   };
 
@@ -855,6 +898,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
 
       setTotalModalPerusahaan(cumulativeData.totalModalPerusahaan);
       setTotalModalCompanies(modalCompanies); //
+      setTotalKeuntunganBiroJasa(periodData.totalKeuntunganBiroJasa);
 
       setDisplayTotalUnit(accumulativeData.totalUnitYTD);
       setDisplayTotalPembelian(accumulativeData.totalPembelianYTD);
@@ -1075,45 +1119,87 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
         </Card>
       </div>
 
-      {/* Detail Informasi */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Detail Informasi Keuangan</CardTitle>
+      {/* ← TAMBAHAN BARU: Card Khusus Cash Flow Operasional */}
+      <Card className="mb-6 border-2 border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-blue-700">
+            <Calculator className="h-5 w-5" />
+            Analisis Cash Flow Operasional
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Total Booked:</span> {formatCurrency(totalBooked)}
-              </div>
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Harga Beli Booked:</span> {formatCurrency(hargaBeliBooked)}
-              </div>
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Pembelian Ready:</span> {formatCurrency(pembelianReady)}
-              </div>
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Operasional:</span> {formatCurrency(operasional)}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Breakdown Komponen */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-gray-700 mb-3">Komponen Perhitungan:</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between items-center p-2 bg-white rounded border">
+                  <span className="text-green-600">+ Modal Company:</span>
+                  <span className="font-medium">{formatCurrency(totalModalCompanies)}</span>
+                </div>
+                <div className="flex justify-between items-center p-2 bg-white rounded border">
+                  <span className="text-green-600">+ Pembelian Ready:</span>
+                  <span className="font-medium">{formatCurrency(totalPembelianGabungan)}</span>
+                </div>
+                <div className="flex justify-between items-center p-2 bg-white rounded border">
+                  <span className="text-green-600">+ DP Booked:</span>
+                  <span className="font-medium">{formatCurrency(totalBooked)}</span>
+                </div>
+                <div className="flex justify-between items-center p-2 bg-white rounded border">
+                  <span className="text-green-600">+ Keuntungan Motor:</span>
+                  <span className="font-medium">{formatCurrency(totalKeuntungan)}</span>
+                </div>
+                <div className="flex justify-between items-center p-2 bg-white rounded border">
+                  <span className="text-green-600">+ Keuntungan Biro Jasa:</span>
+                  <span className="font-medium">{formatCurrency(totalKeuntunganBiroJasa)}</span>
+                </div>
+                <div className="flex justify-between items-center p-2 bg-white rounded border">
+                  <span className="text-red-600">- Operational:</span>
+                  <span className="font-medium">{formatCurrency(totalOperasional)}</span>
+                </div>
               </div>
             </div>
-            <div className="space-y-2">
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Pencatatan Asset:</span> {formatCurrency(pencatatanAsset)}
+            
+            {/* Hasil Akhir */}
+            <div className="flex flex-col justify-center items-center">
+              <div className="text-center p-6 bg-white rounded-lg border-2 border-blue-200 w-full">
+                <h4 className="text-lg font-semibold text-gray-700 mb-2">Cash Flow Operasional</h4>
+                <p className={`text-3xl font-bold ${
+                  cashFlowOperasional >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {formatCurrency(cashFlowOperasional)}
+                </p>
+                <div className="mt-3 flex items-center justify-center gap-2">
+                  {cashFlowOperasional >= 0 ? (
+                    <>
+                      <TrendingUp className="h-4 w-4 text-green-600" />
+                      <span className="text-sm text-green-600 font-medium">Positif</span>
+                    </>
+                  ) : (
+                    <>
+                      <TrendingDown className="h-4 w-4 text-red-600" />
+                      <span className="text-sm text-red-600 font-medium">Negatif</span>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Modal Perusahaan:</span> {formatCurrency(modalPerusahaan)}
-              </div>
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Total Modal:</span> {formatCurrency(totalModal)}
-              </div>
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Total Harga Jual:</span> {formatCurrency(totalHargaJual)}
-              </div>
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">Total Keuntungan:</span> {formatCurrency(totalKeuntungan)}
-              </div>
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">ROI:</span> {roi}%
+              
+              {/* Indikator Kesehatan Keuangan */}
+              <div className="mt-4 w-full">
+                <div className="text-xs text-gray-500 text-center mb-2">Status Kesehatan Keuangan</div>
+                <div className={`h-2 rounded-full ${
+                  cashFlowOperasional >= totalModalCompanies * 0.2 ? 'bg-green-500' :
+                  cashFlowOperasional >= 0 ? 'bg-yellow-500' : 'bg-red-500'
+                }`}></div>
+                <div className={`text-xs text-center mt-1 ${
+                  cashFlowOperasional >= totalModalCompanies * 0.2 ? 'text-green-600' :
+                  cashFlowOperasional >= 0 ? 'text-yellow-600' : 'text-red-600'
+                }`}>
+                  {
+                    cashFlowOperasional >= totalModalCompanies * 0.2 ? 'Sangat Sehat' :
+                    cashFlowOperasional >= 0 ? 'Sehat' : 'Perlu Perhatian'
+                  }
+                </div>
               </div>
             </div>
           </div>

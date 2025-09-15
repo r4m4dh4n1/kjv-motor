@@ -89,12 +89,12 @@ export const useSoldUpdateHarga = () => {
       }
 
       // 3. Update company modal
-      if (updateData.biaya_tambahan !== 0 && companyId) {
+      if (updateData.biaya_tambahan !== 0 && updateData.sumber_dana_id) {
         const { error: modalError } = await supabase.rpc('update_company_modal', {
-          company_id: companyId,
-          amount: -updateData.biaya_tambahan // Negative for cost addition, positive for cost reduction
+          company_id: updateData.sumber_dana_id, // ✅ PERBAIKAN: Gunakan sumber_dana_id
+          amount: -updateData.biaya_tambahan
         });
-
+      
         if (modalError) {
           console.error('Error updating company modal:', modalError);
           toast({

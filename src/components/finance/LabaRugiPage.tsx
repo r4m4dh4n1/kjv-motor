@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
-import { Printer, Download, TrendingUp, TrendingDown, DollarSign, BarChart3 } from 'lucide-react';
+import { Printer, Download, TrendingUp, TrendingDown, DollarSign, BarChart3, ChevronDown } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/utils/formatUtils';
 import { getDateRange } from '@/utils/dateUtils';
@@ -33,10 +33,8 @@ interface LabaRugiData {
   totalBiayaOperasional: number;
   totalBiayaAdministrasi: number;
   totalBiayaPenjualan: number;
-  totalBiayaLain: number;
-  totalBiayaOperasi: number;
   
-  // ✅ TAMBAHAN: Breakdown per kategori
+  // Breakdown per kategori
   biayaPerKategori: {
     [key: string]: number;
   };
@@ -47,6 +45,10 @@ interface LabaRugiData {
   // MARGIN
   marginKotor: number;
   marginBersih: number;
+  
+  // Detail data untuk dropdown
+  penjualanDetail?: any[];
+  operationalDetail?: any[];
 }
 
 const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
@@ -57,9 +59,25 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
   const [customEndDate, setCustomEndDate] = useState('');
   const [selectedCabang, setSelectedCabang] = useState('all');
   const [cabangList, setCabangList] = useState([]);
+  
+  // State untuk dropdown detail
+  const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({});
+  
+  // State untuk menyimpan data detail
+  const [detailData, setDetailData] = useState<{
+    penjualanDetail: any[],
+    operationalDetail: any[],
+    pendapatanLainDetail: any[],
+    hargaBeliDetail: any[]
+  }>({
+    penjualanDetail: [],
+    operationalDetail: [],
+    pendapatanLainDetail: [],
+    hargaBeliDetail: []
+  });
 
-  // Tentukan apakah menggunakan combined view
-  const shouldUseCombined = ['last_month', 'this_year', 'last_year', 'custom'].includes(selectedPeriod);
+  // Gunakan penjualans_combined untuk periode tertentu
+  const shouldUseCombined = ['this_month', 'last_month', 'this_year'].includes(selectedPeriod);
 
   useEffect(() => {
     fetchInitialData();
@@ -68,6 +86,25 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
   useEffect(() => {
     fetchLabaRugiData();
   }, [selectedPeriod, customStartDate, customEndDate, selectedDivision, selectedCabang]);
+
+  // Update expandedSections ketika labaRugiData berubah
+  useEffect(() => {
+    if (labaRugiData?.biayaPerKategori) {
+      const newExpandedSections: {[key: string]: boolean} = {
+        penjualan: false,
+        pendapatanLain: false,
+        hargaBeli: false,
+        biayaPembelian: false,
+      };
+      
+      // Tambahkan state untuk setiap kategori biaya operasional
+      Object.keys(labaRugiData.biayaPerKategori).forEach(kategori => {
+        newExpandedSections[`biaya_${kategori}`] = false;
+      });
+      
+      setExpandedSections(prev => ({ ...prev, ...newExpandedSections }));
+    }
+  }, [labaRugiData]);
 
   const fetchInitialData = async () => {
     try {
@@ -87,22 +124,28 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
     try {
       const dateRange = getDateRange(selectedPeriod, customStartDate, customEndDate);
       
-      // Fetch data berdasarkan periode
       const [pendapatanData, biayaData] = await Promise.all([
         fetchPendapatanData(dateRange),
         fetchBiayaData(dateRange)
       ]);
       
-      // Hitung laba rugi
-      const labaRugi = calculateLabaRugi(pendapatanData, biayaData);
-      setLabaRugiData(labaRugi);
+      const calculatedData = calculateLabaRugi(pendapatanData, biayaData);
+      setLabaRugiData(calculatedData);
+      
+      // Set detail data untuk dropdown
+      setDetailData({
+        penjualanDetail: pendapatanData.penjualanDetail || [],
+        operationalDetail: biayaData.operationalDetail || [],
+        pendapatanLainDetail: [],
+        hargaBeliDetail: pendapatanData.penjualanDetail || []
+      });
       
     } catch (error) {
       console.error('Error fetching laba rugi data:', error);
       toast({
         title: "Error",
         description: "Gagal mengambil data laba rugi",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -110,107 +153,89 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
   };
 
   const fetchPendapatanData = async (dateRange: { start: Date; end: Date }) => {
-    // Konversi Date ke ISO string untuk Supabase
     const startDate = dateRange.start.toISOString();
     const endDate = dateRange.end.toISOString();
     
+    console.log('Fetching pendapatan data:', { startDate, endDate, shouldUseCombined, selectedPeriod });
+    
     try {
       if (shouldUseCombined) {
-        // Fetch dari kedua tabel secara terpisah
-        const [activeResult, historyResult] = await Promise.allSettled([
-          // Query tabel penjualans (data aktif)
-          (async () => {
-            let query = supabase
-              .from('penjualans')
-              .select('harga_jual, harga_beli, keuntungan, divisi, cabang_id')
-              .eq('status', 'selesai')
-              .gte('tanggal', startDate)
-              .lte('tanggal', endDate);
-              
-            if (selectedDivision !== 'all') {
-              query = query.eq('divisi', selectedDivision);
-            }
-            if (selectedCabang !== 'all') {
-              query = query.eq('cabang_id', parseInt(selectedCabang));
-            }
-            
-            return await query;
-          })(),
-          
-          // Query tabel penjualans_history (data historis)
-          (async () => {
-            let query = supabase
-              .from('penjualans_history')
-              .select('harga_jual, harga_beli, keuntungan, divisi, cabang_id')
-              .eq('status', 'selesai')
-              .gte('tanggal', startDate)
-              .lte('tanggal', endDate);
-              
-            if (selectedDivision !== 'all') {
-              query = query.eq('divisi', selectedDivision);
-            }
-            if (selectedCabang !== 'all') {
-              query = query.eq('cabang_id', parseInt(selectedCabang));
-            }
-            
-            return await query;
-          })()
-        ]);
-  
-        let combinedData: any[] = [];
-  
-        // Process active data
-        if (activeResult.status === 'fulfilled' && !activeResult.value.error) {
-          combinedData = [...combinedData, ...(activeResult.value.data || [])];
-          console.log('Active data found:', activeResult.value.data?.length || 0);
-        } else {
-          console.log('Active data error:', activeResult.status === 'fulfilled' ? activeResult.value.error : activeResult.reason);
+        // Gunakan view penjualans_combined untuk periode tertentu
+        let query = supabase
+          .from('penjualans_combined')
+          .select(`
+            harga_jual, 
+            harga_beli, 
+            keuntungan, 
+            divisi, 
+            cabang_id,
+            data_source,
+            tanggal,
+            catatan,
+            id
+          `)
+          .eq('status', 'selesai')
+          .gte('tanggal', startDate)
+          .lte('tanggal', endDate);
+
+        if (selectedDivision !== 'all') {
+          query = query.eq('divisi', selectedDivision);
         }
-  
-        // Process history data
-        if (historyResult.status === 'fulfilled' && !historyResult.value.error) {
-          combinedData = [...combinedData, ...(historyResult.value.data || [])];
-          console.log('History data found:', historyResult.value.data?.length || 0);
-        } else {
-          console.log('History data error:', historyResult.status === 'fulfilled' ? historyResult.value.error : historyResult.reason);
+
+        if (selectedCabang !== 'all') {
+          query = query.eq('cabang_id', parseInt(selectedCabang));
         }
-  
-        console.log('Combined data total:', combinedData.length);
-        console.log('Date range:', { startDate, endDate });
-        console.log('Filters:', { selectedDivision, selectedCabang });
-  
+
+        const { data, error } = await query;
+        
+        if (error) {
+          console.error('Error fetching combined penjualan data:', error);
+          throw error;
+        }
+
+        const penjualanData = data || [];
+        console.log(`Fetched ${penjualanData.length} combined penjualan records`);
+        console.log('Data sources:', penjualanData.map(item => item.data_source));
+        
         return {
-          totalPenjualan: combinedData.reduce((sum, item) => sum + (item.harga_jual || 0), 0),
-          totalHargaBeli: combinedData.reduce((sum, item) => sum + (item.harga_beli || 0), 0),
-          totalKeuntungan: combinedData.reduce((sum, item) => sum + (item.keuntungan || 0), 0)
+          totalPenjualan: penjualanData.reduce((sum, item) => sum + (item.harga_jual || 0), 0),
+          totalHargaBeli: penjualanData.reduce((sum, item) => sum + (item.harga_beli || 0), 0),
+          totalKeuntungan: penjualanData.reduce((sum, item) => sum + (item.keuntungan || 0), 0),
+          jumlahTransaksi: penjualanData.length,
+          penjualanDetail: penjualanData
         };
         
       } else {
-        // Untuk periode current, gunakan tabel penjualans biasa
-        let penjualanQuery = supabase
+        // Untuk periode lainnya, gunakan tabel penjualans biasa
+        let query = supabase
           .from('penjualans')
-          .select('harga_jual, harga_beli, keuntungan, divisi, cabang_id')
+          .select('harga_jual, harga_beli, keuntungan, divisi, cabang_id, tanggal, keterangan, id')
           .eq('status', 'selesai')
           .gte('tanggal', startDate)
           .lte('tanggal', endDate);
       
         if (selectedDivision !== 'all') {
-          penjualanQuery = penjualanQuery.eq('divisi', selectedDivision);
+          query = query.eq('divisi', selectedDivision);
         }
       
         if (selectedCabang !== 'all') {
-          penjualanQuery = penjualanQuery.eq('cabang_id', parseInt(selectedCabang));
+          query = query.eq('cabang_id', parseInt(selectedCabang));
         }
       
-        const { data: penjualanData, error } = await penjualanQuery;
-        if (error) throw error;
+        const { data: penjualanData, error } = await query;
+        if (error) {
+          console.error('Error fetching penjualan data:', error);
+          throw error;
+        }
       
-        console.log('Current period data found:', penjualanData?.length || 0);
+        console.log(`Fetched ${penjualanData?.length || 0} penjualan records`);
         
         return {
           totalPenjualan: penjualanData?.reduce((sum, item) => sum + (item.harga_jual || 0), 0) || 0,
           totalHargaBeli: penjualanData?.reduce((sum, item) => sum + (item.harga_beli || 0), 0) || 0,
-          totalKeuntungan: penjualanData?.reduce((sum, item) => sum + (item.keuntungan || 0), 0) || 0
+          totalKeuntungan: penjualanData?.reduce((sum, item) => sum + (item.keuntungan || 0), 0) || 0,
+          jumlahTransaksi: penjualanData?.length || 0,
+          penjualanDetail: penjualanData || []
         };
       }
     } catch (error) {
@@ -221,104 +246,143 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
 
   const fetchBiayaData = async (dateRange: { start: Date; end: Date }) => {
     try {
-      // Konversi Date ke ISO string untuk Supabase
       const startDate = dateRange.start.toISOString();
       const endDate = dateRange.end.toISOString();
   
-      // Gunakan tabel yang benar - operational dan operational_history
-      const operationalTable = shouldUseCombined ? 'operational_history' : 'operational';
-      const pembukuanTable = shouldUseCombined ? 'pembukuan_combined' : 'pembukuan';
+      // Gunakan tabel yang sesuai berdasarkan periode
+      const operationalTable = shouldUseCombined ? 'operational_combined' : 'operational';
   
-      // Query operational dengan kolom yang benar
-      const { data: operationalData, error: operationalError } = await supabase
-        .from(operationalTable)
-        .select('tanggal, divisi, kategori, deskripsi, nominal, cabang_id')
-        .gte('tanggal', startDate)
-        .lte('tanggal', endDate)
-        .order('tanggal', { ascending: false });
+      console.log('Using operational table:', { operationalTable, shouldUseCombined });
   
-      if (operationalError) {
-        console.error('Error fetching operational data:', operationalError);
-        throw operationalError;
-      }
-  
-      // Query pembukuan
-      const { data: pembukuanData, error: pembukuanError } = await supabase
-        .from(pembukuanTable)
-        .select('tanggal, divisi, keterangan, debit, kredit, cabang_id')
-        .gte('tanggal', startDate)
-        .lte('tanggal', endDate)
-        .order('tanggal', { ascending: false });
-  
-      if (pembukuanError) {
-        console.error('Error fetching pembukuan data:', pembukuanError);
-        throw pembukuanError;
-      }
-  
-      // ✅ TAMBAHAN: Hitung total per kategori
-      const biayaPerKategori: { [key: string]: number } = {};
+      // Query operational dengan penanganan error yang lebih baik
+      let operationalData: any[] = [];
       
-      operationalData?.forEach((item) => {
-        const kategori = item.kategori || 'Lain-lain';
+      try {
+        let operationalQuery = supabase
+          .from(operationalTable)
+          .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id')
+          .gte('tanggal', startDate)
+          .lte('tanggal', endDate);
+  
+        if (selectedDivision !== 'all') {
+          operationalQuery = operationalQuery.eq('divisi', selectedDivision);
+        }
+  
+        if (selectedCabang !== 'all') {
+          operationalQuery = operationalQuery.eq('cabang_id', parseInt(selectedCabang));
+        }
+  
+        const { data, error } = await operationalQuery;
+        
+        if (error) {
+          console.error(`Error fetching ${operationalTable} data:`, error);
+          // Jika error, coba fallback ke tabel operational biasa
+          if (operationalTable === 'operational_combined') {
+            console.log('Fallback to operational table');
+            const fallbackQuery = supabase
+              .from('operational')
+              .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id')
+              .gte('tanggal', startDate)
+              .lte('tanggal', endDate);
+              
+            if (selectedDivision !== 'all') {
+              fallbackQuery.eq('divisi', selectedDivision);
+            }
+            
+            if (selectedCabang !== 'all') {
+              fallbackQuery.eq('cabang_id', parseInt(selectedCabang));
+            }
+            
+            const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+            if (!fallbackError) {
+              operationalData = fallbackData || [];
+            }
+          }
+        } else {
+          operationalData = data || [];
+        }
+      } catch (err) {
+        console.error('Error in operational query:', err);
+        operationalData = [];
+      }
+  
+      console.log(`Fetched ${operationalData.length} operational records`);
+  
+      // Hitung biaya per kategori
+      const biayaPerKategori: { [key: string]: number } = {};
+      operationalData.forEach(item => {
+        const kategori = item.kategori || 'Lainnya';
         biayaPerKategori[kategori] = (biayaPerKategori[kategori] || 0) + (item.nominal || 0);
       });
   
-      // Hitung total operasional
-      const totalOperasional = operationalData?.reduce((sum, item) => {
-        return sum + (item.nominal || 0);
-      }, 0) || 0;
-  
-      // Hitung total pembukuan (debit sebagai pengeluaran)
-      const totalPembukuan = pembukuanData?.reduce((sum, item) => {
-        return sum + (item.debit || 0);
-      }, 0) || 0;
+      const totalOperasional = Object.values(biayaPerKategori).reduce((sum, value) => sum + value, 0);
   
       return {
-        operasional: operationalData || [],
-        pembukuan: pembukuanData || [],
-        totalOperasional,
-        totalPembukuan,
-        totalBiaya: totalOperasional + totalPembukuan,
-        biayaPerKategori // ✅ TAMBAHAN
+        biayaPerKategori,
+        totalBiayaOperasional: totalOperasional,
+        operationalDetail: operationalData
       };
     } catch (error) {
       console.error('Error in fetchBiayaData:', error);
-      throw error;
+      return {
+        biayaPerKategori: {},
+        totalBiayaOperasional: 0,
+        operationalDetail: []
+      };
     }
   };
 
   const calculateLabaRugi = (pendapatanData: any, biayaData: any): LabaRugiData => {
-    const totalPendapatan = pendapatanData.totalPenjualan;
-    const totalHPP = pendapatanData.totalHargaBeli;
-    const labaKotor = totalPendapatan - totalHPP;
+    const totalBiayaOperasional = biayaData.totalBiayaOperasional || 0;
+    const labaBersih = (pendapatanData.totalKeuntungan || 0) - totalBiayaOperasional;
     
-    // Perbaiki: gunakan nama property yang benar dari biayaData
-    const totalBiayaOperasional = biayaData.totalOperasional || 0;
-    const totalBiayaLain = biayaData.totalPembukuan || 0;
-    const totalBiayaOperasi = totalBiayaOperasional + totalBiayaLain;
-    const labaBersih = labaKotor - totalBiayaOperasi;
-    
-    const marginKotor = totalPendapatan > 0 ? (labaKotor / totalPendapatan) * 100 : 0;
-    const marginBersih = totalPendapatan > 0 ? (labaBersih / totalPendapatan) * 100 : 0;
-  
     return {
-      totalPenjualan: pendapatanData.totalPenjualan,
-      totalPendapatanLain: 0,
-      totalPendapatan: totalPendapatan,
-      totalHargaBeli: pendapatanData.totalHargaBeli,
-      totalBiayaPembelian: 0,
-      totalHPP: totalHPP,
-      labaKotor,
+      // PENDAPATAN
+      totalPenjualan: pendapatanData.totalPenjualan || 0,
+      totalPendapatanLain: 0, // Belum diimplementasi
+      totalPendapatan: pendapatanData.totalPenjualan || 0,
+      
+      // HARGA POKOK PENJUALAN
+      totalHargaBeli: pendapatanData.totalHargaBeli || 0,
+      totalBiayaPembelian: 0, // Belum diimplementasi
+      totalHPP: pendapatanData.totalHargaBeli || 0,
+      
+      // LABA KOTOR
+      labaKotor: pendapatanData.totalKeuntungan || 0,
+      
+      // BIAYA OPERASIONAL
       totalBiayaOperasional,
-      totalBiayaAdministrasi: 0,
-      totalBiayaPenjualan: 0,
-      totalBiayaLain,
-      totalBiayaOperasi,
-      biayaPerKategori: biayaData.biayaPerKategori || {}, // ✅ TAMBAHAN
+      totalBiayaAdministrasi: 0, // Bisa dipecah dari biayaPerKategori jika diperlukan
+      totalBiayaPenjualan: 0, // Bisa dipecah dari biayaPerKategori jika diperlukan
+      biayaPerKategori: biayaData.biayaPerKategori || {},
+      
+      // LABA BERSIH
       labaBersih,
-      marginKotor,
-      marginBersih
+      
+      // MARGIN
+      marginKotor: pendapatanData.totalPenjualan > 0 ? 
+        ((pendapatanData.totalKeuntungan || 0) / pendapatanData.totalPenjualan) * 100 : 0,
+      marginBersih: pendapatanData.totalPenjualan > 0 ? 
+        (labaBersih / pendapatanData.totalPenjualan) * 100 : 0,
+        
+      // Detail data
+      penjualanDetail: pendapatanData.penjualanDetail || [],
+      operationalDetail: biayaData.operationalDetail || []
     };
+  };
+
+  // Fungsi helper untuk mendapatkan detail biaya per kategori
+  const getBiayaDetailByKategori = (kategori: string) => {
+    return detailData.operationalDetail.filter(item => 
+      (item.kategori || 'Lainnya') === kategori
+    );
+  };
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
   };
 
   const handlePrint = () => {
@@ -328,47 +392,89 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
   const handleExport = () => {
     // Implementasi export ke Excel/PDF
     toast({
-      title: "Info",
+      title: "Export",
       description: "Fitur export akan segera tersedia",
     });
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Laporan Laba Rugi</h1>
+          <p className="text-muted-foreground">
+            Analisis profitabilitas untuk divisi {selectedDivision}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handlePrint}>
+            <Printer className="h-4 w-4 mr-2" />
+            Print
+          </Button>
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+        </div>
+      </div>
+
+      {/* Filter Controls */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Laporan Laba Rugi
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Filter Periode */}
             <div className="space-y-2">
-              <Label>Periode</Label>
+              <Label htmlFor="period">Periode</Label>
               <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Pilih periode" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="today">Hari Ini</SelectItem>
-                  <SelectItem value="this_week">Minggu Ini</SelectItem>
                   <SelectItem value="this_month">Bulan Ini</SelectItem>
                   <SelectItem value="last_month">Bulan Lalu</SelectItem>
                   <SelectItem value="this_year">Tahun Ini</SelectItem>
+                  <SelectItem value="last_year">Tahun Lalu</SelectItem>
                   <SelectItem value="custom">Custom</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Filter Cabang */}
+            {selectedPeriod === 'custom' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="start-date">Tanggal Mulai</Label>
+                  <Input
+                    id="start-date"
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="end-date">Tanggal Selesai</Label>
+                  <Input
+                    id="end-date"
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
+
             <div className="space-y-2">
-              <Label>Cabang</Label>
+              <Label htmlFor="cabang">Cabang</Label>
               <Select value={selectedCabang} onValueChange={setSelectedCabang}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Pilih cabang" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Cabang</SelectItem>
@@ -380,57 +486,12 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Custom Date Range */}
-            {selectedPeriod === 'custom' && (
-              <>
-                <div className="space-y-2">
-                  <Label>Tanggal Mulai</Label>
-                  <Input
-                    type="date"
-                    value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Tanggal Akhir</Label>
-                  <Input
-                    type="date"
-                    value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="flex gap-2 mt-4">
-            <Button onClick={handlePrint} variant="outline">
-              <Printer className="h-4 w-4 mr-2" />
-              Print
-            </Button>
-            <Button onClick={handleExport} variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Loading State */}
-      {loading && (
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-              <span className="ml-2">Memuat data...</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Laporan Laba Rugi */}
-      {!loading && labaRugiData && (
+      {labaRugiData && (
         <Card>
           <CardHeader>
             <CardTitle>Laporan Laba Rugi</CardTitle>
@@ -439,90 +500,276 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             <Table>
               <TableBody>
                 {/* PENDAPATAN */}
-                <TableRow className="bg-blue-50">
-                  <TableCell className="font-bold" colSpan={2}>PENDAPATAN</TableCell>
+                <TableRow className="font-semibold bg-blue-50">
+                  <TableCell colSpan={2} className="text-blue-700">PENDAPATAN</TableCell>
                 </TableRow>
+                <TableRow 
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => toggleSection('penjualan')}
+                >
+                  <TableCell className="pl-4 flex items-center">
+                    <ChevronDown className={`h-4 w-4 mr-2 transition-transform ${
+                      expandedSections.penjualan ? 'rotate-180' : ''
+                    }`} />
+                    Penjualan
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(labaRugiData.totalPenjualan)}
+                  </TableCell>
+                </TableRow>
+                
+                {/* Detail Penjualan */}
+                {expandedSections.penjualan && detailData.penjualanDetail.length > 0 && (
+                  <TableRow>
+                    <TableCell colSpan={2} className="pl-8">
+                      <div className="max-h-40 overflow-y-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="text-xs">Tanggal</TableHead>
+                              <TableHead className="text-xs">ID</TableHead>
+                              <TableHead className="text-xs">Harga Jual</TableHead>
+                              <TableHead className="text-xs">Catatan</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {detailData.penjualanDetail.slice(0, 5).map((item, index) => (
+                              <TableRow key={index}>
+                                <TableCell className="text-xs">
+                                  {new Date(item.tanggal).toLocaleDateString('id-ID')}
+                                </TableCell>
+                                <TableCell className="text-xs">{item.id}</TableCell>
+                                <TableCell className="text-xs">
+                                  {formatCurrency(item.harga_jual || 0)}
+                                </TableCell>
+                                <TableCell className="text-xs">
+                                  {item.catatan || item.keterangan || '-'}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                        {detailData.penjualanDetail.length > 5 && (
+                          <div className="text-xs text-gray-500 mt-2">
+                            ... dan {detailData.penjualanDetail.length - 5} data lainnya
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+
                 <TableRow>
-                  <TableCell className="pl-6">Penjualan</TableCell>
-                  <TableCell className="text-right">{formatCurrency(labaRugiData.totalPenjualan)}</TableCell>
+                  <TableCell className="pl-4">Pendapatan Lain-lain</TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(labaRugiData.totalPendapatanLain)}
+                  </TableCell>
                 </TableRow>
-                <TableRow>
-                  <TableCell className="pl-6">Pendapatan Lain-lain</TableCell>
-                  <TableCell className="text-right">{formatCurrency(labaRugiData.totalPendapatanLain)}</TableCell>
-                </TableRow>
-                <TableRow className="border-b-2">
-                  <TableCell className="font-semibold">Total Pendapatan</TableCell>
-                  <TableCell className="text-right font-semibold">{formatCurrency(labaRugiData.totalPendapatan)}</TableCell>
+                
+                <TableRow className="font-semibold border-t">
+                  <TableCell className="pl-4">Total Penjualan</TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(labaRugiData.totalPendapatan)}
+                  </TableCell>
                 </TableRow>
 
                 {/* HARGA POKOK PENJUALAN */}
-                <TableRow className="bg-red-50">
-                  <TableCell className="font-bold" colSpan={2}>HARGA POKOK PENJUALAN</TableCell>
+                <TableRow className="font-semibold bg-red-50">
+                  <TableCell colSpan={2} className="text-red-700">HARGA POKOK PENJUALAN</TableCell>
                 </TableRow>
-                <TableRow>
-                  <TableCell className="pl-6">Harga Beli</TableCell>
-                  <TableCell className="text-right">{formatCurrency(labaRugiData.totalHargaBeli)}</TableCell>
+                <TableRow 
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => toggleSection('hargaBeli')}
+                >
+                  <TableCell className="pl-4 flex items-center">
+                    <ChevronDown className={`h-4 w-4 mr-2 transition-transform ${
+                      expandedSections.hargaBeli ? 'rotate-180' : ''
+                    }`} />
+                    Harga Beli
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(labaRugiData.totalHargaBeli)}
+                  </TableCell>
                 </TableRow>
-                <TableRow>
-                  <TableCell className="pl-6">Biaya Pembelian</TableCell>
-                  <TableCell className="text-right">{formatCurrency(labaRugiData.totalBiayaPembelian)}</TableCell>
+                
+                {/* Detail Harga Beli */}
+                {expandedSections.hargaBeli && detailData.penjualanDetail.length > 0 && (
+                  <TableRow>
+                    <TableCell colSpan={2} className="pl-8">
+                      <div className="max-h-40 overflow-y-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="text-xs">Tanggal</TableHead>
+                              <TableHead className="text-xs">ID</TableHead>
+                              <TableHead className="text-xs">Harga Beli</TableHead>
+                              <TableHead className="text-xs">Catatan</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {detailData.penjualanDetail.slice(0, 5).map((item, index) => (
+                              <TableRow key={index}>
+                                <TableCell className="text-xs">
+                                  {new Date(item.tanggal).toLocaleDateString('id-ID')}
+                                </TableCell>
+                                <TableCell className="text-xs">{item.id}</TableCell>
+                                <TableCell className="text-xs">
+                                  {formatCurrency(item.harga_beli || 0)}
+                                </TableCell>
+                                <TableCell className="text-xs">
+                                  {item.catatan || item.keterangan || '-'}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                        {detailData.penjualanDetail.length > 5 && (
+                          <div className="text-xs text-gray-500 mt-2">
+                            ... dan {detailData.penjualanDetail.length - 5} data lainnya
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+                
+                <TableRow 
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => toggleSection('biayaPembelian')}
+                >
+                  <TableCell className="pl-4 flex items-center">
+                    <ChevronDown className={`h-4 w-4 mr-2 transition-transform ${
+                      expandedSections.biayaPembelian ? 'rotate-180' : ''
+                    }`} />
+                    Biaya Pembelian
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(labaRugiData.totalBiayaPembelian)}
+                  </TableCell>
                 </TableRow>
-                <TableRow className="border-b-2">
-                  <TableCell className="font-semibold">Total HPP</TableCell>
-                  <TableCell className="text-right font-semibold">{formatCurrency(labaRugiData.totalHPP)}</TableCell>
+                
+                {/* Detail Biaya Pembelian - bisa ditambahkan jika ada data */}
+                {expandedSections.biayaPembelian && (
+                  <TableRow>
+                    <TableCell colSpan={2} className="pl-8">
+                      <div className="text-xs text-gray-500">
+                        Detail biaya pembelian belum tersedia
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+                
+                <TableRow className="font-semibold border-t">
+                  <TableCell className="pl-4">Total HPP</TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(labaRugiData.totalHPP)}
+                  </TableCell>
                 </TableRow>
 
                 {/* LABA KOTOR */}
-                <TableRow className="bg-green-50">
-                  <TableCell className="font-bold">LABA KOTOR</TableCell>
-                  <TableCell className="text-right font-bold text-green-600">
-                    {formatCurrency(labaRugiData.labaKotor)} ({labaRugiData.marginKotor.toFixed(2)}%)
+                <TableRow className="font-semibold bg-green-50">
+                  <TableCell className="text-green-700">LABA KOTOR</TableCell>
+                  <TableCell className="text-right text-green-700">
+                    {formatCurrency(labaRugiData.labaKotor)}
                   </TableCell>
                 </TableRow>
 
                 {/* BIAYA OPERASIONAL */}
-                <TableRow className="bg-orange-50">
-                  <TableCell className="font-bold" colSpan={2}>BIAYA OPERASIONAL</TableCell>
+                <TableRow className="font-semibold bg-orange-50">
+                  <TableCell colSpan={2} className="text-orange-700">BIAYA OPERASIONAL</TableCell>
                 </TableRow>
                 
-                {/* ✅ TAMBAHAN: Breakdown per kategori */}
-                {Object.entries(labaRugiData.biayaPerKategori).map(([kategori, nominal]) => (
-                  <TableRow key={kategori}>
-                    <TableCell className="pl-6">
-                      {kategori.charAt(0).toUpperCase() + kategori.slice(1)}
-                    </TableCell>
-                    <TableCell className="text-right">{formatCurrency(nominal)}</TableCell>
-                  </TableRow>
-                ))}
+                {/* Breakdown Biaya per Kategori dengan Dropdown */}
+                {Object.entries(labaRugiData.biayaPerKategori).map(([kategori, nominal]) => {
+                  const detailBiaya = getBiayaDetailByKategori(kategori);
+                  const sectionKey = `biaya_${kategori}`;
+                  
+                  return (
+                    <React.Fragment key={kategori}>
+                      <TableRow 
+                        className="cursor-pointer hover:bg-gray-50"
+                        onClick={() => toggleSection(sectionKey)}
+                      >
+                        <TableCell className="pl-4 flex items-center">
+                          <ChevronDown className={`h-4 w-4 mr-2 transition-transform ${
+                            expandedSections[sectionKey] ? 'rotate-180' : ''
+                          }`} />
+                          <span className="capitalize">{kategori}</span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(nominal)}
+                        </TableCell>
+                      </TableRow>
+                      
+                      {/* Detail Biaya per Kategori */}
+                      {expandedSections[sectionKey] && (
+                        <TableRow>
+                          <TableCell colSpan={2} className="pl-8">
+                            {detailBiaya.length > 0 ? (
+                              <div className="space-y-2">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead className="text-xs">Tanggal</TableHead>
+                                      <TableHead className="text-xs">Deskripsi</TableHead>
+                                      <TableHead className="text-xs">Nominal</TableHead>
+                                      <TableHead className="text-xs">Divisi</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {detailBiaya.slice(0, 5).map((item, index) => (
+                                      <TableRow key={index}>
+                                        <TableCell className="text-xs">
+                                          {new Date(item.tanggal).toLocaleDateString('id-ID')}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          {item.deskripsi || '-'}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          {formatCurrency(item.nominal || 0)}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          {item.divisi || '-'}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                                {detailBiaya.length > 5 && (
+                                  <div className="text-xs text-gray-500 mt-2">
+                                    ... dan {detailBiaya.length - 5} transaksi lainnya
+                                  </div>
+                                )}
+                                <div className="text-xs font-medium text-gray-700 mt-2">
+                                  Total {detailBiaya.length} transaksi: {formatCurrency(nominal)}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-500">
+                                Tidak ada detail transaksi untuk kategori {kategori}
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
                 
-                {/* Subtotal Biaya Operasional */}
-                <TableRow className="bg-orange-100">
-                  <TableCell className="pl-6 font-semibold">Subtotal Biaya Operasional</TableCell>
-                  <TableCell className="text-right font-semibold">{formatCurrency(labaRugiData.totalBiayaOperasional)}</TableCell>
-                </TableRow>
-                
-                <TableRow>
-                  <TableCell className="pl-6">Biaya Administrasi</TableCell>
-                  <TableCell className="text-right">{formatCurrency(labaRugiData.totalBiayaAdministrasi)}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="pl-6">Biaya Penjualan</TableCell>
-                  <TableCell className="text-right">{formatCurrency(labaRugiData.totalBiayaPenjualan)}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="pl-6">Biaya Lain-lain</TableCell>
-                  <TableCell className="text-right">{formatCurrency(labaRugiData.totalBiayaLain)}</TableCell>
-                </TableRow>
-                <TableRow className="border-b-2">
-                  <TableCell className="font-semibold">Total Biaya Operasi</TableCell>
-                  <TableCell className="text-right font-semibold">{formatCurrency(labaRugiData.totalBiayaOperasi)}</TableCell>
+                <TableRow className="font-semibold border-t">
+                  <TableCell className="pl-4">Total Biaya Operasional</TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(labaRugiData.totalBiayaOperasional)}
+                  </TableCell>
                 </TableRow>
 
                 {/* LABA BERSIH */}
-                <TableRow className="bg-purple-50">
-                  <TableCell className="font-bold text-lg">LABA BERSIH</TableCell>
-                  <TableCell className="text-right font-bold text-lg text-purple-600">
-                    {formatCurrency(labaRugiData.labaBersih)} ({labaRugiData.marginBersih.toFixed(2)}%)
+                <TableRow className="font-bold bg-gray-100 text-lg">
+                  <TableCell className="text-gray-800">LABA BERSIH</TableCell>
+                  <TableCell className={`text-right ${
+                    labaRugiData.labaBersih >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {formatCurrency(labaRugiData.labaBersih)}
                   </TableCell>
                 </TableRow>
               </TableBody>
@@ -532,51 +779,65 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       )}
 
       {/* Summary Cards */}
-      {!loading && labaRugiData && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {labaRugiData && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-blue-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Total Pendapatan</p>
-                  <p className="text-xl font-bold text-blue-600">{formatCurrency(labaRugiData.totalPendapatan)}</p>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <DollarSign className="h-8 w-8 text-blue-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Total Pendapatan</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {formatCurrency(labaRugiData.totalPendapatan)}
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-green-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Laba Kotor</p>
-                  <p className="text-xl font-bold text-green-600">{formatCurrency(labaRugiData.labaKotor)}</p>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <TrendingUp className="h-8 w-8 text-green-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Laba Kotor</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {formatCurrency(labaRugiData.labaKotor)}
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2">
-                <TrendingDown className="h-5 w-5 text-red-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Total Biaya</p>
-                  <p className="text-xl font-bold text-red-600">{formatCurrency(labaRugiData.totalBiayaOperasi)}</p>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <BarChart3 className="h-8 w-8 text-orange-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Total Biaya Operasional</p>
+                  <p className="text-2xl font-bold text-orange-600">
+                    {formatCurrency(labaRugiData.totalBiayaOperasional)}
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-purple-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Laba Bersih</p>
-                  <p className="text-xl font-bold text-purple-600">{formatCurrency(labaRugiData.labaBersih)}</p>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                {labaRugiData.labaBersih >= 0 ? (
+                  <TrendingUp className="h-8 w-8 text-green-600" />
+                ) : (
+                  <TrendingDown className="h-8 w-8 text-red-600" />
+                )}
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Laba Bersih</p>
+                  <p className={`text-2xl font-bold ${
+                    labaRugiData.labaBersih >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {formatCurrency(labaRugiData.labaBersih)}
+                  </p>
                 </div>
               </div>
             </CardContent>

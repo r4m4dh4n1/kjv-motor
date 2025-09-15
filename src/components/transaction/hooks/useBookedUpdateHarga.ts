@@ -11,6 +11,15 @@ export const useBookedUpdateHarga = () => {
     mutationFn: async ({ penjualanId, data }: { penjualanId: number; data: UpdateHargaData }) => {
       console.log('Starting booked update harga for penjualan:', penjualanId, data);
 
+      // ✅ TAMBAHKAN VALIDASI DI SINI (setelah data tersedia)
+      if (!data.sumber_dana_id) {
+        throw new Error('Sumber dana wajib dipilih');
+      }
+
+      if (!data.reason?.trim()) {
+        throw new Error('Alasan update harga wajib diisi');
+      }
+
       // Get current penjualan data
       const { data: currentPenjualan, error: fetchError } = await supabase
         .from('penjualans')
@@ -29,6 +38,12 @@ export const useBookedUpdateHarga = () => {
 
       const originalHargaBeli = currentPenjualan.harga_beli || 0;
       const totalBiayaTambahan = data.biaya_qc + data.biaya_pajak + data.biaya_lain_lain;
+      
+      // ✅ TAMBAHKAN VALIDASI UNTUK totalBiayaTambahan DI SINI
+      if (totalBiayaTambahan === 0) {
+        console.warn('⚠️ Total biaya tambahan = 0, pembukuan tetap akan dibuat');
+      }
+
       const newHargaBeli = originalHargaBeli + totalBiayaTambahan;
 
       // Update penjualan - update harga_beli
@@ -67,26 +82,43 @@ export const useBookedUpdateHarga = () => {
 
       // Create pembukuan entry for the additional costs
       // PERBAIKAN: Selalu buat entry pembukuan, tidak peduli positif atau negatif
+      // Sebelum insert pembukuan
+      const pembukuanData = {
+        tanggal: data.tanggal_update,
+        divisi: currentPenjualan.divisi,
+        keterangan: `Update Harga Booked - ${currentPenjualan.plat} - ${data.reason}`,
+        debit: totalBiayaTambahan > 0 ? totalBiayaTambahan : 0,
+        kredit: totalBiayaTambahan < 0 ? Math.abs(totalBiayaTambahan) : 0,
+        cabang_id: currentPenjualan.cabang_id,
+        company_id: data.sumber_dana_id,
+        pembelian_id: currentPenjualan.pembelian_id
+      };
+      
+      console.log('📝 Attempting to insert pembukuan:', pembukuanData);
+      console.log('💰 Total biaya tambahan:', totalBiayaTambahan);
+      
       const { error: pembukuanError } = await supabase
         .from('pembukuan')
-        .insert({
-          tanggal: data.tanggal_update,
-          divisi: currentPenjualan.divisi,
-          keterangan: `Update Harga Booked - ${currentPenjualan.plat} - ${data.reason}`,
-          debit: totalBiayaTambahan > 0 ? totalBiayaTambahan : 0,
-          kredit: totalBiayaTambahan < 0 ? Math.abs(totalBiayaTambahan) : 0,
-          cabang_id: currentPenjualan.cabang_id,
-          company_id: data.sumber_dana_id,
-          pembelian_id: currentPenjualan.pembelian_id
-        });
+        .insert(pembukuanData);
       
       if (pembukuanError) {
+        console.error('❌ PEMBUKUAN ERROR DETAILS:', pembukuanError);
+        console.error('❌ Error code:', pembukuanError.code);
+        console.error('❌ Error message:', pembukuanError.message);
+        console.error('❌ Error details:', pembukuanError.details);
+        
+        // TAMBAHKAN: Throw error untuk menghentikan proses
+        throw new Error(`Gagal menyimpan pembukuan: ${pembukuanError.message}`);
+      } else {
+        console.log('✅ Pembukuan berhasil disimpan');
+      }
+      if (pembukuanError) {
         console.error('Error creating pembukuan entry:', pembukuanError);
-        toast({
-          title: "Warning",
-          description: "Harga berhasil diupdate tapi gagal mencatat pembukuan",
-          variant: "destructive"
-        });
+        
+        // UBAH: Throw error untuk menghentikan proses
+        throw new Error(`Gagal menyimpan pembukuan: ${pembukuanError.message}`);
+        
+        // HAPUS toast warning yang tidak menghentikan proses
       }
 
       // TAMBAHAN: Update modal perusahaan
@@ -151,3 +183,5 @@ export const useBookedUpdateHarga = () => {
     },
   });
 };
+
+// ❌ HAPUS KODE VALIDASI YANG ADA DI LUAR FUNGSI (baris 173-183)
