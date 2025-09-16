@@ -12,6 +12,9 @@ interface PencatatanAssetItem {
   keterangan?: string;
   created_at: string;
   updated_at: string;
+  companies?: {
+    nama_perusahaan: string;
+  };
 }
 
 export const usePencatatanAssetData = (selectedDivision: string) => {
@@ -20,7 +23,12 @@ export const usePencatatanAssetData = (selectedDivision: string) => {
     queryFn: async (): Promise<PencatatanAssetItem[]> => {
       let query = (supabase as any)
         .from('pencatatan_asset')
-        .select('*');
+        .select(`
+          *,
+          companies(
+            nama_perusahaan
+          )
+        `);
       
       // Filter by division if provided
       if (selectedDivision) {

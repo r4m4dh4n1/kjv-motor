@@ -103,7 +103,7 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
 
         if (error) throw error;
 
-        // TAMBAHAN: Menambah modal perusahaan dan mencatat ke pembukuan
+        // PERBAIKAN: Mengurangi modal perusahaan dan mencatat ke pembukuan
         const assetAmount = parseCurrency(formData.nominal);
         if (assetAmount > 0 && formData.sumber_dana_id && insertedData && insertedData.length > 0) {
           const assetId = insertedData[0].id;
@@ -112,14 +112,14 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
             // 1. Update modal perusahaan menggunakan RPC function
             const { error: modalError } = await supabase.rpc('update_company_modal', {
               company_id: parseInt(formData.sumber_dana_id),
-              amount: assetAmount // Menambah modal perusahaan
+              amount: -assetAmount // ✅ MENGURANGI modal perusahaan (nilai negatif)
             });
 
             if (modalError) {
               console.error('Error updating company modal:', modalError);
               toast({
                 title: "Warning",
-                description: `Asset tersimpan tapi gagal menambah modal perusahaan: ${modalError.message}`,
+                description: `Asset tersimpan tapi gagal mengurangi modal perusahaan: ${modalError.message}`,
                 variant: "destructive"
               });
             }
@@ -127,7 +127,7 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
             console.error('CATCH ERROR saat update modal:', modalUpdateError);
             toast({
               title: "Warning",
-              description: "Asset tersimpan tapi gagal menambah modal perusahaan",
+              description: "Asset tersimpan tapi gagal mengurangi modal perusahaan",
               variant: "destructive"
             });
           }
@@ -139,8 +139,8 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
               divisi: selectedDivision,
               cabang_id: 1, // Default cabang
               keterangan: `Pencatatan Asset - ${formData.nama}${formData.keterangan ? ` - ${formData.keterangan}` : ''}`,
-              debit: 0,
-              kredit: assetAmount, // Asset menambah modal (kredit)
+              debit: assetAmount, // ✅ Asset sebagai pengeluaran (debit)
+              kredit: 0,
               saldo: 0,
               company_id: parseInt(formData.sumber_dana_id)
             };
