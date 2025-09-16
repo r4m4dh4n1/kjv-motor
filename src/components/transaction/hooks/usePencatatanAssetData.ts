@@ -21,14 +21,10 @@ export const usePencatatanAssetData = (selectedDivision: string) => {
   return useQuery({
     queryKey: ["pencatatan-asset", selectedDivision],
     queryFn: async (): Promise<PencatatanAssetItem[]> => {
-      let query = (supabase as any)
+      // First get pencatatan_asset data
+      let assetQuery = supabase
         .from('pencatatan_asset')
-        .select(`
-          *,
-          companies!sumber_dana_id(
-            nama_perusahaan
-          )
-        `);
+        .select('*');
       
       if (selectedDivision) {
         assetQuery = assetQuery.eq('divisi', selectedDivision);
@@ -39,21 +35,31 @@ export const usePencatatanAssetData = (selectedDivision: string) => {
       
       if (assetError) throw assetError;
       
-      // Get company data for each asset
-      const assetWithCompanies = await Promise.all(
-        (assetData || []).map(async (asset) => {
-          const { data: companyData } = await supabase
-            .from('companies')
-            .select('nama_perusahaan')
-            .eq('id', asset.sumber_dana_id)
-            .single();
-          
-          return {
-            ...asset,
-            companies: companyData
-          };
-        })
+      if (!assetData || assetData.length === 0) {
+        return [];
+      }
+      
+      // Get unique company IDs
+      const companyIds = [...new Set(assetData.map(asset => asset.sumber_dana_id))];
+      
+      // Get company data
+      const { data: companiesData, error: companiesError } = await supabase
+        .from('companies')
+        .select('id, nama_perusahaan')
+        .in('id', companyIds);
+      
+      if (companiesError) throw companiesError;
+      
+      // Create a map for quick lookup
+      const companiesMap = new Map(
+        (companiesData || []).map(company => [company.id, company])
       );
+      
+      // Combine asset data with company data
+      const assetWithCompanies = assetData.map(asset => ({
+        ...asset,
+        companies: companiesMap.get(asset.sumber_dana_id) || null
+      }));
       
       return assetWithCompanies;
     },
