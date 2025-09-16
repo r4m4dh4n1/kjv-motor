@@ -21,24 +21,37 @@ export const usePencatatanAssetData = (selectedDivision: string) => {
   return useQuery({
     queryKey: ["pencatatan-asset", selectedDivision],
     queryFn: async (): Promise<PencatatanAssetItem[]> => {
-      let query = (supabase as any)
+      // First get pencatatan_asset data
+      let assetQuery = supabase
         .from('pencatatan_asset')
-        .select(`
-          *,
-          companies(
-            nama_perusahaan
-          )
-        `);
+        .select('*');
       
-      // Filter by division if provided
       if (selectedDivision) {
-        query = query.eq('divisi', selectedDivision);
+        assetQuery = assetQuery.eq('divisi', selectedDivision);
       }
       
-      const { data, error } = await query.order('tanggal', { ascending: false });
+      const { data: assetData, error: assetError } = await assetQuery
+        .order('tanggal', { ascending: false });
       
-      if (error) throw error;
-      return data || [];
+      if (assetError) throw assetError;
+      
+      // Get company data for each asset
+      const assetWithCompanies = await Promise.all(
+        (assetData || []).map(async (asset) => {
+          const { data: companyData } = await supabase
+            .from('companies')
+            .select('nama_perusahaan')
+            .eq('id', asset.sumber_dana_id)
+            .single();
+          
+          return {
+            ...asset,
+            companies: companyData
+          };
+        })
+      );
+      
+      return assetWithCompanies;
     },
   });
 };
