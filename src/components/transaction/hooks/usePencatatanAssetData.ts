@@ -21,10 +21,14 @@ export const usePencatatanAssetData = (selectedDivision: string) => {
   return useQuery({
     queryKey: ["pencatatan-asset", selectedDivision],
     queryFn: async (): Promise<PencatatanAssetItem[]> => {
-      // First get pencatatan_asset data
-      let assetQuery = supabase
+      let query = (supabase as any)
         .from('pencatatan_asset')
-        .select('*');
+        .select(`
+          *,
+          companies!sumber_dana_id(
+            nama_perusahaan
+          )
+        `);
       
       if (selectedDivision) {
         assetQuery = assetQuery.eq('divisi', selectedDivision);
