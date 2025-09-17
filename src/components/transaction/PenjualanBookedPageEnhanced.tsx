@@ -45,9 +45,6 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
   const [editingPenjualan, setEditingPenjualan] = useState<Penjualan | null>(null);
   const [formData, setFormData] = useState<PenjualanFormData>(createInitialPenjualanFormData(selectedDivision));
   
-  // ✅ Tambahkan state isSubmitting
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
   // DP Cancellation states
   const [isDpCancelModalOpen, setIsDpCancelModalOpen] = useState(false);
   const [selectedPenjualanForCancel, setSelectedPenjualanForCancel] = useState<any>(null);
@@ -81,7 +78,7 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
   const { data: cabangData = [] } = useCabangData();
   const { data: pembelianData = [] } = usePembelianData(selectedDivision, "all");
   const { data: companiesData = [] } = useCompaniesData(selectedDivision);
-  const { penjualanData, isLoading, refetch: refetchPenjualan } = usePenjualanData(selectedDivision);
+  const { penjualanData, refetch: refetchPenjualan } = usePenjualanData(selectedDivision);
   
   // Mutations
   const createPenjualanMutation = usePenjualanCreate();
@@ -127,29 +124,24 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
     handleUpdateHarga,
     handleLihatDetail,
     handleRiwayatHarga,
-    // HAPUS handleSubmitUpdateHarga dari sini karena akan dibuat ulang
+    // HAPUS handleSubmitUpdateHarga dari sini
   } = usePenjualanActions();
   
   // Buat fungsi handleSubmitUpdateHarga baru yang menggunakan useBookedUpdateHarga
   const handleSubmitUpdateHarga = async (updateData: any, onRefresh: () => void) => {
-    console.log('🔍 Update Data:', updateData);
-    console.log('🔍 Selected Penjualan:', selectedPenjualanForUpdate);
-    
     if (!selectedPenjualanForUpdate) return;
     
     try {
       await bookedUpdateHarga.mutateAsync({
-        penjualanId: selectedPenjualanForUpdate.id,
-        data: {
-          harga_jual_baru: updateData.harga_jual_baru,
-          biaya_pajak: updateData.biaya_pajak,
-          biaya_qc: updateData.biaya_qc,
-          biaya_lain_lain: updateData.biaya_lain_lain,
-          keterangan_biaya_lain: updateData.keterangan_biaya_lain,
-          reason: updateData.reason,
-          tanggal_update: updateData.tanggal_update,
-          sumber_dana_id: updateData.sumber_dana_id
-        }
+        penjualan_id: selectedPenjualanForUpdate.id,
+        harga_jual_baru: updateData.harga_jual_baru,
+        biaya_pajak: updateData.biaya_pajak,
+        biaya_qc: updateData.biaya_qc,
+        biaya_lain_lain: updateData.biaya_lain_lain,
+        keterangan_biaya_lain: updateData.keterangan_biaya_lain,
+        reason: updateData.reason,
+        tanggal_update: updateData.tanggal_update,
+        sumber_dana_id: updateData.sumber_dana_id
       });
       
       setIsUpdateHargaOpen(false);
@@ -199,12 +191,12 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
   };
 
   // Filter and search logic - only for BOOKED status (not 'selesai' or 'cancelled_dp_hangus')
-  const filteredData = (penjualanData || []).filter((item: any) => {
+  const filteredData = penjualanData.filter((item: any) => {
     // Filter utama: hanya yang belum selesai (status: booked, proses, cancelled, etc but not 'selesai/sold' or 'cancelled_dp_hangus')
     if (item.status === 'selesai' || item.status === 'sold' || item.status === 'cancelled_dp_hangus') {
       return false;
     }
-  
+
     const matchesSearch = !searchTerm || 
       item.plat?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.brands?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -262,8 +254,6 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (isSubmitting) return; // Prevent multiple submissions
-    
     if (!validatePenjualanFormData(formData)) {
       toast({ 
         title: "Error", 
@@ -273,8 +263,6 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
       return;
     }
   
-    setIsSubmitting(true);
-    
     try {
       if (editingPenjualan) {
         // ✅ Use edit mutation for existing penjualan
@@ -291,8 +279,6 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
       refetchPenjualan();
     } catch (error) {
       // Error handling is done in the mutation
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
