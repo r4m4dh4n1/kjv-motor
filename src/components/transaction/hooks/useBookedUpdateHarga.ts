@@ -107,20 +107,17 @@ export const useBookedUpdateHarga = () => {
         console.error('❌ Error message:', pembukuanError.message);
         console.error('❌ Error details:', pembukuanError.details);
         
-        // TAMBAHKAN: Throw error untuk menghentikan proses
         throw new Error(`Gagal menyimpan pembukuan: ${pembukuanError.message}`);
       } else {
         console.log('✅ Pembukuan berhasil disimpan');
       }
-      if (pembukuanError) {
-        console.error('Error creating pembukuan entry:', pembukuanError);
-        
-        // UBAH: Throw error untuk menghentikan proses
-        throw new Error(`Gagal menyimpan pembukuan: ${pembukuanError.message}`);
-        
-        // HAPUS toast warning yang tidak menghentikan proses
-      }
-
+      
+      // ❌ HAPUS BLOK INI - duplikasi
+      // if (pembukuanError) {
+      //   console.error('Error creating pembukuan entry:', pembukuanError);
+      //   throw new Error(`Gagal menyimpan pembukuan: ${pembukuanError.message}`);
+      // }
+      
       // TAMBAHAN: Update modal perusahaan
       if (totalBiayaTambahan !== 0 && data.sumber_dana_id) {
         const { error: modalError } = await supabase.rpc('update_company_modal', {
