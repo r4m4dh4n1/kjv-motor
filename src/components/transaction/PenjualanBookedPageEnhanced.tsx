@@ -45,6 +45,9 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
   const [editingPenjualan, setEditingPenjualan] = useState<Penjualan | null>(null);
   const [formData, setFormData] = useState<PenjualanFormData>(createInitialPenjualanFormData(selectedDivision));
   
+  // ✅ Tambahkan state isSubmitting
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   // DP Cancellation states
   const [isDpCancelModalOpen, setIsDpCancelModalOpen] = useState(false);
   const [selectedPenjualanForCancel, setSelectedPenjualanForCancel] = useState<any>(null);
@@ -259,6 +262,8 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (isSubmitting) return; // Prevent multiple submissions
+    
     if (!validatePenjualanFormData(formData)) {
       toast({ 
         title: "Error", 
@@ -268,6 +273,8 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
       return;
     }
   
+    setIsSubmitting(true);
+    
     try {
       if (editingPenjualan) {
         // ✅ Use edit mutation for existing penjualan
@@ -284,6 +291,8 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
       refetchPenjualan();
     } catch (error) {
       // Error handling is done in the mutation
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
