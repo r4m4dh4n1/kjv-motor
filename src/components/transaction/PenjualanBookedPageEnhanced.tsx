@@ -124,12 +124,7 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
     handleUpdateHarga,
     handleLihatDetail,
     handleRiwayatHarga,
-    handleSubmitUpdateHarga,
-    handleLihatDetail,
-    handleRiwayatHarga,
-    handleSubmitUpdateHarga,
-    handleRiwayatHarga,
-    // HAPUS handleSubmitUpdateHarga dari sini
+    // HAPUS handleSubmitUpdateHarga dari sini karena akan dibuat ulang
   } = usePenjualanActions();
   
   // Buat fungsi handleSubmitUpdateHarga baru yang menggunakan useBookedUpdateHarga
@@ -141,7 +136,7 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
     
     try {
       await bookedUpdateHarga.mutateAsync({
-        penjualanId: selectedPenjualanForUpdate.id, // ✅ BENAR: penjualanId bukan penjualan_id
+        penjualanId: selectedPenjualanForUpdate.id,
         data: {
           harga_jual_baru: updateData.harga_jual_baru,
           biaya_pajak: updateData.biaya_pajak,
