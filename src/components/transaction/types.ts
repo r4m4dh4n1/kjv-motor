@@ -48,7 +48,3 @@ export interface PembelianFormData {
 export interface PembelianPageProps {
   selectedDivision: string;
 }
-
-// Export additional components and hooks
-export { default as EditPriceHistoryModal } from './EditPriceHistoryModal';
-export { useEditPriceHistory } from './hooks/useEditPriceHistory';

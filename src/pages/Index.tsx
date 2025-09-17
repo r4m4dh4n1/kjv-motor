@@ -36,8 +36,6 @@ import LabaRugiPage from "@/components/finance/LabaRugiPage";
 import ModalReductionPage from "@/components/finance/ModalReductionPage"; // ✅ Tambahkan ini
 import ModalHistoryPage from "@/components/finance/ModalHistoryPage"; // ✅ Tambahkan ini juga
 
-
-
 const Index = () => {
   const [activeMenu, setActiveMenu] = useState("dashboard");
   const [selectedDivision, setSelectedDivision] = useState("sport");
