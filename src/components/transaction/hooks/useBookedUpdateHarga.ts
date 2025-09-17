@@ -82,7 +82,7 @@ export const useBookedUpdateHarga = () => {
 
       // Create pembukuan entry for the additional costs
       // PERBAIKAN: Selalu buat entry pembukuan, tidak peduli positif atau negatif
-      // Sebelum insert pembukuan, tambah validasi
+      // Sebelum insert pembukuan
       const pembukuanData = {
         tanggal: data.tanggal_update,
         divisi: currentPenjualan.divisi,
@@ -93,11 +93,6 @@ export const useBookedUpdateHarga = () => {
         company_id: data.sumber_dana_id,
         pembelian_id: currentPenjualan.pembelian_id
       };
-      
-      // ✅ TAMBAH VALIDASI SEBELUM INSERT
-      if (!pembukuanData.tanggal || !pembukuanData.divisi || !pembukuanData.cabang_id || !pembukuanData.company_id) {
-        throw new Error('Data pembukuan tidak lengkap: tanggal, divisi, cabang_id, atau company_id kosong');
-      }
       
       console.log('📝 Attempting to insert pembukuan:', pembukuanData);
       console.log('💰 Total biaya tambahan:', totalBiayaTambahan);
@@ -112,16 +107,19 @@ export const useBookedUpdateHarga = () => {
         console.error('❌ Error message:', pembukuanError.message);
         console.error('❌ Error details:', pembukuanError.details);
         
+        // TAMBAHKAN: Throw error untuk menghentikan proses
         throw new Error(`Gagal menyimpan pembukuan: ${pembukuanError.message}`);
       } else {
         console.log('✅ Pembukuan berhasil disimpan');
       }
-      
-      // ❌ HAPUS BLOK IF KEDUA INI
-      // if (pembukuanError) {
-      //   console.error('Error creating pembukuan entry:', pembukuanError);
-      //   throw new Error(`Gagal menyimpan pembukuan: ${pembukuanError.message}`);
-      // }
+      if (pembukuanError) {
+        console.error('Error creating pembukuan entry:', pembukuanError);
+        
+        // UBAH: Throw error untuk menghentikan proses
+        throw new Error(`Gagal menyimpan pembukuan: ${pembukuanError.message}`);
+        
+        // HAPUS toast warning yang tidak menghentikan proses
+      }
 
       // TAMBAHAN: Update modal perusahaan
       if (totalBiayaTambahan !== 0 && data.sumber_dana_id) {

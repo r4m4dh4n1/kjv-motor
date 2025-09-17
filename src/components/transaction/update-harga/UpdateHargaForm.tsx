@@ -102,17 +102,7 @@ const UpdateHargaForm = ({ penjualan, onSubmit, onCancel }: UpdateHargaFormProps
       alert("Alasan update harga wajib diisi");
       return;
     }
-    
-    if (!formData.sumber_dana_id || formData.sumber_dana_id === "") {
-      alert("Sumber dana wajib dipilih");
-      return;
-    }
-    
-    if (!formData.tanggal_update) {
-      alert("Tanggal update wajib diisi");
-      return;
-    }
-    
+
     // Validasi keterangan biaya lain-lain
     const biayaLain = parseFormattedNumber(formData.biaya_lain_lain);
     if (biayaLain > 0 && !formData.keterangan_biaya_lain.trim()) {
@@ -130,13 +120,7 @@ const UpdateHargaForm = ({ penjualan, onSubmit, onCancel }: UpdateHargaFormProps
       tanggal_update: formData.tanggal_update,
       sumber_dana_id: parseInt(formData.sumber_dana_id)
     };
-    
-    // ✅ VALIDASI FINAL SEBELUM SUBMIT
-    if (isNaN(submitData.sumber_dana_id)) {
-      alert("Sumber dana tidak valid");
-      return;
-    }
-    
+
     onSubmit(submitData);
   };
 

@@ -40,6 +40,11 @@ export const usePenjualanEdit = () => {
       const submitData = transformPenjualanFormDataForSubmit(updatedFormData);
       const penjualanData = createPenjualanData(submitData, updatedFormData, hargaBeli, hargaJual, keuntungan);
 
+      // ✅ TAMBAHAN: Deteksi perubahan company
+      const companyChanged = originalPenjualan.company_id !== submitData.company_id;
+      const originalDp = originalPenjualan.dp || 0;
+      const newDp = submitData.dp || 0;
+
       // 1. Update penjualan record
       const { error: updateError } = await supabase
         .from('penjualans')
@@ -53,29 +58,56 @@ export const usePenjualanEdit = () => {
         .from('pembukuan')
         .delete()
         .eq('pembelian_id', originalPenjualan.pembelian_id)
-        .like('keterangan', '%Penjualan%'); // Only delete penjualan-related entries
+        .like('keterangan', '%Penjualan%');
 
       if (deletePembukuanError) {
         console.error('Error deleting old pembukuan:', deletePembukuanError);
       }
 
-      // 3. Revert old modal changes
-      if (originalPenjualan.company_id) {
-        // Revert DP/cash payment
-        const oldPayment = originalPenjualan.jenis_pembayaran === 'cash_penuh' 
-          ? originalPenjualan.harga_bayar 
-          : (originalPenjualan.dp || 0);
-        
-        if (oldPayment > 0) {
+      // ✅ 3. Handle modal changes when company changed
+      if (companyChanged) {
+        // Return funds to old company
+        if (originalPenjualan.company_id && originalDp > 0) {
           await supabase.rpc('update_company_modal', {
             company_id: originalPenjualan.company_id,
-            amount: -oldPayment
+            amount: originalDp // Kembalikan DP ke perusahaan lama
+          });
+        }
+
+        // Deduct funds from new company
+        if (submitData.company_id && newDp > 0) {
+          await supabase.rpc('update_company_modal', {
+            company_id: submitData.company_id,
+            amount: -newDp // Kurangi modal perusahaan baru
+          });
+        }
+      } else {
+        // ✅ 4. Handle DP changes when company doesn't change
+        const dpDifference = newDp - originalDp;
+        if (dpDifference !== 0 && submitData.company_id) {
+          await supabase.rpc('update_company_modal', {
+            company_id: submitData.company_id,
+            amount: dpDifference // Sesuaikan modal berdasarkan selisih DP
           });
         }
       }
 
-      // 4. Apply new pembukuan and modal changes (reuse logic from create)
-      // ... (copy pembukuan and modal logic from usePenjualanCreate)
+      // ✅ 5. Create new pembukuan entries
+      const pembukuanEntries = createPembukuanEntries(submitData, updatedFormData);
+      if (pembukuanEntries.length > 0) {
+        const { error: pembukuanError } = await supabase
+          .from('pembukuan')
+          .insert(pembukuanEntries);
+        
+        if (pembukuanError) {
+          console.error('Error creating new pembukuan:', pembukuanError);
+          toast({
+            title: "Warning",
+            description: `Penjualan diupdate tapi pembukuan gagal: ${pembukuanError.message}`,
+            variant: "destructive"
+          });
+        }
+      }
 
       return { success: true };
     },
