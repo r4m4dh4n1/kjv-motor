@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { PenjualanFormData } from "../penjualan-types";
-import { createPenjualanData } from "../utils/penjualanBusinessLogic";
+import { createPenjualanData, createPembukuanEntries } from "../utils/penjualanBusinessLogic";
 import { parseFormattedNumber } from "@/utils/formatUtils";
 import { transformPenjualanFormDataForSubmit } from "../utils/penjualanFormUtils";
 
@@ -30,6 +30,8 @@ export const usePenjualanEdit = () => {
 
       // Calculate new values
       const hargaJual = parseFormattedNumber(formData.harga_jual);
+      const hargaBayar = parseFormattedNumber(formData.harga_bayar || "0");
+      const dp = parseFormattedNumber(formData.dp || "0");
       const selectedMotor = pembelianData.find(p => p.id === parseInt(formData.selected_motor_id));
       const hargaBeli = selectedMotor?.harga_final && selectedMotor.harga_final > 0 
         ? selectedMotor.harga_final 
@@ -39,6 +41,16 @@ export const usePenjualanEdit = () => {
       const updatedFormData = { ...formData };
       const submitData = transformPenjualanFormDataForSubmit(updatedFormData);
       const penjualanData = createPenjualanData(submitData, updatedFormData, hargaBeli, hargaJual, keuntungan);
+
+      // Check if company changed
+      const companyChanged = originalPenjualan.company_id !== submitData.company_id;
+      
+      // Get original payment amounts
+      const originalDp = originalPenjualan.dp || 0;
+      const originalHargaBayar = originalPenjualan.harga_bayar || 0;
+      const originalPayment = originalPenjualan.jenis_pembayaran === 'cash_penuh' 
+        ? originalHargaBayar 
+        : originalDp;
 
       // 1. Update penjualan record
       const { error: updateError } = await supabase
@@ -59,23 +71,135 @@ export const usePenjualanEdit = () => {
         console.error('Error deleting old pembukuan:', deletePembukuanError);
       }
 
-      // 3. Revert old modal changes
-      if (originalPenjualan.company_id) {
-        // Revert DP/cash payment
-        const oldPayment = originalPenjualan.jenis_pembayaran === 'cash_penuh' 
-          ? originalPenjualan.harga_bayar 
-          : (originalPenjualan.dp || 0);
-        
-        if (oldPayment > 0) {
+      // 3. Handle modal changes based on company change
+      if (companyChanged) {
+        // 3a. Return funds to old company
+        if (originalPenjualan.company_id && originalPayment > 0) {
+          try {
+            const { error: oldModalError } = await supabase.rpc('update_company_modal', {
+              company_id: originalPenjualan.company_id,
+              amount: originalPayment // Return original payment to old company
+            });
+
+            if (oldModalError) {
+              console.error('Error returning funds to old company:', oldModalError);
+              toast({
+                title: "Warning",
+                description: `Gagal mengembalikan dana ke perusahaan lama: ${oldModalError.message}`,
+                variant: "destructive"
+              });
+            }
+          } catch (error) {
+            console.error('Error returning funds to old company:', error);
+          }
+        }
+      } else {
+        // 3b. If company didn't change, revert old modal changes
+        if (originalPenjualan.company_id && originalPayment > 0) {
           await supabase.rpc('update_company_modal', {
             company_id: originalPenjualan.company_id,
-            amount: -oldPayment
+            amount: -originalPayment // Revert old payment
           });
         }
       }
 
-      // 4. Apply new pembukuan and modal changes (reuse logic from create)
-      // ... (copy pembukuan and modal logic from usePenjualanCreate)
+      // 4. Create new pembukuan entries with new company_id
+      if (selectedMotor) {
+        try {
+          const pembukuanEntries = createPembukuanEntries(submitData, updatedFormData, selectedMotor);
+          
+          if (pembukuanEntries.length > 0) {
+            const { error: pembukuanError } = await supabase
+              .from('pembukuan')
+              .insert(pembukuanEntries)
+              .select();
+          
+            if (pembukuanError) {
+              console.error('PEMBUKUAN ERROR:', pembukuanError);
+              toast({
+                title: "Warning",
+                description: `Penjualan diupdate tapi pembukuan gagal: ${pembukuanError.message}`,
+                variant: "destructive"
+              });
+            }
+          }
+        } catch (insertError) {
+          console.error('CATCH ERROR saat insert pembukuan:', insertError);
+          toast({
+            title: "Error",
+            description: "Terjadi kesalahan saat menyimpan pembukuan",
+            variant: "destructive"
+          });
+        }
+      }
+
+      // 5. Add new modal to new company based on payment type
+      if (submitData.company_id) {
+        try {
+          // For cash_bertahap/kredit: add DP to company modal
+          if ((formData.jenis_pembayaran === 'cash_bertahap' || formData.jenis_pembayaran === 'kredit') && dp > 0) {
+            const { error: dpModalError } = await supabase.rpc('update_company_modal', {
+              company_id: submitData.company_id,
+              amount: dp // Add DP to new company
+            });
+
+            if (dpModalError) {
+              console.error('Error adding DP to company modal:', dpModalError);
+              toast({
+                title: "Warning",
+                description: `Penjualan diupdate tapi gagal menambah modal dari DP: ${dpModalError.message}`,
+                variant: "destructive"
+              });
+            }
+          }
+
+          // For cash_penuh: add full payment to company modal
+          if (formData.jenis_pembayaran === 'cash_penuh' && hargaBayar > 0) {
+            const { error: cashModalError } = await supabase.rpc('update_company_modal', {
+              company_id: submitData.company_id,
+              amount: Math.min(hargaBayar, hargaJual) // Add cash payment to new company
+            });
+
+            if (cashModalError) {
+              console.error('Error adding cash payment to company modal:', cashModalError);
+              toast({
+                title: "Warning",
+                description: `Penjualan diupdate tapi gagal menambah modal dari cash: ${cashModalError.message}`,
+                variant: "destructive"
+              });
+            }
+          }
+
+          // For completed cash_bertahap/kredit: add remaining payment
+          if ((submitData.status === 'selesai' || hargaBayar >= hargaJual) && 
+              (formData.jenis_pembayaran === 'cash_bertahap' || formData.jenis_pembayaran === 'kredit')) {
+            const sisaPembayaran = Math.min(hargaBayar, hargaJual) - dp;
+            
+            if (sisaPembayaran > 0) {
+              const { error: modalError } = await supabase.rpc('update_company_modal', {
+                company_id: submitData.company_id,
+                amount: sisaPembayaran
+              });
+
+              if (modalError) {
+                console.error('Error updating company modal for remaining payment:', modalError);
+                toast({
+                  title: "Warning",
+                  description: `Penjualan diupdate tapi gagal menambah modal sisa pembayaran: ${modalError.message}`,
+                  variant: "destructive"
+                });
+              }
+            }
+          }
+        } catch (modalUpdateError) {
+          console.error('CATCH ERROR saat update modal:', modalUpdateError);
+          toast({
+            title: "Warning",
+            description: "Penjualan diupdate tapi gagal menambah modal perusahaan",
+            variant: "destructive"
+          });
+        }
+      }
 
       return { success: true };
     },
