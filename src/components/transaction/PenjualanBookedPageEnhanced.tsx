@@ -124,24 +124,34 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
     handleUpdateHarga,
     handleLihatDetail,
     handleRiwayatHarga,
+    handleSubmitUpdateHarga,
+    handleLihatDetail,
+    handleRiwayatHarga,
+    handleSubmitUpdateHarga,
+    handleRiwayatHarga,
     // HAPUS handleSubmitUpdateHarga dari sini
   } = usePenjualanActions();
   
   // Buat fungsi handleSubmitUpdateHarga baru yang menggunakan useBookedUpdateHarga
   const handleSubmitUpdateHarga = async (updateData: any, onRefresh: () => void) => {
+    console.log('🔍 Update Data:', updateData);
+    console.log('🔍 Selected Penjualan:', selectedPenjualanForUpdate);
+    
     if (!selectedPenjualanForUpdate) return;
     
     try {
       await bookedUpdateHarga.mutateAsync({
-        penjualan_id: selectedPenjualanForUpdate.id,
-        harga_jual_baru: updateData.harga_jual_baru,
-        biaya_pajak: updateData.biaya_pajak,
-        biaya_qc: updateData.biaya_qc,
-        biaya_lain_lain: updateData.biaya_lain_lain,
-        keterangan_biaya_lain: updateData.keterangan_biaya_lain,
-        reason: updateData.reason,
-        tanggal_update: updateData.tanggal_update,
-        sumber_dana_id: updateData.sumber_dana_id
+        penjualanId: selectedPenjualanForUpdate.id, // ✅ BENAR: penjualanId bukan penjualan_id
+        data: {
+          harga_jual_baru: updateData.harga_jual_baru,
+          biaya_pajak: updateData.biaya_pajak,
+          biaya_qc: updateData.biaya_qc,
+          biaya_lain_lain: updateData.biaya_lain_lain,
+          keterangan_biaya_lain: updateData.keterangan_biaya_lain,
+          reason: updateData.reason,
+          tanggal_update: updateData.tanggal_update,
+          sumber_dana_id: updateData.sumber_dana_id
+        }
       });
       
       setIsUpdateHargaOpen(false);

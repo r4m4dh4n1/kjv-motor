@@ -124,28 +124,14 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     }
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.tanggal || !formData.kategori || !formData.nominal || !formData.deskripsi || !formData.sumber_dana) {
-      toast({
-        title: "Error",
-        description: "Mohon lengkapi semua field yang wajib diisi",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const nominalAmount = parseFloat(parseNumericInput(formData.nominal));
-    if (isNaN(nominalAmount) || nominalAmount <= 0) {
-      toast({
-        title: "Error",
-        description: "Nominal harus berupa angka yang valid dan lebih dari 0",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    if (isSubmitting) return; // Prevent multiple submissions
+    setIsSubmitting(true);
+    
     try {
       // Get company data to check modal
       const { data: company, error: companyError } = await supabase
@@ -720,3 +706,12 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 };
 
 export default OperationalPage;
+
+// Di form button:
+<Button 
+  type="submit" 
+  className="bg-purple-600 hover:bg-purple-700"
+  disabled={isSubmitting}
+>
+  {isSubmitting ? "Menyimpan..." : (editingOperational ? "Update" : "Simpan")}
+</Button>
