@@ -890,7 +890,7 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Pemasukan</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(getTotalKredit())}
+                  {formatCurrency(getTotalDebit())}
                 </p>
               </div>
               <TrendingUp className="w-8 h-8 text-green-600" />
@@ -904,7 +904,7 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Pengeluaran</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {formatCurrency(getTotalDebit())}
+                  {formatCurrency(getTotalKredit())}
                 </p>
               </div>
               <TrendingDown className="w-8 h-8 text-red-600" />
@@ -1023,6 +1023,60 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
                 )}
               </TableBody>
             </Table>
+          )}
+          
+          {/* Summary di bawah tabel */}
+          {!loading && pembukuanData.length > 0 && (
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                  <div className="text-sm font-medium text-red-700">Total Debit</div>
+                  <div className="text-xl font-bold text-red-600">
+                    {formatCurrency(getTotalDebit())}
+                  </div>
+                </div>
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <div className="text-sm font-medium text-green-700">Total Kredit</div>
+                  <div className="text-xl font-bold text-green-600">
+                    {formatCurrency(getTotalKredit())}
+                  </div>
+                </div>
+                <div className={`p-4 rounded-lg border ${
+                  getBalance() >= 0 
+                    ? 'bg-blue-50 border-blue-200' 
+                    : 'bg-orange-50 border-orange-200'
+                }`}>
+                  <div className={`text-sm font-medium ${
+                    getBalance() >= 0 ? 'text-blue-700' : 'text-orange-700'
+                  }`}>
+                    Saldo (Debit - Kredit)
+                  </div>
+                  <div className={`text-xl font-bold ${
+                    getBalance() >= 0 ? 'text-blue-600' : 'text-orange-600'
+                  }`}>
+                    {formatCurrency(getBalance())}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Info periode */}
+              <div className="mt-3 text-sm text-gray-600 text-center">
+                📅 Data berdasarkan periode: <span className="font-medium">
+                  {dateFilter === 'today' && 'Hari Ini'}
+                  {dateFilter === 'yesterday' && 'Kemarin'}
+                  {dateFilter === 'this_week' && 'Minggu Ini'}
+                  {dateFilter === 'last_week' && 'Minggu Lalu'}
+                  {dateFilter === 'this_month' && 'Bulan Ini'}
+                  {dateFilter === 'last_month' && 'Bulan Lalu'}
+                  {dateFilter === 'this_year' && 'Tahun Ini'}
+                  {dateFilter === 'last_year' && 'Tahun Lalu'}
+                  {dateFilter === 'custom' && `${customStartDate} s/d ${customEndDate}`}
+                </span>
+                {shouldUseCombined && (
+                  <span className="ml-2 text-blue-600 font-medium">• Combined View (Active + History)</span>
+                )}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
