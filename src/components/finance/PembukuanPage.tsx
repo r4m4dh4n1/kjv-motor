@@ -509,7 +509,16 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
   };
 
   const getBalance = () => {
-    return getTotalKredit() - getTotalDebit();
+    return getTotalDebit() - getTotalKredit();
+  };
+
+  const getBalanceStatus = () => {
+    const balance = getBalance();
+    return {
+      amount: Math.abs(balance),
+      status: balance >= 0 ? 'surplus' : 'defisit',
+      color: balance >= 0 ? 'text-green-600' : 'text-red-600'
+    };
   };
 
   const filteredCompanies = companiesData.filter(company => 
@@ -882,8 +891,8 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
         </CardContent>
       </Card>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Summary Cards - Menghapus card saldo */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -916,25 +925,10 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Cash Flow Bersih</p>
-                <p className={`text-2xl font-bold ${getBalance() >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(getBalance())}
-                </p>
-              </div>
-              <DollarSign className={`w-8 h-8 ${getBalance() >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
                 <p className="text-sm font-medium text-gray-600">Total Transaksi</p>
                 <p className="text-2xl font-bold text-blue-600">
                   {pembukuanData.length}
                 </p>
-                {/* ✅ TAMBAHAN: Info sumber data */}
                 {shouldUseCombined && (
                   <p className="text-xs text-gray-500 mt-1">
                     📊 Active + History
@@ -1000,7 +994,6 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
                       {item.kredit ? formatCurrency(item.kredit) : '-'}
                     </TableCell>
                     <TableCell>{item.companies?.nama_perusahaan || '-'}</TableCell>
-                    {/* ✅ TAMBAHAN: Kolom source untuk combined view */}
                     {shouldUseCombined && (
                       <TableCell>
                         <span className={`text-xs px-2 py-1 rounded-full ${
@@ -1014,6 +1007,24 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
                     )}
                   </TableRow>
                 ))}
+                
+                {/* Row Total di bagian bawah tabel */}
+                {pembukuanData.length > 0 && (
+                  <TableRow className="bg-gray-50 border-t-2 border-gray-300">
+                    <TableCell colSpan={5} className="font-bold text-gray-700 text-right">
+                      TOTAL:
+                    </TableCell>
+                    <TableCell className="text-red-600 font-bold text-lg">
+                      {formatCurrency(getTotalDebit())}
+                    </TableCell>
+                    <TableCell className="text-green-600 font-bold text-lg">
+                      {formatCurrency(getTotalKredit())}
+                    </TableCell>
+                    <TableCell></TableCell>
+                    {shouldUseCombined && <TableCell></TableCell>}
+                  </TableRow>
+                )}
+                
                 {pembukuanData.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={shouldUseCombined ? 9 : 8} className="text-center py-8 text-gray-500">
@@ -1025,42 +1036,10 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
             </Table>
           )}
           
-          {/* Summary di bawah tabel */}
+          {/* Info periode - Menghapus summary cards di bawah tabel */}
           {!loading && pembukuanData.length > 0 && (
             <div className="mt-6 pt-4 border-t border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-                  <div className="text-sm font-medium text-red-700">Total Debit</div>
-                  <div className="text-xl font-bold text-red-600">
-                    {formatCurrency(getTotalDebit())}
-                  </div>
-                </div>
-                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                  <div className="text-sm font-medium text-green-700">Total Kredit</div>
-                  <div className="text-xl font-bold text-green-600">
-                    {formatCurrency(getTotalKredit())}
-                  </div>
-                </div>
-                <div className={`p-4 rounded-lg border ${
-                  getBalance() >= 0 
-                    ? 'bg-blue-50 border-blue-200' 
-                    : 'bg-orange-50 border-orange-200'
-                }`}>
-                  <div className={`text-sm font-medium ${
-                    getBalance() >= 0 ? 'text-blue-700' : 'text-orange-700'
-                  }`}>
-                    Saldo (Debit - Kredit)
-                  </div>
-                  <div className={`text-xl font-bold ${
-                    getBalance() >= 0 ? 'text-blue-600' : 'text-orange-600'
-                  }`}>
-                    {formatCurrency(getBalance())}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Info periode */}
-              <div className="mt-3 text-sm text-gray-600 text-center">
+              <div className="text-sm text-gray-600 text-center">
                 📅 Data berdasarkan periode: <span className="font-medium">
                   {dateFilter === 'today' && 'Hari Ini'}
                   {dateFilter === 'yesterday' && 'Kemarin'}
