@@ -899,7 +899,7 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Pemasukan</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(getTotalDebit())}
+                  {formatCurrency(getTotalKredit())}
                 </p>
               </div>
               <TrendingUp className="w-8 h-8 text-green-600" />
@@ -913,7 +913,7 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Pengeluaran</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {formatCurrency(getTotalKredit())}
+                  {formatCurrency(getTotalDebit())}
                 </p>
               </div>
               <TrendingDown className="w-8 h-8 text-red-600" />
