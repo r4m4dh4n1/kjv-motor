@@ -52,6 +52,13 @@ interface AccumulativeData {
   totalBookedYTD: number;
 }
 
+interface CompanyModalDetail {
+  id: number;
+  nama_perusahaan: string;
+  modal: number;
+  divisi: string;
+}
+
 interface DateRange {
   start: string;
   end: string;
@@ -83,6 +90,10 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
   const [displayTotalUnit, setDisplayTotalUnit] = useState(0);
   const [displayTotalPembelian, setDisplayTotalPembelian] = useState(0);
   const [displayTotalBooked, setDisplayTotalBooked] = useState(0);
+
+  // State untuk detail company
+  const [companiesModalDetail, setCompaniesModalDetail] = useState<CompanyModalDetail[]>([]);
+  const [showCompanyBreakdown, setShowCompanyBreakdown] = useState(false);
 
   // Computed values
   const totalModal = keuntunganData.reduce((sum, item) => sum + item.modal, 0);
@@ -853,7 +864,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
 
     let companiesQuery = supabase
       .from('companies')
-      .select('modal, divisi');
+      .select('id, nama_perusahaan, modal, divisi');
 
     if (selectedDivision !== 'all') {
       companiesQuery = companiesQuery.eq('divisi', selectedDivision);
@@ -866,11 +877,15 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
       throw error;
     }
 
+    // Simpan detail companies untuk breakdown
+    setCompaniesModalDetail(companiesData || []);
+
     const totalModal = companiesData?.reduce((sum, company) => sum + Number(company.modal || 0), 0) || 0;
 
     console.log('🏢 Total modal companies result:', {
       totalModal,
-      companiesCount: companiesData?.length || 0
+      companiesCount: companiesData?.length || 0,
+      companiesDetail: companiesData
     });
 
     return totalModal;
@@ -1134,9 +1149,34 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
               <h4 className="font-semibold text-gray-700 mb-3">Komponen Perhitungan:</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between items-center p-2 bg-white rounded border">
-                  <span className="text-green-600">+ Modal Company:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600">+ Modal Company:</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowCompanyBreakdown(!showCompanyBreakdown)}
+                      className="text-xs text-blue-600 hover:text-blue-800"
+                    >
+                      {showCompanyBreakdown ? 'Sembunyikan' : 'Detail'}
+                    </Button>
+                  </div>
                   <span className="font-medium">{formatCurrency(totalModalCompanies)}</span>
                 </div>
+                {/* Breakdown per company */}
+                {showCompanyBreakdown && (
+                  <div className="ml-4 mt-2 space-y-1">
+                    {companiesModalDetail.map((company) => (
+                      <div key={company.id} className="flex justify-between items-center p-2 bg-gray-50 rounded border text-xs">
+                        <span className="text-gray-600">
+                          • {company.nama_perusahaan} ({company.divisi})
+                        </span>
+                        <span className="font-medium text-gray-800">
+                          {formatCurrency(company.modal)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="flex justify-between items-center p-2 bg-white rounded border">
                   <span className="text-green-600">+ Pembelian Ready:</span>
                   <span className="font-medium">{formatCurrency(totalPembelianGabungan)}</span>
