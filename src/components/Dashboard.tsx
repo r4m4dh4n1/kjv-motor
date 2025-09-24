@@ -146,8 +146,10 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       const totalKeuntungan = penjualan.reduce((sum, p) => sum + (p.keuntungan || 0), 0);
       const totalKeuntunganUnit = penjualan.length;
       
-      // Calculate booked stats (status = Booked with capital B)
-      const bookedPenjualan = penjualan.filter(p => p.status === 'Booked');
+      // Calculate booked stats (handle both 'Booked' and 'booked')
+      const bookedPenjualan = penjualan.filter(p => 
+        p.status === 'Booked' || p.status === 'booked'
+      );
       const totalBooked = bookedPenjualan.reduce((sum, p) => sum + p.harga_jual, 0);
       const totalBookedUnit = bookedPenjualan.length;
       
@@ -171,9 +173,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
           p.tanggal_pembelian === dateStr && p.status === 'ready'
         ).length;
         
-        // Count penjualan with Booked status for this day (note: capital B)
+        // Count penjualan with Booked status for this day (handle both cases)
         const bookedCount = penjualan.filter(p => 
-          p.tanggal === dateStr && p.status === 'Booked'
+          p.tanggal === dateStr && (p.status === 'Booked' || p.status === 'booked')
         ).length;
         
         // Count penjualan with selesai status for this day (sold = selesai)
