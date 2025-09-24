@@ -61,11 +61,13 @@ export const usePenjualanEdit = () => {
       if (updateError) throw updateError;
 
       // 2. Delete old pembukuan entries for this specific penjualan
+      // Hapus entry yang mengandung informasi motor (brand, jenis, plat)
+      const motorInfo = `${selectedMotor?.brands?.name || ''} - ${selectedMotor?.jenis_motor?.jenis_motor || ''}`;
       const { error: deletePembukuanError } = await supabase
         .from('pembukuan')
         .delete()
         .eq('pembelian_id', originalPenjualan.pembelian_id)
-        .like('keterangan', '%Penjualan%'); // Only delete penjualan-related entries
+        .or(`keterangan.ilike.%${motorInfo}%,keterangan.ilike.%${originalPenjualan.plat}%`);
 
       if (deletePembukuanError) {
         console.error('Error deleting old pembukuan:', deletePembukuanError);
