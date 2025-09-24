@@ -72,6 +72,13 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         .select('*')
         .gte('tanggal', `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`)
         .lt('tanggal', `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-01`);
+      
+      // Query terpisah untuk booked orders - ambil semua data tanpa filter waktu
+      let bookedOrdersQuery = supabase
+        .from('penjualans')
+        .select('*')
+        .in('status', ['Booked', 'booked']);
+      
       let operationalQuery = supabase
         .from('operational')
         .select('*')
@@ -83,12 +90,14 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         companiesQuery = companiesQuery.eq('divisi', selectedDivision);
         pembelianQuery = pembelianQuery.eq('divisi', selectedDivision);
         penjualanQuery = penjualanQuery.eq('divisi', selectedDivision);
+        bookedOrdersQuery = bookedOrdersQuery.eq('divisi', selectedDivision);
         operationalQuery = operationalQuery.eq('divisi', selectedDivision);
       }
 
       if (selectedCabang !== 'all') {
         pembelianQuery = pembelianQuery.eq('cabang_id', parseInt(selectedCabang));
         penjualanQuery = penjualanQuery.eq('cabang_id', parseInt(selectedCabang));
+        bookedOrdersQuery = bookedOrdersQuery.eq('cabang_id', parseInt(selectedCabang));
         operationalQuery = operationalQuery.eq('cabang_id', parseInt(selectedCabang));
       }
 
@@ -100,6 +109,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         cabangResult,
         pembelianResult,
         penjualanResult,
+        bookedOrdersResult,
         operationalResult
       ] = await Promise.all([
         supabase.from('brands').select('*'),
@@ -109,6 +119,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         supabase.from('cabang').select('*'),
         pembelianQuery,
         penjualanQuery,
+        bookedOrdersQuery,
         operationalQuery
       ]);
 
@@ -116,8 +127,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       if (jenisMotorResult.error) throw jenisMotorResult.error;
       if (companiesResult.error) throw companiesResult.error;
       if (assetsResult.error) throw assetsResult.error;
+      if (bookedOrdersResult.error) throw bookedOrdersResult.error;
       if (operationalResult.error) throw operationalResult.error;
-
 
       const brands: Brand[] = brandsResult.data || [];
       const jenisMotor: JenisMotor[] = jenisMotorResult.data || [];
@@ -126,6 +137,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       const cabang = cabangResult.data || [];
       const pembelian = pembelianResult.data || [];
       const penjualan = penjualanResult.data || [];
+      const bookedOrders = bookedOrdersResult.data || [];
       const operational = operationalResult.data || [];
 
       // Set cabang data for filter
