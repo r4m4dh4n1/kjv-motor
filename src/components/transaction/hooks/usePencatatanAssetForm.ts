@@ -9,6 +9,7 @@ interface PencatatanAssetFormData {
   nominal: string;
   sumber_dana_id: string;
   keterangan: string;
+  jenis_transaksi: string; // Tambahkan field ini
 }
 
 interface PencatatanAssetItem {
@@ -61,10 +62,11 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
 
   const [formData, setFormData] = useState<PencatatanAssetFormData>({
     tanggal: getCurrentDate(),
-    nama: "",
-    nominal: "0",
-    sumber_dana_id: "",
-    keterangan: "",
+    nama: '',
+    nominal: '',
+    sumber_dana_id: '',
+    keterangan: '',
+    jenis_transaksi: 'pengeluaran' // Default ke pengeluaran
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -133,14 +135,14 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
           }
 
           try {
-            // 2. Mencatat transaksi ke tabel pembukuan
+            // 2. Mencatat transaksi ke tabel pembukuan berdasarkan jenis transaksi
             const pembukuanEntry = {
               tanggal: convertDateToISO(formData.tanggal),
               divisi: selectedDivision,
-              cabang_id: 1, // Default cabang
-              keterangan: `Pencatatan Asset - ${formData.nama}${formData.keterangan ? ` - ${formData.keterangan}` : ''}`,
-              debit: assetAmount, // Asset mengurangi modal (debit)
-              kredit: 0,
+              cabang_id: 1,
+              keterangan: `${formData.jenis_transaksi === 'pengeluaran' ? 'Pengeluaran' : 'Pemasukan'} Asset - ${formData.nama}${formData.keterangan ? ` - ${formData.keterangan}` : ''}`,
+              debit: formData.jenis_transaksi === 'pengeluaran' ? assetAmount : 0, // Pengeluaran = debit
+              kredit: formData.jenis_transaksi === 'pemasukan' ? assetAmount : 0, // Pemasukan = kredit
               saldo: 0,
               company_id: parseInt(formData.sumber_dana_id)
             };

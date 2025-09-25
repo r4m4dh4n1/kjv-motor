@@ -20,6 +20,7 @@ interface PencatatanAssetFormData {
   nominal: string;
   sumber_dana_id: string;
   keterangan: string;
+  jenis_transaksi: string; // Tambahkan field ini
 }
 
 interface PencatatanAssetFormProps {
@@ -128,6 +129,23 @@ export const PencatatanAssetForm = ({
           placeholder="Masukkan nama asset"
           required
         />
+      </div>
+
+      <div>
+        <Label htmlFor="jenis_transaksi">Jenis Transaksi *</Label>
+        <Select
+          value={formData.jenis_transaksi}
+          onValueChange={(value) => setFormData(prev => ({ ...prev, jenis_transaksi: value }))}
+          required
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Pilih Jenis Transaksi" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="pengeluaran">Pengeluaran Asset (Mengurangi Modal)</SelectItem>
+            <SelectItem value="pemasukan">Pemasukan Asset (Menambah Modal)</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div>
