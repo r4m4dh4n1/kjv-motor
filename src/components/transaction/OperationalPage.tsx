@@ -41,11 +41,26 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     "Listrik & Air",
     "Maintenance",
     "Marketing",
-    "Gaji & Tunjangan",
+    "Gaji Kurang Profit",
+    "Gaji Kurang Modal",
+    "Bonus Kurang Profit",
+    "Bonus Kurang Modal",
+    "Ops Bulanan Kurang Profit",
+    "Ops Bulanan Kurang Modal",
     "Pajak & Retribusi",
     "Asuransi",
     "Lain-lain"
   ];
+
+  // Helper function to check if category is "Kurang Profit"
+  const isKurangProfitCategory = (kategori: string) => {
+    return kategori.includes("Kurang Profit");
+  };
+
+  // Helper function to check if category is "Kurang Modal"
+  const isKurangModalCategory = (kategori: string) => {
+    return kategori.includes("Kurang Modal");
+  };
 
   useEffect(() => {
     fetchInitialData();
@@ -64,16 +79,14 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
   const fetchInitialData = async () => {
     try {
-      let companiesQuery = supabase.from('companies').select('*').order('nama_perusahaan');
-      
-      if (selectedDivision !== 'all') {
-        companiesQuery = companiesQuery.eq('divisi', selectedDivision);
-      }
+      // Fetch companies data
+      const { data: companies, error: companiesError } = await supabase
+        .from('companies')
+        .select('*')
+        .order('nama_perusahaan');
 
-      const { data: companiesResult, error: companiesError } = await companiesQuery;
       if (companiesError) throw companiesError;
-
-      setCompaniesData(companiesResult || []);
+      setCompaniesData(companies || []);
     } catch (error) {
       console.error('Error fetching initial data:', error);
       toast({
@@ -85,46 +98,36 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   };
 
   const fetchOperationalData = async () => {
-    setLoading(true);
     try {
-      // PERBAIKAN: Fetch data terpisah karena operational_combined view 
-      // tidak memiliki foreign key relationship yang dikenali PostgREST
-      let operationalQuery = supabase
+      setLoading(true);
+      
+      let query = supabase
         .from('operational_combined')
-        .select('*')
+        .select(`
+          *,
+          companies (
+            nama_perusahaan,
+            modal
+          )
+        `)
         .gte('tanggal', dateFrom)
         .lte('tanggal', dateTo)
         .order('tanggal', { ascending: false });
 
+      // Filter by division if not 'all'
       if (selectedDivision !== 'all') {
-        operationalQuery = operationalQuery.eq('divisi', selectedDivision);
+        query = query.eq('divisi', selectedDivision);
       }
 
-      const { data: operationalData, error: operationalError } = await operationalQuery;
-      if (operationalError) throw operationalError;
+      // Filter by category if not 'all'
+      if (selectedCategory !== 'all') {
+        query = query.eq('kategori', selectedCategory);
+      }
 
-      // Fetch companies dan cabang data secara paralel
-      const [companiesResult, cabangResult] = await Promise.all([
-        supabase.from('companies').select('id, nama_perusahaan'),
-        supabase.from('cabang').select('id, nama')
-      ]);
+      const { data, error } = await query;
 
-      if (companiesResult.error) throw companiesResult.error;
-      if (cabangResult.error) throw cabangResult.error;
-
-      // Manual join data
-      const joinedData = (operationalData || []).map(item => ({
-        ...item,
-        companies: companiesResult.data?.find(c => c.id === item.company_id) || null,
-        cabang: cabangResult.data?.find(c => c.id === item.cabang_id) || null
-      }));
-
-      // Filter by category if selected
-      const filteredData = selectedCategory !== 'all' 
-        ? joinedData.filter(item => item.kategori === selectedCategory)
-        : joinedData;
-
-      setOperationalData(filteredData);
+      if (error) throw error;
+      setOperationalData(data || []);
     } catch (error) {
       console.error('Error fetching operational data:', error);
       toast({
@@ -150,12 +153,13 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       return;
     }
 
-    // ✅ LOGIKA KHUSUS: Cek apakah kategori adalah "Gaji & Tunjangan"
-    const isGajiTunjangan = formData.kategori === "Gaji & Tunjangan";
+    // ✅ LOGIKA BARU: Cek kategori berdasarkan aturan baru
+    const isKurangProfit = isKurangProfitCategory(formData.kategori);
+    const isKurangModal = isKurangModalCategory(formData.kategori);
 
     try {
-      // ✅ LOGIKA KHUSUS: Skip validasi modal untuk kategori "Gaji & Tunjangan"
-      if (!isGajiTunjangan) {
+      // ✅ LOGIKA BARU: Validasi modal hanya untuk kategori "Kurang Modal"
+      if (isKurangModal) {
         // Get company data to check modal
         const { data: company, error: companyError } = await supabase
           .from('companies')
@@ -177,7 +181,6 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       if (editingOperational) {
         // CATATAN: Untuk UPDATE, tetap gunakan tabel operational asli
-        // karena operational_combined adalah view read-only
         const { error: updateError } = await supabase
           .from('operational')
           .update({
@@ -185,16 +188,16 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
             kategori: formData.kategori,
             deskripsi: formData.deskripsi,
             nominal: nominalAmount,
-            // ✅ LOGIKA KHUSUS: Set company_id ke null untuk "Gaji & Tunjangan"
-            company_id: isGajiTunjangan ? null : parseInt(formData.sumber_dana),
+            // ✅ LOGIKA BARU: Set company_id berdasarkan kategori
+            company_id: isKurangProfit ? null : parseInt(formData.sumber_dana),
             divisi: selectedDivision !== 'all' ? selectedDivision : 'sport'
           })
           .eq('id', editingOperational.id);
 
         if (updateError) throw updateError;
 
-        // ✅ LOGIKA KHUSUS: Skip update modal perusahaan untuk "Gaji & Tunjangan"
-        if (!isGajiTunjangan) {
+        // ✅ LOGIKA BARU: Update modal perusahaan hanya untuk kategori "Kurang Modal"
+        if (isKurangModal) {
           // Update company modal (restore old amount and deduct new amount)
           const modalDifference = editingOperational.nominal - nominalAmount;
           const { error: modalUpdateError } = await supabase.rpc('update_company_modal', {
@@ -205,8 +208,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           if (modalUpdateError) throw modalUpdateError;
         }
 
-        // ✅ LOGIKA KHUSUS: Skip pembukuan untuk "Gaji & Tunjangan"
-        if (!isGajiTunjangan) {
+        // ✅ LOGIKA BARU: Pembukuan hanya untuk kategori "Kurang Modal"
+        if (isKurangModal) {
           // Update pembukuan entry - delete old and create new
           await supabase
             .from('pembukuan')
@@ -250,14 +253,14 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
             nominal: nominalAmount,
             divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
             cabang_id: 1, // Default cabang
-            // ✅ LOGIKA KHUSUS: Set company_id ke null untuk "Gaji & Tunjangan"
-            company_id: isGajiTunjangan ? null : parseInt(formData.sumber_dana)
+            // ✅ LOGIKA BARU: Set company_id berdasarkan kategori
+            company_id: isKurangProfit ? null : parseInt(formData.sumber_dana)
           }]);
 
         if (insertError) throw insertError;
 
-        // ✅ LOGIKA KHUSUS: Skip update modal perusahaan untuk "Gaji & Tunjangan"
-        if (!isGajiTunjangan) {
+        // ✅ LOGIKA BARU: Update modal perusahaan hanya untuk kategori "Kurang Modal"
+        if (isKurangModal) {
           // Update company modal using the database function
           const { error: modalUpdateError } = await supabase.rpc('update_company_modal', {
             company_id: parseInt(formData.sumber_dana),
@@ -267,8 +270,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           if (modalUpdateError) throw modalUpdateError;
         }
 
-        // ✅ LOGIKA KHUSUS: Skip pembukuan untuk "Gaji & Tunjangan"
-        if (!isGajiTunjangan) {
+        // ✅ LOGIKA BARU: Pembukuan hanya untuk kategori "Kurang Modal"
+        if (isKurangModal) {
           // Create pembukuan entry for operational expense
           const { error: pembukuanError } = await supabase
             .from('pembukuan')
@@ -292,11 +295,10 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           }
         }
 
-        // ✅ PLACEHOLDER: Untuk masa depan, bisa ditambahkan logika mengurangi keuntungan
-        if (isGajiTunjangan) {
+        // ✅ PLACEHOLDER: Untuk kategori "Kurang Profit", akan mengurangi keuntungan
+        if (isKurangProfit) {
           // TODO: Implementasi pengurangan keuntungan
-          // Bisa menggunakan tabel profit_distribution atau membuat tabel khusus
-          console.log(`Gaji & Tunjangan: ${nominalAmount} - akan mengurangi keuntungan`);
+          console.log(`${formData.kategori}: ${nominalAmount} - akan mengurangi keuntungan`);
         }
 
         toast({
@@ -341,8 +343,6 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       if (!operationalToDelete) return;
 
       // CATATAN: Untuk DELETE, tetap gunakan tabel operational asli
-      // Hanya data yang ada di tabel operational yang bisa dihapus
-      // Data di operational_history tidak bisa dihapus
       if (operationalToDelete.data_source === 'history') {
         toast({
           title: "Error",
@@ -352,8 +352,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         return;
       }
 
-      // ✅ LOGIKA KHUSUS: Cek apakah kategori adalah "Gaji & Tunjangan"
-      const isGajiTunjangan = operationalToDelete.kategori === "Gaji & Tunjangan";
+      // ✅ LOGIKA BARU: Cek kategori berdasarkan aturan baru
+      const isKurangProfit = isKurangProfitCategory(operationalToDelete.kategori);
+      const isKurangModal = isKurangModalCategory(operationalToDelete.kategori);
 
       const { error: deleteError } = await supabase
         .from('operational')
@@ -362,8 +363,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       if (deleteError) throw deleteError;
 
-      // ✅ LOGIKA KHUSUS: Skip penghapusan pembukuan untuk "Gaji & Tunjangan"
-      if (!isGajiTunjangan) {
+      // ✅ LOGIKA BARU: Penghapusan pembukuan hanya untuk kategori "Kurang Modal"
+      if (isKurangModal) {
         // Delete pembukuan entry first
         await supabase
           .from('pembukuan')
@@ -371,8 +372,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           .eq('keterangan', `like ${operationalToDelete.kategori} - ${operationalToDelete.deskripsi}%`);
       }
 
-      // ✅ LOGIKA KHUSUS: Skip restore modal perusahaan untuk "Gaji & Tunjangan"
-      if (!isGajiTunjangan && operationalToDelete.company_id) {
+      // ✅ LOGIKA BARU: Restore modal perusahaan hanya untuk kategori "Kurang Modal"
+      if (isKurangModal && operationalToDelete.company_id) {
         // Restore company modal using the database function
         const { error: modalRestoreError } = await supabase.rpc('update_company_modal', {
           company_id: operationalToDelete.company_id,
@@ -382,10 +383,10 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         if (modalRestoreError) throw modalRestoreError;
       }
 
-      // ✅ PLACEHOLDER: Untuk masa depan, bisa ditambahkan logika mengembalikan keuntungan
-      if (isGajiTunjangan) {
+      // ✅ PLACEHOLDER: Untuk kategori "Kurang Profit", akan mengembalikan keuntungan
+      if (isKurangProfit) {
         // TODO: Implementasi pengembalian keuntungan
-        console.log(`Gaji & Tunjangan dihapus: ${operationalToDelete.nominal} - akan mengembalikan keuntungan`);
+        console.log(`${operationalToDelete.kategori} dihapus: ${operationalToDelete.nominal} - akan mengembalikan keuntungan`);
       }
 
       toast({
@@ -416,35 +417,29 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     setEditingOperational(null);
   };
 
-  // PERBAIKAN UTAMA: Fungsi untuk membuka dialog baru
   const handleOpenNewDialog = () => {
     resetForm();
     setIsDialogOpen(true);
   };
 
-  // Helper functions for numeric formatting
   const formatNumberInput = (value: string): string => {
-    if (!value) return "";
-    const numericValue = value.replace(/[^0-9]/g, "");
-    if (!numericValue) return "";
-    return parseInt(numericValue).toLocaleString("id-ID");
+    return value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
 
   const parseNumericInput = (value: string): string => {
-    return value.replace(/[^0-9]/g, "");
+    return value.replace(/\./g, '');
   };
 
   const handleNumericChange = (value: string) => {
     const numericValue = parseNumericInput(value);
-    const formattedValue = formatNumberInput(numericValue);
-    setFormData({ ...formData, nominal: numericValue });
+    setFormData({...formData, nominal: numericValue});
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
     }).format(amount);
   };
 
@@ -457,16 +452,30 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   };
 
   const getCategoryStats = () => {
-    const stats = {};
-    operationalData.forEach(item => {
-      stats[item.kategori] = (stats[item.kategori] || 0) + item.nominal;
-    });
-    return stats;
+    return operationalData.reduce((stats, item) => {
+      stats[item.kategori] = (stats[item.kategori] || 0) + 1;
+      return stats;
+    }, {});
   };
 
   const filteredCompanies = companiesData.filter(company => 
     selectedDivision === 'all' || company.divisi.toLowerCase() === selectedDivision.toLowerCase()
   );
+
+  // ✅ LOGIKA BARU: Fungsi untuk menentukan apakah field Sumber Dana harus ditampilkan
+  const shouldShowSumberDana = (kategori: string) => {
+    return !isKurangProfitCategory(kategori);
+  };
+
+  // ✅ LOGIKA BARU: Fungsi untuk mendapatkan pesan informasi berdasarkan kategori
+  const getCategoryInfoMessage = (kategori: string) => {
+    if (isKurangProfitCategory(kategori)) {
+      return "Kategori ini tidak memerlukan sumber dana dan tidak akan mengurangi modal perusahaan. Pengeluaran ini akan mengurangi keuntungan.";
+    } else if (isKurangModalCategory(kategori)) {
+      return "Kategori ini akan mengurangi modal perusahaan dan dicatat dalam pembukuan sebagai debit.";
+    }
+    return "Kategori operasional standar yang akan mengurangi modal perusahaan dan dicatat dalam pembukuan.";
+  };
 
   return (
     <div className="space-y-6">
@@ -480,8 +489,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
             Kelola pengeluaran operasional harian
           </p>
         </div>
-        
-        {/* PERBAIKAN: Hapus DialogTrigger dan gunakan manual control */}
+
         <Button 
           onClick={handleOpenNewDialog}
           className="bg-purple-600 hover:bg-purple-700"
@@ -491,7 +499,6 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         </Button>
       </div>
 
-      {/* PERBAIKAN: Dialog tanpa DialogTrigger */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -556,8 +563,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
               />
             </div>
 
-            {/* ✅ LOGIKA KHUSUS: Sembunyikan field Sumber Dana untuk kategori "Gaji & Tunjangan" */}
-            {formData.kategori !== "Gaji & Tunjangan" ? (
+            {/* ✅ LOGIKA BARU: Tampilkan field Sumber Dana berdasarkan kategori */}
+            {shouldShowSumberDana(formData.kategori) ? (
               <div>
                 <Label htmlFor="sumber_dana">Sumber Dana *</Label>
                 <Select value={formData.sumber_dana} onValueChange={(value) => setFormData({...formData, sumber_dana: value})}>
@@ -578,9 +585,17 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                 </Select>
               </div>
             ) : (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-                <p className="text-sm text-blue-700">
-                  <strong>Catatan:</strong> Kategori "Gaji & Tunjangan" tidak memerlukan sumber dana dan tidak akan mengurangi modal perusahaan. Pengeluaran ini akan mengurangi keuntungan.
+              <div className={`p-3 border rounded-md ${
+                isKurangProfitCategory(formData.kategori) 
+                  ? 'bg-blue-50 border-blue-200' 
+                  : 'bg-green-50 border-green-200'
+              }`}>
+                <p className={`text-sm ${
+                  isKurangProfitCategory(formData.kategori) 
+                    ? 'text-blue-700' 
+                    : 'text-green-700'
+                }`}>
+                  <strong>Catatan:</strong> {getCategoryInfoMessage(formData.kategori)}
                 </p>
               </div>
             )}
@@ -601,7 +616,6 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         </DialogContent>
       </Dialog>
 
-      {/* Filter Controls */}
       <Card>
         <CardHeader>
           <CardTitle>Filter Data</CardTitle>
@@ -653,7 +667,6 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         </CardContent>
       </Card>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6">
@@ -712,7 +725,6 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         </Card>
       </div>
 
-      {/* Data Table */}
       <Card>
         <CardHeader>
           <CardTitle>Data Operasional</CardTitle>
@@ -740,7 +752,13 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>{formatDate(item.tanggal)}</TableCell>
                     <TableCell>
-                      <span className="px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800">
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        isKurangProfitCategory(item.kategori) 
+                          ? 'bg-blue-100 text-blue-800'
+                          : isKurangModalCategory(item.kategori)
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-purple-100 text-purple-800'
+                      }`}>
                         {item.kategori}
                       </span>
                     </TableCell>
@@ -748,7 +766,12 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                       {formatCurrency(item.nominal)}
                     </TableCell>
                     <TableCell>{item.deskripsi}</TableCell>
-                    <TableCell>{item.companies?.nama_perusahaan}</TableCell>
+                    <TableCell>
+                      {isKurangProfitCategory(item.kategori) 
+                        ? <span className="text-gray-500 italic">Tidak ada</span>
+                        : item.companies?.nama_perusahaan
+                      }
+                    </TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded-full text-xs ${
                         item.data_source === 'active' 
