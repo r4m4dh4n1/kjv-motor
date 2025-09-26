@@ -87,29 +87,42 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   const fetchOperationalData = async () => {
     setLoading(true);
     try {
-      // PERUBAHAN: Gunakan operational_combined view untuk membaca data
-      let query = supabase
+      // PERBAIKAN: Fetch data terpisah karena operational_combined view 
+      // tidak memiliki foreign key relationship yang dikenali PostgREST
+      let operationalQuery = supabase
         .from('operational_combined')
-        .select(`
-          *,
-          companies:company_id(nama_perusahaan),
-          cabang:cabang_id(nama)
-        `)
+        .select('*')
         .gte('tanggal', dateFrom)
         .lte('tanggal', dateTo)
         .order('tanggal', { ascending: false });
 
       if (selectedDivision !== 'all') {
-        query = query.eq('divisi', selectedDivision);
+        operationalQuery = operationalQuery.eq('divisi', selectedDivision);
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
+      const { data: operationalData, error: operationalError } = await operationalQuery;
+      if (operationalError) throw operationalError;
+
+      // Fetch companies dan cabang data secara paralel
+      const [companiesResult, cabangResult] = await Promise.all([
+        supabase.from('companies').select('id, nama_perusahaan'),
+        supabase.from('cabang').select('id, nama')
+      ]);
+
+      if (companiesResult.error) throw companiesResult.error;
+      if (cabangResult.error) throw cabangResult.error;
+
+      // Manual join data
+      const joinedData = (operationalData || []).map(item => ({
+        ...item,
+        companies: companiesResult.data?.find(c => c.id === item.company_id) || null,
+        cabang: cabangResult.data?.find(c => c.id === item.cabang_id) || null
+      }));
 
       // Filter by category if selected
       const filteredData = selectedCategory !== 'all' 
-        ? (data || []).filter(item => item.kategori === selectedCategory)
-        : (data || []);
+        ? joinedData.filter(item => item.kategori === selectedCategory)
+        : joinedData;
 
       setOperationalData(filteredData);
     } catch (error) {
