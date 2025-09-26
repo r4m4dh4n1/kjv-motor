@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Car, MapPin, Palette, TrendingUp, DollarSign, Clock } from "lucide-react";
+import { Eye, Car, MapPin, Palette, TrendingUp, DollarSign, Clock, Edit } from "lucide-react";
 import { EnhancedTable, CurrencyCell, DateCell, StatusBadge } from "./EnhancedTable";
 import {
   Dialog,
@@ -13,59 +13,70 @@ import {
 import { Button } from "@/components/ui/button";
 import UpdateHargaSoldModal, { UpdateHargaSoldData } from "./UpdateHargaSoldModal";
 import PriceHistoryModal from "./PriceHistoryModal";
+import EditHargaJualModal from "./EditHargaJualModal";
 import { useSoldUpdateHarga } from "./hooks/useSoldUpdateHarga";
 
 interface PenjualanSoldTableProps {
   penjualanData: any[];
+  currentPage?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
 }
 
-const PenjualanSoldTable = ({ penjualanData }: PenjualanSoldTableProps) => {
+const PenjualanSoldTable = ({ 
+  penjualanData, 
+  currentPage, 
+  totalPages, 
+  onPageChange 
+}: PenjualanSoldTableProps) => {
   const [selectedPenjualan, setSelectedPenjualan] = useState<any>(null);
   const [isUpdateHargaOpen, setIsUpdateHargaOpen] = useState(false);
+  const [isEditHargaJualOpen, setIsEditHargaJualOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [selectedPenjualanForHistory, setSelectedPenjualanForHistory] = useState<any>(null);
+  const [selectedPenjualanForEdit, setSelectedPenjualanForEdit] = useState<any>(null);
   
   const soldUpdateHarga = useSoldUpdateHarga();
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID');
-  };
 
   const handleUpdateHarga = (penjualan: any) => {
     setSelectedPenjualan(penjualan);
     setIsUpdateHargaOpen(true);
   };
 
-  // Update handleUpdateHargaConfirm function
-const handleUpdateHargaConfirm = (data: UpdateHargaSoldData) => {
-  if (selectedPenjualan) {
-    soldUpdateHarga.mutate({
-      penjualan_id: selectedPenjualan.id,
-      biaya_tambahan: data.biaya_tambahan,
-      reason: data.reason,
-      keterangan: data.keterangan,
-      operation_mode: data.operation_mode,
-      tanggal_update: data.tanggal_update, // ✅ TAMBAHKAN
-      sumber_dana_id: data.sumber_dana_id  // ✅ TAMBAHKAN
-    }, {
-      onSuccess: () => {
-        setIsUpdateHargaOpen(false);
-        setSelectedPenjualan(null);
-      }
-    });
-  }
-};
+  const handleEditHargaJual = (penjualan: any) => {
+    setSelectedPenjualanForEdit(penjualan);
+    setIsEditHargaJualOpen(true);
+  };
+
+  const handleUpdateHargaConfirm = async (updateData: UpdateHargaSoldData) => {
+    if (!selectedPenjualan) return;
+
+    try {
+      await soldUpdateHarga.mutateAsync({
+        penjualanId: selectedPenjualan.id,
+        updateData
+      });
+      
+      setIsUpdateHargaOpen(false);
+      setSelectedPenjualan(null);
+    } catch (error) {
+      console.error('Error updating harga:', error);
+    }
+  };
 
   const handleUpdateHargaClose = () => {
     setIsUpdateHargaOpen(false);
     setSelectedPenjualan(null);
+  };
+
+  const handleEditHargaJualClose = () => {
+    setIsEditHargaJualOpen(false);
+    setSelectedPenjualanForEdit(null);
+  };
+
+  const handleEditHargaJualSuccess = () => {
+    // Refresh data or trigger refetch
+    window.location.reload(); // Simple refresh, you can implement proper refetch
   };
 
   const handleViewHistory = (penjualan: any) => {
@@ -81,28 +92,34 @@ const handleUpdateHargaConfirm = (data: UpdateHargaSoldData) => {
   const DetailDialog = ({ penjualan }: { penjualan: any }) => (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="hover:bg-blue-50 hover:text-blue-600">
+        <Button 
+          variant="outline" 
+          size="sm"
+          className="hover:bg-blue-50 hover:text-blue-600"
+          title="Lihat Detail"
+        >
           <Eye className="w-4 h-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Car className="w-5 h-5 text-primary" />
+            <Car className="w-5 h-5 text-blue-600" />
             Detail Penjualan Motor
           </DialogTitle>
           <DialogDescription>
-            {penjualan.brands?.name} - {penjualan.jenis_motor?.jenis_motor} | {penjualan.plat}
+            Informasi lengkap penjualan motor yang telah selesai
           </DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4">
               <h4 className="font-semibold mb-3 text-blue-900">Informasi Umum</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Tanggal:</span>
-                  <span className="font-medium">{formatDate(penjualan.tanggal)}</span>
+                  <DateCell date={penjualan.tanggal} />
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Divisi:</span>
@@ -110,11 +127,13 @@ const handleUpdateHargaConfirm = (data: UpdateHargaSoldData) => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Cabang:</span>
-                  <span className="font-medium">{penjualan.cabang?.nama || '-'}</span>
+                  <span className="font-medium">{penjualan.cabang?.nama}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Jenis Transaksi:</span>
-                  <Badge variant="secondary">{penjualan.tt?.replace('_', ' ')}</Badge>
+                  <Badge variant={penjualan.tt === 'tukar_tambah' ? 'default' : 'secondary'}>
+                    {penjualan.tt?.replace('_', ' ')}
+                  </Badge>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Status:</span>
@@ -127,25 +146,25 @@ const handleUpdateHargaConfirm = (data: UpdateHargaSoldData) => {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4">
-              <h4 className="font-semibold mb-3 text-green-900">Spesifikasi Motor</h4>
+            <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-lg p-4">
+              <h4 className="font-semibold mb-3 text-gray-900">Spesifikasi Motor</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Brand:</span>
-                  <span className="font-medium">{penjualan.brands?.name || '-'}</span>
+                  <span className="font-medium">{penjualan.brands?.name}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Jenis Motor:</span>
-                  <span className="font-medium">{penjualan.jenis_motor?.jenis_motor || '-'}</span>
+                  <span className="font-medium">{penjualan.jenis_motor?.jenis_motor}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Tahun:</span>
-                  <Badge variant="outline">{penjualan.tahun}</Badge>
+                  <span className="font-medium">{penjualan.tahun}</span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Warna:</span>
                   <div className="flex items-center gap-2">
-                    <Palette className="w-4 h-4 text-muted-foreground" />
+                    <Palette className="w-4 h-4 text-purple-500" />
                     <span className="font-medium">{penjualan.warna}</span>
                   </div>
                 </div>
@@ -229,54 +248,13 @@ const handleUpdateHargaConfirm = (data: UpdateHargaSoldData) => {
 
   const columns = [
     {
-      key: "tanggal",
-      header: "Tanggal",
-      width: "w-28",
-      render: (value: string, row: any) => {
-        // Gunakan tanggal_lunas jika ada, jika tidak gunakan tanggal biasa
-        const displayDate = row.tanggal_lunas || row.tanggal;
-        return <DateCell date={displayDate} />;
-      }
-    },
-    {
-      key: "divisi",
-      header: "Divisi",
-      width: "w-20",
-      render: (value: string) => (
-        <Badge variant="outline" className="capitalize">
-          {value}
-        </Badge>
-      )
-    },
-    {
-      key: "cabang",
-      header: "Cabang",
-      width: "w-28",
-      render: (value: any, row: any) => (
-        <div className="flex items-center gap-1">
-          <MapPin className="w-3 h-3 text-muted-foreground" />
-          <span className="text-sm">{row.cabang?.nama || '-'}</span>
-        </div>
-      )
-    },
-    {
-      key: "tt",
-      header: "Jenis Transaksi",
-      width: "w-32",
-      render: (value: string) => (
-        <Badge variant="secondary" className="capitalize">
-          {value?.replace('_', ' ') || '-'}
-        </Badge>
-      )
-    },
-    {
       key: "motor_info",
-      header: "Informasi Motor",
-      width: "w-56",
+      header: "Motor",
+      width: "w-64",
       render: (value: any, row: any) => (
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Car className="w-4 h-4 text-primary" />
+            <Car className="w-4 h-4 text-blue-500" />
             <span className="font-medium text-sm">
               {row.brands?.name} - {row.jenis_motor?.jenis_motor}
             </span>
@@ -325,12 +303,26 @@ const handleUpdateHargaConfirm = (data: UpdateHargaSoldData) => {
     }
   ];
 
+  // ✅ BUTTON EDIT HARGA JUAL YANG BARU
+  const EditHargaJualButton = ({ penjualan }: { penjualan: any }) => (
+    <Button 
+      variant="outline" 
+      size="sm" 
+      onClick={() => handleEditHargaJual(penjualan)}
+      className="hover:bg-green-50 hover:text-green-600"
+      title="Edit Harga Jual"
+    >
+      <Edit className="w-4 h-4" />
+    </Button>
+  );
+
   const UpdateHargaButton = ({ penjualan }: { penjualan: any }) => (
     <Button 
       variant="outline" 
       size="sm" 
       onClick={() => handleUpdateHarga(penjualan)}
       className="hover:bg-orange-50 hover:text-orange-600"
+      title="Update Harga Beli"
     >
       <DollarSign className="w-4 h-4" />
     </Button>
@@ -342,6 +334,7 @@ const handleUpdateHargaConfirm = (data: UpdateHargaSoldData) => {
       size="sm" 
       onClick={() => handleViewHistory(penjualan)}
       className="hover:bg-purple-50 hover:text-purple-600"
+      title="Riwayat Harga"
     >
       <Clock className="w-4 h-4" />
     </Button>
@@ -361,6 +354,7 @@ const handleUpdateHargaConfirm = (data: UpdateHargaSoldData) => {
           actions: (
             <div className="flex gap-1">
               <DetailDialog penjualan={row} />
+              <EditHargaJualButton penjualan={row} />
               <HistoryButton penjualan={row} />
               <UpdateHargaButton penjualan={row} />
             </div>
@@ -371,7 +365,7 @@ const handleUpdateHargaConfirm = (data: UpdateHargaSoldData) => {
           {
             key: "actions",
             header: "Aksi",
-            width: "w-32",
+            width: "w-40",
             className: "text-center",
             render: (value: any) => value
           }
@@ -379,6 +373,14 @@ const handleUpdateHargaConfirm = (data: UpdateHargaSoldData) => {
         actions={[]} // Empty since we're using custom actions
         emptyMessage="Belum ada data penjualan motor yang selesai"
         headerColor="bg-gradient-to-r from-green-50 to-emerald-50"
+      />
+      
+      {/* ✅ MODAL EDIT HARGA JUAL YANG BARU */}
+      <EditHargaJualModal
+        isOpen={isEditHargaJualOpen}
+        onClose={handleEditHargaJualClose}
+        penjualan={selectedPenjualanForEdit}
+        onSuccess={handleEditHargaJualSuccess}
       />
       
       <UpdateHargaSoldModal

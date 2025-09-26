@@ -11,6 +11,7 @@ import { Plus, Settings, Edit, Trash2, TrendingUp, TrendingDown, DollarSign } fr
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DatePicker } from "@/components/ui/date-picker";
+import ProfitAdjustmentSummary from "@/components/finance/ProfitAdjustmentSummary";
 
 interface OperationalPageProps {
   selectedDivision: string;
@@ -173,8 +174,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     const isKurangModal = isKurangModalCategory(formData.kategori);
 
     try {
-      // ✅ LOGIKA BARU: Validasi modal hanya untuk kategori "Kurang Modal"
-      if (isKurangModal) {
+      // ✅ LOGIKA BARU: Validasi modal untuk semua kategori kecuali "Kurang Profit"
+      if (!isKurangProfit) {
         // Get company data to check modal
         const { data: company, error: companyError } = await supabase
           .from('companies')
@@ -211,8 +212,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
         if (updateError) throw updateError;
 
-        // ✅ LOGIKA BARU: Update modal perusahaan hanya untuk kategori "Kurang Modal"
-        if (isKurangModal) {
+        // ✅ LOGIKA BARU: Update modal perusahaan untuk semua kategori kecuali "Kurang Profit"
+        if (!isKurangProfit) {
           // Update company modal (restore old amount and deduct new amount)
           const modalDifference = editingOperational.nominal - nominalAmount;
           const { error: modalUpdateError } = await supabase.rpc('update_company_modal', {
@@ -223,13 +224,13 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           if (modalUpdateError) throw modalUpdateError;
         }
 
-        // ✅ LOGIKA BARU: Pembukuan hanya untuk kategori "Kurang Modal"
-        if (isKurangModal) {
+        // ✅ LOGIKA BARU: Pembukuan untuk semua kategori kecuali "Kurang Profit"
+        if (!isKurangProfit) {
           // Update pembukuan entry - delete old and create new
           await supabase
             .from('pembukuan')
             .delete()
-            .eq('keterangan', `like ${editingOperational.kategori} - ${editingOperational.deskripsi}%`);
+            .eq('keterangan', 'like', `${editingOperational.kategori} - ${editingOperational.deskripsi}%`);
 
           const { error: pembukuanError } = await supabase
             .from('pembukuan')
@@ -253,13 +254,44 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           }
         }
 
+        // ✅ IMPLEMENTASI BARU: Update profit adjustment untuk kategori "Kurang Profit"
+        if (isKurangProfit) {
+          // First restore the old profit adjustment
+          const { error: restoreError } = await supabase.rpc('restore_profit', {
+            p_operational_id: editingOperational.id
+          });
+
+          if (restoreError) {
+            console.error('Error restoring old profit adjustment:', restoreError);
+          }
+
+          // Then create new profit deduction
+          const { error: deductError } = await supabase.rpc('deduct_profit', {
+            p_operational_id: editingOperational.id,
+            p_tanggal: formData.tanggal,
+            p_divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
+            p_kategori: formData.kategori,
+            p_deskripsi: formData.deskripsi,
+            p_nominal: nominalAmount
+          });
+
+          if (deductError) {
+            console.error('Error creating new profit deduction:', deductError);
+            toast({
+              title: "Warning",
+              description: "Data operasional berhasil diubah tapi gagal mengupdate pengurangan keuntungan",
+              variant: "destructive"
+            });
+          }
+        }
+
         toast({
           title: "Berhasil",
           description: "Data operasional berhasil diperbarui",
         });
       } else {
         // CATATAN: Untuk INSERT, tetap gunakan tabel operational asli
-        const { error: insertError } = await supabase
+        const { data: insertedData, error: insertError } = await supabase
           .from('operational')
           .insert([{
             tanggal: formData.tanggal,
@@ -270,12 +302,14 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
             cabang_id: 1, // Default cabang
             // ✅ LOGIKA BARU: Set company_id berdasarkan kategori
             company_id: isKurangProfit ? null : parseInt(formData.sumber_dana)
-          }]);
+          }])
+          .select()
+          .single();
 
         if (insertError) throw insertError;
 
-        // ✅ LOGIKA BARU: Update modal perusahaan hanya untuk kategori "Kurang Modal"
-        if (isKurangModal) {
+        // ✅ LOGIKA BARU: Update modal perusahaan untuk semua kategori kecuali "Kurang Profit"
+        if (!isKurangProfit) {
           // Update company modal using the database function
           const { error: modalUpdateError } = await supabase.rpc('update_company_modal', {
             company_id: parseInt(formData.sumber_dana),
@@ -285,8 +319,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           if (modalUpdateError) throw modalUpdateError;
         }
 
-        // ✅ LOGIKA BARU: Pembukuan hanya untuk kategori "Kurang Modal"
-        if (isKurangModal) {
+        // ✅ LOGIKA BARU: Pembukuan untuk semua kategori kecuali "Kurang Profit"
+        if (!isKurangProfit) {
           // Create pembukuan entry for operational expense
           const { error: pembukuanError } = await supabase
             .from('pembukuan')
@@ -310,10 +344,25 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           }
         }
 
-        // ✅ PLACEHOLDER: Untuk kategori "Kurang Profit", akan mengurangi keuntungan
+        // ✅ IMPLEMENTASI BARU: Untuk kategori "Kurang Profit", kurangi keuntungan
         if (isKurangProfit) {
-          // TODO: Implementasi pengurangan keuntungan
-          console.log(`${formData.kategori}: ${nominalAmount} - akan mengurangi keuntungan`);
+          const { error: deductError } = await supabase.rpc('deduct_profit', {
+            p_operational_id: insertedData.id,
+            p_tanggal: formData.tanggal,
+            p_divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
+            p_kategori: formData.kategori,
+            p_deskripsi: formData.deskripsi,
+            p_nominal: nominalAmount
+          });
+
+          if (deductError) {
+            console.error('Error deducting profit:', deductError);
+            toast({
+              title: "Warning",
+              description: "Data operasional berhasil ditambah tapi gagal mengurangi keuntungan",
+              variant: "destructive"
+            });
+          }
         }
 
         toast({
@@ -369,7 +418,6 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       // ✅ LOGIKA BARU: Cek kategori berdasarkan aturan baru
       const isKurangProfit = isKurangProfitCategory(operationalToDelete.kategori);
-      const isKurangModal = isKurangModalCategory(operationalToDelete.kategori);
 
       const { error: deleteError } = await supabase
         .from('operational')
@@ -378,17 +426,17 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       if (deleteError) throw deleteError;
 
-      // ✅ LOGIKA BARU: Penghapusan pembukuan hanya untuk kategori "Kurang Modal"
-      if (isKurangModal) {
-        // Delete pembukuan entry first
+      // ✅ LOGIKA BARU: Penghapusan pembukuan untuk semua kategori kecuali "Kurang Profit"
+      if (!isKurangProfit) {
+        // Delete pembukuan entry
         await supabase
           .from('pembukuan')
           .delete()
-          .eq('keterangan', `like ${operationalToDelete.kategori} - ${operationalToDelete.deskripsi}%`);
+          .eq('keterangan', 'like', `${operationalToDelete.kategori} - ${operationalToDelete.deskripsi}%`);
       }
 
-      // ✅ LOGIKA BARU: Restore modal perusahaan hanya untuk kategori "Kurang Modal"
-      if (isKurangModal && operationalToDelete.company_id) {
+      // ✅ LOGIKA BARU: Restore modal perusahaan untuk semua kategori kecuali "Kurang Profit"
+      if (!isKurangProfit && operationalToDelete.company_id) {
         // Restore company modal using the database function
         const { error: modalRestoreError } = await supabase.rpc('update_company_modal', {
           company_id: operationalToDelete.company_id,
@@ -398,10 +446,20 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         if (modalRestoreError) throw modalRestoreError;
       }
 
-      // ✅ PLACEHOLDER: Untuk kategori "Kurang Profit", akan mengembalikan keuntungan
+      // ✅ IMPLEMENTASI BARU: Untuk kategori "Kurang Profit", kembalikan keuntungan
       if (isKurangProfit) {
-        // TODO: Implementasi pengembalian keuntungan
-        console.log(`${operationalToDelete.kategori} dihapus: ${operationalToDelete.nominal} - akan mengembalikan keuntungan`);
+        const { error: restoreError } = await supabase.rpc('restore_profit', {
+          p_operational_id: id
+        });
+
+        if (restoreError) {
+          console.error('Error restoring profit:', restoreError);
+          toast({
+            title: "Warning",
+            description: "Data operasional berhasil dihapus tapi gagal mengembalikan keuntungan",
+            variant: "destructive"
+          });
+        }
       }
 
       toast({
@@ -486,7 +544,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   const getCategoryInfoMessage = (kategori: string) => {
     if (isKurangProfitCategory(kategori)) {
       return "Kategori ini tidak memerlukan sumber dana dan tidak akan mengurangi modal perusahaan. Pengeluaran ini akan mengurangi keuntungan.";
-    } else if (isKurangModalCategory(kategori)) {
+    } else {
       return "Kategori ini akan mengurangi modal perusahaan dan dicatat dalam pembukuan sebagai debit.";
     }
     return "Kategori operasional standar yang akan mengurangi modal perusahaan dan dicatat dalam pembukuan.";
@@ -512,6 +570,17 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           <Plus className="w-4 h-4 mr-2" />
           Tambah Operasional
         </Button>
+      </div>
+
+      {/* ✅ TAMBAHAN BARU: Ringkasan Penyesuaian Keuntungan */}
+      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+        <h3 className="text-lg font-semibold text-blue-800 mb-4">
+          Dampak Terhadap Keuntungan
+        </h3>
+        <ProfitAdjustmentSummary 
+          selectedDivision={selectedDivision}
+          dateRange={dateFrom && dateTo ? { start: dateFrom, end: dateTo } : undefined}
+        />
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
