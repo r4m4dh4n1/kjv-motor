@@ -87,9 +87,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   const fetchOperationalData = async () => {
     setLoading(true);
     try {
-      // Use the operational table
+      // PERUBAHAN: Gunakan operational_combined view untuk membaca data
       let query = supabase
-        .from('operational')
+        .from('operational_combined')
         .select(`
           *,
           companies:company_id(nama_perusahaan),
@@ -127,16 +127,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.tanggal || !formData.kategori || !formData.nominal || !formData.deskripsi || !formData.sumber_dana) {
-      toast({
-        title: "Error",
-        description: "Mohon lengkapi semua field yang wajib diisi",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const nominalAmount = parseFloat(parseNumericInput(formData.nominal));
+    const nominalAmount = parseFloat(formData.nominal.replace(/\./g, ''));
     if (isNaN(nominalAmount) || nominalAmount <= 0) {
       toast({
         title: "Error",
@@ -166,7 +157,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       }
 
       if (editingOperational) {
-        // Update existing record
+        // CATATAN: Untuk UPDATE, tetap gunakan tabel operational asli
+        // karena operational_combined adalah view read-only
         const { error: updateError } = await supabase
           .from('operational')
           .update({
@@ -222,7 +214,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           description: "Data operasional berhasil diperbarui",
         });
       } else {
-        // Insert new record
+        // CATATAN: Untuk INSERT, tetap gunakan tabel operational asli
         const { error: insertError } = await supabase
           .from('operational')
           .insert([{
@@ -308,7 +300,18 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       const operationalToDelete = operationalData.find(item => item.id === id);
       if (!operationalToDelete) return;
 
-      // Delete the record
+      // CATATAN: Untuk DELETE, tetap gunakan tabel operational asli
+      // Hanya data yang ada di tabel operational yang bisa dihapus
+      // Data di operational_history tidak bisa dihapus
+      if (operationalToDelete.data_source === 'history') {
+        toast({
+          title: "Error",
+          description: "Data riwayat tidak dapat dihapus",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const { error: deleteError } = await supabase
         .from('operational')
         .delete()
@@ -665,6 +668,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                   <TableHead>Nominal</TableHead>
                   <TableHead>Deskripsi</TableHead>
                   <TableHead>Sumber Dana</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
@@ -681,31 +685,49 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                     <TableCell className="font-semibold text-red-600">
                       {formatCurrency(item.nominal)}
                     </TableCell>
-                    <TableCell className="max-w-xs truncate">{item.deskripsi}</TableCell>
-                    <TableCell>{item.companies?.nama_perusahaan || '-'}</TableCell>
+                    <TableCell>{item.deskripsi}</TableCell>
+                    <TableCell>{item.companies?.nama_perusahaan}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        item.data_source === 'active' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {item.data_source === 'active' ? 'Aktif' : 'Riwayat'}
+                      </span>
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEdit(item)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDelete(item.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        {item.data_source === 'active' && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEdit(item)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDelete(item.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </>
+                        )}
+                        {item.data_source === 'history' && (
+                          <span className="text-sm text-gray-500">
+                            Tidak dapat diedit
+                          </span>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
                 ))}
                 {operationalData.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                       Tidak ada data operasional
                     </TableCell>
                   </TableRow>
