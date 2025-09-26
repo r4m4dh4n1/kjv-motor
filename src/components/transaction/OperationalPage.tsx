@@ -101,33 +101,48 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     try {
       setLoading(true);
       
-      let query = supabase
+      // First, fetch operational data from the combined view
+      let operationalQuery = supabase
         .from('operational_combined')
-        .select(`
-          *,
-          companies (
-            nama_perusahaan,
-            modal
-          )
-        `)
+        .select('*')
         .gte('tanggal', dateFrom)
         .lte('tanggal', dateTo)
         .order('tanggal', { ascending: false });
 
       // Filter by division if not 'all'
       if (selectedDivision !== 'all') {
-        query = query.eq('divisi', selectedDivision);
+        operationalQuery = operationalQuery.eq('divisi', selectedDivision);
       }
 
       // Filter by category if not 'all'
       if (selectedCategory !== 'all') {
-        query = query.eq('kategori', selectedCategory);
+        operationalQuery = operationalQuery.eq('kategori', selectedCategory);
       }
 
-      const { data, error } = await query;
+      const { data: operationalData, error: operationalError } = await operationalQuery;
 
-      if (error) throw error;
-      setOperationalData(data || []);
+      if (operationalError) throw operationalError;
+
+      // Then, fetch companies data separately
+      const { data: companiesData, error: companiesError } = await supabase
+        .from('companies')
+        .select('id, nama_perusahaan, modal');
+
+      if (companiesError) throw companiesError;
+
+      // Create a map for quick company lookup
+      const companiesMap = new Map();
+      companiesData?.forEach(company => {
+        companiesMap.set(company.id, company);
+      });
+
+      // Join the data in JavaScript
+      const enrichedData = operationalData?.map(item => ({
+        ...item,
+        companies: item.company_id ? companiesMap.get(item.company_id) : null
+      })) || [];
+
+      setOperationalData(enrichedData);
     } catch (error) {
       console.error('Error fetching operational data:', error);
       toast({
