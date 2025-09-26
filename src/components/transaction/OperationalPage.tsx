@@ -150,23 +150,29 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       return;
     }
 
+    // ✅ LOGIKA KHUSUS: Cek apakah kategori adalah "Gaji & Tunjangan"
+    const isGajiTunjangan = formData.kategori === "Gaji & Tunjangan";
+
     try {
-      // Get company data to check modal
-      const { data: company, error: companyError } = await supabase
-        .from('companies')
-        .select('modal, nama_perusahaan')
-        .eq('id', parseInt(formData.sumber_dana))
-        .single();
+      // ✅ LOGIKA KHUSUS: Skip validasi modal untuk kategori "Gaji & Tunjangan"
+      if (!isGajiTunjangan) {
+        // Get company data to check modal
+        const { data: company, error: companyError } = await supabase
+          .from('companies')
+          .select('modal, nama_perusahaan')
+          .eq('id', parseInt(formData.sumber_dana))
+          .single();
 
-      if (companyError) throw companyError;
+        if (companyError) throw companyError;
 
-      if (company.modal < nominalAmount) {
-        toast({
-          title: "Error",
-          description: `Modal ${company.nama_perusahaan} tidak mencukupi. Modal tersedia: ${formatCurrency(company.modal)}`,
-          variant: "destructive",
-        });
-        return;
+        if (company.modal < nominalAmount) {
+          toast({
+            title: "Error",
+            description: `Modal ${company.nama_perusahaan} tidak mencukupi. Modal tersedia: ${formatCurrency(company.modal)}`,
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
       if (editingOperational) {
@@ -179,47 +185,54 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
             kategori: formData.kategori,
             deskripsi: formData.deskripsi,
             nominal: nominalAmount,
-            company_id: parseInt(formData.sumber_dana),
+            // ✅ LOGIKA KHUSUS: Set company_id ke null untuk "Gaji & Tunjangan"
+            company_id: isGajiTunjangan ? null : parseInt(formData.sumber_dana),
             divisi: selectedDivision !== 'all' ? selectedDivision : 'sport'
           })
           .eq('id', editingOperational.id);
 
         if (updateError) throw updateError;
 
-        // Update company modal (restore old amount and deduct new amount)
-        const modalDifference = editingOperational.nominal - nominalAmount;
-        const { error: modalUpdateError } = await supabase.rpc('update_company_modal', {
-          company_id: parseInt(formData.sumber_dana),
-          amount: modalDifference
-        });
-
-        if (modalUpdateError) throw modalUpdateError;
-
-        // Update pembukuan entry - delete old and create new
-        await supabase
-          .from('pembukuan')
-          .delete()
-          .eq('keterangan', `like ${editingOperational.kategori} - ${editingOperational.deskripsi}%`);
-
-        const { error: pembukuanError } = await supabase
-          .from('pembukuan')
-          .insert({
-            tanggal: formData.tanggal,
-            divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
-            keterangan: `${formData.kategori} - ${formData.deskripsi}`,
-            debit: nominalAmount,
-            kredit: 0,
-            cabang_id: 1,
-            company_id: parseInt(formData.sumber_dana)
+        // ✅ LOGIKA KHUSUS: Skip update modal perusahaan untuk "Gaji & Tunjangan"
+        if (!isGajiTunjangan) {
+          // Update company modal (restore old amount and deduct new amount)
+          const modalDifference = editingOperational.nominal - nominalAmount;
+          const { error: modalUpdateError } = await supabase.rpc('update_company_modal', {
+            company_id: parseInt(formData.sumber_dana),
+            amount: modalDifference
           });
 
-        if (pembukuanError) {
-          console.error('Error updating pembukuan entry:', pembukuanError);
-          toast({
-            title: "Warning",
-            description: "Data operasional berhasil diubah tapi gagal mengupdate pembukuan",
-            variant: "destructive"
-          });
+          if (modalUpdateError) throw modalUpdateError;
+        }
+
+        // ✅ LOGIKA KHUSUS: Skip pembukuan untuk "Gaji & Tunjangan"
+        if (!isGajiTunjangan) {
+          // Update pembukuan entry - delete old and create new
+          await supabase
+            .from('pembukuan')
+            .delete()
+            .eq('keterangan', `like ${editingOperational.kategori} - ${editingOperational.deskripsi}%`);
+
+          const { error: pembukuanError } = await supabase
+            .from('pembukuan')
+            .insert({
+              tanggal: formData.tanggal,
+              divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
+              keterangan: `${formData.kategori} - ${formData.deskripsi}`,
+              debit: nominalAmount,
+              kredit: 0,
+              cabang_id: 1,
+              company_id: parseInt(formData.sumber_dana)
+            });
+
+          if (pembukuanError) {
+            console.error('Error updating pembukuan entry:', pembukuanError);
+            toast({
+              title: "Warning",
+              description: "Data operasional berhasil diubah tapi gagal mengupdate pembukuan",
+              variant: "destructive"
+            });
+          }
         }
 
         toast({
@@ -237,39 +250,53 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
             nominal: nominalAmount,
             divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
             cabang_id: 1, // Default cabang
-            company_id: parseInt(formData.sumber_dana)
+            // ✅ LOGIKA KHUSUS: Set company_id ke null untuk "Gaji & Tunjangan"
+            company_id: isGajiTunjangan ? null : parseInt(formData.sumber_dana)
           }]);
 
         if (insertError) throw insertError;
 
-        // Update company modal using the database function
-        const { error: modalUpdateError } = await supabase.rpc('update_company_modal', {
-          company_id: parseInt(formData.sumber_dana),
-          amount: -nominalAmount // Negative to deduct from modal
-        });
-
-        if (modalUpdateError) throw modalUpdateError;
-
-        // Create pembukuan entry for operational expense
-        const { error: pembukuanError } = await supabase
-          .from('pembukuan')
-          .insert({
-            tanggal: formData.tanggal,
-            divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
-            keterangan: `${formData.kategori} - ${formData.deskripsi}`,
-            debit: nominalAmount,
-            kredit: 0,
-            cabang_id: 1,
-            company_id: parseInt(formData.sumber_dana)
+        // ✅ LOGIKA KHUSUS: Skip update modal perusahaan untuk "Gaji & Tunjangan"
+        if (!isGajiTunjangan) {
+          // Update company modal using the database function
+          const { error: modalUpdateError } = await supabase.rpc('update_company_modal', {
+            company_id: parseInt(formData.sumber_dana),
+            amount: -nominalAmount // Negative to deduct from modal
           });
 
-        if (pembukuanError) {
-          console.error('Error creating pembukuan entry:', pembukuanError);
-          toast({
-            title: "Warning",
-            description: "Data operasional berhasil ditambah tapi gagal mencatat pembukuan",
-            variant: "destructive"
-          });
+          if (modalUpdateError) throw modalUpdateError;
+        }
+
+        // ✅ LOGIKA KHUSUS: Skip pembukuan untuk "Gaji & Tunjangan"
+        if (!isGajiTunjangan) {
+          // Create pembukuan entry for operational expense
+          const { error: pembukuanError } = await supabase
+            .from('pembukuan')
+            .insert({
+              tanggal: formData.tanggal,
+              divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
+              keterangan: `${formData.kategori} - ${formData.deskripsi}`,
+              debit: nominalAmount,
+              kredit: 0,
+              cabang_id: 1,
+              company_id: parseInt(formData.sumber_dana)
+            });
+
+          if (pembukuanError) {
+            console.error('Error creating pembukuan entry:', pembukuanError);
+            toast({
+              title: "Warning",
+              description: "Data operasional berhasil ditambah tapi gagal mencatat pembukuan",
+              variant: "destructive"
+            });
+          }
+        }
+
+        // ✅ PLACEHOLDER: Untuk masa depan, bisa ditambahkan logika mengurangi keuntungan
+        if (isGajiTunjangan) {
+          // TODO: Implementasi pengurangan keuntungan
+          // Bisa menggunakan tabel profit_distribution atau membuat tabel khusus
+          console.log(`Gaji & Tunjangan: ${nominalAmount} - akan mengurangi keuntungan`);
         }
 
         toast({
@@ -325,6 +352,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         return;
       }
 
+      // ✅ LOGIKA KHUSUS: Cek apakah kategori adalah "Gaji & Tunjangan"
+      const isGajiTunjangan = operationalToDelete.kategori === "Gaji & Tunjangan";
+
       const { error: deleteError } = await supabase
         .from('operational')
         .delete()
@@ -332,20 +362,30 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       if (deleteError) throw deleteError;
 
-      // Delete pembukuan entry first
-      await supabase
-        .from('pembukuan')
-        .delete()
-        .eq('keterangan', `like ${operationalToDelete.kategori} - ${operationalToDelete.deskripsi}%`);
+      // ✅ LOGIKA KHUSUS: Skip penghapusan pembukuan untuk "Gaji & Tunjangan"
+      if (!isGajiTunjangan) {
+        // Delete pembukuan entry first
+        await supabase
+          .from('pembukuan')
+          .delete()
+          .eq('keterangan', `like ${operationalToDelete.kategori} - ${operationalToDelete.deskripsi}%`);
+      }
 
-      // Restore company modal using the database function
-      if (operationalToDelete.company_id) {
+      // ✅ LOGIKA KHUSUS: Skip restore modal perusahaan untuk "Gaji & Tunjangan"
+      if (!isGajiTunjangan && operationalToDelete.company_id) {
+        // Restore company modal using the database function
         const { error: modalRestoreError } = await supabase.rpc('update_company_modal', {
           company_id: operationalToDelete.company_id,
           amount: operationalToDelete.nominal // Positive to restore modal
         });
 
         if (modalRestoreError) throw modalRestoreError;
+      }
+
+      // ✅ PLACEHOLDER: Untuk masa depan, bisa ditambahkan logika mengembalikan keuntungan
+      if (isGajiTunjangan) {
+        // TODO: Implementasi pengembalian keuntungan
+        console.log(`Gaji & Tunjangan dihapus: ${operationalToDelete.nominal} - akan mengembalikan keuntungan`);
       }
 
       toast({
@@ -516,25 +556,34 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
               />
             </div>
 
-            <div>
-              <Label htmlFor="sumber_dana">Sumber Dana *</Label>
-              <Select value={formData.sumber_dana} onValueChange={(value) => setFormData({...formData, sumber_dana: value})}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Pilih sumber dana" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredCompanies.map((company) => (
-                    <SelectItem key={company.id} value={company.id.toString()}>
-                      {company.nama_perusahaan}
-                      <br />
-                      <small className="text-gray-500">
-                        Modal: {formatCurrency(company.modal)}
-                      </small>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* ✅ LOGIKA KHUSUS: Sembunyikan field Sumber Dana untuk kategori "Gaji & Tunjangan" */}
+            {formData.kategori !== "Gaji & Tunjangan" ? (
+              <div>
+                <Label htmlFor="sumber_dana">Sumber Dana *</Label>
+                <Select value={formData.sumber_dana} onValueChange={(value) => setFormData({...formData, sumber_dana: value})}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Pilih sumber dana" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredCompanies.map((company) => (
+                      <SelectItem key={company.id} value={company.id.toString()}>
+                        {company.nama_perusahaan}
+                        <br />
+                        <small className="text-gray-500">
+                          Modal: {formatCurrency(company.modal)}
+                        </small>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-700">
+                  <strong>Catatan:</strong> Kategori "Gaji & Tunjangan" tidak memerlukan sumber dana dan tidak akan mengurangi modal perusahaan. Pengeluaran ini akan mengurangi keuntungan.
+                </p>
+              </div>
+            )}
 
             <div className="flex gap-2 pt-4">
               <Button type="submit" className="bg-purple-600 hover:bg-purple-700">
