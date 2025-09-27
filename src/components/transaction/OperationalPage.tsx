@@ -227,10 +227,18 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         // ✅ LOGIKA BARU: Pembukuan untuk semua kategori kecuali "Kurang Profit"
         if (!isKurangProfit) {
           // Update pembukuan entry - delete old and create new
-          await supabase
+          const oldKeterangan = `${editingOperational.kategori} - ${editingOperational.deskripsi}`;
+          
+          const { error: deletePembukuanError } = await supabase
             .from('pembukuan')
             .delete()
-            .eq('keterangan', 'like', `${editingOperational.kategori} - ${editingOperational.deskripsi}%`);
+            .eq('keterangan', oldKeterangan)
+            .eq('debit', editingOperational.nominal)
+            .eq('company_id', editingOperational.company_id);
+
+          if (deletePembukuanError) {
+            console.error('Error deleting old pembukuan entry:', deletePembukuanError);
+          }
 
           const { error: pembukuanError } = await supabase
             .from('pembukuan')
@@ -428,11 +436,24 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       // ✅ LOGIKA BARU: Penghapusan pembukuan untuk semua kategori kecuali "Kurang Profit"
       if (!isKurangProfit) {
-        // Delete pembukuan entry
-        await supabase
+        // Delete pembukuan entry dengan query yang lebih akurat
+        const keteranganToDelete = `${operationalToDelete.kategori} - ${operationalToDelete.deskripsi}`;
+        
+        const { error: pembukuanDeleteError } = await supabase
           .from('pembukuan')
           .delete()
-          .eq('keterangan', 'like', `${operationalToDelete.kategori} - ${operationalToDelete.deskripsi}%`);
+          .eq('keterangan', keteranganToDelete)
+          .eq('debit', operationalToDelete.nominal)
+          .eq('company_id', operationalToDelete.company_id);
+
+        if (pembukuanDeleteError) {
+          console.error('Error deleting pembukuan entry:', pembukuanDeleteError);
+          toast({
+            title: "Warning",
+            description: "Data operasional berhasil dihapus tapi gagal menghapus pembukuan",
+            variant: "destructive"
+          });
+        }
       }
 
       // ✅ LOGIKA BARU: Restore modal perusahaan untuk semua kategori kecuali "Kurang Profit"
