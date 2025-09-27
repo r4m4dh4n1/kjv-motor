@@ -79,8 +79,14 @@ const ProfitAdjustmentSummary = ({ selectedDivision, dateRange }: ProfitAdjustme
   const fetchTotalProfit = async () => {
     // Tentukan rentang tanggal
     const currentDate = new Date();
-    const startDate = dateRange?.start || `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}-01`;
-    const endDate = dateRange?.end || `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}-31`;
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1;
+    
+    // Hitung tanggal akhir bulan yang benar
+    const lastDayOfMonth = new Date(currentYear, currentMonth, 0).getDate();
+    
+    const startDate = dateRange?.start || `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`;
+    const endDate = dateRange?.end || `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${lastDayOfMonth.toString().padStart(2, '0')}`;
 
     // Query untuk mendapatkan total keuntungan dari penjualan yang selesai
     let query = supabase
