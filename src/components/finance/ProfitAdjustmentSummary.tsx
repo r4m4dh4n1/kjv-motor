@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingDown, TrendingUp, DollarSign } from "lucide-react";
+import { TrendingDown, TrendingUp, DollarSign, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -19,44 +19,93 @@ interface ProfitAdjustmentData {
   net_adjustment: number;
 }
 
+interface TotalProfitData {
+  total_profit: number;
+  total_sales: number;
+  total_units: number;
+}
+
 const ProfitAdjustmentSummary = ({ selectedDivision, dateRange }: ProfitAdjustmentSummaryProps) => {
   const [adjustmentData, setAdjustmentData] = useState<ProfitAdjustmentData>({
     total_deductions: 0,
     total_restorations: 0,
     net_adjustment: 0
   });
+  const [totalProfitData, setTotalProfitData] = useState<TotalProfitData>({
+    total_profit: 0,
+    total_sales: 0,
+    total_units: 0
+  });
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchProfitAdjustments();
+    fetchData();
   }, [selectedDivision, dateRange]);
 
-  const fetchProfitAdjustments = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      
-      const { data, error } = await supabase.rpc('get_profit_adjustments_total', {
-        p_divisi: selectedDivision === 'all' ? null : selectedDivision,
-        p_start_date: dateRange?.start || null,
-        p_end_date: dateRange?.end || null
-      });
-
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        setAdjustmentData(data[0]);
-      }
+      await Promise.all([
+        fetchProfitAdjustments(),
+        fetchTotalProfit()
+      ]);
     } catch (error) {
-      console.error('Error fetching profit adjustments:', error);
+      console.error('Error fetching data:', error);
       toast({
         title: "Error",
-        description: "Gagal memuat data penyesuaian keuntungan",
+        description: "Gagal memuat data",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchProfitAdjustments = async () => {
+    const { data, error } = await supabase.rpc('get_profit_adjustments_total', {
+      p_divisi: selectedDivision === 'all' ? null : selectedDivision,
+      p_start_date: dateRange?.start || null,
+      p_end_date: dateRange?.end || null
+    });
+
+    if (error) throw error;
+
+    if (data && data.length > 0) {
+      setAdjustmentData(data[0]);
+    }
+  };
+
+  const fetchTotalProfit = async () => {
+    // Tentukan rentang tanggal
+    const currentDate = new Date();
+    const startDate = dateRange?.start || `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}-01`;
+    const endDate = dateRange?.end || `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}-31`;
+
+    // Query untuk mendapatkan total keuntungan dari penjualan yang selesai
+    let query = supabase
+      .from('penjualans')
+      .select('keuntungan, harga_jual')
+      .eq('status', 'selesai')
+      .gte('tanggal', startDate)
+      .lte('tanggal', endDate);
+
+    if (selectedDivision !== 'all') {
+      query = query.eq('divisi', selectedDivision);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const totalProfit = data?.reduce((sum, item) => sum + (item.keuntungan || 0), 0) || 0;
+    const totalSales = data?.reduce((sum, item) => sum + (item.harga_jual || 0), 0) || 0;
+    const totalUnits = data?.length || 0;
+
+    setTotalProfitData({
+      total_profit: totalProfit,
+      total_sales: totalSales,
+      total_units: totalUnits
+    });
   };
 
   const formatCurrency = (amount: number) => {
@@ -69,19 +118,42 @@ const ProfitAdjustmentSummary = ({ selectedDivision, dateRange }: ProfitAdjustme
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-            <div className="h-8 bg-gray-200 rounded w-1/2"></div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, index) => (
+          <Card key={index}>
+            <CardContent className="p-6">
+              <div className="animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Card Total Keuntungan */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Target className="h-4 w-4 text-purple-500" />
+            Total Keuntungan
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-purple-600">
+            {formatCurrency(totalProfitData.total_profit)}
+          </div>
+          <Badge variant="outline" className="mt-2">
+            {totalProfitData.total_units} Unit Terjual
+          </Badge>
+        </CardContent>
+      </Card>
+
+      {/* Card Pengurangan Keuntungan */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -99,6 +171,7 @@ const ProfitAdjustmentSummary = ({ selectedDivision, dateRange }: ProfitAdjustme
         </CardContent>
       </Card>
 
+      {/* Card Pengembalian Keuntungan */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -116,6 +189,7 @@ const ProfitAdjustmentSummary = ({ selectedDivision, dateRange }: ProfitAdjustme
         </CardContent>
       </Card>
 
+      {/* Card Dampak Bersih */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
