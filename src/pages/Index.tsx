@@ -35,6 +35,7 @@ import PriceHistoryUploadPage from "@/components/transaction/PriceHistoryUploadP
 import LabaRugiPage from "@/components/finance/LabaRugiPage";
 import ModalReductionPage from "@/components/finance/ModalReductionPage"; // ✅ Tambahkan ini
 import ModalHistoryPage from "@/components/finance/ModalHistoryPage"; // ✅ Tambahkan ini juga
+import ProfitAdjustmentSummary from "@/components/finance/ProfitAdjustmentSummary";
 
 const Index = () => {
   const [activeMenu, setActiveMenu] = useState("dashboard");
@@ -107,8 +108,12 @@ case 'fee-penjualan':
           return <ModalReductionPage />;
         case "modal-history": // ✅ Tambahkan case ini juga
           return <ModalHistoryPage />;
-        default:
-          return <Dashboard selectedDivision={selectedDivision} />;
+        case "profit-adjustment-summary":
+          return <ProfitAdjustmentSummary selectedDivision={selectedDivision} />;
+      case "close-month":
+        return <CloseMonthPage />;
+      default:
+        return <Dashboard selectedDivision={selectedDivision} />;
     }
   };
 

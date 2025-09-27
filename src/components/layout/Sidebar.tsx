@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronDown, ChevronRight, Home, Settings, Building, Building2, Car, Briefcase, Package, MapPin, ShoppingCart, CreditCard, FileText, BookOpen, Calculator, Cog, Users, UserCog, Shield, DollarSign, Pin, PinOff, TrendingUp, CheckCircle, Calendar, XCircle, Upload } from "lucide-react";
+import { ChevronDown, ChevronRight, Home, Settings, Building, Building2, Car, Briefcase, Package, MapPin, ShoppingCart, CreditCard, FileText, BookOpen, Calculator, Cog, Users, UserCog, Shield, DollarSign, Pin, PinOff, TrendingUp, TrendingDown, CheckCircle, Calendar, XCircle, Upload } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { BarChart3 } from "lucide-react";
@@ -69,6 +69,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
     { id: "reports", label: "Analisis Motor", icon: FileText },
     { id: "laba-rugi", label: "Laba Rugi", icon: BarChart3 },
     { id: "profit-distribution", label: "Distribusi Profit", icon: DollarSign },
+    { id: "profit-adjustment-summary", label: "Ringkasan Penyesuaian Profit", icon: TrendingDown },
     { id: "close-month", label: "Close Month", icon: Calendar },
   ];
 
