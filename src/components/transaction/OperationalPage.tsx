@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,11 +10,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Settings, Edit, Trash2, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { DatePicker } from "@/components/ui/date-picker";
 import ProfitAdjustmentSummary from "@/components/finance/ProfitAdjustmentSummary";
 
 interface OperationalPageProps {
   selectedDivision: string;
+}
+
+interface DateRange {
+  start: string;
+  end: string;
 }
 
 const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
@@ -22,9 +26,13 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   const [companiesData, setCompaniesData] = useState([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOperational, setEditingOperational] = useState(null);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  
+  // ✅ PERBAIKAN: Ganti dateFrom/dateTo dengan filter periode
+  const [selectedPeriod, setSelectedPeriod] = useState("this_month");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  
   const [formData, setFormData] = useState({
     tanggal: new Date().toISOString().split('T')[0],
     kategori: "",
@@ -53,6 +61,100 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     "Lain-lain"
   ];
 
+  // ✅ PERBAIKAN: Fungsi untuk mendapatkan range tanggal berdasarkan periode
+  const getDateRange = (period: string): DateRange => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (period) {
+      case 'today':
+        return {
+          start: today.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+      case 'yesterday':
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        return {
+          start: yesterday.toISOString().split('T')[0],
+          end: yesterday.toISOString().split('T')[0]
+        };
+      case 'this_week':
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay());
+        return {
+          start: startOfWeek.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+      case 'last_week':
+        const lastWeekEnd = new Date(today);
+        lastWeekEnd.setDate(today.getDate() - today.getDay() - 1);
+        const lastWeekStart = new Date(lastWeekEnd);
+        lastWeekStart.setDate(lastWeekEnd.getDate() - 6);
+        return {
+          start: lastWeekStart.toISOString().split('T')[0],
+          end: lastWeekEnd.toISOString().split('T')[0]
+        };
+      case 'this_month':
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        return {
+          start: startOfMonth.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+      case 'last_month':
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+        return {
+          start: lastMonthStart.toISOString().split('T')[0],
+          end: lastMonthEnd.toISOString().split('T')[0]
+        };
+      case 'this_year':
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+        return {
+          start: startOfYear.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+      case 'last_year':
+        const lastYearStart = new Date(now.getFullYear() - 1, 0, 1);
+        const lastYearEnd = new Date(now.getFullYear() - 1, 11, 31);
+        return {
+          start: lastYearStart.toISOString().split('T')[0],
+          end: lastYearEnd.toISOString().split('T')[0]
+        };
+      case 'custom':
+        return {
+          start: customStartDate || today.toISOString().split('T')[0],
+          end: customEndDate || today.toISOString().split('T')[0]
+        };
+      default:
+        return {
+          start: today.toISOString().split('T')[0],
+          end: today.toISOString().split('T')[0]
+        };
+    }
+  };
+
+  // ✅ PERBAIKAN: Update logika shouldUseCombined berdasarkan periode
+  const shouldUseCombined = useMemo(() => {
+    const periodsRequiringCombined = ['last_month', 'this_year', 'last_year'];
+    
+    if (periodsRequiringCombined.includes(selectedPeriod)) {
+      return true;
+    }
+    
+    if (selectedPeriod === 'custom' && customStartDate && customEndDate) {
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      const startDate = new Date(customStartDate);
+      
+      // Gunakan combined jika tanggal mulai dari bulan/tahun sebelumnya
+      return startDate.getMonth() < currentMonth || startDate.getFullYear() < currentYear;
+    }
+    
+    return false;
+  }, [selectedPeriod, customStartDate, customEndDate]);
+
   // Helper function to check if category is "Kurang Profit"
   const isKurangProfitCategory = (kategori: string) => {
     return kategori.includes("Kurang Profit");
@@ -65,18 +167,11 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
   useEffect(() => {
     fetchInitialData();
-    // Set default date range (current month)
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    setDateFrom(firstDay.toISOString().split('T')[0]);
-    setDateTo(today.toISOString().split('T')[0]);
   }, []);
 
   useEffect(() => {
-    if (dateFrom && dateTo) {
-      fetchOperationalData();
-    }
-  }, [dateFrom, dateTo, selectedDivision, selectedCategory]);
+    fetchOperationalData();
+  }, [selectedPeriod, customStartDate, customEndDate, selectedDivision, selectedCategory]);
 
   const fetchInitialData = async () => {
     try {
@@ -98,16 +193,31 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     }
   };
 
+
+
   const fetchOperationalData = async () => {
     try {
       setLoading(true);
       
-      // First, fetch operational data from the combined view
+      // ✅ PERBAIKAN: Dapatkan range tanggal berdasarkan periode
+      const dateRange = getDateRange(selectedPeriod);
+      
+      console.log('🔍 Fetching operational data:', {
+        table: shouldUseCombined ? 'operational_combined' : 'operational',
+        period: selectedPeriod,
+        dateRange,
+        division: selectedDivision,
+        category: selectedCategory
+      });
+      
+      // ✅ PERBAIKAN: Gunakan tabel yang sesuai berdasarkan periode
+      const operationalTable = shouldUseCombined ? 'operational_combined' : 'operational';
+      
       let operationalQuery = supabase
-        .from('operational_combined')
+        .from(operationalTable)
         .select('*')
-        .gte('tanggal', dateFrom)
-        .lte('tanggal', dateTo)
+        .gte('tanggal', dateRange.start)
+        .lte('tanggal', dateRange.end)
         .order('tanggal', { ascending: false });
 
       // Filter by division if not 'all'
@@ -137,13 +247,14 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         companiesMap.set(company.id, company);
       });
 
-      // Join the data in JavaScript
-      const enrichedData = operationalData?.map(item => ({
+      // Combine operational data with company information
+      const combinedData = operationalData?.map(item => ({
         ...item,
-        companies: item.company_id ? companiesMap.get(item.company_id) : null
+        company_info: companiesMap.get(item.sumber_dana) || null
       })) || [];
 
-      setOperationalData(enrichedData);
+      setOperationalData(combinedData);
+      
     } catch (error) {
       console.error('Error fetching operational data:', error);
       toast({
@@ -600,7 +711,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         </h3>
         <ProfitAdjustmentSummary 
           selectedDivision={selectedDivision}
-          dateRange={dateFrom && dateTo ? { start: dateFrom, end: dateTo } : undefined}
+          dateRange={getDateRange(selectedPeriod)}
         />
       </div>
 
@@ -614,15 +725,14 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label htmlFor="tanggal">Tanggal *</Label>
-              <div className="mt-1">
-                <DatePicker
-                  id="tanggal"
-                  value={formData.tanggal}
-                  onChange={(value) => setFormData({...formData, tanggal: value})}
-                  placeholder="Pilih tanggal operasional"
-                  required
-                />
-              </div>
+              <Input
+                id="tanggal"
+                type="date"
+                value={formData.tanggal}
+                onChange={(e) => setFormData({...formData, tanggal: e.target.value})}
+                className="mt-1"
+                required
+              />
             </div>
 
             <div>
@@ -723,30 +833,48 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Filter Data</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            Filter Data
+            {/* ✅ TAMBAHAN: Indikator tabel yang digunakan */}
+            <span className={`text-xs px-2 py-1 rounded-full ${
+              shouldUseCombined 
+                ? 'bg-blue-100 text-blue-800' 
+                : 'bg-green-100 text-green-800'
+            }`}>
+              {shouldUseCombined ? '📊 operational_combined' : '🔄 operational'}
+            </span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* ✅ PERBAIKAN: Filter Periode */}
             <div>
-              <Label htmlFor="dateFrom">Tanggal Mulai</Label>
-              <Input
-                id="dateFrom"
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="mt-1"
-              />
+              <Label htmlFor="period">Periode</Label>
+              <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Pilih periode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">📅 Hari Ini</SelectItem>
+                  <SelectItem value="yesterday">📅 Kemarin</SelectItem>
+                  <SelectItem value="this_week">📅 Minggu Ini</SelectItem>
+                  <SelectItem value="last_week">📅 Minggu Lalu</SelectItem>
+                  <SelectItem value="this_month">📅 Bulan Ini</SelectItem>
+                  <SelectItem value="last_month">📊 Bulan Lalu</SelectItem>
+                  <SelectItem value="this_year">📊 Tahun Ini</SelectItem>
+                  <SelectItem value="last_year">📊 Tahun Lalu</SelectItem>
+                  <SelectItem value="custom">📊 Custom</SelectItem>
+                </SelectContent>
+              </Select>
+              {/* Info periode yang menggunakan combined view */}
+              {shouldUseCombined && (
+                <p className="text-xs text-blue-600 mt-1">
+                  📊 Menggunakan data gabungan (active + history)
+                </p>
+              )}
             </div>
-            <div>
-              <Label htmlFor="dateTo">Tanggal Selesai</Label>
-              <Input
-                id="dateTo"
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="mt-1"
-              />
-            </div>
+
+            {/* Filter Kategori */}
             <div>
               <Label htmlFor="selectedCategory">Kategori</Label>
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -763,12 +891,38 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Tombol Filter */}
             <div className="flex items-end">
               <Button onClick={fetchOperationalData} disabled={loading} className="w-full">
                 {loading ? "Loading..." : "Filter"}
               </Button>
             </div>
           </div>
+
+          {/* ✅ TAMBAHAN: Custom Date Range untuk periode custom */}
+          {selectedPeriod === 'custom' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t">
+              <div>
+                <Label htmlFor="startDate">Tanggal Mulai</Label>
+                <Input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="endDate">Tanggal Akhir</Label>
+                <Input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -874,7 +1028,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                     <TableCell>
                       {isKurangProfitCategory(item.kategori) 
                         ? <span className="text-gray-500 italic">Tidak ada</span>
-                        : item.companies?.nama_perusahaan
+                        : item.company_info?.nama_perusahaan
                       }
                     </TableCell>
                     <TableCell>

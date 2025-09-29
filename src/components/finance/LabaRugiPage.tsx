@@ -124,6 +124,19 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
     try {
       const dateRange = getDateRange(selectedPeriod, customStartDate, customEndDate);
       
+      // Tambahkan logging untuk debugging
+      console.log('🔍 LabaRugi Debug Info:', {
+        selectedPeriod,
+        dateRange: {
+          start: dateRange.start.toISOString(),
+          end: dateRange.end.toISOString(),
+          startLocal: dateRange.start.toLocaleDateString('id-ID'),
+          endLocal: dateRange.end.toLocaleDateString('id-ID')
+        },
+        shouldUseCombined,
+        currentDate: new Date().toLocaleDateString('id-ID')
+      });
+      
       const [pendapatanData, biayaData] = await Promise.all([
         fetchPendapatanData(dateRange),
         fetchBiayaData(dateRange)
@@ -156,7 +169,14 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
     const startDate = dateRange.start.toISOString();
     const endDate = dateRange.end.toISOString();
     
-    console.log('Fetching pendapatan data:', { startDate, endDate, shouldUseCombined, selectedPeriod });
+    console.log('📊 Fetching pendapatan data:', { 
+      startDate, 
+      endDate, 
+      shouldUseCombined, 
+      selectedPeriod,
+      startLocal: dateRange.start.toLocaleDateString('id-ID'),
+      endLocal: dateRange.end.toLocaleDateString('id-ID')
+    });
     
     try {
       if (shouldUseCombined) {
@@ -194,15 +214,36 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         }
 
         const penjualanData = data || [];
-        console.log(`Fetched ${penjualanData.length} combined penjualan records`);
-        console.log('Data sources:', penjualanData.map(item => item.data_source));
+        console.log(`📈 Fetched ${penjualanData.length} combined penjualan records`);
+        console.log('📅 Sample dates from data:', penjualanData.slice(0, 5).map(item => ({
+          id: item.id,
+          tanggal: item.tanggal,
+          tanggalLocal: new Date(item.tanggal).toLocaleDateString('id-ID'),
+          dataSource: item.data_source
+        })));
+        
+        // Filter data yang benar-benar dalam rentang bulan ini
+        const filteredData = penjualanData.filter(item => {
+          const itemDate = new Date(item.tanggal);
+          const itemDateWIB = new Date(itemDate.getTime() + (7 * 60 * 60 * 1000));
+          const currentDate = new Date();
+          const currentDateWIB = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
+          
+          if (selectedPeriod === 'this_month') {
+            return itemDateWIB.getMonth() === currentDateWIB.getMonth() && 
+                   itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
+          }
+          return true; // Untuk periode lain, gunakan filter database
+        });
+        
+        console.log(`📊 After date filtering: ${filteredData.length} records`);
         
         return {
-          totalPenjualan: penjualanData.reduce((sum, item) => sum + (item.harga_jual || 0), 0),
-          totalHargaBeli: penjualanData.reduce((sum, item) => sum + (item.harga_beli || 0), 0),
-          totalKeuntungan: penjualanData.reduce((sum, item) => sum + (item.keuntungan || 0), 0),
-          jumlahTransaksi: penjualanData.length,
-          penjualanDetail: penjualanData
+          totalPenjualan: filteredData.reduce((sum, item) => sum + (item.harga_jual || 0), 0),
+          totalHargaBeli: filteredData.reduce((sum, item) => sum + (item.harga_beli || 0), 0),
+          totalKeuntungan: filteredData.reduce((sum, item) => sum + (item.keuntungan || 0), 0),
+          jumlahTransaksi: filteredData.length,
+          penjualanDetail: filteredData
         };
         
       } else {
