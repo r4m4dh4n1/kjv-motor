@@ -60,17 +60,18 @@ export const usePenjualanEdit = () => {
 
       if (updateError) throw updateError;
 
-      // 2. Delete old pembukuan entries for this specific penjualan
-      // Hapus entry yang mengandung informasi motor (brand, jenis, plat)
-      const motorInfo = `${selectedMotor?.brands?.name || ''} - ${selectedMotor?.jenis_motor?.jenis_motor || ''}`;
+      // 2. ✅ PERBAIKAN: Delete old pembukuan entries dengan logika yang lebih akurat
+      // Hapus berdasarkan pembelian_id dan company_id untuk memastikan entry yang tepat terhapus
       const { error: deletePembukuanError } = await supabase
         .from('pembukuan')
         .delete()
         .eq('pembelian_id', originalPenjualan.pembelian_id)
-        .or(`keterangan.ilike.%${motorInfo}%,keterangan.ilike.%${originalPenjualan.plat}%`);
+        .eq('company_id', originalPenjualan.company_id);
 
       if (deletePembukuanError) {
         console.error('Error deleting old pembukuan:', deletePembukuanError);
+        // ✅ PERBAIKAN: Jika gagal hapus entry lama, jangan lanjutkan untuk mencegah double entry
+        throw new Error(`Gagal menghapus entry pembukuan lama: ${deletePembukuanError.message}`);
       }
 
       // 3. Handle modal changes based on company change
@@ -105,12 +106,29 @@ export const usePenjualanEdit = () => {
         }
       }
 
-      // 4. Create new pembukuan entries with new company_id
+      // 4. ✅ PERBAIKAN: Create new pembukuan entries dengan validasi
       if (selectedMotor) {
         try {
           const pembukuanEntries = createPembukuanEntries(submitData, updatedFormData, selectedMotor);
           
           if (pembukuanEntries.length > 0) {
+            // ✅ PERBAIKAN: Validasi sebelum insert - pastikan tidak ada entry duplikat
+            for (const entry of pembukuanEntries) {
+              const { data: existingEntry } = await supabase
+                .from('pembukuan')
+                .select('id')
+                .eq('pembelian_id', entry.pembelian_id)
+                .eq('company_id', entry.company_id)
+                .eq('keterangan', entry.keterangan)
+                .eq('tanggal', entry.tanggal)
+                .single();
+
+              if (existingEntry) {
+                console.warn('Entry pembukuan sudah ada, skip insert untuk mencegah duplikat');
+                continue;
+              }
+            }
+
             const { error: pembukuanError } = await supabase
               .from('pembukuan')
               .insert(pembukuanEntries)
