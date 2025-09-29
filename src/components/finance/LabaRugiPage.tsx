@@ -77,7 +77,8 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
   });
 
   // Gunakan penjualans_combined untuk periode tertentu
-  const shouldUseCombined = ['this_month', 'last_month', 'this_year'].includes(selectedPeriod);
+  const shouldUseCombined = ['this_month', 'last_month', 'this_year', 'last_year'].includes(selectedPeriod) ||
+    (selectedPeriod === 'custom' && customStartDate && customEndDate);
 
   useEffect(() => {
     fetchInitialData();
@@ -479,11 +480,15 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                   <SelectValue placeholder="Pilih periode" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="this_month">Bulan Ini</SelectItem>
-                  <SelectItem value="last_month">Bulan Lalu</SelectItem>
-                  <SelectItem value="this_year">Tahun Ini</SelectItem>
-                  <SelectItem value="last_year">Tahun Lalu</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
+                  <SelectItem value="today">📅 Hari Ini</SelectItem>
+                  <SelectItem value="yesterday">📅 Kemarin</SelectItem>
+                  <SelectItem value="this_week">📅 Minggu Ini</SelectItem>
+                  <SelectItem value="last_week">📅 Minggu Lalu</SelectItem>
+                  <SelectItem value="this_month">📅 Bulan Ini</SelectItem>
+                  <SelectItem value="last_month">📊 Bulan Lalu</SelectItem>
+                  <SelectItem value="this_year">📊 Tahun Ini</SelectItem>
+                  <SelectItem value="last_year">📊 Tahun Lalu</SelectItem>
+                  <SelectItem value="custom">📊 Custom</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -717,7 +722,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
 
                 {/* BIAYA OPERASIONAL */}
                 <TableRow className="font-semibold bg-orange-50">
-                  <TableCell colSpan={2} className="text-orange-700">BIAYA OPERASIONAL</TableCell>
+                  <TableCell colSpan={2} className="text-orange-700">PENGELUARAN</TableCell>
                 </TableRow>
                 
                 {/* Breakdown Biaya per Kategori dengan Dropdown */}
