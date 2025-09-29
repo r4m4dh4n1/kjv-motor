@@ -250,7 +250,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       // Combine operational data with company information
       const combinedData = operationalData?.map(item => ({
         ...item,
-        company_info: companiesMap.get(item.sumber_dana) || null
+        // ✅ PERBAIKAN: Set data_source default jika tidak ada (untuk tabel operational biasa)
+        data_source: item.data_source || 'active',
+        company_info: companiesMap.get(item.company_id) || null
       })) || [];
 
       setOperationalData(combinedData);
