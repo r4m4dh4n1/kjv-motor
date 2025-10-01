@@ -1147,8 +1147,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       {/* Retroactive Transaction Dialog */}
       <RetroactiveOperationalDialogSimple
-        isOpen={isRetroactiveDialogOpen}
-        onClose={() => setIsRetroactiveDialogOpen(false)}
+        open={isRetroactiveDialogOpen}
+        onOpenChange={setIsRetroactiveDialogOpen}
         divisi={selectedDivision}
         onSuccess={() => {
           setIsRetroactiveDialogOpen(false);
