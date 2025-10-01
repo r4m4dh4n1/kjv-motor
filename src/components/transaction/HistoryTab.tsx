@@ -12,7 +12,7 @@ import { format, startOfDay, endOfDay } from 'date-fns';
 import { Search, Filter, History, Calendar as CalendarIcon } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatUtils';
 import { usePagination } from '@/hooks/usePagination';
-import { cascadingSearch, getDateColumn } from '@/utils/cascadingSearchUtils';
+import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
 interface HistoryTabProps {
@@ -29,42 +29,38 @@ const HistoryTab = ({ type, selectedDivision }: HistoryTabProps) => {
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
   const [pageSize, setPageSize] = useState(10);
 
-  // Enhanced query with cascading search
-  const { data: queryResult, isLoading } = useQuery({
-    queryKey: [`${type}_cascading`, selectedDivision, selectedMonth, selectedYear, selectedSource, customStartDate?.toISOString(), customEndDate?.toISOString()],
+  // Query untuk data gabungan
+  const { data: historyData = [], isLoading } = useQuery({
+    queryKey: [`${type}_combined`, selectedDivision, selectedMonth, selectedYear, selectedSource],
     queryFn: async () => {
-      console.log('🔍 HistoryTab cascading search starting...', {
-        type,
-        selectedDivision,
-        selectedMonth,
-        selectedYear,
-        selectedSource,
-        customStartDate,
-        customEndDate
-      });
-
-      const result = await cascadingSearch({
-        tableName: type,
-        selectedDivision,
-        selectedMonth,
-        selectedYear,
-        customStartDate,
-        customEndDate,
-        dateColumn: getDateColumn(type),
-        additionalFilters: selectedSource !== 'all' ? { data_source: selectedSource } : {}
-      });
+      let query = supabase.from(`${type}_combined`).select('*');
       
-      console.log('✅ HistoryTab cascading search completed:', {
-        source: result.source,
-        totalFound: result.totalFound
-      });
+      // Filter by divisi
+      if (selectedDivision !== 'all') {
+        query = query.eq('divisi', selectedDivision);
+      }
       
-      return result;
+      // Filter by data source (active/history)
+      if (selectedSource !== 'all') {
+        query = query.eq('data_source', selectedSource);
+      }
+      
+      // Filter by month/year
+      if (selectedMonth !== 'all' && selectedYear !== 'all') {
+        const dateColumn = type === 'pembelian' ? 'tanggal_pembelian' : 'tanggal';
+        query = query.gte(dateColumn, `${selectedYear}-${selectedMonth.padStart(2, '0')}-01`);
+        query = query.lt(dateColumn, `${selectedYear}-${(parseInt(selectedMonth) + 1).toString().padStart(2, '0')}-01`);
+      }
+      
+      const { data, error } = await query.order(
+        type === 'pembelian' ? 'tanggal_pembelian' : 'tanggal', 
+        { ascending: false }
+      );
+      
+      if (error) throw error;
+      return data || [];
     }
   });
-
-  const historyData = queryResult?.data || [];
-  const dataSource = queryResult?.source || 'master';
 
   // Filter data berdasarkan search term dan date range
   const filteredData = useMemo(() => {
@@ -313,9 +309,6 @@ const HistoryTab = ({ type, selectedDivision }: HistoryTabProps) => {
             </Button>
             <div className="text-sm text-muted-foreground">
               Menampilkan {paginatedData.length} dari {totalItems} data
-              <Badge variant="outline" className="ml-2">
-                Sumber: {dataSource === 'master' ? 'Aktif' : dataSource === 'history' ? 'History' : 'Gabungan'}
-              </Badge>
             </div>
           </div>
         </CardContent>

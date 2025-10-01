@@ -88,9 +88,6 @@ const PenjualanBookedPage = ({ selectedDivision }: PenjualanBookedPageProps) => 
   }).sort((a: any, b: any) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
 
   // Fungsi-fungsi yang sama dengan PenjualanPage
-  // Add edit mutation
-  const editPenjualanMutation = usePenjualanEdit();
-  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -102,19 +99,9 @@ const PenjualanBookedPage = ({ selectedDivision }: PenjualanBookedPageProps) => 
       });
       return;
     }
-  
+
     try {
-      if (editingPenjualan) {
-        // Use edit mutation for existing penjualan
-        await editPenjualanMutation.mutateAsync({ 
-          penjualanId: editingPenjualan.id,
-          formData, 
-          pembelianData 
-        });
-      } else {
-        // Use create mutation for new penjualan
-        await createPenjualanMutation.mutateAsync({ formData, pembelianData });
-      }
+      await createPenjualanMutation.mutateAsync({ formData, pembelianData });
       resetForm();
       refetchPenjualan();
     } catch (error) {

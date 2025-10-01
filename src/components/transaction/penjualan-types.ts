@@ -17,7 +17,6 @@ export interface Penjualan {
   dp?: number; // untuk cash bertahap dan kredit
   sisa_bayar?: number; // untuk cash bertahap dan kredit
   total_ongkir: number;
-  subsidi_ongkir: number;
   titip_ongkir: number;
   sisa_ongkir: number;
   status: string;
@@ -43,7 +42,6 @@ export interface PenjualanFormData {
   dp: string; // untuk cash bertahap dan kredit
   sisa_bayar: string; // untuk cash bertahap dan kredit
   total_ongkir: string;
-  subsidi_ongkir: string;
   titip_ongkir: string;
   sisa_ongkir: string;
   status: string;

@@ -85,57 +85,56 @@ export const usePenjualanActions = () => {
         }
       }
 
-      // 3. Simpan ke price_histories
+      // 3. Insert into price_histories table
       const { error: historyError } = await supabase
         .from('price_histories')
         .insert({
           pembelian_id: selectedPenjualanForUpdate.pembelian_id,
-          old_harga_beli: selectedPenjualanForUpdate.harga_beli,
-          new_harga_beli: newHargaBeli,
-          old_harga_final: selectedPenjualanForUpdate.harga_final,
-          new_harga_final: newHargaFinal,
-          biaya_tambahan: totalBiayaTambahan,
+          harga_jual_lama: selectedPenjualanForUpdate.harga_jual,
+          harga_jual_baru: selectedPenjualanForUpdate.harga_jual,
+          biaya_pajak: updateData.biaya_pajak,
+          biaya_qc: updateData.biaya_qc,
+          biaya_lain_lain: updateData.biaya_lain_lain,
+          keterangan_biaya_lain: updateData.keterangan_biaya_lain,
           reason: updateData.reason,
           tanggal_update: updateData.tanggal_update,
           company_id: updateData.sumber_dana_id
         });
-      
+    
       if (historyError) {
         console.error('Error saving price history:', historyError);
         // Don't throw error, just log it
       }
-      
-      // 4. PERBAIKAN: Selalu buat entry pembukuan untuk tracking (tanpa kondisi)
+    
+      // 4. TAMBAHAN: Catat ke pembukuan dengan tanggal dan sumber dana yang dipilih
       const pembukuanEntry = {
         tanggal: updateData.tanggal_update,
         divisi: selectedPenjualanForUpdate.divisi,
         cabang_id: selectedPenjualanForUpdate.cabang_id,
-        keterangan: `Update Harga Penjualan Booked - ${selectedPenjualanForUpdate.brands?.name || ''} - ${selectedPenjualanForUpdate.jenis_motor?.jenis_motor || ''} - ${selectedPenjualanForUpdate.plat} - ${updateData.reason}`,
-        debit: totalBiayaTambahan > 0 ? totalBiayaTambahan : 0,
-        kredit: totalBiayaTambahan < 0 ? Math.abs(totalBiayaTambahan) : 0,
+        keterangan: `Update Harga Penjualan Booked - ${updateData.reason} (${selectedPenjualanForUpdate.plat})`,
+        debit: totalBiayaTambahan,
         company_id: updateData.sumber_dana_id,
         pembelian_id: selectedPenjualanForUpdate.pembelian_id
       };
       
-      const { error: pembukuanError } = await supabase
-        .from('pembukuan')
-        .insert([pembukuanEntry]);
-      
-      if (pembukuanError) {
-        console.error('Error creating pembukuan entry:', pembukuanError);
-      }
-      
-      // 5. Update modal perusahaan jika ada biaya tambahan
-      if (totalBiayaTambahan !== 0) {
-        const { error: modalError } = await supabase.rpc('update_company_modal', {
-          company_id: updateData.sumber_dana_id,
-          amount: -totalBiayaTambahan // Negatif untuk mengurangi modal
-        });
-      
-        if (modalError) {
-          console.error('Error updating company modal:', modalError);
+      if (pembukuanEntry && totalBiayaTambahan > 0) { // MASALAH: Hanya jika > 0
+        const { error: pembukuanError } = await supabase
+          .from('pembukuan')
+          .insert([{
+            tanggal: updateData.tanggal_update,
+            divisi: selectedPenjualanForUpdate.divisi,
+            cabang_id: selectedPenjualanForUpdate.cabang_id,
+            keterangan: `Update Harga Penjualan Booked - ${selectedPenjualanForUpdate.brands?.name || ''} - ${selectedPenjualanForUpdate.jenis_motor?.jenis_motor || ''} - ${selectedPenjualanForUpdate.plat} - ${updateData.reason}`,
+            debit: totalBiayaTambahan,
+            company_id: updateData.sumber_dana_id,
+            pembelian_id: selectedPenjualanForUpdate.pembelian_id
+          }]);
+    
+        if (pembukuanError) {
+          console.error('Error saving to pembukuan:', pembukuanError);
         }
       }
+
       toast({
         title: "Berhasil",
         description: `Harga beli dan harga final berhasil diupdate. Biaya tambahan: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(totalBiayaTambahan)}`

@@ -76,7 +76,7 @@ const EditCicilanDialog = ({ cicilan, isOpen, onClose, onSuccess, companiesData 
       // Update penjualan record - adjust harga_bayar and sisa_bayar
       const { data: penjualanData, error: penjualanFetchError } = await supabase
         .from('penjualans')
-        .select('harga_bayar, sisa_bayar, harga_jual, status, brands(name), jenis_motor(jenis_motor), plat, divisi, cabang_id, pembelian_id, tt, jenis_pembayaran')
+        .select('harga_bayar, sisa_bayar, harga_jual, status')
         .eq('id', cicilan.penjualan_id)
         .single();
 
@@ -86,6 +86,7 @@ const EditCicilanDialog = ({ cicilan, isOpen, onClose, onSuccess, companiesData 
       const newSisaBayar = penjualanData.harga_jual - newHargaBayar;
       const newStatus = newSisaBayar <= 0 ? 'selesai' : penjualanData.status;
 
+      // Di fungsi handleSubmit, sekitar baris 89-130
       const { error: penjualanUpdateError } = await supabase
         .from('penjualans')
         .update({
@@ -93,91 +94,18 @@ const EditCicilanDialog = ({ cicilan, isOpen, onClose, onSuccess, companiesData 
           sisa_bayar: newSisaBayar,
           status: newStatus,
           updated_at: new Date().toISOString(),
+          // Tambahkan ini: set tanggal_lunas jika status menjadi selesai
           ...(newStatus === 'selesai' && { tanggal_lunas: formData.tanggal_bayar })
         })
         .eq('id', cicilan.penjualan_id);
 
       if (penjualanUpdateError) throw penjualanUpdateError;
 
-      // PERBAIKAN: Update pembukuan entry
-      // 1. Hapus pembukuan lama berdasarkan keterangan dan tanggal asli
-      const brandName = penjualanData.brands?.name || '';
-      const jenisMotor = penjualanData.jenis_motor?.jenis_motor || '';
-      const platNomor = penjualanData.plat;
-      
-      let keteranganLama = '';
-      if (penjualanData.tt !== 'tukar_tambah') {
-        if (penjualanData.jenis_pembayaran === 'cash_bertahap') {
-          keteranganLama = `cash bertahap ke ${cicilan.batch_ke} dari ${brandName} - ${jenisMotor} - ${platNomor}`;
-        } else if (penjualanData.jenis_pembayaran === 'kredit') {
-          keteranganLama = `cicilan ke ${cicilan.batch_ke} dari ${brandName} - ${jenisMotor} - ${platNomor}`;
-        }
-      } else {
-        if (penjualanData.jenis_pembayaran === 'cash_bertahap') {
-          keteranganLama = `cash bertahap ke ${cicilan.batch_ke} Tukar Tambah dari ${brandName} - ${jenisMotor} - ${platNomor}`;
-        } else if (penjualanData.jenis_pembayaran === 'kredit') {
-          keteranganLama = `cicilan ke ${cicilan.batch_ke} Tukar Tambah dari ${brandName} - ${jenisMotor} - ${platNomor}`;
-        }
-      }
-
-      // Hapus pembukuan lama
-      const { error: pembukuanDeleteError } = await supabase
-        .from('pembukuan')
-        .delete()
-        .eq('tanggal', cicilan.tanggal_bayar)
-        .eq('keterangan', keteranganLama)
-        .eq('kredit', originalJumlahBayar);
-
-      if (pembukuanDeleteError) {
-        console.error('Error deleting old pembukuan:', pembukuanDeleteError);
-      }
-
-      // 2. Insert pembukuan baru dengan data yang sudah diupdate
-      let keteranganBaru = '';
-      if (penjualanData.tt !== 'tukar_tambah') {
-        if (penjualanData.jenis_pembayaran === 'cash_bertahap') {
-          keteranganBaru = `cash bertahap ke ${cicilan.batch_ke} dari ${brandName} - ${jenisMotor} - ${platNomor}`;
-        } else if (penjualanData.jenis_pembayaran === 'kredit') {
-          keteranganBaru = `cicilan ke ${cicilan.batch_ke} dari ${brandName} - ${jenisMotor} - ${platNomor}`;
-        }
-      } else {
-        if (penjualanData.jenis_pembayaran === 'cash_bertahap') {
-          keteranganBaru = `cash bertahap ke ${cicilan.batch_ke} Tukar Tambah dari ${brandName} - ${jenisMotor} - ${platNomor}`;
-        } else if (penjualanData.jenis_pembayaran === 'kredit') {
-          keteranganBaru = `cicilan ke ${cicilan.batch_ke} Tukar Tambah dari ${brandName} - ${jenisMotor} - ${platNomor}`;
-        }
-      }
-
-      const pembukuanEntry = {
-        tanggal: formData.tanggal_bayar, // Gunakan tanggal baru
-        divisi: penjualanData.divisi,
-        cabang_id: penjualanData.cabang_id,
-        keterangan: keteranganBaru,
-        debit: 0,
-        kredit: jumlahBayar, // Gunakan jumlah bayar baru
-        saldo: 0,
-        pembelian_id: penjualanData.pembelian_id,
-        company_id: parseInt(formData.tujuan_pembayaran_id)
-      };
-
-      const { error: pembukuanInsertError } = await supabase
-        .from('pembukuan')
-        .insert([pembukuanEntry]);
-
-      if (pembukuanInsertError) {
-        console.error('Error inserting new pembukuan:', pembukuanInsertError);
-        toast({
-          title: "Warning",
-          description: `Cicilan berhasil diupdate tapi pembukuan gagal: ${pembukuanInsertError.message}`,
-          variant: "destructive"
-        });
-      }
-
       // Update company modal if tujuan_pembayaran_id changed
       if (formData.tujuan_pembayaran_id && selisihPembayaran !== 0) {
         const { error: modalError } = await supabase.rpc('update_company_modal', {
           company_id: parseInt(formData.tujuan_pembayaran_id),
-          amount: Math.abs(selisihPembayaran)
+          amount: Math.abs(selisihPembayaran) // UBAH: Selalu tambah (bukan kurangi)
         });
 
         if (modalError) {
@@ -187,7 +115,7 @@ const EditCicilanDialog = ({ cicilan, isOpen, onClose, onSuccess, companiesData 
 
       toast({
         title: "Sukses",
-        description: "Data cicilan dan pembukuan berhasil diperbarui"
+        description: "Data cicilan berhasil diperbarui"
       });
 
       onSuccess();

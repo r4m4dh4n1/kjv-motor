@@ -4,8 +4,6 @@ export interface PenjualanData {
   jenis_pembayaran: 'cash_penuh' | 'cash_bertahap' | 'kredit';
   harga_bayar: number;
   dp_amount: number;
-  subsidi_ongkir: number;
-  titip_ongkir: number;
   customer_name: string;
   motor_lama?: string;
   harga_motor_lama?: number;
@@ -29,13 +27,13 @@ export function createPembukuanEntries(submitData: PenjualanData) {
       pembukuanEntries.push({
         keterangan: `Penjualan Cash Penuh`,
         debit: 0,
-        kredit: submitData.harga_bayar + submitData.subsidi_ongkir + submitData.titip_ongkir
+        kredit: submitData.harga_bayar
       });
     } else if (submitData.jenis_pembayaran === 'cash_bertahap' || submitData.jenis_pembayaran === 'kredit') {
       pembukuanEntries.push({
         keterangan: `DP Penjualan`,
         debit: 0,
-        kredit: submitData.dp_amount + submitData.subsidi_ongkir + submitData.titip_ongkir
+        kredit: submitData.dp_amount
       });
     }
   }
@@ -47,7 +45,7 @@ export function createPembukuanEntries(submitData: PenjualanData) {
       pembukuanEntries.push({
         keterangan: `DP Tukar Tambah`,
         debit: 0,                    // ✅ DEBIT = 0
-        kredit: submitData.dp_amount + submitData.subsidi_ongkir + submitData.titip_ongkir // ✅ KREDIT = DP + subsidi + titip (uang masuk)
+        kredit: submitData.dp_amount // ✅ KREDIT = DP (uang masuk)
       });
     }
   }
@@ -59,7 +57,7 @@ export function createPembukuanEntries(submitData: PenjualanData) {
       pembukuanEntries.push({
         keterangan: `DP dari ${submitData.customer_name} untuk ${submitData.motor_lama}`,
         debit: 0,                    // ✅ DEBIT = 0
-        kredit: submitData.dp_amount + submitData.subsidi_ongkir + submitData.titip_ongkir // ✅ KREDIT = DP + subsidi + titip (uang masuk)
+        kredit: submitData.dp_amount // ✅ KREDIT = DP (uang masuk)
       });
     }
   }

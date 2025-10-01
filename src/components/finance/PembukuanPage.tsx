@@ -36,9 +36,6 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // ✅ TAMBAHAN: Logika untuk menentukan penggunaan combined view
-  const shouldUseCombined = ['last_month', 'this_year', 'last_year', 'custom'].includes(dateFilter);
-
   useEffect(() => {
     fetchInitialData();
   }, []);
@@ -55,208 +52,206 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
   }, [selectedDivision]);
 
   // Helper function untuk konversi timezone Indonesia
-  const getIndonesiaDate = () => {
-    const now = new Date();
-    // Offset Indonesia UTC+7 (7 jam * 60 menit * 60 detik * 1000 ms)
-    const indonesiaOffset = 7 * 60 * 60 * 1000;
-    // Dapatkan UTC time
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
-    // Tambahkan offset Indonesia
-    return new Date(utc + indonesiaOffset);
-  };
+const getIndonesiaDate = () => {
+  const now = new Date();
+  // Offset Indonesia UTC+7 (7 jam * 60 menit * 60 detik * 1000 ms)
+  const indonesiaOffset = 7 * 60 * 60 * 1000;
+  // Dapatkan UTC time
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+  // Tambahkan offset Indonesia
+  return new Date(utc + indonesiaOffset);
+};
 
   const getDateRange = () => {
-    // Gunakan waktu Indonesia sebagai basis perhitungan
-    const nowIndonesia = getIndonesiaDate();
-    
-    // Logging untuk debugging
-    console.log('📅 Date range calculation (Indonesia Timezone):', {
-      period: dateFilter,
-      currentDateIndonesia: nowIndonesia.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
-      currentDateUTC: new Date().toISOString(),
-      currentMonth: nowIndonesia.getMonth() + 1,
-      currentYear: nowIndonesia.getFullYear(),
-      timezone: 'Asia/Jakarta (UTC+7)',
-      useCombined: shouldUseCombined // ✅ TAMBAHAN: Log penggunaan combined view
-    });
-    
-    let dateRange;
-    
-    switch (dateFilter) {
-      case "today": {
-        const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 0, 0, 0));
-        const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59));
-        dateRange = { 
-          start: startUTC.toISOString().split('T')[0], 
-          end: endUTC.toISOString().split('T')[0] 
-        };
-        break;
-      }
-      
-      case "yesterday": {
-        const yesterday = new Date(nowIndonesia);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const startUTC = new Date(Date.UTC(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0));
-        const endUTC = new Date(Date.UTC(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59));
-        dateRange = { 
-          start: startUTC.toISOString().split('T')[0], 
-          end: endUTC.toISOString().split('T')[0] 
-        };
-        break;
-      }
-      
-      case "this_week": {
-        const startOfWeek = new Date(nowIndonesia);
-        startOfWeek.setDate(nowIndonesia.getDate() - nowIndonesia.getDay());
-        const startUTC = new Date(Date.UTC(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate(), 0, 0, 0));
-        const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59));
-        dateRange = { 
-          start: startUTC.toISOString().split('T')[0], 
-          end: endUTC.toISOString().split('T')[0] 
-        };
-        break;
-      }
-      
-      case "last_week": {
-        const startOfLastWeek = new Date(nowIndonesia);
-        startOfLastWeek.setDate(nowIndonesia.getDate() - nowIndonesia.getDay() - 7);
-        const endOfLastWeek = new Date(startOfLastWeek);
-        endOfLastWeek.setDate(startOfLastWeek.getDate() + 6);
-        const startUTC = new Date(Date.UTC(startOfLastWeek.getFullYear(), startOfLastWeek.getMonth(), startOfLastWeek.getDate(), 0, 0, 0));
-        const endUTC = new Date(Date.UTC(endOfLastWeek.getFullYear(), endOfLastWeek.getMonth(), endOfLastWeek.getDate(), 23, 59, 59));
-        dateRange = { 
-          start: startUTC.toISOString().split('T')[0], 
-          end: endUTC.toISOString().split('T')[0] 
-        };
-        break;
-      }
-      
-      case "this_month": {
-        const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), 1, 0, 0, 0));
-        const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth() + 1, 0, 23, 59, 59));
-        dateRange = { 
-          start: startUTC.toISOString().split('T')[0], 
-          end: endUTC.toISOString().split('T')[0] 
-        };
-        break;
-      }
-      
-      case "last_month": {
-        const currentMonth = nowIndonesia.getMonth(); // 0-indexed
-        const currentYear = nowIndonesia.getFullYear();
-        const julyMonth = 6; // Juli = index 6
-        const augustMonth = 7; // Agustus = index 7
-        
-        let startUTC: Date;
-        let endUTC: Date;
-        
-        // Jika bulan berjalan adalah Agustus
-        if (currentMonth === augustMonth) {
-          // Last month = dari Januari sampai Juli
-          startUTC = new Date(Date.UTC(currentYear, 0, 1, 0, 0, 0)); // Januari 1
-          endUTC = new Date(Date.UTC(currentYear, julyMonth + 1, 0, 23, 59, 59)); // Akhir Juli
-        } else {
-          // Bulan lainnya: last month = bulan sebelumnya saja
-          startUTC = new Date(Date.UTC(currentYear, currentMonth - 1, 1, 0, 0, 0));
-          endUTC = new Date(Date.UTC(currentYear, currentMonth, 0, 23, 59, 59));
-        }
-        
-        dateRange = { 
-          start: startUTC.toISOString().split('T')[0], 
-          end: endUTC.toISOString().split('T')[0] 
-        };
-        break;
-      }
-      
-      case "this_year": {
-        const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), 0, 1, 0, 0, 0));
-        const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), 11, 31, 23, 59, 59));
-        dateRange = { 
-          start: startUTC.toISOString().split('T')[0], 
-          end: endUTC.toISOString().split('T')[0] 
-        };
-        break;
-      }
-      
-      case "last_year": {
-        const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear() - 1, 0, 1, 0, 0, 0));
-        const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear() - 1, 11, 31, 23, 59, 59));
-        dateRange = { 
-          start: startUTC.toISOString().split('T')[0], 
-          end: endUTC.toISOString().split('T')[0] 
-        };
-        break;
-      }
-      
-      case "custom": {
-        if (customStartDate && customEndDate) {
-          // Parse tanggal custom sebagai tanggal Indonesia, lalu konversi ke UTC
-          const startDateIndonesia = new Date(`${customStartDate}T00:00:00`);
-          const endDateIndonesia = new Date(`${customEndDate}T23:59:59.999`);
-          
-          const startUTC = new Date(Date.UTC(
-            startDateIndonesia.getFullYear(),
-            startDateIndonesia.getMonth(),
-            startDateIndonesia.getDate(),
-            0, 0, 0
-          ));
-          const endUTC = new Date(Date.UTC(
-            endDateIndonesia.getFullYear(),
-            endDateIndonesia.getMonth(),
-            endDateIndonesia.getDate(),
-            23, 59, 59
-          ));
-          
-          dateRange = { 
-            start: startUTC.toISOString().split('T')[0], 
-            end: endUTC.toISOString().split('T')[0] 
-          };
-        } else {
-          // Fallback ke hari ini
-          const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 0, 0, 0));
-          const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59));
-          dateRange = { 
-            start: startUTC.toISOString().split('T')[0], 
-            end: endUTC.toISOString().split('T')[0] 
-          };
-        }
-        break;
-      }
-      
-      case "all": {
-        // Return a very wide range for "all"
-        const veryOldDate = new Date(Date.UTC(2020, 0, 1, 0, 0, 0));
-        const futureDate = new Date(Date.UTC(nowIndonesia.getFullYear() + 1, 11, 31, 23, 59, 59));
-        dateRange = { 
-          start: veryOldDate.toISOString().split('T')[0], 
-          end: futureDate.toISOString().split('T')[0] 
-        };
-        break;
-      }
-      
-      default: {
-        // Default ke hari ini
-        const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 0, 0, 0));
-        const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59));
-        dateRange = { 
-          start: startUTC.toISOString().split('T')[0], 
-          end: endUTC.toISOString().split('T')[0] 
-        };
-      }
+  // Gunakan waktu Indonesia sebagai basis perhitungan
+  const nowIndonesia = getIndonesiaDate();
+  
+  // Logging untuk debugging
+  console.log('📅 Date range calculation (Indonesia Timezone):', {
+    period: dateFilter,
+    currentDateIndonesia: nowIndonesia.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+    currentDateUTC: new Date().toISOString(),
+    currentMonth: nowIndonesia.getMonth() + 1,
+    currentYear: nowIndonesia.getFullYear(),
+    timezone: 'Asia/Jakarta (UTC+7)'
+  });
+  
+  let dateRange;
+  
+  switch (dateFilter) {
+    case "today": {
+      const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 0, 0, 0));
+      const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59));
+      dateRange = { 
+        start: startUTC.toISOString().split('T')[0], 
+        end: endUTC.toISOString().split('T')[0] 
+      };
+      break;
     }
     
-    // Logging hasil perhitungan
-    console.log(`📅 ${dateFilter.toUpperCase()} date range (Indonesia → UTC):`, {
-      startUTC: dateRange.start,
-      endUTC: dateRange.end,
-      startIndonesia: new Date(`${dateRange.start}T00:00:00Z`).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }),
-      endIndonesia: new Date(`${dateRange.end}T23:59:59Z`).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }),
-      period: dateFilter,
-      useCombined: shouldUseCombined // ✅ TAMBAHAN: Log penggunaan combined view
-    });
+    case "yesterday": {
+      const yesterday = new Date(nowIndonesia);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const startUTC = new Date(Date.UTC(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0));
+      const endUTC = new Date(Date.UTC(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59));
+      dateRange = { 
+        start: startUTC.toISOString().split('T')[0], 
+        end: endUTC.toISOString().split('T')[0] 
+      };
+      break;
+    }
     
-    return dateRange;
-  };
+    case "this_week": {
+      const startOfWeek = new Date(nowIndonesia);
+      startOfWeek.setDate(nowIndonesia.getDate() - nowIndonesia.getDay());
+      const startUTC = new Date(Date.UTC(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate(), 0, 0, 0));
+      const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59));
+      dateRange = { 
+        start: startUTC.toISOString().split('T')[0], 
+        end: endUTC.toISOString().split('T')[0] 
+      };
+      break;
+    }
+    
+    case "last_week": {
+      const startOfLastWeek = new Date(nowIndonesia);
+      startOfLastWeek.setDate(nowIndonesia.getDate() - nowIndonesia.getDay() - 7);
+      const endOfLastWeek = new Date(startOfLastWeek);
+      endOfLastWeek.setDate(startOfLastWeek.getDate() + 6);
+      const startUTC = new Date(Date.UTC(startOfLastWeek.getFullYear(), startOfLastWeek.getMonth(), startOfLastWeek.getDate(), 0, 0, 0));
+      const endUTC = new Date(Date.UTC(endOfLastWeek.getFullYear(), endOfLastWeek.getMonth(), endOfLastWeek.getDate(), 23, 59, 59));
+      dateRange = { 
+        start: startUTC.toISOString().split('T')[0], 
+        end: endUTC.toISOString().split('T')[0] 
+      };
+      break;
+    }
+    
+    case "this_month": {
+      const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), 1, 0, 0, 0));
+      const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth() + 1, 0, 23, 59, 59));
+      dateRange = { 
+        start: startUTC.toISOString().split('T')[0], 
+        end: endUTC.toISOString().split('T')[0] 
+      };
+      break;
+    }
+    
+    case "last_month": {
+      const currentMonth = nowIndonesia.getMonth(); // 0-indexed
+      const currentYear = nowIndonesia.getFullYear();
+      const julyMonth = 6; // Juli = index 6
+      const augustMonth = 7; // Agustus = index 7
+      
+      let startUTC: Date;
+      let endUTC: Date;
+      
+      // Jika bulan berjalan adalah Agustus
+      if (currentMonth === augustMonth) {
+        // Last month = dari Januari sampai Juli
+        startUTC = new Date(Date.UTC(currentYear, 0, 1, 0, 0, 0)); // Januari 1
+        endUTC = new Date(Date.UTC(currentYear, julyMonth + 1, 0, 23, 59, 59)); // Akhir Juli
+      } else {
+        // Bulan lainnya: last month = bulan sebelumnya saja
+        startUTC = new Date(Date.UTC(currentYear, currentMonth - 1, 1, 0, 0, 0));
+        endUTC = new Date(Date.UTC(currentYear, currentMonth, 0, 23, 59, 59));
+      }
+      
+      dateRange = { 
+        start: startUTC.toISOString().split('T')[0], 
+        end: endUTC.toISOString().split('T')[0] 
+      };
+      break;
+    }
+    
+    case "this_year": {
+      const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), 0, 1, 0, 0, 0));
+      const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), 11, 31, 23, 59, 59));
+      dateRange = { 
+        start: startUTC.toISOString().split('T')[0], 
+        end: endUTC.toISOString().split('T')[0] 
+      };
+      break;
+    }
+    
+    case "last_year": {
+      const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear() - 1, 0, 1, 0, 0, 0));
+      const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear() - 1, 11, 31, 23, 59, 59));
+      dateRange = { 
+        start: startUTC.toISOString().split('T')[0], 
+        end: endUTC.toISOString().split('T')[0] 
+      };
+      break;
+    }
+    
+    case "custom": {
+      if (customStartDate && customEndDate) {
+        // Parse tanggal custom sebagai tanggal Indonesia, lalu konversi ke UTC
+        const startDateIndonesia = new Date(`${customStartDate}T00:00:00`);
+        const endDateIndonesia = new Date(`${customEndDate}T23:59:59.999`);
+        
+        const startUTC = new Date(Date.UTC(
+          startDateIndonesia.getFullYear(),
+          startDateIndonesia.getMonth(),
+          startDateIndonesia.getDate(),
+          0, 0, 0
+        ));
+        const endUTC = new Date(Date.UTC(
+          endDateIndonesia.getFullYear(),
+          endDateIndonesia.getMonth(),
+          endDateIndonesia.getDate(),
+          23, 59, 59
+        ));
+        
+        dateRange = { 
+          start: startUTC.toISOString().split('T')[0], 
+          end: endUTC.toISOString().split('T')[0] 
+        };
+      } else {
+        // Fallback ke hari ini
+        const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 0, 0, 0));
+        const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59));
+        dateRange = { 
+          start: startUTC.toISOString().split('T')[0], 
+          end: endUTC.toISOString().split('T')[0] 
+        };
+      }
+      break;
+    }
+    
+    case "all": {
+      // Return a very wide range for "all"
+      const veryOldDate = new Date(Date.UTC(2020, 0, 1, 0, 0, 0));
+      const futureDate = new Date(Date.UTC(nowIndonesia.getFullYear() + 1, 11, 31, 23, 59, 59));
+      dateRange = { 
+        start: veryOldDate.toISOString().split('T')[0], 
+        end: futureDate.toISOString().split('T')[0] 
+      };
+      break;
+    }
+    
+    default: {
+      // Default ke hari ini
+      const startUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 0, 0, 0));
+      const endUTC = new Date(Date.UTC(nowIndonesia.getFullYear(), nowIndonesia.getMonth(), nowIndonesia.getDate(), 23, 59, 59));
+      dateRange = { 
+        start: startUTC.toISOString().split('T')[0], 
+        end: endUTC.toISOString().split('T')[0] 
+      };
+    }
+  }
+  
+  // Logging hasil perhitungan
+  console.log(`📅 ${dateFilter.toUpperCase()} date range (Indonesia → UTC):`, {
+    startUTC: dateRange.start,
+    endUTC: dateRange.end,
+    startIndonesia: new Date(`${dateRange.start}T00:00:00Z`).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }),
+    endIndonesia: new Date(`${dateRange.end}T23:59:59Z`).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }),
+    period: dateFilter
+  });
+  
+  return dateRange;
+};
 
   const fetchInitialData = async () => {
     try {
@@ -280,7 +275,6 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
     }
   };
 
-  // ✅ PERBAIKAN: Fungsi fetch dengan logika combined view
   const fetchPembukuanData = async () => {
     setLoading(true);
     try {
@@ -291,108 +285,8 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
         return;
       }
 
-      console.log('🔍 Fetching pembukuan data:', {
-        table: shouldUseCombined ? 'pembukuan_combined' : 'pembukuan',
-        period: dateFilter,
-        dateRange: { start, end },
-        division: selectedDivision,
-        company: selectedCompany
-      });
-
-      if (shouldUseCombined) {
-        // ✅ STRATEGI BARU: Fetch dari kedua tabel secara terpisah untuk combined view
-        const [activeResult, historyResult] = await Promise.allSettled([
-          fetchPembukuanFromTable('pembukuan', start, end),
-          fetchPembukuanFromTable('pembukuan_history', start, end)
-        ]);
-
-        let combinedData: any[] = [];
-
-        // Process active data
-        if (activeResult.status === 'fulfilled' && !activeResult.value.error) {
-          const activeDataWithSource = (activeResult.value.data || []).map(item => ({
-            ...item,
-            data_source: 'active',
-            closed_month: null,
-            closed_year: null
-          }));
-          combinedData = [...combinedData, ...activeDataWithSource];
-        } else if (activeResult.status === 'rejected') {
-          console.warn('Failed to fetch active pembukuan data:', activeResult.reason);
-        } else if (activeResult.value.error) {
-          console.warn('Error in active pembukuan data:', activeResult.value.error);
-        }
-
-        // Process history data
-        if (historyResult.status === 'fulfilled' && !historyResult.value.error) {
-          const historyDataWithSource = (historyResult.value.data || []).map(item => ({
-            ...item,
-            data_source: 'history'
-          }));
-          combinedData = [...combinedData, ...historyDataWithSource];
-        } else if (historyResult.status === 'rejected') {
-          console.warn('Failed to fetch history pembukuan data:', historyResult.reason);
-        } else if (historyResult.value.error) {
-          console.warn('Error in history pembukuan data:', historyResult.value.error);
-        }
-
-        // Sort combined data by tanggal
-        combinedData.sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
-        
-        setPembukuanData(combinedData);
-        
-        console.log('✅ Combined pembukuan data loaded:', {
-          activeCount: activeResult.status === 'fulfilled' ? (activeResult.value.data?.length || 0) : 0,
-          historyCount: historyResult.status === 'fulfilled' ? (historyResult.value.data?.length || 0) : 0,
-          totalCount: combinedData.length
-        });
-        
-      } else {
-        // ✅ Fetch hanya dari tabel pembukuan biasa
-        const result = await fetchPembukuanFromTable('pembukuan', start, end);
-        
-        if (result.error) {
-          console.error('Error fetching pembukuan data:', result.error);
-          toast({
-            title: "Error",
-            description: "Gagal memuat data pembukuan",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        const dataWithSource = (result.data || []).map(item => ({
-          ...item,
-          data_source: 'active',
-          closed_month: null,
-          closed_year: null
-        }));
-        
-        setPembukuanData(dataWithSource);
-        
-        console.log('✅ Active pembukuan data loaded:', {
-          count: dataWithSource.length,
-          table: 'pembukuan'
-        });
-      }
-      
-    } catch (error) {
-      console.error('Error fetching pembukuan data:', error);
-      toast({
-        title: "Error",
-        description: "Gagal memuat data pembukuan",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ✅ TAMBAHAN: Helper function untuk fetch dari tabel tertentu
-  const fetchPembukuanFromTable = async (tableName: string, start: string, end: string) => {
-    try {
       let query = supabase
-        .from(tableName)
+        .from('pembukuan')
         .select(`
           *,
           cabang:cabang_id(nama),
@@ -412,9 +306,18 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
       }
 
       const { data, error } = await query;
-      return { data, error };
+      if (error) throw error;
+
+      setPembukuanData(data || []);
     } catch (error) {
-      return { data: null, error };
+      console.error('Error fetching pembukuan data:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memuat data pembukuan",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -443,7 +346,6 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
     }
 
     try {
-      // ✅ CATATAN: Insert selalu ke tabel pembukuan aktif, bukan combined
       const { error } = await supabase
         .from('pembukuan')
         .insert([{
@@ -509,16 +411,7 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
   };
 
   const getBalance = () => {
-    return getTotalDebit() - getTotalKredit();
-  };
-
-  const getBalanceStatus = () => {
-    const balance = getBalance();
-    return {
-      amount: Math.abs(balance),
-      status: balance >= 0 ? 'surplus' : 'defisit',
-      color: balance >= 0 ? 'text-green-600' : 'text-red-600'
-    };
+    return getTotalKredit() - getTotalDebit();
   };
 
   const filteredCompanies = companiesData.filter(company => 
@@ -554,7 +447,6 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
             .summary-item { display: inline-block; margin-right: 30px; }
             .divisi-sport { background-color: #dbeafe; color: #1e40af; }
             .divisi-start { background-color: #dcfce7; color: #166534; }
-            .data-source { font-size: 10px; color: #666; }
             @media print {
               body { margin: 0; }
               .no-print { display: none; }
@@ -567,7 +459,6 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
             <p>Periode: ${formatDate(start)} - ${formatDate(end)}</p>
             ${selectedDivision !== 'all' ? `<p>Divisi: ${selectedDivision.toUpperCase()}</p>` : ''}
             ${selectedCompany !== 'all' ? `<p>Perusahaan: ${getFilteredCompanies().find(c => c.id.toString() === selectedCompany)?.nama_perusahaan || ''}</p>` : ''}
-            ${shouldUseCombined ? '<p class="data-source">📊 Data: Active + History (Combined View)</p>' : '<p class="data-source">📊 Data: Active Only</p>'}
           </div>
           
           <table>
@@ -581,7 +472,6 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
                 <th>Debit</th>
                 <th>Kredit</th>
                 <th>Company</th>
-                ${shouldUseCombined ? '<th>Source</th>' : ''}
               </tr>
             </thead>
             <tbody>
@@ -595,7 +485,6 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
                   <td class="text-right">${item.debit ? formatCurrency(item.debit) : '-'}</td>
                   <td class="text-right">${item.kredit ? formatCurrency(item.kredit) : '-'}</td>
                   <td>${item.companies?.nama_perusahaan || '-'}</td>
-                  ${shouldUseCombined ? `<td class="data-source">${item.data_source === 'history' ? '📚 History' : '🔄 Active'}</td>` : ''}
                 </tr>
               `).join('')}
             </tbody>
@@ -640,16 +529,9 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
             <BookOpen className="w-8 h-8 text-green-600" />
             Transaksi dan Mutasi Keuangan
-            {/* ✅ TAMBAHAN: Indikator combined view */}
-            {shouldUseCombined && (
-              <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                📊 Combined View
-              </span>
-            )}
           </h1>
           <p className="text-gray-600 mt-2">
             Kelola catatan keuangan dan transaksi
-            {shouldUseCombined && " (termasuk data history)"}
           </p>
         </div>
         
@@ -799,17 +681,7 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
       {/* Filter Controls */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            Filter Data
-            {/* ✅ TAMBAHAN: Indikator tabel yang digunakan */}
-            <span className={`text-xs px-2 py-1 rounded-full ${
-              shouldUseCombined 
-                ? 'bg-blue-100 text-blue-800' 
-                : 'bg-green-100 text-green-800'
-            }`}>
-              {shouldUseCombined ? '📊 pembukuan_combined' : '🔄 pembukuan'}
-            </span>
-          </CardTitle>
+          <CardTitle>Filter Data</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -820,24 +692,18 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
                   <SelectValue placeholder="Pilih periode" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">🌐 Semua periode</SelectItem>
-                  <SelectItem value="today">📅 Today</SelectItem>
-                  <SelectItem value="yesterday">📅 Yesterday</SelectItem>
-                  <SelectItem value="this_week">📅 This Week</SelectItem>
-                  <SelectItem value="last_week">📅 Last Week</SelectItem>
-                  <SelectItem value="this_month">📅 This Month</SelectItem>
-                  <SelectItem value="last_month">📊 Last Month</SelectItem>
-                  <SelectItem value="this_year">📊 This Year</SelectItem>
-                  <SelectItem value="last_year">📊 Last Year</SelectItem>
-                  <SelectItem value="custom">📊 Custom</SelectItem>
+                  <SelectItem value="all">Semua periode</SelectItem>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="yesterday">Yesterday</SelectItem>
+                  <SelectItem value="this_week">This Week</SelectItem>
+                  <SelectItem value="last_week">Last Week</SelectItem>
+                  <SelectItem value="this_month">This Month</SelectItem>
+                  <SelectItem value="last_month">Last Month</SelectItem>
+                  <SelectItem value="this_year">This Year</SelectItem>
+                  <SelectItem value="last_year">Last Year</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
                 </SelectContent>
               </Select>
-              {/* ✅ TAMBAHAN: Info periode yang menggunakan combined view */}
-              {shouldUseCombined && (
-                <p className="text-xs text-blue-600 mt-1">
-                  📊 Menggunakan data gabungan (active + history)
-                </p>
-              )}
             </div>
             
             <div>
@@ -891,8 +757,8 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
         </CardContent>
       </Card>
 
-      {/* Summary Cards - Menghapus card saldo */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -925,15 +791,24 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
+                <p className="text-sm font-medium text-gray-600">Cash Flow Bersih</p>
+                <p className={`text-2xl font-bold ${getBalance() >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(getBalance())}
+                </p>
+              </div>
+              <DollarSign className={`w-8 h-8 ${getBalance() >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
                 <p className="text-sm font-medium text-gray-600">Total Transaksi</p>
                 <p className="text-2xl font-bold text-blue-600">
                   {pembukuanData.length}
                 </p>
-                {shouldUseCombined && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    📊 Active + History
-                  </p>
-                )}
               </div>
               <BookOpen className="w-8 h-8 text-blue-600" />
             </div>
@@ -944,15 +819,7 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
       {/* Data Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            Data Pembukuan
-            {/* ✅ TAMBAHAN: Badge untuk menunjukkan sumber data */}
-            {shouldUseCombined && (
-              <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                📊 Combined View
-              </span>
-            )}
-          </CardTitle>
+          <CardTitle>Data Pembukuan</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -969,13 +836,11 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
                   <TableHead>Debit</TableHead>
                   <TableHead>Kredit</TableHead>
                   <TableHead>Company</TableHead>
-                  {/* ✅ TAMBAHAN: Kolom source untuk combined view */}
-                  {shouldUseCombined && <TableHead>Source</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {pembukuanData.map((item, index) => (
-                  <TableRow key={`${item.data_source}-${item.id}`}>
+                  <TableRow key={item.id}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>{formatDate(item.tanggal)}</TableCell>
                     <TableCell>
@@ -994,68 +859,17 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
                       {item.kredit ? formatCurrency(item.kredit) : '-'}
                     </TableCell>
                     <TableCell>{item.companies?.nama_perusahaan || '-'}</TableCell>
-                    {shouldUseCombined && (
-                      <TableCell>
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          item.data_source === 'history' 
-                            ? 'bg-orange-100 text-orange-800' 
-                            : 'bg-green-100 text-green-800'
-                        }`}>
-                          {item.data_source === 'history' ? '📚 History' : '🔄 Active'}
-                        </span>
-                      </TableCell>
-                    )}
                   </TableRow>
                 ))}
-                
-                {/* Row Total di bagian bawah tabel */}
-                {pembukuanData.length > 0 && (
-                  <TableRow className="bg-gray-50 border-t-2 border-gray-300">
-                    <TableCell colSpan={5} className="font-bold text-gray-700 text-right">
-                      TOTAL:
-                    </TableCell>
-                    <TableCell className="text-red-600 font-bold text-lg">
-                      {formatCurrency(getTotalDebit())}
-                    </TableCell>
-                    <TableCell className="text-green-600 font-bold text-lg">
-                      {formatCurrency(getTotalKredit())}
-                    </TableCell>
-                    <TableCell></TableCell>
-                    {shouldUseCombined && <TableCell></TableCell>}
-                  </TableRow>
-                )}
-                
                 {pembukuanData.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={shouldUseCombined ? 9 : 8} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                       Tidak ada data pembukuan
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
-          )}
-          
-          {/* Info periode - Menghapus summary cards di bawah tabel */}
-          {!loading && pembukuanData.length > 0 && (
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <div className="text-sm text-gray-600 text-center">
-                📅 Data berdasarkan periode: <span className="font-medium">
-                  {dateFilter === 'today' && 'Hari Ini'}
-                  {dateFilter === 'yesterday' && 'Kemarin'}
-                  {dateFilter === 'this_week' && 'Minggu Ini'}
-                  {dateFilter === 'last_week' && 'Minggu Lalu'}
-                  {dateFilter === 'this_month' && 'Bulan Ini'}
-                  {dateFilter === 'last_month' && 'Bulan Lalu'}
-                  {dateFilter === 'this_year' && 'Tahun Ini'}
-                  {dateFilter === 'last_year' && 'Tahun Lalu'}
-                  {dateFilter === 'custom' && `${customStartDate} s/d ${customEndDate}`}
-                </span>
-                {shouldUseCombined && (
-                  <span className="ml-2 text-blue-600 font-medium">• Combined View (Active + History)</span>
-                )}
-              </div>
-            </div>
           )}
         </CardContent>
       </Card>

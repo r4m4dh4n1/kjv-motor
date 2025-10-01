@@ -89,12 +89,12 @@ export const useSoldUpdateHarga = () => {
       }
 
       // 3. Update company modal
-      if (updateData.biaya_tambahan !== 0 && updateData.sumber_dana_id) {
+      if (updateData.biaya_tambahan !== 0 && companyId) {
         const { error: modalError } = await supabase.rpc('update_company_modal', {
-          company_id: updateData.sumber_dana_id, // ✅ PERBAIKAN: Gunakan sumber_dana_id
-          amount: -updateData.biaya_tambahan
+          company_id: companyId,
+          amount: -updateData.biaya_tambahan // Negative for cost addition, positive for cost reduction
         });
-      
+
         if (modalError) {
           console.error('Error updating company modal:', modalError);
           toast({
@@ -108,18 +108,20 @@ export const useSoldUpdateHarga = () => {
       // Di dalam mutationFn:
       // 4. Create pembukuan entry
       if (updateData.biaya_tambahan !== 0) {
-        // PERBAIKAN: Selalu buat entry pembukuan untuk tracking
+        const isAddition = updateData.operation_mode === 'tambah';
+        const amount = Math.abs(updateData.biaya_tambahan);
+        
         const pembukuanData = {
           tanggal: updateData.tanggal_update,
           divisi: currentPenjualan.divisi,
-          keterangan: `${updateData.operation_mode === 'tambah' ? 'Biaya Tambahan' : 'Pengurangan Biaya'} - ${currentPenjualan.plat} - ${updateData.reason}`,
-          debit: updateData.biaya_tambahan > 0 ? Math.abs(updateData.biaya_tambahan) : 0,
-          kredit: updateData.biaya_tambahan < 0 ? Math.abs(updateData.biaya_tambahan) : 0,
+          keterangan: `${updateData.operation_mode === 'tambah' ? 'Biaya Tambahan' : 'Pengurangan Biaya'} - ${currentPenjualan.brands?.name || ''} - ${currentPenjualan.jenis_motor?.jenis_motor || ''} - ${currentPenjualan.plat} - ${updateData.reason}`,
+          debit: isAddition ? amount : 0,
+          kredit: isAddition ? 0 : amount,
           cabang_id: currentPenjualan.cabang_id,
           company_id: updateData.sumber_dana_id,
           pembelian_id: currentPenjualan.pembelian_id
         };
-        
+
         const { error: pembukuanError } = await supabase
           .from('pembukuan')
           .insert(pembukuanData);

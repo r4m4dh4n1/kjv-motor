@@ -31,11 +31,7 @@ import CloseMonthPage from "@/components/finance/CloseMonthPage";
 import { ProfitDistributionPage } from "@/components/finance/ProfitDistributionPage";
 import { PencatatanAssetPage } from "@/components/transaction/PencatatanAssetPage";
 import PriceHistoryUploadPage from "@/components/transaction/PriceHistoryUploadPage";
-// Tambahkan import di bagian atas
-import LabaRugiPage from "@/components/finance/LabaRugiPage";
-import ModalReductionPage from "@/components/finance/ModalReductionPage"; // ✅ Tambahkan ini
-import ModalHistoryPage from "@/components/finance/ModalHistoryPage"; // ✅ Tambahkan ini juga
-import ProfitAdjustmentSummary from "@/components/finance/ProfitAdjustmentSummary";
+
 
 const Index = () => {
   const [activeMenu, setActiveMenu] = useState("dashboard");
@@ -101,18 +97,8 @@ case 'fee-penjualan':
         case "pencatatan-asset":
           return <PencatatanAssetPage selectedDivision={selectedDivision} />;
         case "price-history-upload":
-          return <PriceHistoryUploadPage />;
-        case "laba-rugi":
-          return <LabaRugiPage selectedDivision={selectedDivision} />;
-        case "modal-reduction": // ✅ Tambahkan case ini
-          return <ModalReductionPage />;
-        case "modal-history": // ✅ Tambahkan case ini juga
-          return <ModalHistoryPage />;
-        case "profit-adjustment-summary":
-          return <ProfitAdjustmentSummary selectedDivision={selectedDivision} />;
-      case "close-month":
-        return <CloseMonthPage />;
-      default:
+          return <PriceHistoryUploadPage selectedDivision={selectedDivision} />;
+        default:
         return <Dashboard selectedDivision={selectedDivision} />;
     }
   };

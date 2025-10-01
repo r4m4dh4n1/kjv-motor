@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,15 +10,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Settings, Edit, Trash2, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import ProfitAdjustmentSummary from "@/components/finance/ProfitAdjustmentSummary";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface OperationalPageProps {
   selectedDivision: string;
-}
-
-interface DateRange {
-  start: string;
-  end: string;
 }
 
 const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
@@ -26,13 +21,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   const [companiesData, setCompaniesData] = useState([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOperational, setEditingOperational] = useState(null);
-  
-  // ✅ PERBAIKAN: Ganti dateFrom/dateTo dengan filter periode
-  const [selectedPeriod, setSelectedPeriod] = useState("this_month");
-  const [customStartDate, setCustomStartDate] = useState("");
-  const [customEndDate, setCustomEndDate] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  
   const [formData, setFormData] = useState({
     tanggal: new Date().toISOString().split('T')[0],
     kategori: "",
@@ -50,139 +41,39 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     "Listrik & Air",
     "Maintenance",
     "Marketing",
-    "Gaji Kurang Profit",
-    "Gaji Kurang Modal",
-    "Bonus Kurang Profit",
-    "Bonus Kurang Modal",
-    "Ops Bulanan Kurang Profit",
-    "Ops Bulanan Kurang Modal",
+    "Gaji & Tunjangan",
     "Pajak & Retribusi",
     "Asuransi",
     "Lain-lain"
   ];
 
-  // ✅ PERBAIKAN: Fungsi untuk mendapatkan range tanggal berdasarkan periode
-  const getDateRange = (period: string): DateRange => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    switch (period) {
-      case 'today':
-        return {
-          start: today.toISOString().split('T')[0],
-          end: today.toISOString().split('T')[0]
-        };
-      case 'yesterday':
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        return {
-          start: yesterday.toISOString().split('T')[0],
-          end: yesterday.toISOString().split('T')[0]
-        };
-      case 'this_week':
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay());
-        return {
-          start: startOfWeek.toISOString().split('T')[0],
-          end: today.toISOString().split('T')[0]
-        };
-      case 'last_week':
-        const lastWeekEnd = new Date(today);
-        lastWeekEnd.setDate(today.getDate() - today.getDay() - 1);
-        const lastWeekStart = new Date(lastWeekEnd);
-        lastWeekStart.setDate(lastWeekEnd.getDate() - 6);
-        return {
-          start: lastWeekStart.toISOString().split('T')[0],
-          end: lastWeekEnd.toISOString().split('T')[0]
-        };
-      case 'this_month':
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        return {
-          start: startOfMonth.toISOString().split('T')[0],
-          end: today.toISOString().split('T')[0]
-        };
-      case 'last_month':
-        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-        return {
-          start: lastMonthStart.toISOString().split('T')[0],
-          end: lastMonthEnd.toISOString().split('T')[0]
-        };
-      case 'this_year':
-        const startOfYear = new Date(now.getFullYear(), 0, 1);
-        return {
-          start: startOfYear.toISOString().split('T')[0],
-          end: today.toISOString().split('T')[0]
-        };
-      case 'last_year':
-        const lastYearStart = new Date(now.getFullYear() - 1, 0, 1);
-        const lastYearEnd = new Date(now.getFullYear() - 1, 11, 31);
-        return {
-          start: lastYearStart.toISOString().split('T')[0],
-          end: lastYearEnd.toISOString().split('T')[0]
-        };
-      case 'custom':
-        return {
-          start: customStartDate || today.toISOString().split('T')[0],
-          end: customEndDate || today.toISOString().split('T')[0]
-        };
-      default:
-        return {
-          start: today.toISOString().split('T')[0],
-          end: today.toISOString().split('T')[0]
-        };
-    }
-  };
-
-  // ✅ PERBAIKAN: Update logika shouldUseCombined berdasarkan periode
-  const shouldUseCombined = useMemo(() => {
-    const periodsRequiringCombined = ['last_month', 'this_year', 'last_year'];
-    
-    if (periodsRequiringCombined.includes(selectedPeriod)) {
-      return true;
-    }
-    
-    if (selectedPeriod === 'custom' && customStartDate && customEndDate) {
-      const now = new Date();
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-      const startDate = new Date(customStartDate);
-      
-      // Gunakan combined jika tanggal mulai dari bulan/tahun sebelumnya
-      return startDate.getMonth() < currentMonth || startDate.getFullYear() < currentYear;
-    }
-    
-    return false;
-  }, [selectedPeriod, customStartDate, customEndDate]);
-
-  // Helper function to check if category is "Kurang Profit"
-  const isKurangProfitCategory = (kategori: string) => {
-    return kategori.includes("Kurang Profit");
-  };
-
-  // Helper function to check if category is "Kurang Modal"
-  const isKurangModalCategory = (kategori: string) => {
-    return kategori.includes("Kurang Modal");
-  };
-
   useEffect(() => {
     fetchInitialData();
+    // Set default date range (current month)
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    setDateFrom(firstDay.toISOString().split('T')[0]);
+    setDateTo(today.toISOString().split('T')[0]);
   }, []);
 
   useEffect(() => {
-    fetchOperationalData();
-  }, [selectedPeriod, customStartDate, customEndDate, selectedDivision, selectedCategory]);
+    if (dateFrom && dateTo) {
+      fetchOperationalData();
+    }
+  }, [dateFrom, dateTo, selectedDivision, selectedCategory]);
 
   const fetchInitialData = async () => {
     try {
-      // Fetch companies data
-      const { data: companies, error: companiesError } = await supabase
-        .from('companies')
-        .select('*')
-        .order('nama_perusahaan');
+      let companiesQuery = supabase.from('companies').select('*').order('nama_perusahaan');
+      
+      if (selectedDivision !== 'all') {
+        companiesQuery = companiesQuery.eq('divisi', selectedDivision);
+      }
 
+      const { data: companiesResult, error: companiesError } = await companiesQuery;
       if (companiesError) throw companiesError;
-      setCompaniesData(companies || []);
+
+      setCompaniesData(companiesResult || []);
     } catch (error) {
       console.error('Error fetching initial data:', error);
       toast({
@@ -193,70 +84,34 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     }
   };
 
-
-
   const fetchOperationalData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      
-      // ✅ PERBAIKAN: Dapatkan range tanggal berdasarkan periode
-      const dateRange = getDateRange(selectedPeriod);
-      
-      console.log('🔍 Fetching operational data:', {
-        table: shouldUseCombined ? 'operational_combined' : 'operational',
-        period: selectedPeriod,
-        dateRange,
-        division: selectedDivision,
-        category: selectedCategory
-      });
-      
-      // ✅ PERBAIKAN: Gunakan tabel yang sesuai berdasarkan periode
-      const operationalTable = shouldUseCombined ? 'operational_combined' : 'operational';
-      
-      let operationalQuery = supabase
-        .from(operationalTable)
-        .select('*')
-        .gte('tanggal', dateRange.start)
-        .lte('tanggal', dateRange.end)
+      // Use the operational table
+      let query = supabase
+        .from('operational')
+        .select(`
+          *,
+          companies:company_id(nama_perusahaan),
+          cabang:cabang_id(nama)
+        `)
+        .gte('tanggal', dateFrom)
+        .lte('tanggal', dateTo)
         .order('tanggal', { ascending: false });
 
-      // Filter by division if not 'all'
       if (selectedDivision !== 'all') {
-        operationalQuery = operationalQuery.eq('divisi', selectedDivision);
+        query = query.eq('divisi', selectedDivision);
       }
 
-      // Filter by category if not 'all'
-      if (selectedCategory !== 'all') {
-        operationalQuery = operationalQuery.eq('kategori', selectedCategory);
-      }
+      const { data, error } = await query;
+      if (error) throw error;
 
-      const { data: operationalData, error: operationalError } = await operationalQuery;
+      // Filter by category if selected
+      const filteredData = selectedCategory !== 'all' 
+        ? (data || []).filter(item => item.kategori === selectedCategory)
+        : (data || []);
 
-      if (operationalError) throw operationalError;
-
-      // Then, fetch companies data separately
-      const { data: companiesData, error: companiesError } = await supabase
-        .from('companies')
-        .select('id, nama_perusahaan, modal');
-
-      if (companiesError) throw companiesError;
-
-      // Create a map for quick company lookup
-      const companiesMap = new Map();
-      companiesData?.forEach(company => {
-        companiesMap.set(company.id, company);
-      });
-
-      // Combine operational data with company information
-      const combinedData = operationalData?.map(item => ({
-        ...item,
-        // ✅ PERBAIKAN: Set data_source default jika tidak ada (untuk tabel operational biasa)
-        data_source: item.data_source || 'active',
-        company_info: companiesMap.get(item.company_id) || null
-      })) || [];
-
-      setOperationalData(combinedData);
-      
+      setOperationalData(filteredData);
     } catch (error) {
       console.error('Error fetching operational data:', error);
       toast({
@@ -272,7 +127,16 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const nominalAmount = parseFloat(formData.nominal.replace(/\./g, ''));
+    if (!formData.tanggal || !formData.kategori || !formData.nominal || !formData.deskripsi || !formData.sumber_dana) {
+      toast({
+        title: "Error",
+        description: "Mohon lengkapi semua field yang wajib diisi",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const nominalAmount = parseFloat(parseNumericInput(formData.nominal));
     if (isNaN(nominalAmount) || nominalAmount <= 0) {
       toast({
         title: "Error",
@@ -282,34 +146,27 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       return;
     }
 
-    // ✅ LOGIKA BARU: Cek kategori berdasarkan aturan baru
-    const isKurangProfit = isKurangProfitCategory(formData.kategori);
-    const isKurangModal = isKurangModalCategory(formData.kategori);
-
     try {
-      // ✅ LOGIKA BARU: Validasi modal untuk semua kategori kecuali "Kurang Profit"
-      if (!isKurangProfit) {
-        // Get company data to check modal
-        const { data: company, error: companyError } = await supabase
-          .from('companies')
-          .select('modal, nama_perusahaan')
-          .eq('id', parseInt(formData.sumber_dana))
-          .single();
+      // Get company data to check modal
+      const { data: company, error: companyError } = await supabase
+        .from('companies')
+        .select('modal, nama_perusahaan')
+        .eq('id', parseInt(formData.sumber_dana))
+        .single();
 
-        if (companyError) throw companyError;
+      if (companyError) throw companyError;
 
-        if (company.modal < nominalAmount) {
-          toast({
-            title: "Error",
-            description: `Modal ${company.nama_perusahaan} tidak mencukupi. Modal tersedia: ${formatCurrency(company.modal)}`,
-            variant: "destructive",
-          });
-          return;
-        }
+      if (company.modal < nominalAmount) {
+        toast({
+          title: "Error",
+          description: `Modal ${company.nama_perusahaan} tidak mencukupi. Modal tersedia: ${formatCurrency(company.modal)}`,
+          variant: "destructive",
+        });
+        return;
       }
 
       if (editingOperational) {
-        // CATATAN: Untuk UPDATE, tetap gunakan tabel operational asli
+        // Update existing record
         const { error: updateError } = await supabase
           .from('operational')
           .update({
@@ -317,93 +174,47 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
             kategori: formData.kategori,
             deskripsi: formData.deskripsi,
             nominal: nominalAmount,
-            // ✅ LOGIKA BARU: Set company_id berdasarkan kategori
-            company_id: isKurangProfit ? null : parseInt(formData.sumber_dana),
+            company_id: parseInt(formData.sumber_dana),
             divisi: selectedDivision !== 'all' ? selectedDivision : 'sport'
           })
           .eq('id', editingOperational.id);
 
         if (updateError) throw updateError;
 
-        // ✅ LOGIKA BARU: Update modal perusahaan untuk semua kategori kecuali "Kurang Profit"
-        if (!isKurangProfit) {
-          // Update company modal (restore old amount and deduct new amount)
-          const modalDifference = editingOperational.nominal - nominalAmount;
-          const { error: modalUpdateError } = await supabase.rpc('update_company_modal', {
-            company_id: parseInt(formData.sumber_dana),
-            amount: modalDifference
+        // Update company modal (restore old amount and deduct new amount)
+        const modalDifference = editingOperational.nominal - nominalAmount;
+        const { error: modalUpdateError } = await supabase.rpc('update_company_modal', {
+          company_id: parseInt(formData.sumber_dana),
+          amount: modalDifference
+        });
+
+        if (modalUpdateError) throw modalUpdateError;
+
+        // Update pembukuan entry - delete old and create new
+        await supabase
+          .from('pembukuan')
+          .delete()
+          .eq('keterangan', `like ${editingOperational.kategori} - ${editingOperational.deskripsi}%`);
+
+        const { error: pembukuanError } = await supabase
+          .from('pembukuan')
+          .insert({
+            tanggal: formData.tanggal,
+            divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
+            keterangan: `${formData.kategori} - ${formData.deskripsi}`,
+            debit: nominalAmount,
+            kredit: 0,
+            cabang_id: 1,
+            company_id: parseInt(formData.sumber_dana)
           });
 
-          if (modalUpdateError) throw modalUpdateError;
-        }
-
-        // ✅ LOGIKA BARU: Pembukuan untuk semua kategori kecuali "Kurang Profit"
-        if (!isKurangProfit) {
-          // Update pembukuan entry - delete old and create new
-          const oldKeterangan = `${editingOperational.kategori} - ${editingOperational.deskripsi}`;
-          
-          const { error: deletePembukuanError } = await supabase
-            .from('pembukuan')
-            .delete()
-            .eq('keterangan', oldKeterangan)
-            .eq('debit', editingOperational.nominal)
-            .eq('company_id', editingOperational.company_id);
-
-          if (deletePembukuanError) {
-            console.error('Error deleting old pembukuan entry:', deletePembukuanError);
-          }
-
-          const { error: pembukuanError } = await supabase
-            .from('pembukuan')
-            .insert({
-              tanggal: formData.tanggal,
-              divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
-              keterangan: `${formData.kategori} - ${formData.deskripsi}`,
-              debit: nominalAmount,
-              kredit: 0,
-              cabang_id: 1,
-              company_id: parseInt(formData.sumber_dana)
-            });
-
-          if (pembukuanError) {
-            console.error('Error updating pembukuan entry:', pembukuanError);
-            toast({
-              title: "Warning",
-              description: "Data operasional berhasil diubah tapi gagal mengupdate pembukuan",
-              variant: "destructive"
-            });
-          }
-        }
-
-        // ✅ IMPLEMENTASI BARU: Update profit adjustment untuk kategori "Kurang Profit"
-        if (isKurangProfit) {
-          // First restore the old profit adjustment
-          const { error: restoreError } = await supabase.rpc('restore_profit', {
-            p_operational_id: editingOperational.id
+        if (pembukuanError) {
+          console.error('Error updating pembukuan entry:', pembukuanError);
+          toast({
+            title: "Warning",
+            description: "Data operasional berhasil diubah tapi gagal mengupdate pembukuan",
+            variant: "destructive"
           });
-
-          if (restoreError) {
-            console.error('Error restoring old profit adjustment:', restoreError);
-          }
-
-          // Then create new profit deduction
-          const { error: deductError } = await supabase.rpc('deduct_profit', {
-            p_operational_id: editingOperational.id,
-            p_tanggal: formData.tanggal,
-            p_divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
-            p_kategori: formData.kategori,
-            p_deskripsi: formData.deskripsi,
-            p_nominal: nominalAmount
-          });
-
-          if (deductError) {
-            console.error('Error creating new profit deduction:', deductError);
-            toast({
-              title: "Warning",
-              description: "Data operasional berhasil diubah tapi gagal mengupdate pengurangan keuntungan",
-              variant: "destructive"
-            });
-          }
         }
 
         toast({
@@ -411,8 +222,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           description: "Data operasional berhasil diperbarui",
         });
       } else {
-        // CATATAN: Untuk INSERT, tetap gunakan tabel operational asli
-        const { data: insertedData, error: insertError } = await supabase
+        // Insert new record
+        const { error: insertError } = await supabase
           .from('operational')
           .insert([{
             tanggal: formData.tanggal,
@@ -421,69 +232,39 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
             nominal: nominalAmount,
             divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
             cabang_id: 1, // Default cabang
-            // ✅ LOGIKA BARU: Set company_id berdasarkan kategori
-            company_id: isKurangProfit ? null : parseInt(formData.sumber_dana)
-          }])
-          .select()
-          .single();
+            company_id: parseInt(formData.sumber_dana)
+          }]);
 
         if (insertError) throw insertError;
 
-        // ✅ LOGIKA BARU: Update modal perusahaan untuk semua kategori kecuali "Kurang Profit"
-        if (!isKurangProfit) {
-          // Update company modal using the database function
-          const { error: modalUpdateError } = await supabase.rpc('update_company_modal', {
-            company_id: parseInt(formData.sumber_dana),
-            amount: -nominalAmount // Negative to deduct from modal
+        // Update company modal using the database function
+        const { error: modalUpdateError } = await supabase.rpc('update_company_modal', {
+          company_id: parseInt(formData.sumber_dana),
+          amount: -nominalAmount // Negative to deduct from modal
+        });
+
+        if (modalUpdateError) throw modalUpdateError;
+
+        // Create pembukuan entry for operational expense
+        const { error: pembukuanError } = await supabase
+          .from('pembukuan')
+          .insert({
+            tanggal: formData.tanggal,
+            divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
+            keterangan: `${formData.kategori} - ${formData.deskripsi}`,
+            debit: nominalAmount,
+            kredit: 0,
+            cabang_id: 1,
+            company_id: parseInt(formData.sumber_dana)
           });
 
-          if (modalUpdateError) throw modalUpdateError;
-        }
-
-        // ✅ LOGIKA BARU: Pembukuan untuk semua kategori kecuali "Kurang Profit"
-        if (!isKurangProfit) {
-          // Create pembukuan entry for operational expense
-          const { error: pembukuanError } = await supabase
-            .from('pembukuan')
-            .insert({
-              tanggal: formData.tanggal,
-              divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
-              keterangan: `${formData.kategori} - ${formData.deskripsi}`,
-              debit: nominalAmount,
-              kredit: 0,
-              cabang_id: 1,
-              company_id: parseInt(formData.sumber_dana)
-            });
-
-          if (pembukuanError) {
-            console.error('Error creating pembukuan entry:', pembukuanError);
-            toast({
-              title: "Warning",
-              description: "Data operasional berhasil ditambah tapi gagal mencatat pembukuan",
-              variant: "destructive"
-            });
-          }
-        }
-
-        // ✅ IMPLEMENTASI BARU: Untuk kategori "Kurang Profit", kurangi keuntungan
-        if (isKurangProfit) {
-          const { error: deductError } = await supabase.rpc('deduct_profit', {
-            p_operational_id: insertedData.id,
-            p_tanggal: formData.tanggal,
-            p_divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
-            p_kategori: formData.kategori,
-            p_deskripsi: formData.deskripsi,
-            p_nominal: nominalAmount
+        if (pembukuanError) {
+          console.error('Error creating pembukuan entry:', pembukuanError);
+          toast({
+            title: "Warning",
+            description: "Data operasional berhasil ditambah tapi gagal mencatat pembukuan",
+            variant: "destructive"
           });
-
-          if (deductError) {
-            console.error('Error deducting profit:', deductError);
-            toast({
-              title: "Warning",
-              description: "Data operasional berhasil ditambah tapi gagal mengurangi keuntungan",
-              variant: "destructive"
-            });
-          }
         }
 
         toast({
@@ -527,19 +308,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       const operationalToDelete = operationalData.find(item => item.id === id);
       if (!operationalToDelete) return;
 
-      // CATATAN: Untuk DELETE, tetap gunakan tabel operational asli
-      if (operationalToDelete.data_source === 'history') {
-        toast({
-          title: "Error",
-          description: "Data riwayat tidak dapat dihapus",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // ✅ LOGIKA BARU: Cek kategori berdasarkan aturan baru
-      const isKurangProfit = isKurangProfitCategory(operationalToDelete.kategori);
-
+      // Delete the record
       const { error: deleteError } = await supabase
         .from('operational')
         .delete()
@@ -547,53 +316,20 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       if (deleteError) throw deleteError;
 
-      // ✅ LOGIKA BARU: Penghapusan pembukuan untuk semua kategori kecuali "Kurang Profit"
-      if (!isKurangProfit) {
-        // Delete pembukuan entry dengan query yang lebih akurat
-        const keteranganToDelete = `${operationalToDelete.kategori} - ${operationalToDelete.deskripsi}`;
-        
-        const { error: pembukuanDeleteError } = await supabase
-          .from('pembukuan')
-          .delete()
-          .eq('keterangan', keteranganToDelete)
-          .eq('debit', operationalToDelete.nominal)
-          .eq('company_id', operationalToDelete.company_id);
+      // Delete pembukuan entry first
+      await supabase
+        .from('pembukuan')
+        .delete()
+        .eq('keterangan', `like ${operationalToDelete.kategori} - ${operationalToDelete.deskripsi}%`);
 
-        if (pembukuanDeleteError) {
-          console.error('Error deleting pembukuan entry:', pembukuanDeleteError);
-          toast({
-            title: "Warning",
-            description: "Data operasional berhasil dihapus tapi gagal menghapus pembukuan",
-            variant: "destructive"
-          });
-        }
-      }
-
-      // ✅ LOGIKA BARU: Restore modal perusahaan untuk semua kategori kecuali "Kurang Profit"
-      if (!isKurangProfit && operationalToDelete.company_id) {
-        // Restore company modal using the database function
+      // Restore company modal using the database function
+      if (operationalToDelete.company_id) {
         const { error: modalRestoreError } = await supabase.rpc('update_company_modal', {
           company_id: operationalToDelete.company_id,
           amount: operationalToDelete.nominal // Positive to restore modal
         });
 
         if (modalRestoreError) throw modalRestoreError;
-      }
-
-      // ✅ IMPLEMENTASI BARU: Untuk kategori "Kurang Profit", kembalikan keuntungan
-      if (isKurangProfit) {
-        const { error: restoreError } = await supabase.rpc('restore_profit', {
-          p_operational_id: id
-        });
-
-        if (restoreError) {
-          console.error('Error restoring profit:', restoreError);
-          toast({
-            title: "Warning",
-            description: "Data operasional berhasil dihapus tapi gagal mengembalikan keuntungan",
-            variant: "destructive"
-          });
-        }
       }
 
       toast({
@@ -624,29 +360,35 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     setEditingOperational(null);
   };
 
+  // PERBAIKAN UTAMA: Fungsi untuk membuka dialog baru
   const handleOpenNewDialog = () => {
     resetForm();
     setIsDialogOpen(true);
   };
 
+  // Helper functions for numeric formatting
   const formatNumberInput = (value: string): string => {
-    return value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    if (!value) return "";
+    const numericValue = value.replace(/[^0-9]/g, "");
+    if (!numericValue) return "";
+    return parseInt(numericValue).toLocaleString("id-ID");
   };
 
   const parseNumericInput = (value: string): string => {
-    return value.replace(/\./g, '');
+    return value.replace(/[^0-9]/g, "");
   };
 
   const handleNumericChange = (value: string) => {
     const numericValue = parseNumericInput(value);
-    setFormData({...formData, nominal: numericValue});
+    const formattedValue = formatNumberInput(numericValue);
+    setFormData({ ...formData, nominal: numericValue });
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
     }).format(amount);
   };
 
@@ -659,30 +401,16 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   };
 
   const getCategoryStats = () => {
-    return operationalData.reduce((stats, item) => {
-      stats[item.kategori] = (stats[item.kategori] || 0) + 1;
-      return stats;
-    }, {});
+    const stats = {};
+    operationalData.forEach(item => {
+      stats[item.kategori] = (stats[item.kategori] || 0) + item.nominal;
+    });
+    return stats;
   };
 
   const filteredCompanies = companiesData.filter(company => 
     selectedDivision === 'all' || company.divisi.toLowerCase() === selectedDivision.toLowerCase()
   );
-
-  // ✅ LOGIKA BARU: Fungsi untuk menentukan apakah field Sumber Dana harus ditampilkan
-  const shouldShowSumberDana = (kategori: string) => {
-    return !isKurangProfitCategory(kategori);
-  };
-
-  // ✅ LOGIKA BARU: Fungsi untuk mendapatkan pesan informasi berdasarkan kategori
-  const getCategoryInfoMessage = (kategori: string) => {
-    if (isKurangProfitCategory(kategori)) {
-      return "Kategori ini tidak memerlukan sumber dana dan tidak akan mengurangi modal perusahaan. Pengeluaran ini akan mengurangi keuntungan.";
-    } else {
-      return "Kategori ini akan mengurangi modal perusahaan dan dicatat dalam pembukuan sebagai debit.";
-    }
-    return "Kategori operasional standar yang akan mengurangi modal perusahaan dan dicatat dalam pembukuan.";
-  };
 
   return (
     <div className="space-y-6">
@@ -696,7 +424,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
             Kelola pengeluaran operasional harian
           </p>
         </div>
-
+        
+        {/* PERBAIKAN: Hapus DialogTrigger dan gunakan manual control */}
         <Button 
           onClick={handleOpenNewDialog}
           className="bg-purple-600 hover:bg-purple-700"
@@ -706,17 +435,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         </Button>
       </div>
 
-      {/* ✅ TAMBAHAN BARU: Ringkasan Penyesuaian Keuntungan */}
-      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-        <h3 className="text-lg font-semibold text-blue-800 mb-4">
-          Dampak Terhadap Keuntungan
-        </h3>
-        <ProfitAdjustmentSummary 
-          selectedDivision={selectedDivision}
-          dateRange={getDateRange(selectedPeriod)}
-        />
-      </div>
-
+      {/* PERBAIKAN: Dialog tanpa DialogTrigger */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -727,14 +446,15 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label htmlFor="tanggal">Tanggal *</Label>
-              <Input
-                id="tanggal"
-                type="date"
-                value={formData.tanggal}
-                onChange={(e) => setFormData({...formData, tanggal: e.target.value})}
-                className="mt-1"
-                required
-              />
+              <div className="mt-1">
+                <DatePicker
+                  id="tanggal"
+                  value={formData.tanggal}
+                  onChange={(value) => setFormData({...formData, tanggal: value})}
+                  placeholder="Pilih tanggal operasional"
+                  required
+                />
+              </div>
             </div>
 
             <div>
@@ -780,42 +500,25 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
               />
             </div>
 
-            {/* ✅ LOGIKA BARU: Tampilkan field Sumber Dana berdasarkan kategori */}
-            {shouldShowSumberDana(formData.kategori) ? (
-              <div>
-                <Label htmlFor="sumber_dana">Sumber Dana *</Label>
-                <Select value={formData.sumber_dana} onValueChange={(value) => setFormData({...formData, sumber_dana: value})}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Pilih sumber dana" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredCompanies.map((company) => (
-                      <SelectItem key={company.id} value={company.id.toString()}>
-                        {company.nama_perusahaan}
-                        <br />
-                        <small className="text-gray-500">
-                          Modal: {formatCurrency(company.modal)}
-                        </small>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : (
-              <div className={`p-3 border rounded-md ${
-                isKurangProfitCategory(formData.kategori) 
-                  ? 'bg-blue-50 border-blue-200' 
-                  : 'bg-green-50 border-green-200'
-              }`}>
-                <p className={`text-sm ${
-                  isKurangProfitCategory(formData.kategori) 
-                    ? 'text-blue-700' 
-                    : 'text-green-700'
-                }`}>
-                  <strong>Catatan:</strong> {getCategoryInfoMessage(formData.kategori)}
-                </p>
-              </div>
-            )}
+            <div>
+              <Label htmlFor="sumber_dana">Sumber Dana *</Label>
+              <Select value={formData.sumber_dana} onValueChange={(value) => setFormData({...formData, sumber_dana: value})}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Pilih sumber dana" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredCompanies.map((company) => (
+                    <SelectItem key={company.id} value={company.id.toString()}>
+                      {company.nama_perusahaan}
+                      <br />
+                      <small className="text-gray-500">
+                        Modal: {formatCurrency(company.modal)}
+                      </small>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             <div className="flex gap-2 pt-4">
               <Button type="submit" className="bg-purple-600 hover:bg-purple-700">
@@ -833,50 +536,33 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         </DialogContent>
       </Dialog>
 
+      {/* Filter Controls */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            Filter Data
-            {/* ✅ TAMBAHAN: Indikator tabel yang digunakan */}
-            <span className={`text-xs px-2 py-1 rounded-full ${
-              shouldUseCombined 
-                ? 'bg-blue-100 text-blue-800' 
-                : 'bg-green-100 text-green-800'
-            }`}>
-              {shouldUseCombined ? '📊 operational_combined' : '🔄 operational'}
-            </span>
-          </CardTitle>
+          <CardTitle>Filter Data</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* ✅ PERBAIKAN: Filter Periode */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <Label htmlFor="period">Periode</Label>
-              <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Pilih periode" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">📅 Hari Ini</SelectItem>
-                  <SelectItem value="yesterday">📅 Kemarin</SelectItem>
-                  <SelectItem value="this_week">📅 Minggu Ini</SelectItem>
-                  <SelectItem value="last_week">📅 Minggu Lalu</SelectItem>
-                  <SelectItem value="this_month">📅 Bulan Ini</SelectItem>
-                  <SelectItem value="last_month">📊 Bulan Lalu</SelectItem>
-                  <SelectItem value="this_year">📊 Tahun Ini</SelectItem>
-                  <SelectItem value="last_year">📊 Tahun Lalu</SelectItem>
-                  <SelectItem value="custom">📊 Custom</SelectItem>
-                </SelectContent>
-              </Select>
-              {/* Info periode yang menggunakan combined view */}
-              {shouldUseCombined && (
-                <p className="text-xs text-blue-600 mt-1">
-                  📊 Menggunakan data gabungan (active + history)
-                </p>
-              )}
+              <Label htmlFor="dateFrom">Tanggal Mulai</Label>
+              <Input
+                id="dateFrom"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="mt-1"
+              />
             </div>
-
-            {/* Filter Kategori */}
+            <div>
+              <Label htmlFor="dateTo">Tanggal Selesai</Label>
+              <Input
+                id="dateTo"
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="mt-1"
+              />
+            </div>
             <div>
               <Label htmlFor="selectedCategory">Kategori</Label>
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -893,41 +579,16 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Tombol Filter */}
             <div className="flex items-end">
               <Button onClick={fetchOperationalData} disabled={loading} className="w-full">
                 {loading ? "Loading..." : "Filter"}
               </Button>
             </div>
           </div>
-
-          {/* ✅ TAMBAHAN: Custom Date Range untuk periode custom */}
-          {selectedPeriod === 'custom' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t">
-              <div>
-                <Label htmlFor="startDate">Tanggal Mulai</Label>
-                <Input
-                  type="date"
-                  value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="endDate">Tanggal Akhir</Label>
-                <Input
-                  type="date"
-                  value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6">
@@ -986,6 +647,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         </Card>
       </div>
 
+      {/* Data Table */}
       <Card>
         <CardHeader>
           <CardTitle>Data Operasional</CardTitle>
@@ -1003,7 +665,6 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                   <TableHead>Nominal</TableHead>
                   <TableHead>Deskripsi</TableHead>
                   <TableHead>Sumber Dana</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
@@ -1013,67 +674,38 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>{formatDate(item.tanggal)}</TableCell>
                     <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        isKurangProfitCategory(item.kategori) 
-                          ? 'bg-blue-100 text-blue-800'
-                          : isKurangModalCategory(item.kategori)
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-purple-100 text-purple-800'
-                      }`}>
+                      <span className="px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800">
                         {item.kategori}
                       </span>
                     </TableCell>
                     <TableCell className="font-semibold text-red-600">
                       {formatCurrency(item.nominal)}
                     </TableCell>
-                    <TableCell>{item.deskripsi}</TableCell>
-                    <TableCell>
-                      {isKurangProfitCategory(item.kategori) 
-                        ? <span className="text-gray-500 italic">Tidak ada</span>
-                        : item.company_info?.nama_perusahaan
-                      }
-                    </TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        item.data_source === 'active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {item.data_source === 'active' ? 'Aktif' : 'Riwayat'}
-                      </span>
-                    </TableCell>
+                    <TableCell className="max-w-xs truncate">{item.deskripsi}</TableCell>
+                    <TableCell>{item.companies?.nama_perusahaan || '-'}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end">
-                        {item.data_source === 'active' && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEdit(item)}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleDelete(item.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </>
-                        )}
-                        {item.data_source === 'history' && (
-                          <span className="text-sm text-gray-500">
-                            Tidak dapat diedit
-                          </span>
-                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(item)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDelete(item.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
                 ))}
                 {operationalData.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                       Tidak ada data operasional
                     </TableCell>
                   </TableRow>

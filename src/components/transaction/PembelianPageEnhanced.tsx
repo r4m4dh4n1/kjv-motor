@@ -6,11 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subWeeks, subMonths, subYears, addDays } from "date-fns";
-import { Search, Filter, ShoppingCart, CheckCircle, DollarSign, CalendarIcon } from "lucide-react";
+import { Search, Filter, ShoppingCart, CheckCircle, DollarSign, Calendar } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import HistoryTab from "./HistoryTab";
 import PembelianForm from "./PembelianForm";
@@ -488,54 +488,57 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       if (historyError) throw historyError;
 
       // 2. Update harga_final di pembelian
-      const { error: updateHargaError } = await supabase
-        .from("pembelian")
-        .update({ harga_final: hargaFinal })
-        .eq("id", updatingHargaPembelian.id);
+      await new Promise((resolve, reject) => {
+        updateMutation.mutate(
+          { id: updatingHargaPembelian.id, data: { harga_final: hargaFinal } },
+          {
+            onSuccess: () => resolve(true),
+            onError: (error) => reject(error)
+          }
+        );
+      });
 
-      if (updateHargaError) throw updateHargaError;
-
-      // 3. Selalu buat entry pembukuan untuk tracking, tidak peduli selisih harga
-      // Update modal company
-      const { data: company, error: companyFetchError } = await supabase
-        .from("companies")
-        .select("modal")
-        .eq("id", parseInt(updateHargaForm.company_id))
-        .single();
-      
-      if (companyFetchError) throw companyFetchError;
-
-      const { error: updateModalError } = await supabase
-        .from("companies")
-        .update({ modal: company.modal - selisihHarga })
-        .eq("id", parseInt(updateHargaForm.company_id));
+      // 3. Baru insert ke pembukuan dan update modal (di akhir)
+      if (selisihHarga !== 0) {
+        // Update modal company
+        const { data: company, error: companyFetchError } = await supabase
+          .from("companies")
+          .select("modal")
+          .eq("id", parseInt(updateHargaForm.company_id))
+          .single();
         
-      if (updateModalError) throw updateModalError;
+        if (companyFetchError) throw companyFetchError;
 
-      // PERBAIKAN: Selalu insert ke pembukuan untuk tracking
-      const pembukuanData = {
-        tanggal: updateHargaForm.tanggal_update,
-        divisi: updatingHargaPembelian.divisi,
-        cabang_id: updatingHargaPembelian.cabang_id,
-        keterangan: `Update harga motor ${updatingHargaPembelian.brands?.name || ''} ${updatingHargaPembelian.jenis_motor?.jenis_motor || ''} ${updatingHargaPembelian.plat_nomor} - ${updateHargaForm.reason}`,
-        debit: selisihHarga > 0 ? selisihHarga : 0,
-        kredit: selisihHarga < 0 ? Math.abs(selisihHarga) : 0,
-        saldo: 0,
-        pembelian_id: updatingHargaPembelian.id,
-        company_id: parseInt(updateHargaForm.company_id)
-      };
+        const { error: updateModalError } = await supabase
+          .from("companies")
+          .update({ modal: company.modal - selisihHarga })
+          .eq("id", parseInt(updateHargaForm.company_id));
+          
+        if (updateModalError) throw updateModalError;
 
-      const { data: insertResult, error: pembukuanError } = await supabase
-        .from("pembukuan")
-        .insert([pembukuanData])
-        .select();
-      
-      if (pembukuanError) {
-        console.error('Error insert pembukuan:', pembukuanError);
-        throw pembukuanError;
+        // Insert ke pembukuan di akhir
+        const pembukuanData = {
+          tanggal: updateHargaForm.tanggal_update,
+          divisi: updatingHargaPembelian.divisi,
+          cabang_id: updatingHargaPembelian.cabang_id,
+          keterangan: `Update harga motor ${updatingHargaPembelian.brands?.name || ''} ${updatingHargaPembelian.jenis_motor?.jenis_motor || ''} ${updatingHargaPembelian.plat_nomor} - ${updateHargaForm.reason}`,
+          debit: selisihHarga,
+          pembelian_id: updatingHargaPembelian.id,
+          company_id: parseInt(updateHargaForm.company_id)
+        };
+
+        const { data: insertResult, error: pembukuanError } = await supabase
+          .from("pembukuan")
+          .insert([pembukuanData])
+          .select();
+        
+        if (pembukuanError) {
+          console.error('Error insert pembukuan:', pembukuanError);
+          throw pembukuanError;
+        }
+        
+        console.log('Berhasil insert ke pembukuan:', insertResult);
       }
-      
-      console.log('Berhasil insert ke pembukuan:', insertResult);
 
       // Success toast
       toast({
@@ -820,10 +823,10 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
+                    <CalendarComponent
                       mode="single"
-                      selected={customStartDate}
-                      onSelect={(date) => date && setCustomStartDate(date)}
+                      selected={customEndDate}
+                      onSelect={setCustomEndDate}
                       initialFocus
                       className="p-3 pointer-events-auto"
                     />
@@ -846,7 +849,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                     <Calendar
                       mode="single"
                       selected={customEndDate}
-                      onSelect={(date) => date && setCustomEndDate(date)}
+                      onSelect={setCustomEndDate}
                       initialFocus
                       className="p-3 pointer-events-auto"
                     />
@@ -1033,7 +1036,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                     variant="outline"
                     className="w-full justify-start text-left font-normal"
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    <Calendar className="mr-2 h-4 w-4" />
                     {updateHargaForm.tanggal_update 
                       ? format(new Date(updateHargaForm.tanggal_update), "dd/MM/yyyy")
                       : "Pilih tanggal"
@@ -1041,7 +1044,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
+                  <CalendarComponent
                     mode="single"
                     selected={updateHargaForm.tanggal_update ? new Date(updateHargaForm.tanggal_update) : undefined}
                     onSelect={(date) => {

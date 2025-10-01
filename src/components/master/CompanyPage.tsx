@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Edit, Trash2, Building, DollarSign, History, Settings } from "lucide-react"; // Tambahkan Settings icon
+import { Plus, Edit, Trash2, Building, DollarSign, History } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePagination } from '@/hooks/usePagination';
 import { 
@@ -21,8 +21,6 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import ModalHistoryPage from "./ModalHistoryPage";
-import { Textarea } from "@/components/ui/textarea"; // Tambahkan import Textarea
-import { formatNumber, parseFormattedNumber, handleNumericInput, formatCurrency } from '@/utils/formatUtils'; // Tambahkan import utils
 
 type Company = Tables<"companies">;
 type ModalHistory = Tables<"modal_history">;
@@ -50,14 +48,6 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
   const [selectedCompanyForModal, setSelectedCompanyForModal] = useState<Company | null>(null);
   const [modalAmount, setModalAmount] = useState("");
   const [modalDescription, setModalDescription] = useState("");
-
-   // Modal adjustment states
-  const [isModalAdjustmentOpen, setIsModalAdjustmentOpen] = useState(false);
-  const [selectedCompanyForAdjustment, setSelectedCompanyForAdjustment] = useState<Company | null>(null);
-  const [adjustmentAmount, setAdjustmentAmount] = useState("");
-  const [formattedAdjustmentAmount, setFormattedAdjustmentAmount] = useState("");
-  const [adjustmentDescription, setAdjustmentDescription] = useState("");
-  const [adjustmentType, setAdjustmentType] = useState<"increase" | "decrease">("increase");
   
   const { toast } = useToast();
 
@@ -267,94 +257,6 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
       toast({
         title: "Error",
         description: "Gagal menambahkan modal",
-        variant: "destructive",
-      });
-    }
-  };
-  // Handler untuk formatting adjustment amount
-  const handleAdjustmentAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    const numericValue = handleNumericInput(value);
-    const formattedValue = formatNumber(numericValue);
-    
-    setAdjustmentAmount(numericValue);
-    setFormattedAdjustmentAmount(formattedValue);
-  };
-
-  const handleModalAdjustment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!selectedCompanyForAdjustment || !adjustmentAmount.trim() || !adjustmentDescription.trim()) {
-      toast({
-        title: "Error",
-        description: "Semua field harus diisi",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const amount = parseFormattedNumber(formattedAdjustmentAmount || adjustmentAmount);
-      if (isNaN(amount) || amount <= 0) {
-        toast({
-          title: "Error",
-          description: "Jumlah adjustment harus berupa angka positif",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Validasi untuk pengurangan modal
-      if (adjustmentType === "decrease" && amount > selectedCompanyForAdjustment.modal) {
-        toast({
-          title: "Error",
-          description: "Jumlah pengurangan tidak boleh melebihi modal saat ini",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const finalAmount = adjustmentType === "decrease" ? -amount : amount;
-      const actionText = adjustmentType === "decrease" ? "Pengurangan" : "Penambahan";
-
-      // Insert modal history
-      const { error: historyError } = await supabase
-        .from('modal_history')
-        .insert([{
-          company_id: selectedCompanyForAdjustment.id,
-          jumlah: finalAmount,
-          keterangan: `${actionText} Modal: ${adjustmentDescription}`,
-          tanggal: new Date().toISOString().split('T')[0]
-        }]);
-
-      if (historyError) throw historyError;
-
-      // Update company modal
-      const newModal = selectedCompanyForAdjustment.modal + finalAmount;
-      const { error: updateError } = await supabase
-        .from('companies')
-        .update({ modal: newModal })
-        .eq('id', selectedCompanyForAdjustment.id);
-
-      if (updateError) throw updateError;
-
-      toast({
-        title: "Berhasil",
-        description: `Modal berhasil ${adjustmentType === "decrease" ? "dikurangi" : "ditambahkan"} sebesar ${formatCurrency(amount)}`,
-      });
-
-      setAdjustmentAmount("");
-      setFormattedAdjustmentAmount("");
-      setAdjustmentDescription("");
-      setAdjustmentType("increase");
-      setSelectedCompanyForAdjustment(null);
-      setIsModalAdjustmentOpen(false);
-      fetchCompanies();
-    } catch (error) {
-      console.error('Error adjusting modal:', error);
-      toast({
-        title: "Error",
-        description: "Gagal melakukan adjustment modal",
         variant: "destructive",
       });
     }
@@ -675,17 +577,6 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => {
-                            setSelectedCompanyForAdjustment(company);
-                            setIsModalAdjustmentOpen(true);
-                          }}
-                          title="Adjustment Modal"
-                        >
-                          <Settings className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
                           onClick={() => handleViewHistory(company)}
                           title="Lihat History Modal"
                         >
@@ -760,92 +651,6 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                   setModalAmount("");
                   setModalDescription("");
                   setSelectedCompanyForModal(null);
-                }}
-              >
-                Batal
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal Adjustment Dialog */}
-      <Dialog open={isModalAdjustmentOpen} onOpenChange={setIsModalAdjustmentOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              Adjustment Modal - {selectedCompanyForAdjustment?.nama_perusahaan}
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleModalAdjustment} className="space-y-4">
-            {selectedCompanyForAdjustment && (
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-700">
-                  Modal saat ini: <span className="font-semibold">{formatCurrency(selectedCompanyForAdjustment.modal)}</span>
-                </p>
-              </div>
-            )}
-            
-            <div>
-              <Label htmlFor="adjustmentType">Tipe Adjustment</Label>
-              <Select value={adjustmentType} onValueChange={(value: "increase" | "decrease") => setAdjustmentType(value)}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Pilih tipe adjustment" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="increase">Penambahan Modal</SelectItem>
-                  <SelectItem value="decrease">Pengurangan Modal</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="adjustmentAmount">Jumlah Adjustment</Label>
-              <Input
-                id="adjustmentAmount"
-                type="text"
-                value={formattedAdjustmentAmount || adjustmentAmount}
-                onChange={handleAdjustmentAmountChange}
-                placeholder="Masukkan jumlah adjustment (contoh: 1.000.000)"
-                className="mt-1"
-              />
-              {formattedAdjustmentAmount && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Nilai: {formatCurrency(parseFormattedNumber(formattedAdjustmentAmount))}
-                </p>
-              )}
-            </div>
-            
-            <div>
-              <Label htmlFor="adjustmentDescription">Keterangan</Label>
-              <Textarea
-                id="adjustmentDescription"
-                value={adjustmentDescription}
-                onChange={(e) => setAdjustmentDescription(e.target.value)}
-                placeholder="Masukkan keterangan adjustment modal"
-                className="mt-1"
-                rows={3}
-              />
-            </div>
-            
-            <div className="flex gap-2 pt-4">
-              <Button 
-                type="submit" 
-                className={adjustmentType === "decrease" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
-              >
-                {adjustmentType === "decrease" ? "Kurangi Modal" : "Tambah Modal"}
-              </Button>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => {
-                  setIsModalAdjustmentOpen(false);
-                  setAdjustmentAmount("");
-                  setFormattedAdjustmentAmount("");
-                  setAdjustmentDescription("");
-                  setAdjustmentType("increase");
-                  setSelectedCompanyForAdjustment(null);
                 }}
               >
                 Batal

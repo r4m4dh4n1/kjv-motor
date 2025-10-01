@@ -438,66 +438,6 @@ export type Database = {
           },
         ]
       }
-      cicilan_duplicate: {
-        Row: {
-          batch_ke: number
-          created_at: string | null
-          id: number
-          jenis_pembayaran: string
-          jumlah_bayar: number
-          keterangan: string | null
-          penjualan_id: number
-          sisa_bayar: number
-          status: string
-          tanggal_bayar: string
-          tujuan_pembayaran_id: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          batch_ke: number
-          created_at?: string | null
-          id?: number
-          jenis_pembayaran: string
-          jumlah_bayar: number
-          keterangan?: string | null
-          penjualan_id: number
-          sisa_bayar: number
-          status?: string
-          tanggal_bayar: string
-          tujuan_pembayaran_id?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          batch_ke?: number
-          created_at?: string | null
-          id?: number
-          jenis_pembayaran?: string
-          jumlah_bayar?: number
-          keterangan?: string | null
-          penjualan_id?: number
-          sisa_bayar?: number
-          status?: string
-          tanggal_bayar?: string
-          tujuan_pembayaran_id?: number | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cicilan_duplicate_penjualan_id_fkey"
-            columns: ["penjualan_id"]
-            isOneToOne: false
-            referencedRelation: "penjualans"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cicilan_duplicate_tujuan_pembayaran_id_fkey"
-            columns: ["tujuan_pembayaran_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       cicilan_history: {
         Row: {
           batch_ke: number
@@ -507,7 +447,7 @@ export type Database = {
           created_at: string | null
           id: number
           jenis_pembayaran: string
-          jumlah_bayar: number | null
+          jumlah_bayar: number
           keterangan: string | null
           nominal_dana_1: number
           nominal_dana_2: number | null
@@ -528,7 +468,7 @@ export type Database = {
           created_at?: string | null
           id: number
           jenis_pembayaran: string
-          jumlah_bayar?: number | null
+          jumlah_bayar: number
           keterangan?: string | null
           nominal_dana_1?: number
           nominal_dana_2?: number | null
@@ -549,7 +489,7 @@ export type Database = {
           created_at?: string | null
           id?: number
           jenis_pembayaran?: string
-          jumlah_bayar?: number | null
+          jumlah_bayar?: number
           keterangan?: string | null
           nominal_dana_1?: number
           nominal_dana_2?: number | null
@@ -882,39 +822,6 @@ export type Database = {
           },
         ]
       }
-      ongkir_payments: {
-        Row: {
-          created_at: string
-          id: number
-          keterangan: string | null
-          nominal_titip_ongkir: number
-          penjualan_id: number
-          sumber_dana_id: number
-          tanggal_bayar: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-          keterangan?: string | null
-          nominal_titip_ongkir?: number
-          penjualan_id: number
-          sumber_dana_id: number
-          tanggal_bayar?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: number
-          keterangan?: string | null
-          nominal_titip_ongkir?: number
-          penjualan_id?: number
-          sumber_dana_id?: number
-          tanggal_bayar?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       operational: {
         Row: {
           cabang_id: number
@@ -1121,117 +1028,6 @@ export type Database = {
           },
           {
             foreignKeyName: "pembelian_sumber_dana_2_id_fkey"
-            columns: ["sumber_dana_2_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pembelian_duplicate: {
-        Row: {
-          brand_id: number
-          cabang_id: number
-          created_at: string | null
-          divisi: string
-          harga_beli: number
-          harga_final: number | null
-          id: number
-          jenis_motor_id: number
-          jenis_pembelian: string
-          keterangan: string | null
-          kilometer: number
-          nominal_dana_1: number
-          nominal_dana_2: number | null
-          plat_nomor: string
-          status: string
-          sumber_dana_1_id: number
-          sumber_dana_2_id: number | null
-          tahun: number
-          tanggal_pajak: string
-          tanggal_pembelian: string
-          updated_at: string | null
-          warna: string
-        }
-        Insert: {
-          brand_id: number
-          cabang_id: number
-          created_at?: string | null
-          divisi: string
-          harga_beli: number
-          harga_final?: number | null
-          id?: number
-          jenis_motor_id: number
-          jenis_pembelian: string
-          keterangan?: string | null
-          kilometer: number
-          nominal_dana_1: number
-          nominal_dana_2?: number | null
-          plat_nomor: string
-          status?: string
-          sumber_dana_1_id: number
-          sumber_dana_2_id?: number | null
-          tahun: number
-          tanggal_pajak: string
-          tanggal_pembelian: string
-          updated_at?: string | null
-          warna: string
-        }
-        Update: {
-          brand_id?: number
-          cabang_id?: number
-          created_at?: string | null
-          divisi?: string
-          harga_beli?: number
-          harga_final?: number | null
-          id?: number
-          jenis_motor_id?: number
-          jenis_pembelian?: string
-          keterangan?: string | null
-          kilometer?: number
-          nominal_dana_1?: number
-          nominal_dana_2?: number | null
-          plat_nomor?: string
-          status?: string
-          sumber_dana_1_id?: number
-          sumber_dana_2_id?: number | null
-          tahun?: number
-          tanggal_pajak?: string
-          tanggal_pembelian?: string
-          updated_at?: string | null
-          warna?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pembelian_duplicate_brand_id_fkey"
-            columns: ["brand_id"]
-            isOneToOne: false
-            referencedRelation: "brands"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pembelian_duplicate_cabang_id_fkey"
-            columns: ["cabang_id"]
-            isOneToOne: false
-            referencedRelation: "cabang"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pembelian_duplicate_jenis_motor_id_fkey"
-            columns: ["jenis_motor_id"]
-            isOneToOne: false
-            referencedRelation: "jenis_motor"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pembelian_duplicate_sumber_dana_1_id_fkey"
-            columns: ["sumber_dana_1_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pembelian_duplicate_sumber_dana_2_id_fkey"
             columns: ["sumber_dana_2_id"]
             isOneToOne: false
             referencedRelation: "companies"
@@ -1564,7 +1360,6 @@ export type Database = {
           sisa_bayar: number
           sisa_ongkir: number | null
           status: string
-          subsidi_ongkir: number | null
           tahun: number
           tanggal: string
           tanggal_lunas: string | null
@@ -1607,7 +1402,6 @@ export type Database = {
           sisa_bayar: number
           sisa_ongkir?: number | null
           status: string
-          subsidi_ongkir?: number | null
           tahun: number
           tanggal: string
           tanggal_lunas?: string | null
@@ -1650,7 +1444,6 @@ export type Database = {
           sisa_bayar?: number
           sisa_ongkir?: number | null
           status?: string
-          subsidi_ongkir?: number | null
           tahun?: number
           tanggal?: string
           tanggal_lunas?: string | null
@@ -1706,138 +1499,6 @@ export type Database = {
           },
         ]
       }
-      penjualans_backup: {
-        Row: {
-          biaya_lain_lain: number | null
-          biaya_pajak: number | null
-          biaya_qc: number | null
-          brand_id: number | null
-          cabang_id: number | null
-          catatan: string | null
-          cicilan: boolean | null
-          company_id: number | null
-          company_id_2: number | null
-          created_at: string | null
-          divisi: string | null
-          dp: number | null
-          harga_bayar: number | null
-          harga_beli: number | null
-          harga_jual: number | null
-          id: number | null
-          jenis_id: number | null
-          jenis_pembayaran: string | null
-          keterangan_biaya_lain: string | null
-          keuntungan: number | null
-          kilometer: number | null
-          nominal_dana_1: number | null
-          nominal_dana_2: number | null
-          ongkir_dibayar: boolean | null
-          pajak: string | null
-          pembelian_id: number | null
-          plat: string | null
-          reason_update_harga: string | null
-          sisa_bayar: number | null
-          sisa_ongkir: number | null
-          status: string | null
-          subsidi_ongkir: number | null
-          tahun: number | null
-          tanggal: string | null
-          tanggal_lunas: string | null
-          tanggal_lunas_ongkir: string | null
-          titip_ongkir: number | null
-          total_ongkir: number | null
-          tt: string | null
-          updated_at: string | null
-          warna: string | null
-        }
-        Insert: {
-          biaya_lain_lain?: number | null
-          biaya_pajak?: number | null
-          biaya_qc?: number | null
-          brand_id?: number | null
-          cabang_id?: number | null
-          catatan?: string | null
-          cicilan?: boolean | null
-          company_id?: number | null
-          company_id_2?: number | null
-          created_at?: string | null
-          divisi?: string | null
-          dp?: number | null
-          harga_bayar?: number | null
-          harga_beli?: number | null
-          harga_jual?: number | null
-          id?: number | null
-          jenis_id?: number | null
-          jenis_pembayaran?: string | null
-          keterangan_biaya_lain?: string | null
-          keuntungan?: number | null
-          kilometer?: number | null
-          nominal_dana_1?: number | null
-          nominal_dana_2?: number | null
-          ongkir_dibayar?: boolean | null
-          pajak?: string | null
-          pembelian_id?: number | null
-          plat?: string | null
-          reason_update_harga?: string | null
-          sisa_bayar?: number | null
-          sisa_ongkir?: number | null
-          status?: string | null
-          subsidi_ongkir?: number | null
-          tahun?: number | null
-          tanggal?: string | null
-          tanggal_lunas?: string | null
-          tanggal_lunas_ongkir?: string | null
-          titip_ongkir?: number | null
-          total_ongkir?: number | null
-          tt?: string | null
-          updated_at?: string | null
-          warna?: string | null
-        }
-        Update: {
-          biaya_lain_lain?: number | null
-          biaya_pajak?: number | null
-          biaya_qc?: number | null
-          brand_id?: number | null
-          cabang_id?: number | null
-          catatan?: string | null
-          cicilan?: boolean | null
-          company_id?: number | null
-          company_id_2?: number | null
-          created_at?: string | null
-          divisi?: string | null
-          dp?: number | null
-          harga_bayar?: number | null
-          harga_beli?: number | null
-          harga_jual?: number | null
-          id?: number | null
-          jenis_id?: number | null
-          jenis_pembayaran?: string | null
-          keterangan_biaya_lain?: string | null
-          keuntungan?: number | null
-          kilometer?: number | null
-          nominal_dana_1?: number | null
-          nominal_dana_2?: number | null
-          ongkir_dibayar?: boolean | null
-          pajak?: string | null
-          pembelian_id?: number | null
-          plat?: string | null
-          reason_update_harga?: string | null
-          sisa_bayar?: number | null
-          sisa_ongkir?: number | null
-          status?: string | null
-          subsidi_ongkir?: number | null
-          tahun?: number | null
-          tanggal?: string | null
-          tanggal_lunas?: string | null
-          tanggal_lunas_ongkir?: string | null
-          titip_ongkir?: number | null
-          total_ongkir?: number | null
-          tt?: string | null
-          updated_at?: string | null
-          warna?: string | null
-        }
-        Relationships: []
-      }
       penjualans_history: {
         Row: {
           biaya_lain_lain: number | null
@@ -1874,7 +1535,6 @@ export type Database = {
           sisa_bayar: number
           sisa_ongkir: number | null
           status: string
-          subsidi_ongkir: number | null
           tahun: number
           tanggal: string
           tanggal_lunas: string | null
@@ -1919,7 +1579,6 @@ export type Database = {
           sisa_bayar: number
           sisa_ongkir?: number | null
           status: string
-          subsidi_ongkir?: number | null
           tahun: number
           tanggal: string
           tanggal_lunas?: string | null
@@ -1964,7 +1623,6 @@ export type Database = {
           sisa_bayar?: number
           sisa_ongkir?: number | null
           status?: string
-          subsidi_ongkir?: number | null
           tahun?: number
           tanggal?: string
           tanggal_lunas?: string | null

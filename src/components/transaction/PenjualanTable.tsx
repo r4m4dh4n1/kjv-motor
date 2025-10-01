@@ -8,7 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, Eye, DollarSign, History, MoreHorizontal, XCircle, Send } from "lucide-react";
+import { Edit, Trash2, Eye, DollarSign, History, MoreHorizontal, XCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -45,10 +45,7 @@ interface PenjualanTableProps {
   handleUpdateHarga?: (penjualan: any) => void;
   handleRiwayatHarga?: (penjualan: any) => void;
   handleCancelDp?: (penjualan: any) => void;
-  handleTitipOngkirPayout?: (penjualan: any) => void;
-  ongkirPaymentStatus?: Record<number, boolean>;
   showCancelDp?: boolean;
-  showTitipOngkirPayout?: boolean;
 }
 
 const PenjualanTable = ({ 
@@ -59,10 +56,7 @@ const PenjualanTable = ({
   handleUpdateHarga,
   handleRiwayatHarga,
   handleCancelDp,
-  handleTitipOngkirPayout,
-  ongkirPaymentStatus = {},
-  showCancelDp = false,
-  showTitipOngkirPayout = false
+  showCancelDp = false
 }: PenjualanTableProps) => {
   const isMobile = useIsMobile();
 
@@ -257,28 +251,6 @@ const PenjualanTable = ({
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>Batalkan DP</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
-
-            {/* Tombol Titip Ongkir Payout - only show for booked status with titip_ongkir > 0 and not yet paid */}
-            {showTitipOngkirPayout && 
-             penjualan.status === 'booked' && 
-             penjualan.titip_ongkir > 0 && 
-             !ongkirPaymentStatus[penjualan.id] && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleTitipOngkirPayout?.(penjualan)}
-                    className="text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Bayar Titip Ongkir</p>
                 </TooltipContent>
               </Tooltip>
             )}
