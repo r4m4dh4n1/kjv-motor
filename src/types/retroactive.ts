@@ -54,12 +54,20 @@ export type RetroactiveStatus = 'pending' | 'approved' | 'rejected';
 
 export const RETROACTIVE_CATEGORIES = [
   'Operasional Kantor',
-  'Transportasi', 
+  'Transportasi',
+  'Komunikasi',
+  'Listrik & Air',
+  'Maintenance',
+  'Marketing',
   'Gaji Kurang Profit',
-  'Biaya Administrasi',
-  'Biaya Maintenance',
-  'Biaya Promosi',
-  'Biaya Lain-lain'
+  'Gaji Kurang Modal',
+  'Bonus Kurang Profit',
+  'Bonus Kurang Modal',
+  'Ops Bulanan Kurang Profit',
+  'Ops Bulanan Kurang Modal',
+  'Pajak & Retribusi',
+  'Asuransi',
+  'Lain-lain'
 ] as const;
 
 export type RetroactiveCategory = typeof RETROACTIVE_CATEGORIES[number];

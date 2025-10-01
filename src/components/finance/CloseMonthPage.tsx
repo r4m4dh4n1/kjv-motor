@@ -11,7 +11,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Calendar, Lock, AlertTriangle, RotateCcw, Eye, CheckCircle, XCircle } from 'lucide-react';
 
-const CloseMonthPage = () => {
+interface CloseMonthPageProps {
+  selectedDivision: string;
+}
+
+const CloseMonthPage = ({ selectedDivision }: CloseMonthPageProps) => {
   const [targetMonth, setTargetMonth] = useState('');
   const [targetYear, setTargetYear] = useState('');
   const [notes, setNotes] = useState('');
@@ -39,6 +43,7 @@ const CloseMonthPage = () => {
       const { data, error } = await supabase.rpc('close_month', {
         target_month: parseInt(targetMonth),
         target_year: parseInt(targetYear),
+        target_division: selectedDivision,
         notes: notes || null
       });
 
@@ -75,7 +80,8 @@ const CloseMonthPage = () => {
     try {
       const { data, error } = await supabase.rpc('restore_month', {
         target_month: parseInt(targetMonth),
-        target_year: parseInt(targetYear)
+        target_year: parseInt(targetYear),
+        target_division: selectedDivision
       });
 
       if (error) throw error;
@@ -129,6 +135,7 @@ const CloseMonthPage = () => {
           .from('pembelian')
           .select('*', { count: 'exact', head: true })
           .eq('status', 'sold')
+          .eq('divisi', selectedDivision)
           .gte('tanggal_pembelian', `${targetYear}-${targetMonth.padStart(2, '0')}-01`)
           .lt('tanggal_pembelian', `${targetYear}-${parseInt(targetMonth) === 12 ? parseInt(targetYear) + 1 : targetYear}-${parseInt(targetMonth) === 12 ? '01' : (parseInt(targetMonth) + 1).toString().padStart(2, '0')}-01`),
         
@@ -136,6 +143,7 @@ const CloseMonthPage = () => {
           .from('penjualans')
           .select('*', { count: 'exact', head: true })
           .eq('status', 'sold')
+          .eq('divisi', selectedDivision)
           .gte('tanggal', `${targetYear}-${targetMonth.padStart(2, '0')}-01`)
           .lt('tanggal', `${targetYear}-${parseInt(targetMonth) === 12 ? parseInt(targetYear) + 1 : targetYear}-${parseInt(targetMonth) === 12 ? '01' : (parseInt(targetMonth) + 1).toString().padStart(2, '0')}-01`),
           
@@ -155,18 +163,21 @@ const CloseMonthPage = () => {
         supabase
           .from('operational')
           .select('*', { count: 'exact', head: true })
+          .eq('divisi', selectedDivision)
           .gte('tanggal', `${targetYear}-${targetMonth.padStart(2, '0')}-01`)
           .lt('tanggal', `${targetYear}-${parseInt(targetMonth) === 12 ? parseInt(targetYear) + 1 : targetYear}-${parseInt(targetMonth) === 12 ? '01' : (parseInt(targetMonth) + 1).toString().padStart(2, '0')}-01`),
           
         supabase
           .from('biro_jasa')
           .select('*', { count: 'exact', head: true })
+          .eq('divisi', selectedDivision)
           .gte('tanggal', `${targetYear}-${targetMonth.padStart(2, '0')}-01`)
           .lt('tanggal', `${targetYear}-${parseInt(targetMonth) === 12 ? parseInt(targetYear) + 1 : targetYear}-${parseInt(targetMonth) === 12 ? '01' : (parseInt(targetMonth) + 1).toString().padStart(2, '0')}-01`),
           
         supabase
           .from('assets')
           .select('*', { count: 'exact', head: true })
+          .eq('divisi', selectedDivision)
           .gte('tanggal_perolehan', `${targetYear}-${targetMonth.padStart(2, '0')}-01`)
           .lt('tanggal_perolehan', `${targetYear}-${parseInt(targetMonth) === 12 ? parseInt(targetYear) + 1 : targetYear}-${parseInt(targetMonth) === 12 ? '01' : (parseInt(targetMonth) + 1).toString().padStart(2, '0')}-01`)
       ]);
@@ -245,9 +256,14 @@ const CloseMonthPage = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <Calendar className="h-8 w-8 text-primary" />
-        <h1 className="text-3xl font-bold">Close Month</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Calendar className="h-8 w-8 text-primary" />
+          <h1 className="text-3xl font-bold">Close Month</h1>
+        </div>
+        <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-sm font-medium">
+          Divisi: {selectedDivision}
+        </div>
       </div>
 
       {/* Current Month Warning */}

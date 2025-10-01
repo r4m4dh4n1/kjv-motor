@@ -97,7 +97,7 @@ case 'fee-penjualan':
         case "profit-distribution":
           return <ProfitDistributionPage selectedDivision={selectedDivision} />;
         case "close-month":
-          return <CloseMonthPage />;
+          return <CloseMonthPage selectedDivision={selectedDivision} />;
         case "pencatatan-asset":
           return <PencatatanAssetPage selectedDivision={selectedDivision} />;
         case "price-history-upload":
@@ -110,8 +110,6 @@ case 'fee-penjualan':
           return <ModalHistoryPage />;
         case "profit-adjustment-summary":
           return <ProfitAdjustmentSummary selectedDivision={selectedDivision} />;
-      case "close-month":
-        return <CloseMonthPage />;
       default:
         return <Dashboard selectedDivision={selectedDivision} />;
     }
