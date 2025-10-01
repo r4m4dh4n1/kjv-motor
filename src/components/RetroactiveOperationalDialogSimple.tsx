@@ -49,6 +49,8 @@ export function RetroactiveOperationalDialogSimple({
   const [companies, setCompanies] = useState<any[]>([]);
   const [closedMonths, setClosedMonths] = useState<string[]>([]);
   const [impact, setImpact] = useState<AdjustmentImpact | null>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [selectedTransaction, setSelectedTransaction] = useState<string>('');
 
   useEffect(() => {
     if (open) {
@@ -62,9 +64,9 @@ export function RetroactiveOperationalDialogSimple({
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('id, name')
+        .select('id, nama_perusahaan')
         .eq('divisi', divisi)
-        .order('name');
+        .order('nama_perusahaan');
 
       if (error) throw error;
       setCompanies(data || []);
@@ -94,6 +96,37 @@ export function RetroactiveOperationalDialogSimple({
     }
   };
 
+  const fetchTransactions = async () => {
+    if (!formData.category || !formData.original_month || !formData.company_id) {
+      setTransactions([]);
+      return;
+    }
+
+    try {
+      const [year, month] = formData.original_month.split('-');
+      const startDate = `${year}-${month}-01`;
+      const endDate = `${year}-${month}-31`;
+
+      const { data, error } = await supabase
+        .from('operational')
+        .select('id, tanggal, kategori, nominal, keterangan')
+        .eq('kategori', formData.category)
+        .eq('company_id', formData.company_id)
+        .eq('divisi', divisi)
+        .gte('tanggal', startDate)
+        .lte('tanggal', endDate)
+        .eq('is_retroactive', false)
+        .order('tanggal', { ascending: false });
+
+      if (error) throw error;
+      
+      setTransactions(data || []);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      setTransactions([]);
+    }
+  };
+
   const calculateImpact = () => {
     if (!formData.nominal || !formData.category) return;
 
@@ -112,6 +145,32 @@ export function RetroactiveOperationalDialogSimple({
   useEffect(() => {
     calculateImpact();
   }, [formData.nominal, formData.category]);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [formData.category, formData.original_month, formData.company_id]);
+
+  const handleTransactionSelect = (transactionId: string) => {
+    setSelectedTransaction(transactionId);
+    
+    if (transactionId) {
+      const transaction = transactions.find(t => t.id === transactionId);
+      if (transaction) {
+        setFormData(prev => ({
+          ...prev,
+          nominal: transaction.nominal,
+          description: transaction.keterangan
+        }));
+      }
+    } else {
+      // Reset nominal and description if no transaction selected
+      setFormData(prev => ({
+        ...prev,
+        nominal: 0,
+        description: ''
+      }));
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -245,6 +304,8 @@ export function RetroactiveOperationalDialogSimple({
         divisi: divisi,
       });
       setImpact(null);
+      setSelectedTransaction('');
+      setTransactions([]);
 
     } catch (error: any) {
       console.error('Error processing retroactive adjustment:', error);
@@ -318,12 +379,38 @@ export function RetroactiveOperationalDialogSimple({
               <SelectContent>
                 {companies.map((company) => (
                   <SelectItem key={company.id} value={company.id}>
-                    {company.name}
+                    {company.nama_perusahaan}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
+          {/* Transaksi */}
+          {transactions.length > 0 && (
+            <div>
+              <Label htmlFor="transaction">Pilih Transaksi (Opsional)</Label>
+              <Select
+                value={selectedTransaction}
+                onValueChange={handleTransactionSelect}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih transaksi untuk auto-fill nominal dan deskripsi" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">-- Isi manual --</SelectItem>
+                  {transactions.map((transaction) => (
+                    <SelectItem key={transaction.id} value={transaction.id}>
+                      {new Date(transaction.tanggal).toLocaleDateString('id-ID')} - {formatCurrency(transaction.nominal)} - {transaction.keterangan.substring(0, 50)}{transaction.keterangan.length > 50 ? '...' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground mt-1">
+                Pilih transaksi dari bulan {formData.original_month} untuk mengisi nominal dan deskripsi secara otomatis
+              </p>
+            </div>
+          )}
 
           {/* Nominal */}
           <div>

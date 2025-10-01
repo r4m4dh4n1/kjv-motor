@@ -57,7 +57,7 @@ export function RetroactiveOperationalSimple({ divisi }: RetroactiveOperationalS
           description,
           adjustment_date,
           auto_approved,
-          companies!inner(name)
+          companies!inner(nama_perusahaan)
         `)
         .eq('divisi', divisi)
         .eq('status', 'approved')
@@ -72,7 +72,7 @@ export function RetroactiveOperationalSimple({ divisi }: RetroactiveOperationalS
         category: record.category,
         nominal: record.nominal,
         description: record.description,
-        company_name: (record.companies as any)?.name || 'Unknown',
+        company_name: (record.companies as any)?.nama_perusahaan || 'Unknown',
         adjustment_date: record.adjustment_date,
         auto_approved: record.auto_approved
       })) || [];
