@@ -7,10 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Settings, Edit, Trash2, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import { Plus, Settings, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ProfitAdjustmentSummary from "@/components/finance/ProfitAdjustmentSummary";
+import { isMonthClosed, formatMonthYear } from "@/utils/monthValidation";
+import { RetroactiveOperationalDialogSimple } from "@/components/RetroactiveOperationalDialogSimple";
 
 interface OperationalPageProps {
   selectedDivision: string;
@@ -25,6 +27,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   const [operationalData, setOperationalData] = useState([]);
   const [companiesData, setCompaniesData] = useState([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isRetroactiveDialogOpen, setIsRetroactiveDialogOpen] = useState(false);
   const [editingOperational, setEditingOperational] = useState(null);
   
   // ✅ PERBAIKAN: Ganti dateFrom/dateTo dengan filter periode
@@ -290,6 +293,19 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       return;
     }
 
+    // ✅ VALIDASI BULAN CLOSE: Cek apakah bulan transaksi sudah di-close
+    const transactionDate = new Date(formData.tanggal);
+    const monthClosed = await isMonthClosed(transactionDate);
+    
+    if (monthClosed) {
+      toast({
+        title: "Bulan Sudah Di-Close",
+        description: `Bulan ${formatMonthYear(transactionDate)} sudah di-close. Gunakan fitur "Transaksi Retroaktif" untuk mencatat transaksi di bulan yang sudah di-close.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     // ✅ LOGIKA BARU: Cek kategori berdasarkan aturan baru
     const isKurangProfit = isKurangProfitCategory(formData.kategori);
     const isKurangModal = isKurangModalCategory(formData.kategori);
@@ -317,6 +333,19 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       }
 
       if (editingOperational) {
+        // ✅ VALIDASI BULAN CLOSE UNTUK EDIT: Cek apakah bulan transaksi yang akan diedit sudah di-close
+        const editTransactionDate = new Date(formData.tanggal);
+        const editMonthClosed = await isMonthClosed(editTransactionDate);
+        
+        if (editMonthClosed) {
+          toast({
+            title: "Bulan Sudah Di-Close",
+            description: `Tidak dapat mengedit transaksi untuk bulan ${formatMonthYear(editTransactionDate)} karena sudah di-close. Gunakan "Transaksi Retroaktif" untuk koreksi.`,
+            variant: "destructive",
+          });
+          return;
+        }
+
         // CATATAN: Untuk UPDATE, tetap gunakan tabel operational asli
         const { error: updateError } = await supabase
           .from('operational')
@@ -535,6 +564,19 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       const operationalToDelete = operationalData.find(item => item.id === id);
       if (!operationalToDelete) return;
 
+      // ✅ VALIDASI BULAN CLOSE UNTUK DELETE: Cek apakah bulan transaksi yang akan dihapus sudah di-close
+      const deleteTransactionDate = new Date(operationalToDelete.tanggal);
+      const deleteMonthClosed = await isMonthClosed(deleteTransactionDate);
+      
+      if (deleteMonthClosed) {
+        toast({
+          title: "Bulan Sudah Di-Close",
+          description: `Tidak dapat menghapus transaksi untuk bulan ${formatMonthYear(deleteTransactionDate)} karena sudah di-close. Gunakan "Transaksi Retroaktif" untuk koreksi.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       // CATATAN: Untuk DELETE, tetap gunakan tabel operational asli
       if (operationalToDelete.data_source === 'history') {
         toast({
@@ -705,13 +747,24 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           </p>
         </div>
 
-        <Button 
-          onClick={handleOpenNewDialog}
-          className="bg-purple-600 hover:bg-purple-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Tambah Operasional
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={handleOpenNewDialog}
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Tambah Operasional
+          </Button>
+          
+          <Button 
+            onClick={() => setIsRetroactiveDialogOpen(true)}
+            variant="outline"
+            className="border-orange-500 text-orange-600 hover:bg-orange-50"
+          >
+            <Clock className="w-4 h-4 mr-2" />
+            Transaksi Retroaktif
+          </Button>
+        </div>
       </div>
 
       {/* ✅ TAMBAHAN BARU: Ringkasan Penyesuaian Keuntungan */}
@@ -1091,6 +1144,17 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           )}
         </CardContent>
       </Card>
+
+      {/* Retroactive Transaction Dialog */}
+      <RetroactiveOperationalDialogSimple
+        isOpen={isRetroactiveDialogOpen}
+        onClose={() => setIsRetroactiveDialogOpen(false)}
+        divisi={selectedDivision}
+        onSuccess={() => {
+          setIsRetroactiveDialogOpen(false);
+          fetchOperationalData(); // Refresh data after successful retroactive transaction
+        }}
+      />
     </div>
   );
 };

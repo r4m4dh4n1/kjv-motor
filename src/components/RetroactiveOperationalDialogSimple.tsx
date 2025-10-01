@@ -78,14 +78,14 @@ export function RetroactiveOperationalDialogSimple({
     try {
       const { data, error } = await supabase
         .from('monthly_closures')
-        .select('month, year')
-        .eq('divisi', divisi)
-        .eq('status', 'closed');
+        .select('closure_month, closure_year')
+        .order('closure_year', { ascending: false })
+        .order('closure_month', { ascending: false });
 
       if (error) throw error;
       
       const months = data?.map(item => 
-        `${item.year}-${item.month.toString().padStart(2, '0')}`
+        `${item.closure_year}-${item.closure_month.toString().padStart(2, '0')}`
       ) || [];
       
       setClosedMonths(months);
