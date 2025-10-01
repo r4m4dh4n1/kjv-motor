@@ -86,75 +86,80 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
   }, [biroJasa]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!biroJasa) return;
-
-  try {
-    const biayaModal = parseCurrency(formData.biaya_modal);
-    const keuntungan = parseCurrency(formData.keuntungan);
-    
-    // Debug logging
-    console.log('Debug biaya modal:', {
-      biayaModal,
-      formData_biaya_modal: formData.biaya_modal,
-      sumber_dana: formData.sumber_dana,
-      tanggal: formData.tanggal
-    });
-
-    // Update biro jasa with cost and profit
-    const { error: updateError } = await supabase
-      .from("biro_jasa")
-      .update({
-        biaya_modal: biayaModal,
-        keuntungan: keuntungan,
-      })
-      .eq("id", biroJasa.id);
-
-    if (updateError) throw updateError;
-
-    // Catat biaya modal ke pembukuan sebagai debit (pengeluaran)
-    if (biayaModal > 0) {
-      console.log('Mencatat biaya modal ke pembukuan:', biayaModal);
-      const { error: pembukuanError } = await supabase
-        .from("pembukuan")
-        .insert({
-          tanggal: formData.tanggal,
-          keterangan: `Biaya Modal Biro Jasa - ${biroJasa.jenis_pengurusan} - ${biroJasa.plat_nomor}`,
-          debit: biayaModal,
-          kredit: 0,
-          divisi: selectedDivision,
-          kategori: "Biaya Modal Biro Jasa",
-          referensi_id: biroJasa.id,
-          referensi_tabel: "biro_jasa",
-          company_id: formData.sumber_dana ? parseInt(formData.sumber_dana) : null
-        });
-
-      if (pembukuanError) {
-        console.error('Error pembukuan:', pembukuanError);
-        console.warn("Warning: Gagal mencatat biaya modal ke pembukuan:", pembukuanError);
-        toast({
-          title: "Peringatan",
-          description: "Data tersimpan, namun gagal mencatat biaya modal ke pembukuan",
-          variant: "destructive",
-        });
+    e.preventDefault();
+    if (!biroJasa) return;
+  
+    try {
+      const biayaModal = parseCurrency(formData.biaya_modal);
+      const keuntungan = parseCurrency(formData.keuntungan);
+      
+      // Debug logging
+      console.log('Debug biaya modal:', {
+        biayaModal,
+        formData_biaya_modal: formData.biaya_modal,
+        sumber_dana: formData.sumber_dana,
+        tanggal: formData.tanggal
+      });
+  
+      // Update biro jasa with cost and profit
+      const { error: updateError } = await supabase
+        .from("biro_jasa")
+        .update({
+          biaya_modal: biayaModal,
+          keuntungan: keuntungan,
+        })
+        .eq("id", biroJasa.id);
+  
+      if (updateError) throw updateError;
+  
+      // Catat biaya modal ke pembukuan sebagai debit (pengeluaran)
+      if (biayaModal > 0) {
+        console.log('Mencatat biaya modal ke pembukuan:', biayaModal);
+        const { error: pembukuanError } = await supabase
+          .from("pembukuan")
+          .insert({
+            tanggal: formData.tanggal,
+            keterangan: `Biaya Modal Biro Jasa - ${biroJasa.jenis_pengurusan} - ${biroJasa.plat_nomor}`,
+            debit: biayaModal,
+            kredit: 0,
+            divisi: selectedDivision,
+            kategori: "Biaya Modal Biro Jasa",
+            referensi_id: biroJasa.id,
+            referensi_tabel: "biro_jasa",
+            company_id: formData.sumber_dana ? parseInt(formData.sumber_dana) : null
+          });
+  
+        if (pembukuanError) {
+          console.error('Error pembukuan:', pembukuanError);
+          console.warn("Warning: Gagal mencatat biaya modal ke pembukuan:", pembukuanError);
+          toast({
+            title: "Peringatan",
+            description: "Data tersimpan, namun gagal mencatat biaya modal ke pembukuan",
+            variant: "destructive",
+          });
+        } else {
+          console.log('Biaya modal berhasil dicatat ke pembukuan');
+        }
       } else {
-        console.log('Biaya modal berhasil dicatat ke pembukuan');
+        console.log('Biaya modal tidak dicatat karena nilai <= 0:', biayaModal);
       }
-    } else {
-      console.log('Biaya modal tidak dicatat karena nilai <= 0:', biayaModal);
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "Terjadi kesalahan saat menyimpan data",
+        variant: "destructive",
+      });
+    } finally {
+      toast({
+        title: "Berhasil",
+        description: "Data keuntungan berhasil disimpan",
+        variant: "default",
+      });
     }
-    
-    // Success toast - dipindahkan ke dalam try block
-    toast({
-      title: "Berhasil",
-      description: "Data keuntungan berhasil disimpan",
-      variant: "default",
-    });
-    
-    // Panggil callback setelah semua berhasil
+
     onSuccess();
     onClose();
-    
   } catch (error) {
     console.error("Error saving profit:", error);
     toast({
@@ -163,7 +168,7 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
       variant: "destructive",
     });
   }
-};
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
