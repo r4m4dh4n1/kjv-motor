@@ -149,14 +149,16 @@ const CloseMonthPage = ({ selectedDivision }: CloseMonthPageProps) => {
           
         supabase
           .from('cicilan')
-          .select('*', { count: 'exact', head: true })
+          .select('*, penjualans!inner(divisi)', { count: 'exact', head: true })
           .eq('status', 'completed')
+          .eq('penjualans.divisi', selectedDivision)
           .gte('tanggal_bayar', `${targetYear}-${targetMonth.padStart(2, '0')}-01`)
           .lt('tanggal_bayar', `${targetYear}-${parseInt(targetMonth) === 12 ? parseInt(targetYear) + 1 : targetYear}-${parseInt(targetMonth) === 12 ? '01' : (parseInt(targetMonth) + 1).toString().padStart(2, '0')}-01`),
           
         supabase
           .from('fee_penjualan')
           .select('*', { count: 'exact', head: true })
+          .eq('divisi', selectedDivision)
           .gte('tanggal_fee', `${targetYear}-${targetMonth.padStart(2, '0')}-01`)
           .lt('tanggal_fee', `${targetYear}-${parseInt(targetMonth) === 12 ? parseInt(targetYear) + 1 : targetYear}-${parseInt(targetMonth) === 12 ? '01' : (parseInt(targetMonth) + 1).toString().padStart(2, '0')}-01`),
           
