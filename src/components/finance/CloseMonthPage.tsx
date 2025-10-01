@@ -43,7 +43,6 @@ const CloseMonthPage = ({ selectedDivision }: CloseMonthPageProps) => {
       const { data, error } = await supabase.rpc('close_month', {
         target_month: parseInt(targetMonth),
         target_year: parseInt(targetYear),
-        target_division: selectedDivision,
         notes: notes || null
       });
 
