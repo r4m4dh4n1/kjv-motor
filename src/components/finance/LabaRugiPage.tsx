@@ -192,7 +192,10 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             data_source,
             tanggal,
             catatan,
-            id
+            id,
+            plat,
+            brands:brand_id(name),
+            jenis_motor:jenis_id(jenis_motor)
           `)
           .eq('status', 'selesai')
           .gte('tanggal', startDate)
@@ -250,7 +253,19 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         // Untuk periode lainnya, gunakan tabel penjualans biasa
         let query = supabase
           .from('penjualans')
-          .select('harga_jual, harga_beli, keuntungan, divisi, cabang_id, tanggal, catatan, id')
+          .select(`
+            harga_jual, 
+            harga_beli, 
+            keuntungan, 
+            divisi, 
+            cabang_id, 
+            tanggal, 
+            catatan, 
+            id,
+            plat,
+            brands:brand_id(name),
+            jenis_motor:jenis_id(jenis_motor)
+          `)
           .eq('status', 'selesai')
           .gte('tanggal', startDate)
           .lte('tanggal', endDate);
@@ -596,7 +611,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                               <TableHead className="text-xs">Tanggal</TableHead>
                               <TableHead className="text-xs">ID</TableHead>
                               <TableHead className="text-xs">Harga Jual</TableHead>
-                              <TableHead className="text-xs">Catatan</TableHead>
+                              <TableHead className="text-xs">Motor</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -610,7 +625,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                                   {formatCurrency(item.harga_jual || 0)}
                                 </TableCell>
                                 <TableCell className="text-xs">
-                                  {item.catatan || item.keterangan || '-'}
+                                  {item.brands?.name || '-'} {item.jenis_motor?.jenis_motor || '-'} {item.plat || '-'}
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -670,7 +685,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                               <TableHead className="text-xs">Tanggal</TableHead>
                               <TableHead className="text-xs">ID</TableHead>
                               <TableHead className="text-xs">Harga Beli</TableHead>
-                              <TableHead className="text-xs">Catatan</TableHead>
+                              <TableHead className="text-xs">Motor</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -684,7 +699,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                                   {formatCurrency(item.harga_beli || 0)}
                                 </TableCell>
                                 <TableCell className="text-xs">
-                                  {item.catatan || item.keterangan || '-'}
+                                  {item.brands?.name || '-'} {item.jenis_motor?.jenis_motor || '-'} {item.plat || '-'}
                                 </TableCell>
                               </TableRow>
                             ))}
