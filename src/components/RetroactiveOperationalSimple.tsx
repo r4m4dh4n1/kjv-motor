@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Plus, History, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { RetroactiveOperationalDialogSimple } from './RetroactiveOperationalDialogSimple';
 
 interface RetroactiveOperationalSimpleProps {
