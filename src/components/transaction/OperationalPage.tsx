@@ -66,8 +66,18 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
   // ✅ PERBAIKAN: Fungsi untuk mendapatkan range tanggal berdasarkan periode
   const getDateRange = (period: string): DateRange => {
+    // Gunakan timezone lokal Indonesia (WIB/WITA/WIT)
     const now = new Date();
+    // Pastikan menggunakan tanggal lokal, bukan UTC
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    console.log('🕐 Current date calculation:', {
+      now: now.toISOString(),
+      today: today.toISOString(),
+      localDate: now.toLocaleDateString('id-ID'),
+      currentMonth: now.getMonth() + 1, // +1 karena getMonth() dimulai dari 0
+      currentYear: now.getFullYear()
+    });
     
     switch (period) {
       case 'today':
@@ -100,10 +110,19 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         };
       case 'this_month':
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        return {
+        const result = {
           start: startOfMonth.toISOString().split('T')[0],
           end: today.toISOString().split('T')[0]
         };
+        console.log('📅 THIS_MONTH date range:', {
+          period: 'this_month',
+          startOfMonth: startOfMonth.toISOString(),
+          today: today.toISOString(),
+          result,
+          currentMonth: now.getMonth() + 1,
+          currentYear: now.getFullYear()
+        });
+        return result;
       case 'last_month':
         const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
