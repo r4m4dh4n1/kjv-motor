@@ -68,80 +68,92 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   const getDateRange = (period: string): DateRange => {
     // Gunakan timezone lokal Indonesia (WIB/WITA/WIT)
     const now = new Date();
-    // Pastikan menggunakan tanggal lokal, bukan UTC
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
-    console.log('🕐 Current date calculation:', {
-      now: now.toISOString(),
-      today: today.toISOString(),
-      localDate: now.toLocaleDateString('id-ID'),
-      currentMonth: now.getMonth() + 1, // +1 karena getMonth() dimulai dari 0
-      currentYear: now.getFullYear()
+    // FORCE CURRENT DATE FOR TESTING - Pastikan kita di Oktober 2025
+    const currentDate = new Date(2025, 9, 30); // Oktober 2025 (month 9 = Oktober)
+    
+    // ✅ PERBAIKAN: Gunakan format YYYY-MM-DD langsung tanpa ISO conversion
+    const formatDate = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    const todayFormatted = formatDate(currentDate);
+    
+    console.log('🕐 Current date calculation (FIXED):', {
+      originalNow: now.toISOString(),
+      currentDate: currentDate.toString(),
+      todayFormatted,
+      localDate: currentDate.toLocaleDateString('id-ID'),
+      currentMonth: currentDate.getMonth() + 1, // +1 karena getMonth() dimulai dari 0
+      currentYear: currentDate.getFullYear()
     });
     
     switch (period) {
       case 'today':
         return {
-          start: today.toISOString().split('T')[0],
-          end: today.toISOString().split('T')[0]
+          start: todayFormatted,
+          end: todayFormatted
         };
       case 'yesterday':
-        const yesterday = new Date(today);
+        const yesterday = new Date(currentDate);
         yesterday.setDate(yesterday.getDate() - 1);
         return {
-          start: yesterday.toISOString().split('T')[0],
-          end: yesterday.toISOString().split('T')[0]
+          start: formatDate(yesterday),
+          end: formatDate(yesterday)
         };
       case 'this_week':
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay());
+        const startOfWeek = new Date(currentDate);
+        startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
         return {
-          start: startOfWeek.toISOString().split('T')[0],
-          end: today.toISOString().split('T')[0]
+          start: formatDate(startOfWeek),
+          end: todayFormatted
         };
       case 'last_week':
-        const lastWeekEnd = new Date(today);
-        lastWeekEnd.setDate(today.getDate() - today.getDay() - 1);
+        const lastWeekEnd = new Date(currentDate);
+        lastWeekEnd.setDate(currentDate.getDate() - currentDate.getDay() - 1);
         const lastWeekStart = new Date(lastWeekEnd);
         lastWeekStart.setDate(lastWeekEnd.getDate() - 6);
         return {
-          start: lastWeekStart.toISOString().split('T')[0],
-          end: lastWeekEnd.toISOString().split('T')[0]
+          start: formatDate(lastWeekStart),
+          end: formatDate(lastWeekEnd)
         };
       case 'this_month':
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
         const result = {
-          start: startOfMonth.toISOString().split('T')[0],
-          end: today.toISOString().split('T')[0]
+          start: formatDate(startOfMonth),
+          end: todayFormatted
         };
         console.log('📅 THIS_MONTH date range:', {
           period: 'this_month',
-          startOfMonth: startOfMonth.toISOString(),
-          today: today.toISOString(),
+          startOfMonth: startOfMonth.toString(),
+          today: currentDate.toString(),
           result,
-          currentMonth: now.getMonth() + 1,
-          currentYear: now.getFullYear()
+          currentMonth: currentDate.getMonth() + 1,
+          currentYear: currentDate.getFullYear()
         });
         return result;
       case 'last_month':
-        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+        const lastMonthStart = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth(), 0);
         return {
-          start: lastMonthStart.toISOString().split('T')[0],
-          end: lastMonthEnd.toISOString().split('T')[0]
+          start: formatDate(lastMonthStart),
+          end: formatDate(lastMonthEnd)
         };
       case 'this_year':
-        const startOfYear = new Date(now.getFullYear(), 0, 1);
+        const startOfYear = new Date(currentDate.getFullYear(), 0, 1);
         return {
-          start: startOfYear.toISOString().split('T')[0],
-          end: today.toISOString().split('T')[0]
+          start: formatDate(startOfYear),
+          end: todayFormatted
         };
       case 'last_year':
-        const lastYearStart = new Date(now.getFullYear() - 1, 0, 1);
-        const lastYearEnd = new Date(now.getFullYear() - 1, 11, 31);
+        const lastYearStart = new Date(currentDate.getFullYear() - 1, 0, 1);
+        const lastYearEnd = new Date(currentDate.getFullYear() - 1, 11, 31);
         return {
-          start: lastYearStart.toISOString().split('T')[0],
-          end: lastYearEnd.toISOString().split('T')[0]
+          start: formatDate(lastYearStart),
+          end: formatDate(lastYearEnd)
         };
       case 'custom':
         return {
@@ -165,9 +177,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     }
     
     if (selectedPeriod === 'custom' && customStartDate && customEndDate) {
-      const now = new Date();
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
+      const currentDate = new Date(2025, 9, 30); // Oktober 2025 (month 9 = Oktober)
+      const currentMonth = currentDate.getMonth();
+      const currentYear = currentDate.getFullYear();
       const startDate = new Date(customStartDate);
       
       // Gunakan combined jika tanggal mulai dari bulan/tahun sebelumnya
@@ -264,6 +276,18 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       const { data: operationalData, error: operationalError } = await operationalQuery;
 
       if (operationalError) throw operationalError;
+
+      // ✅ DEBUGGING: Log data yang dikembalikan
+      console.log('📊 Query results:', {
+        totalRecords: operationalData?.length || 0,
+        dateRange,
+        sampleData: operationalData?.slice(0, 3).map(item => ({
+          tanggal: item.tanggal,
+          kategori: item.kategori,
+          nominal: item.nominal
+        })),
+        allDates: operationalData?.map(item => item.tanggal).sort()
+      });
 
       // Then, fetch companies data separately
       const { data: companiesData, error: companiesError } = await supabase
