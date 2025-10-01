@@ -194,8 +194,8 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             catatan,
             id,
             plat,
-            brands:brand_id(name),
-            jenis_motor:jenis_id(jenis_motor)
+            brand_id,
+            jenis_id
           `)
           .eq('status', 'selesai')
           .gte('tanggal', startDate)
@@ -241,12 +241,31 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         
         console.log(`📊 After date filtering: ${filteredData.length} records`);
         
+        // Fetch brand and jenis_motor data separately
+        const brandIds = [...new Set(filteredData.map(item => item.brand_id).filter(Boolean))];
+        const jenisIds = [...new Set(filteredData.map(item => item.jenis_id).filter(Boolean))];
+        
+        const [brandsResult, jenisMotorResult] = await Promise.all([
+          brandIds.length > 0 ? supabase.from('brands').select('id, name').in('id', brandIds) : Promise.resolve({ data: [] }),
+          jenisIds.length > 0 ? supabase.from('jenis_motor').select('id, jenis_motor').in('id', jenisIds) : Promise.resolve({ data: [] })
+        ]);
+        
+        const brandMap = new Map((brandsResult.data || []).map(brand => [brand.id, brand]));
+        const jenisMap = new Map((jenisMotorResult.data || []).map(jenis => [jenis.id, jenis]));
+        
+        // Enrich the data with brand and jenis_motor information
+        const enrichedData = filteredData.map(item => ({
+          ...item,
+          brands: brandMap.get(item.brand_id) || { name: `Brand ID: ${item.brand_id}` },
+          jenis_motor: jenisMap.get(item.jenis_id) || { jenis_motor: `Jenis ID: ${item.jenis_id}` }
+        }));
+        
         return {
-          totalPenjualan: filteredData.reduce((sum, item) => sum + (item.harga_jual || 0), 0),
-          totalHargaBeli: filteredData.reduce((sum, item) => sum + (item.harga_beli || 0), 0),
-          totalKeuntungan: filteredData.reduce((sum, item) => sum + (item.keuntungan || 0), 0),
-          jumlahTransaksi: filteredData.length,
-          penjualanDetail: filteredData
+          totalPenjualan: enrichedData.reduce((sum, item) => sum + (item.harga_jual || 0), 0),
+          totalHargaBeli: enrichedData.reduce((sum, item) => sum + (item.harga_beli || 0), 0),
+          totalKeuntungan: enrichedData.reduce((sum, item) => sum + (item.keuntungan || 0), 0),
+          jumlahTransaksi: enrichedData.length,
+          penjualanDetail: enrichedData
         };
         
       } else {
@@ -263,8 +282,8 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             catatan, 
             id,
             plat,
-            brands:brand_id(name),
-            jenis_motor:jenis_id(jenis_motor)
+            brand_id,
+            jenis_id
           `)
           .eq('status', 'selesai')
           .gte('tanggal', startDate)
@@ -286,12 +305,31 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       
         console.log(`Fetched ${penjualanData?.length || 0} penjualan records`);
         
+        // Fetch brand and jenis_motor data separately for regular penjualans
+        const brandIds = [...new Set((penjualanData || []).map(item => item.brand_id).filter(Boolean))];
+        const jenisIds = [...new Set((penjualanData || []).map(item => item.jenis_id).filter(Boolean))];
+        
+        const [brandsResult, jenisMotorResult] = await Promise.all([
+          brandIds.length > 0 ? supabase.from('brands').select('id, name').in('id', brandIds) : Promise.resolve({ data: [] }),
+          jenisIds.length > 0 ? supabase.from('jenis_motor').select('id, jenis_motor').in('id', jenisIds) : Promise.resolve({ data: [] })
+        ]);
+        
+        const brandMap = new Map((brandsResult.data || []).map(brand => [brand.id, brand]));
+        const jenisMap = new Map((jenisMotorResult.data || []).map(jenis => [jenis.id, jenis]));
+        
+        // Enrich the data with brand and jenis_motor information
+        const enrichedData = (penjualanData || []).map(item => ({
+          ...item,
+          brands: brandMap.get(item.brand_id) || { name: `Brand ID: ${item.brand_id}` },
+          jenis_motor: jenisMap.get(item.jenis_id) || { jenis_motor: `Jenis ID: ${item.jenis_id}` }
+        }));
+        
         return {
-          totalPenjualan: penjualanData?.reduce((sum, item) => sum + (item.harga_jual || 0), 0) || 0,
-          totalHargaBeli: penjualanData?.reduce((sum, item) => sum + (item.harga_beli || 0), 0) || 0,
-          totalKeuntungan: penjualanData?.reduce((sum, item) => sum + (item.keuntungan || 0), 0) || 0,
-          jumlahTransaksi: penjualanData?.length || 0,
-          penjualanDetail: penjualanData || []
+          totalPenjualan: enrichedData.reduce((sum, item) => sum + (item.harga_jual || 0), 0),
+          totalHargaBeli: enrichedData.reduce((sum, item) => sum + (item.harga_beli || 0), 0),
+          totalKeuntungan: enrichedData.reduce((sum, item) => sum + (item.keuntungan || 0), 0),
+          jumlahTransaksi: enrichedData.length,
+          penjualanDetail: enrichedData
         };
       }
     } catch (error) {
