@@ -81,7 +81,7 @@ const UsersPage = () => {
   const fetchUsers = async () => {
     try {
       const { data, error } = await supabase
-        .from("users")
+        .from("users" as any)
         .select(`
           *,
           employees (
@@ -92,7 +92,7 @@ const UsersPage = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setUsers(data || []);
+      setUsers((data as any) || []);
       resetPage();
     } catch (error) {
       toast({
@@ -148,7 +148,7 @@ const UsersPage = () => {
         }
 
         const { error } = await supabase
-          .from("users")
+          .from("users" as any)
           .update(updateData)
           .eq("user_id", editingUser.user_id);
 
@@ -160,7 +160,7 @@ const UsersPage = () => {
         });
       } else {
         const { error } = await supabase
-          .from("users")
+          .from("users" as any)
           .insert([{
             employee_id: parseInt(formData.employee_id),
             username: formData.username,
@@ -205,7 +205,7 @@ const UsersPage = () => {
   const handleDelete = async (userId: number) => {
     try {
       const { error } = await supabase
-        .from("users")
+        .from("users" as any)
         .delete()
         .eq("user_id", userId);
 

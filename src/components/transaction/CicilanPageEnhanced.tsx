@@ -41,6 +41,7 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
     tujuan_pembayaran_id: ''
   });
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   // State untuk filter yang ditingkatkan
@@ -61,6 +62,7 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
 
   const fetchData = async () => {
     setLoading(true);
+
     try {
       await Promise.all([
         fetchCicilanData(),
@@ -77,6 +79,7 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
       });
     } finally {
       setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -322,6 +325,9 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Prevent double submission
+    if (isSubmitting) return;
+    
     if (!formData.penjualan_id || !formData.tanggal_bayar || !formData.jumlah_bayar) {
       toast({
         title: "Error",
@@ -413,7 +419,7 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
         .from('penjualans')
         .update({ 
           sisa_bayar: sisaBayarDisplay,
-          status: sisaBayarBaru <= 0 ? 'selesai' : 'proses',
+          status: sisaBayarBaru <= 0 ? 'selesai' : 'booked',
           ...(sisaBayarBaru <= 0 && { tanggal_lunas: formData.tanggal_bayar })
         })
         .eq('id', parseInt(formData.penjualan_id));
@@ -507,6 +513,8 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
         description: "Gagal menyimpan data cicilan",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false); // Reset loading state
     }
   };
 
@@ -807,8 +815,12 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Batal
                 </Button>
-                <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                  Simpan Pembayaran
+                <Button 
+                  type="submit" 
+                  className="bg-blue-600 hover:bg-blue-700"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Menyimpan..." : "Simpan Pembayaran"}
                 </Button>
               </div>
             </form>

@@ -1,14 +1,12 @@
-function toUTCFromWIB(date: Date): Date {
-  return new Date(date.getTime() - (7 * 60 * 60 * 1000));
-}
-
 export function getDateRange(
   filter: string,
   customStartDate?: string,
   customEndDate?: string
 ): { start: Date; end: Date } {
+  // Gunakan timezone Indonesia (WIB) untuk perhitungan
   const today = new Date();
-  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const todayWIB = new Date(today.getTime() + (7 * 60 * 60 * 1000)); // Convert to WIB
+  const startOfToday = new Date(todayWIB.getFullYear(), todayWIB.getMonth(), todayWIB.getDate());
 
   let start: Date;
   let end: Date;
@@ -32,17 +30,40 @@ export function getDateRange(
     }
 
     case 'this_month':
-      start = new Date(today.getFullYear(), today.getMonth(), 1);
-      end = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+      // Pastikan menggunakan bulan ini di timezone WIB
+      start = new Date(todayWIB.getFullYear(), todayWIB.getMonth(), 1);
+      end = new Date(todayWIB.getFullYear(), todayWIB.getMonth() + 1, 0, 23, 59, 59, 999);
+      
+      console.log('🗓️ This Month Range (WIB):', {
+        start: start.toLocaleDateString('id-ID'),
+        end: end.toLocaleDateString('id-ID'),
+        currentMonth: todayWIB.getMonth() + 1,
+        currentYear: todayWIB.getFullYear()
+      });
+      break;
+
+    case 'last_month': {
+      const lastMonth = new Date(todayWIB.getFullYear(), todayWIB.getMonth() - 1, 1);
+      start = new Date(lastMonth);
+      end = new Date(todayWIB.getFullYear(), todayWIB.getMonth(), 0, 23, 59, 59, 999);
+      break;
+    }
+
+    case 'this_year':
+      start = new Date(todayWIB.getFullYear(), 0, 1);
+      end = new Date(todayWIB.getFullYear(), 11, 31, 23, 59, 59, 999);
+      break;
+
+    case 'last_year':
+      start = new Date(todayWIB.getFullYear() - 1, 0, 1);
+      end = new Date(todayWIB.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
       break;
 
     case 'custom': {
       if (customStartDate && customEndDate) {
-        // Buat tanggal berdasarkan WIB dan konversi ke UTC
-        const startLocal = new Date(`${customStartDate}T00:00:00+07:00`);
-        const endLocal = new Date(`${customEndDate}T23:59:59.999+07:00`);
-        start = toUTCFromWIB(startLocal);
-        end = toUTCFromWIB(endLocal);
+        // Untuk custom date, gunakan input langsung tanpa konversi timezone
+        start = new Date(`${customStartDate}T00:00:00`);
+        end = new Date(`${customEndDate}T23:59:59.999`);
       } else {
         start = new Date(startOfToday);
         end = new Date(startOfToday);
@@ -58,11 +79,17 @@ export function getDateRange(
       break;
   }
 
-  // Kecuali 'custom', semua tanggal tetap perlu dikonversi dari WIB ke UTC
-  if (filter !== 'custom') {
-    start = toUTCFromWIB(start);
-    end = toUTCFromWIB(end);
-  }
+  // Konversi ke UTC untuk query database
+  const startUTC = new Date(start.getTime() - (7 * 60 * 60 * 1000));
+  const endUTC = new Date(end.getTime() - (7 * 60 * 60 * 1000));
 
-  return { start, end };
+  console.log('🕐 Date Range Conversion:', {
+    filter,
+    localStart: start.toLocaleDateString('id-ID'),
+    localEnd: end.toLocaleDateString('id-ID'),
+    utcStart: startUTC.toISOString(),
+    utcEnd: endUTC.toISOString()
+  });
+
+  return { start: startUTC, end: endUTC };
 }

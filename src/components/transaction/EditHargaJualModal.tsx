@@ -83,7 +83,7 @@ const EditHargaJualModal = ({
     try {
       // Update penjualan data
       const { error: updateError } = await supabase
-        .from('penjualan')
+        .from('penjualan' as any)
         .update({
           harga_jual: hargaJualNum,
           keuntungan: newKeuntungan,
@@ -95,7 +95,7 @@ const EditHargaJualModal = ({
 
       // Create price history record
       const { error: historyError } = await supabase
-        .from('price_history')
+        .from('price_history' as any)
         .insert({
           penjualan_id: penjualan.id,
           old_harga_jual: currentHargaJual,

@@ -46,7 +46,7 @@ export const useProfitAdjustments = (
 
       // Fetch detailed adjustments
       let query = supabase
-        .from('profit_adjustments_view')
+        .from('profit_adjustments_view' as any)
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -64,10 +64,10 @@ export const useProfitAdjustments = (
 
       if (adjustmentsError) throw adjustmentsError;
 
-      setAdjustments(adjustmentsData || []);
+      setAdjustments((adjustmentsData as any) || []);
 
       // Fetch summary
-      const { data: summaryData, error: summaryError } = await supabase.rpc('get_profit_adjustments_total', {
+      const { data: summaryData, error: summaryError } = await supabase.rpc('get_profit_adjustments_total' as any, {
         p_divisi: divisi === 'all' ? null : divisi,
         p_start_date: dateRange?.start || null,
         p_end_date: dateRange?.end || null
@@ -75,8 +75,8 @@ export const useProfitAdjustments = (
 
       if (summaryError) throw summaryError;
 
-      if (summaryData && summaryData.length > 0) {
-        setSummary(summaryData[0]);
+      if (summaryData && (summaryData as any).length > 0) {
+        setSummary((summaryData as any)[0]);
       }
 
     } catch (error) {
@@ -100,7 +100,7 @@ export const useProfitAdjustments = (
     nominal: number
   ) => {
     try {
-      const { error } = await supabase.rpc('deduct_profit', {
+      const { error } = await supabase.rpc('deduct_profit' as any, {
         p_operational_id: operationalId,
         p_tanggal: tanggal,
         p_divisi: divisi,
@@ -126,7 +126,7 @@ export const useProfitAdjustments = (
 
   const restoreProfit = async (operationalId: number) => {
     try {
-      const { error } = await supabase.rpc('restore_profit', {
+      const { error } = await supabase.rpc('restore_profit' as any, {
         p_operational_id: operationalId
       });
 

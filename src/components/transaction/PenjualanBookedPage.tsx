@@ -13,6 +13,7 @@ import {
 } from "./hooks/usePembelianData";
 import { usePenjualanData } from "./hooks/usePenjualanData";
 import { usePenjualanCreate, usePenjualanDelete } from "./hooks/usePenjualanMutations";
+import { usePenjualanEdit } from "./hooks/usePenjualanEditMutation";
 import { usePenjualanActions } from "./hooks/usePenjualanActions";
 import {
   createInitialPenjualanFormData,
@@ -52,6 +53,7 @@ const PenjualanBookedPage = ({ selectedDivision }: PenjualanBookedPageProps) => 
   // Mutations
   const createPenjualanMutation = usePenjualanCreate();
   const deletePenjualanMutation = usePenjualanDelete();
+  const editPenjualanMutation = usePenjualanEdit();
   
   // Actions
   const {
@@ -88,6 +90,7 @@ const PenjualanBookedPage = ({ selectedDivision }: PenjualanBookedPageProps) => 
   }).sort((a: any, b: any) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
 
   // Fungsi-fungsi yang sama dengan PenjualanPage
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -99,9 +102,19 @@ const PenjualanBookedPage = ({ selectedDivision }: PenjualanBookedPageProps) => 
       });
       return;
     }
-
+  
     try {
-      await createPenjualanMutation.mutateAsync({ formData, pembelianData });
+      if (editingPenjualan) {
+        // Use edit mutation for existing penjualan
+        await editPenjualanMutation.mutateAsync({ 
+          penjualanId: editingPenjualan.id,
+          formData, 
+          pembelianData 
+        });
+      } else {
+        // Use create mutation for new penjualan
+        await createPenjualanMutation.mutateAsync({ formData, pembelianData });
+      }
       resetForm();
       refetchPenjualan();
     } catch (error) {

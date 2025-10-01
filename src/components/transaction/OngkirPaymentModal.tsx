@@ -39,7 +39,7 @@ export const OngkirPaymentModal = ({
     tujuan_pembayaran_id: "",
   });
   
-  const { data: companiesData = [] } = useCompaniesData(selectedDivision);
+  const { companiesData } = useCompaniesData(selectedDivision);
   const { toast } = useToast();
 
   useEffect(() => {

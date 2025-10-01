@@ -77,8 +77,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
   });
 
   // Gunakan penjualans_combined untuk periode tertentu
-  const shouldUseCombined = ['this_month', 'last_month', 'this_year', 'last_year'].includes(selectedPeriod) ||
-    (selectedPeriod === 'custom' && customStartDate && customEndDate);
+  const shouldUseCombined = ['this_month', 'last_month', 'this_year'].includes(selectedPeriod);
 
   useEffect(() => {
     fetchInitialData();
@@ -251,7 +250,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         // Untuk periode lainnya, gunakan tabel penjualans biasa
         let query = supabase
           .from('penjualans')
-          .select('harga_jual, harga_beli, keuntungan, divisi, cabang_id, tanggal, keterangan, id')
+          .select('harga_jual, harga_beli, keuntungan, divisi, cabang_id, tanggal, catatan, id')
           .eq('status', 'selesai')
           .gte('tanggal', startDate)
           .lte('tanggal', endDate);
@@ -301,7 +300,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       
       try {
         let operationalQuery = supabase
-          .from(operationalTable)
+          .from(operationalTable as any)
           .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id')
           .gte('tanggal', startDate)
           .lte('tanggal', endDate);
@@ -348,11 +347,37 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         operationalData = [];
       }
   
-      console.log(`Fetched ${operationalData.length} operational records`);
+      console.log(`Fetched ${operationalData.length} operational records before filtering`);
+      
+      // Filter data berdasarkan periode untuk memastikan akurasi
+      const filteredOperationalData = operationalData.filter(item => {
+        const itemDate = new Date(item.tanggal);
+        const itemDateWIB = new Date(itemDate.getTime() + (7 * 60 * 60 * 1000));
+        const currentDate = new Date();
+        const currentDateWIB = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
+        
+        if (selectedPeriod === 'this_month') {
+          return itemDateWIB.getMonth() === currentDateWIB.getMonth() && 
+                 itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
+        } else if (selectedPeriod === 'last_month') {
+          const lastMonthDate = new Date(currentDateWIB.getFullYear(), currentDateWIB.getMonth() - 1, 1);
+          return itemDateWIB.getMonth() === lastMonthDate.getMonth() && 
+                 itemDateWIB.getFullYear() === lastMonthDate.getFullYear();
+        }
+        return true; // Untuk periode lain, gunakan filter database
+      });
+      
+      console.log(`📊 After date filtering: ${filteredOperationalData.length} operational records`);
+      console.log('📅 Sample operational dates:', filteredOperationalData.slice(0, 5).map(item => ({
+        tanggal: item.tanggal,
+        tanggalLocal: new Date(item.tanggal).toLocaleDateString('id-ID'),
+        kategori: item.kategori,
+        nominal: item.nominal
+      })));
   
-      // Hitung biaya per kategori
+      // Hitung biaya per kategori menggunakan data yang sudah difilter
       const biayaPerKategori: { [key: string]: number } = {};
-      operationalData.forEach(item => {
+      filteredOperationalData.forEach(item => {
         const kategori = item.kategori || 'Lainnya';
         biayaPerKategori[kategori] = (biayaPerKategori[kategori] || 0) + (item.nominal || 0);
       });
@@ -362,7 +387,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       return {
         biayaPerKategori,
         totalBiayaOperasional: totalOperasional,
-        operationalDetail: operationalData
+        operationalDetail: filteredOperationalData
       };
     } catch (error) {
       console.error('Error in fetchBiayaData:', error);
@@ -480,15 +505,11 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                   <SelectValue placeholder="Pilih periode" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="today">📅 Hari Ini</SelectItem>
-                  <SelectItem value="yesterday">📅 Kemarin</SelectItem>
-                  <SelectItem value="this_week">📅 Minggu Ini</SelectItem>
-                  <SelectItem value="last_week">📅 Minggu Lalu</SelectItem>
-                  <SelectItem value="this_month">📅 Bulan Ini</SelectItem>
-                  <SelectItem value="last_month">📊 Bulan Lalu</SelectItem>
-                  <SelectItem value="this_year">📊 Tahun Ini</SelectItem>
-                  <SelectItem value="last_year">📊 Tahun Lalu</SelectItem>
-                  <SelectItem value="custom">📊 Custom</SelectItem>
+                  <SelectItem value="this_month">Bulan Ini</SelectItem>
+                  <SelectItem value="last_month">Bulan Lalu</SelectItem>
+                  <SelectItem value="this_year">Tahun Ini</SelectItem>
+                  <SelectItem value="last_year">Tahun Lalu</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -722,7 +743,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
 
                 {/* BIAYA OPERASIONAL */}
                 <TableRow className="font-semibold bg-orange-50">
-                  <TableCell colSpan={2} className="text-orange-700">PENGELUARAN</TableCell>
+                  <TableCell colSpan={2} className="text-orange-700">BIAYA OPERASIONAL</TableCell>
                 </TableRow>
                 
                 {/* Breakdown Biaya per Kategori dengan Dropdown */}

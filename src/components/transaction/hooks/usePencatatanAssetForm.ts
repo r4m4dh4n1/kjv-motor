@@ -9,6 +9,7 @@ interface PencatatanAssetFormData {
   nominal: string;
   sumber_dana_id: string;
   keterangan: string;
+  jenis_transaksi: string; // Tambahkan field ini
 }
 
 interface PencatatanAssetItem {
@@ -61,10 +62,11 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
 
   const [formData, setFormData] = useState<PencatatanAssetFormData>({
     tanggal: getCurrentDate(),
-    nama: "",
-    nominal: "0",
-    sumber_dana_id: "",
-    keterangan: "",
+    nama: '',
+    nominal: '',
+    sumber_dana_id: '',
+    keterangan: '',
+    jenis_transaksi: 'pengeluaran' // Default ke pengeluaran
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -103,7 +105,7 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
 
         if (error) throw error;
 
-        // TAMBAHAN: Menambah modal perusahaan dan mencatat ke pembukuan
+        // PERBAIKAN: Mengurangi modal perusahaan dan mencatat ke pembukuan
         const assetAmount = parseCurrency(formData.nominal);
         if (assetAmount > 0 && formData.sumber_dana_id && insertedData && insertedData.length > 0) {
           const assetId = insertedData[0].id;
@@ -112,14 +114,14 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
             // 1. Update modal perusahaan menggunakan RPC function
             const { error: modalError } = await supabase.rpc('update_company_modal', {
               company_id: parseInt(formData.sumber_dana_id),
-              amount: assetAmount // Menambah modal perusahaan
+              amount: -assetAmount // Mengurangi modal perusahaan
             });
 
             if (modalError) {
               console.error('Error updating company modal:', modalError);
               toast({
                 title: "Warning",
-                description: `Asset tersimpan tapi gagal menambah modal perusahaan: ${modalError.message}`,
+                description: `Asset tersimpan tapi gagal mengurangi modal perusahaan: ${modalError.message}`,
                 variant: "destructive"
               });
             }
@@ -127,20 +129,20 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
             console.error('CATCH ERROR saat update modal:', modalUpdateError);
             toast({
               title: "Warning",
-              description: "Asset tersimpan tapi gagal menambah modal perusahaan",
+              description: "Asset tersimpan tapi gagal mengurangi modal perusahaan",
               variant: "destructive"
             });
           }
 
           try {
-            // 2. Mencatat transaksi ke tabel pembukuan
+            // 2. Mencatat transaksi ke tabel pembukuan berdasarkan jenis transaksi
             const pembukuanEntry = {
               tanggal: convertDateToISO(formData.tanggal),
               divisi: selectedDivision,
-              cabang_id: 1, // Default cabang
-              keterangan: `Pencatatan Asset - ${formData.nama}${formData.keterangan ? ` - ${formData.keterangan}` : ''}`,
-              debit: 0,
-              kredit: assetAmount, // Asset menambah modal (kredit)
+              cabang_id: 1,
+              keterangan: `${formData.jenis_transaksi === 'pengeluaran' ? 'Pengeluaran' : 'Pemasukan'} Asset - ${formData.nama}${formData.keterangan ? ` - ${formData.keterangan}` : ''}`,
+              debit: formData.jenis_transaksi === 'pengeluaran' ? assetAmount : 0, // Pengeluaran = debit
+              kredit: formData.jenis_transaksi === 'pemasukan' ? assetAmount : 0, // Pemasukan = kredit
               saldo: 0,
               company_id: parseInt(formData.sumber_dana_id)
             };
@@ -191,6 +193,7 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
       nominal: formatCurrency(asset.nominal?.toString() || "0"),
       sumber_dana_id: asset.sumber_dana_id?.toString() || "",
       keterangan: asset.keterangan || "",
+      jenis_transaksi: "pembelian"
     });
   };
 
@@ -201,6 +204,7 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
       nominal: "0",
       sumber_dana_id: "",
       keterangan: "",
+      jenis_transaksi: "pembelian"
     });
     setEditingAsset(null);
   };

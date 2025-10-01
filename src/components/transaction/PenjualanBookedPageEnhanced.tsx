@@ -14,6 +14,7 @@ import PenjualanTable from "./PenjualanTable";
 import UpdateHargaModal from "./UpdateHargaModal";
 import PriceHistoryModal from "./PriceHistoryModal";
 import DpCancellationModal from "./DpCancellationModal";
+import TitipOngkirPayoutModal from "./TitipOngkirPayoutModal";
 import { Penjualan, PenjualanFormData } from "./penjualan-types";
 import { formatCurrency } from "@/utils/formatUtils";
 import { usePagination } from "@/hooks/usePagination";
@@ -24,13 +25,16 @@ import {
 } from "./hooks/usePembelianData";
 import { usePenjualanData } from "./hooks/usePenjualanData";
 import { usePenjualanCreate, usePenjualanDelete } from "./hooks/usePenjualanMutations";
+import { usePenjualanEdit } from "./hooks/usePenjualanEditMutation"; // ✅ Tambahkan ini
 import { usePenjualanActions } from "./hooks/usePenjualanActions";
 import { useDpCancellation } from "./hooks/useDpCancellation";
+import { supabase } from "@/integrations/supabase/client";
 import {
   createInitialPenjualanFormData,
   validatePenjualanFormData,
   transformPenjualanToFormData
 } from "./utils/penjualanFormUtils";
+import { useBookedUpdateHarga } from "./hooks/useBookedUpdateHarga";
 
 interface PenjualanBookedPageEnhancedProps {
   selectedDivision: string;
@@ -44,6 +48,11 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
   // DP Cancellation states
   const [isDpCancelModalOpen, setIsDpCancelModalOpen] = useState(false);
   const [selectedPenjualanForCancel, setSelectedPenjualanForCancel] = useState<any>(null);
+  
+  // Titip Ongkir Payout states
+  const [isTitipOngkirModalOpen, setIsTitipOngkirModalOpen] = useState(false);
+  const [selectedPenjualanForOngkir, setSelectedPenjualanForOngkir] = useState<any>(null);
+  const [ongkirPaymentStatus, setOngkirPaymentStatus] = useState<Record<number, boolean>>({});
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -74,9 +83,35 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
   // Mutations
   const createPenjualanMutation = usePenjualanCreate();
   const deletePenjualanMutation = usePenjualanDelete();
+  const editPenjualanMutation = usePenjualanEdit(); // ✅ Tambahkan ini
   const dpCancellationMutation = useDpCancellation();
+
+  const checkOngkirPaymentStatus = async (penjualanIds: number[]) => {
+    try {
+      if (penjualanIds.length === 0) return;
+
+      const { data, error } = await supabase
+        .from('ongkir_payments')
+        .select('penjualan_id')
+        .in('penjualan_id', penjualanIds);
+
+      if (error) throw error;
+
+      const paymentStatusMap: Record<number, boolean> = {};
+      data?.forEach((payment) => {
+        paymentStatusMap[payment.penjualan_id] = true;
+      });
+      setOngkirPaymentStatus(paymentStatusMap);
+    } catch (error) {
+      console.error('Error checking ongkir payment status:', error);
+    }
+  };
   
   // Actions
+  // Ganti usePenjualanActions dengan useBookedUpdateHarga untuk update harga
+  const bookedUpdateHarga = useBookedUpdateHarga();
+  
+  // Actions untuk modal dan state management
   const {
     isUpdateHargaOpen,
     setIsUpdateHargaOpen,
@@ -89,8 +124,35 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
     handleUpdateHarga,
     handleLihatDetail,
     handleRiwayatHarga,
-    handleSubmitUpdateHarga
+    // HAPUS handleSubmitUpdateHarga dari sini
   } = usePenjualanActions();
+  
+  // Buat fungsi handleSubmitUpdateHarga baru yang menggunakan useBookedUpdateHarga
+  const handleSubmitUpdateHarga = async (updateData: any, onRefresh: () => void) => {
+    if (!selectedPenjualanForUpdate) return;
+    
+    try {
+      await bookedUpdateHarga.mutateAsync({
+        penjualanId: selectedPenjualanForUpdate.id,  // ✅ PERBAIKAN
+        data: {  // ✅ PERBAIKAN: wrap dalam object 'data'
+          harga_jual_baru: updateData.harga_jual_baru,
+          biaya_pajak: updateData.biaya_pajak,
+          biaya_qc: updateData.biaya_qc,
+          biaya_lain_lain: updateData.biaya_lain_lain,
+          keterangan_biaya_lain: updateData.keterangan_biaya_lain,
+          reason: updateData.reason,
+          tanggal_update: updateData.tanggal_update,
+          sumber_dana_id: updateData.sumber_dana_id
+        }
+      });
+      
+      setIsUpdateHargaOpen(false);
+      setSelectedPenjualanForUpdate(null);
+      onRefresh();
+    } catch (error) {
+      // Error handling sudah ada di hook
+    }
+  };
 
   // Date range calculation based on filter
   const getDateRange = () => {
@@ -171,6 +233,14 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
     totalItems
   } = usePagination(filteredData, pageSize);
 
+  // Fetch ongkir payment status for filtered data
+  useEffect(() => {
+    if (filteredData.length > 0) {
+      const penjualanIds = filteredData.map((item: any) => item.id);
+      checkOngkirPaymentStatus(penjualanIds);
+    }
+  }, [filteredData.length]);
+
   // Calculate totals
   const calculateTotals = () => {
     const totalPenjualan = filteredData.reduce((sum, item) => sum + (item.harga_jual || 0), 0);
@@ -194,9 +264,19 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
       });
       return;
     }
-
+  
     try {
-      await createPenjualanMutation.mutateAsync({ formData, pembelianData });
+      if (editingPenjualan) {
+        // ✅ Use edit mutation for existing penjualan
+        await editPenjualanMutation.mutateAsync({ 
+          penjualanId: editingPenjualan.id,
+          formData, 
+          pembelianData 
+        });
+      } else {
+        // ✅ Use create mutation for new penjualan
+        await createPenjualanMutation.mutateAsync({ formData, pembelianData });
+      }
       resetForm();
       refetchPenjualan();
     } catch (error) {
@@ -254,6 +334,19 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
     } catch (error) {
       // Error handling is done in the mutation
     }
+  };
+
+  const handleTitipOngkirPayout = (penjualan: any) => {
+    setSelectedPenjualanForOngkir(penjualan);
+    setIsTitipOngkirModalOpen(true);
+  };
+
+  const handleTitipOngkirPayoutSuccess = () => {
+    setIsTitipOngkirModalOpen(false);
+    setSelectedPenjualanForOngkir(null);
+    const penjualanIds = filteredData.map((item: any) => item.id);
+    checkOngkirPaymentStatus(penjualanIds); // Refresh payment status
+    refetchPenjualan();
   };
 
   return (
@@ -488,7 +581,10 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
         handleUpdateHarga={handleUpdateHarga}
         handleRiwayatHarga={handleRiwayatHarga}
         handleCancelDp={handleCancelDp}
+        handleTitipOngkirPayout={handleTitipOngkirPayout}
+        ongkirPaymentStatus={ongkirPaymentStatus}
         showCancelDp={true}
+        showTitipOngkirPayout={true}
       />
 
       {/* Pagination Controls */}
@@ -551,6 +647,16 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
         penjualan={selectedPenjualanForCancel}
         onConfirm={handleDpCancellationConfirm}
         isLoading={dpCancellationMutation.isPending}
+      />
+
+      <TitipOngkirPayoutModal
+        isOpen={isTitipOngkirModalOpen}
+        onClose={() => {
+          setIsTitipOngkirModalOpen(false);
+          setSelectedPenjualanForOngkir(null);
+        }}
+        penjualan={selectedPenjualanForOngkir}
+        onPayoutSuccess={handleTitipOngkirPayoutSuccess}
       />
     </div>
   );

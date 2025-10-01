@@ -63,7 +63,7 @@ const ProfitAdjustmentSummary = ({ selectedDivision, dateRange }: ProfitAdjustme
   };
 
   const fetchProfitAdjustments = async () => {
-    const { data, error } = await supabase.rpc('get_profit_adjustments_total', {
+    const { data, error } = await supabase.rpc('get_profit_adjustments_total' as any, {
       p_divisi: selectedDivision === 'all' ? null : selectedDivision,
       p_start_date: dateRange?.start || null,
       p_end_date: dateRange?.end || null
@@ -71,8 +71,8 @@ const ProfitAdjustmentSummary = ({ selectedDivision, dateRange }: ProfitAdjustme
 
     if (error) throw error;
 
-    if (data && data.length > 0) {
-      setAdjustmentData(data[0]);
+    if (data && (data as any).length > 0) {
+      setAdjustmentData((data as any)[0]);
     }
   };
 
