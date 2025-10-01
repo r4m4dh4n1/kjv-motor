@@ -256,10 +256,11 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         companiesMap.set(company.id, company);
       });
 
-      // Combine operational data with company information
+      // Combine operational data with company information and set data_source
       const combinedData = operationalData?.map(item => ({
         ...item,
-        company_info: companiesMap.get(item.sumber_dana) || null
+        company_info: companiesMap.get(item.sumber_dana) || null,
+        data_source: shouldUseCombined ? 'history' : 'active'
       })) || [];
 
       setOperationalData(combinedData);
