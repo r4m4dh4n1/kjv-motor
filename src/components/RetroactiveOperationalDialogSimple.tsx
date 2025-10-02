@@ -130,15 +130,20 @@ export function RetroactiveOperationalDialogSimple({
   const calculateImpact = () => {
     if (!formData.nominal || !formData.category) return;
 
+    // Pastikan nominal adalah number yang valid
+    const nominalValue = typeof formData.nominal === 'string' 
+      ? parseFloat(formData.nominal) || 0 
+      : formData.nominal || 0;
+
     const isDeduction = formData.category === 'Gaji Kurang Profit';
-    const impactAmount = isDeduction ? -formData.nominal : formData.nominal;
+    const impactAmount = isDeduction ? -nominalValue : nominalValue;
 
     setImpact({
-      profit_impact: isDeduction ? -formData.nominal : 0,
+      profit_impact: isDeduction ? -nominalValue : 0,
       capital_impact: impactAmount,
       description: isDeduction 
-        ? `Pengurangan profit sebesar ${formatCurrency(formData.nominal)}`
-        : `Penambahan modal sebesar ${formatCurrency(formData.nominal)}`
+        ? `Pengurangan profit sebesar ${formatCurrency(nominalValue)}`
+        : `Penambahan modal sebesar ${formatCurrency(nominalValue)}`
     });
   };
 
@@ -156,9 +161,14 @@ export function RetroactiveOperationalDialogSimple({
     if (transactionId) {
       const transaction = transactions.find(t => t.id === transactionId);
       if (transaction) {
+        // Pastikan nominal dari transaksi dikonversi dengan benar
+        const nominalValue = typeof transaction.nominal === 'string' 
+          ? parseFloat(transaction.nominal) || 0 
+          : transaction.nominal || 0;
+          
         setFormData(prev => ({
           ...prev,
-          nominal: transaction.nominal,
+          nominal: nominalValue,
           description: transaction.keterangan
         }));
       }
@@ -419,10 +429,15 @@ export function RetroactiveOperationalDialogSimple({
               id="nominal"
               type="number"
               value={formData.nominal || ''}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                nominal: parseFloat(e.target.value) || 0 
-              }))}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Pastikan nilai dikonversi dengan benar
+                const numericValue = value === '' ? 0 : parseFloat(value);
+                setFormData(prev => ({ 
+                  ...prev, 
+                  nominal: numericValue
+                }));
+              }}
               placeholder="Masukkan nominal"
             />
           </div>
