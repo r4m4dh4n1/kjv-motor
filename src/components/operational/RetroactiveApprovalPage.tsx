@@ -157,8 +157,15 @@ const RetroactiveApprovalPage = ({ selectedDivision }: RetroactiveApprovalPagePr
 
   const executeAdjustment = async (item: ExtendedRetroactiveOperational) => {
     try {
+      // Debug logging
+      console.log('Debug - Executing adjustment:', {
+        original_month: item.original_month,
+        tanggal: `${item.original_month}-01`,
+        category: item.category
+      });
+
       // Insert ke tabel operational dengan tanggal original
-      const { error: operationalError } = await supabase
+      const { data: operationalData, error: operationalError } = await supabase
         .from('operational')
         .insert({
           tanggal: `${item.original_month}-01`, // Gunakan tanggal 1 dari bulan target
@@ -170,7 +177,9 @@ const RetroactiveApprovalPage = ({ selectedDivision }: RetroactiveApprovalPagePr
           status: 'active',
           is_retroactive: true,
           retroactive_id: item.id
-        });
+        })
+        .select()
+        .single();
 
       if (operationalError) throw operationalError;
 
@@ -187,10 +196,12 @@ const RetroactiveApprovalPage = ({ selectedDivision }: RetroactiveApprovalPagePr
       // Jika kategori "Kurang Profit", panggil RPC deduct_profit
       if (item.category === 'Gaji Kurang Profit') {
         const { error: profitError } = await supabase.rpc('deduct_profit', {
-          company_id: item.company_id,
-          amount: item.nominal,
-          description: `[RETROACTIVE] ${item.description}`,
-          adjustment_date: `${item.original_month}-01`
+          p_operational_id: operationalData.id,
+          p_tanggal: `${item.original_month}-01`,
+          p_divisi: item.divisi,
+          p_kategori: item.category,
+          p_deskripsi: `[RETROACTIVE] ${item.description}`,
+          p_nominal: item.nominal
         });
 
         if (profitError) throw profitError;

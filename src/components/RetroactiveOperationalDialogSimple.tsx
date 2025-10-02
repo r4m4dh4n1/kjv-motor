@@ -221,6 +221,13 @@ export function RetroactiveOperationalDialogSimple({
       dateForDatabase = `${formData.original_month}-01`; // Convert to first day of month
     }
 
+    // Debug logging
+    console.log('Debug - Form data:', {
+      original_month: formData.original_month,
+      dateForDatabase,
+      monthStr
+    });
+
     setLoading(true);
 
     try {
