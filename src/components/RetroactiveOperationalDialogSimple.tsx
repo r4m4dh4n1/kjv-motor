@@ -215,6 +215,12 @@ export function RetroactiveOperationalDialogSimple({
       return;
     }
 
+    // Ensure original_month is in YYYY-MM-DD format for DATE columns
+    let dateForDatabase = formData.original_month;
+    if (formData.original_month.length === 7) { // YYYY-MM format
+      dateForDatabase = `${formData.original_month}-01`; // Convert to first day of month
+    }
+
     setLoading(true);
 
     try {
@@ -271,7 +277,7 @@ export function RetroactiveOperationalDialogSimple({
       if (formData.category === 'Gaji Kurang Profit') {
         const { error: profitError } = await supabase.rpc('deduct_profit', {
           p_operational_id: retroactiveData.id,
-          p_tanggal: formData.original_month, // Send full date for DATE column
+          p_tanggal: dateForDatabase, // Send properly formatted date for DATE column
           p_divisi: formData.divisi,
           p_kategori: formData.category,
           p_deskripsi: `Retroaktif ${monthStr}: ${formData.description}`,
@@ -285,7 +291,7 @@ export function RetroactiveOperationalDialogSimple({
       const { error: pembukuanError } = await supabase
         .from('pembukuan')
         .insert({
-          tanggal: formData.original_month, // Gunakan tanggal yang dipilih user
+          tanggal: dateForDatabase, // Use properly formatted date for DATE column
           keterangan: `[RETROAKTIF ${monthStr}] ${formData.description}`,
           debit: formData.category === 'Gaji Kurang Profit' ? formData.nominal : 0,
           kredit: formData.category !== 'Gaji Kurang Profit' ? formData.nominal : 0,
