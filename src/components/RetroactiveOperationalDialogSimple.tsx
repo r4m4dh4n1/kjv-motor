@@ -229,6 +229,7 @@ export function RetroactiveOperationalDialogSimple({
         .from('retroactive_operational')
         .insert({
           ...formData,
+          original_month: monthStr, // Use month format (YYYY-MM) for database compatibility
           original_year: parseInt(monthStr.split('-')[0]),
           status: 'approved',
           auto_approved: true,
