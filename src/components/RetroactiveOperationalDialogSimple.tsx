@@ -22,6 +22,7 @@ import { Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { RetroactiveOperationalForm, AdjustmentImpact, RETROACTIVE_CATEGORIES } from '@/types/retroactive';
+import { ClosedMonthPicker } from '@/components/ui/closed-month-picker';
 
 interface RetroactiveOperationalDialogSimpleProps {
   open: boolean;
@@ -205,6 +206,12 @@ export function RetroactiveOperationalDialogSimple({
     setLoading(true);
 
     try {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
       // 1. Insert retroactive operational (auto-approved)
       const { data: retroactiveData, error: retroactiveError } = await supabase
         .from('retroactive_operational')
@@ -214,7 +221,8 @@ export function RetroactiveOperationalDialogSimple({
           status: 'approved',
           auto_approved: true,
           requires_approval: false,
-          approved_by: (await supabase.auth.getUser()).data.user?.id,
+          created_by: user.id,
+          approved_by: user.id,
           approved_at: new Date().toISOString(),
         })
         .select()
@@ -261,7 +269,7 @@ export function RetroactiveOperationalDialogSimple({
       const { error: pembukuanError } = await supabase
         .from('pembukuan')
         .insert({
-          tanggal: new Date().toISOString().split('T')[0],
+          tanggal: `${formData.original_month}-01`, // Gunakan tanggal bulan asli transaksi
           keterangan: `[RETROAKTIF ${formData.original_month}] ${formData.description}`,
           debit: formData.category === 'Gaji Kurang Profit' ? formData.nominal : 0,
           kredit: formData.category !== 'Gaji Kurang Profit' ? formData.nominal : 0,
@@ -336,24 +344,11 @@ export function RetroactiveOperationalDialogSimple({
           {/* Bulan Asli */}
           <div>
             <Label htmlFor="original_month">Bulan Asli Transaksi</Label>
-            <Select
+            <ClosedMonthPicker
               value={formData.original_month}
               onValueChange={(value) => setFormData(prev => ({ ...prev, original_month: value }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih bulan yang sudah di-close" />
-              </SelectTrigger>
-              <SelectContent>
-                {closedMonths.map((month) => (
-                  <SelectItem key={month} value={month}>
-                    {new Date(month + '-01').toLocaleDateString('id-ID', { 
-                      year: 'numeric', 
-                      month: 'long' 
-                    })}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              closedMonths={closedMonths}
+            />
           </div>
 
           {/* Kategori */}
