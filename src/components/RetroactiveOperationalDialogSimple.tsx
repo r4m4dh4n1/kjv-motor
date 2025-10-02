@@ -270,9 +270,12 @@ export function RetroactiveOperationalDialogSimple({
       // 4. Call deduct_profit for "Gaji Kurang Profit"
       if (formData.category === 'Gaji Kurang Profit') {
         const { error: profitError } = await supabase.rpc('deduct_profit', {
-          p_company_id: formData.company_id,
-          p_amount: formData.nominal,
-          p_description: `Retroaktif ${monthStr}: ${formData.description}`
+          p_operational_id: retroactiveData.id,
+          p_tanggal: formData.original_month, // Send full date for DATE column
+          p_divisi: formData.divisi,
+          p_kategori: formData.category,
+          p_deskripsi: `Retroaktif ${monthStr}: ${formData.description}`,
+          p_nominal: formData.nominal
         });
 
         if (profitError) throw profitError;
