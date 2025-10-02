@@ -53,6 +53,16 @@ export function RetroactiveOperationalDialogSimple({
   const [transactions, setTransactions] = useState<any[]>([]);
   const [selectedTransaction, setSelectedTransaction] = useState<string>('');
 
+  // Utility function to extract month from full date (YYYY-MM-DD) to month format (YYYY-MM)
+  const getMonthFromDate = (dateStr: string): string => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length >= 2) {
+      return `${parts[0]}-${parts[1]}`;
+    }
+    return dateStr; // Return as-is if already in month format
+  };
+
   useEffect(() => {
     if (open) {
       fetchCompanies();
@@ -99,12 +109,13 @@ export function RetroactiveOperationalDialogSimple({
 
   const fetchTransactions = async () => {
     if (!formData.category || !formData.original_month || !formData.company_id) {
-      setTransactions([]);
+      setImpact(null);
       return;
     }
 
     try {
-      const [year, month] = formData.original_month.split('-');
+      const monthStr = getMonthFromDate(formData.original_month);
+      const [year, month] = monthStr.split('-');
       const startDate = `${year}-${month}-01`;
       const endDate = `${year}-${month}-31`;
 
@@ -154,7 +165,7 @@ export function RetroactiveOperationalDialogSimple({
 
   useEffect(() => {
     fetchTransactions();
-  }, [formData.category, formData.original_month, formData.company_id]);
+  }, [formData.category, formData.original_month, formData.company_id, divisi]);
 
   const handleTransactionSelect = (transactionId: string) => {
     setSelectedTransaction(transactionId);
@@ -198,7 +209,8 @@ export function RetroactiveOperationalDialogSimple({
       return;
     }
 
-    if (!closedMonths.includes(formData.original_month)) {
+    const monthStr = getMonthFromDate(formData.original_month);
+    if (!closedMonths.includes(monthStr)) {
       toast.error('Bulan yang dipilih belum di-close');
       return;
     }
@@ -217,7 +229,7 @@ export function RetroactiveOperationalDialogSimple({
         .from('retroactive_operational')
         .insert({
           ...formData,
-          original_year: parseInt(formData.original_month.split('-')[0]),
+          original_year: parseInt(monthStr.split('-')[0]),
           status: 'approved',
           auto_approved: true,
           requires_approval: false,
@@ -237,7 +249,7 @@ export function RetroactiveOperationalDialogSimple({
           tanggal: new Date().toISOString().split('T')[0],
           kategori: formData.category,
           nominal: formData.nominal,
-          keterangan: `[RETROAKTIF ${formData.original_month}] ${formData.description}`,
+          keterangan: `[RETROAKTIF ${monthStr}] ${formData.description}`,
           company_id: formData.company_id,
           divisi: formData.divisi,
           is_retroactive: true,
@@ -259,7 +271,7 @@ export function RetroactiveOperationalDialogSimple({
         const { error: profitError } = await supabase.rpc('deduct_profit', {
           p_company_id: formData.company_id,
           p_amount: formData.nominal,
-          p_description: `Retroaktif ${formData.original_month}: ${formData.description}`
+          p_description: `Retroaktif ${monthStr}: ${formData.description}`
         });
 
         if (profitError) throw profitError;
@@ -269,8 +281,8 @@ export function RetroactiveOperationalDialogSimple({
       const { error: pembukuanError } = await supabase
         .from('pembukuan')
         .insert({
-          tanggal: `${formData.original_month}-01`, // Gunakan tanggal bulan asli transaksi
-          keterangan: `[RETROAKTIF ${formData.original_month}] ${formData.description}`,
+          tanggal: formData.original_month, // Gunakan tanggal yang dipilih user
+          keterangan: `[RETROAKTIF ${monthStr}] ${formData.description}`,
           debit: formData.category === 'Gaji Kurang Profit' ? formData.nominal : 0,
           kredit: formData.category !== 'Gaji Kurang Profit' ? formData.nominal : 0,
           company_id: formData.company_id,
@@ -280,7 +292,7 @@ export function RetroactiveOperationalDialogSimple({
       if (pembukuanError) throw pembukuanError;
 
       // 6. Update monthly adjustments
-      const monthKey = formData.original_month;
+      const monthKey = monthStr;
       
       // First, get existing data
       const { data: existingAdjustment } = await supabase
@@ -412,7 +424,7 @@ export function RetroactiveOperationalDialogSimple({
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground mt-1">
-                Pilih transaksi dari bulan {formData.original_month} untuk mengisi nominal dan deskripsi secara otomatis
+                Pilih transaksi dari bulan {getMonthFromDate(formData.original_month)} untuk mengisi nominal dan deskripsi secara otomatis
               </p>
             </div>
           )}
