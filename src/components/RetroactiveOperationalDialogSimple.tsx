@@ -346,7 +346,7 @@ export function RetroactiveOperationalDialogSimple({
             <Label htmlFor="original_month">Bulan Asli Transaksi</Label>
             <ClosedMonthPicker
               value={formData.original_month}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, original_month: value }))}
+              onChange={(value) => setFormData(prev => ({ ...prev, original_month: value }))}
               closedMonths={closedMonths}
             />
           </div>
