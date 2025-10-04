@@ -17,6 +17,7 @@ export type Database = {
       assets: {
         Row: {
           created_at: string | null
+          divisi: string | null
           harga_asset: number
           harga_jual: number | null
           id: number
@@ -29,6 +30,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          divisi?: string | null
           harga_asset: number
           harga_jual?: number | null
           id?: number
@@ -41,6 +43,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          divisi?: string | null
           harga_asset?: number
           harga_jual?: number | null
           id?: number
@@ -59,6 +62,7 @@ export type Database = {
           closed_month: number
           closed_year: number
           created_at: string | null
+          divisi: string | null
           harga_asset: number
           harga_jual: number | null
           id: number
@@ -74,6 +78,7 @@ export type Database = {
           closed_month: number
           closed_year: number
           created_at?: string | null
+          divisi?: string | null
           harga_asset: number
           harga_jual?: number | null
           id: number
@@ -89,6 +94,7 @@ export type Database = {
           closed_month?: number
           closed_year?: number
           created_at?: string | null
+          divisi?: string | null
           harga_asset?: number
           harga_jual?: number | null
           id?: number
@@ -106,6 +112,7 @@ export type Database = {
           biaya_modal: number | null
           brand_name: string | null
           created_at: string | null
+          divisi: string | null
           dp: number | null
           estimasi_biaya: number | null
           estimasi_tanggal_selesai: string
@@ -128,6 +135,7 @@ export type Database = {
           biaya_modal?: number | null
           brand_name?: string | null
           created_at?: string | null
+          divisi?: string | null
           dp?: number | null
           estimasi_biaya?: number | null
           estimasi_tanggal_selesai?: string
@@ -150,6 +158,7 @@ export type Database = {
           biaya_modal?: number | null
           brand_name?: string | null
           created_at?: string | null
+          divisi?: string | null
           dp?: number | null
           estimasi_biaya?: number | null
           estimasi_tanggal_selesai?: string
@@ -230,7 +239,11 @@ export type Database = {
         Row: {
           biaya_modal: number | null
           brand_id: number | null
+          brand_name: string | null
+          closed_month: number | null
+          closed_year: number | null
           created_at: string | null
+          divisi: string | null
           dp: number | null
           estimasi_biaya: number | null
           estimasi_tanggal_selesai: string | null
@@ -253,7 +266,11 @@ export type Database = {
         Insert: {
           biaya_modal?: number | null
           brand_id?: number | null
+          brand_name?: string | null
+          closed_month?: number | null
+          closed_year?: number | null
           created_at?: string | null
+          divisi?: string | null
           dp?: number | null
           estimasi_biaya?: number | null
           estimasi_tanggal_selesai?: string | null
@@ -276,7 +293,11 @@ export type Database = {
         Update: {
           biaya_modal?: number | null
           brand_id?: number | null
+          brand_name?: string | null
+          closed_month?: number | null
+          closed_year?: number | null
           created_at?: string | null
+          divisi?: string | null
           dp?: number | null
           estimasi_biaya?: number | null
           estimasi_tanggal_selesai?: string | null
@@ -382,6 +403,7 @@ export type Database = {
         Row: {
           batch_ke: number
           created_at: string | null
+          divisi: string | null
           id: number
           jenis_pembayaran: string
           jumlah_bayar: number
@@ -396,6 +418,7 @@ export type Database = {
         Insert: {
           batch_ke: number
           created_at?: string | null
+          divisi?: string | null
           id?: number
           jenis_pembayaran: string
           jumlah_bayar: number
@@ -410,6 +433,7 @@ export type Database = {
         Update: {
           batch_ke?: number
           created_at?: string | null
+          divisi?: string | null
           id?: number
           jenis_pembayaran?: string
           jumlah_bayar?: number
@@ -505,6 +529,7 @@ export type Database = {
           closed_month: number
           closed_year: number
           created_at: string | null
+          divisi: string | null
           id: number
           jenis_pembayaran: string
           jumlah_bayar: number | null
@@ -526,6 +551,7 @@ export type Database = {
           closed_month: number
           closed_year: number
           created_at?: string | null
+          divisi?: string | null
           id: number
           jenis_pembayaran: string
           jumlah_bayar?: number | null
@@ -547,6 +573,7 @@ export type Database = {
           closed_month?: number
           closed_year?: number
           created_at?: string | null
+          divisi?: string | null
           id?: number
           jenis_pembayaran?: string
           jumlah_bayar?: number | null
@@ -780,6 +807,48 @@ export type Database = {
           },
         ]
       }
+      monthly_adjustments: {
+        Row: {
+          adjustment_count: number
+          created_at: string | null
+          divisi: string
+          id: string
+          last_adjustment_date: string | null
+          month: string
+          total_adjustments: number
+          total_impact_modal: number
+          total_impact_profit: number
+          updated_at: string | null
+          year: number
+        }
+        Insert: {
+          adjustment_count?: number
+          created_at?: string | null
+          divisi: string
+          id?: string
+          last_adjustment_date?: string | null
+          month: string
+          total_adjustments?: number
+          total_impact_modal?: number
+          total_impact_profit?: number
+          updated_at?: string | null
+          year: number
+        }
+        Update: {
+          adjustment_count?: number
+          created_at?: string | null
+          divisi?: string
+          id?: string
+          last_adjustment_date?: string | null
+          month?: string
+          total_adjustments?: number
+          total_impact_modal?: number
+          total_impact_profit?: number
+          updated_at?: string | null
+          year?: number
+        }
+        Relationships: []
+      }
       monthly_closures: {
         Row: {
           closure_date: string | null
@@ -918,37 +987,46 @@ export type Database = {
       operational: {
         Row: {
           cabang_id: number
-          company_id: number
+          company_id: number | null
           created_at: string
           deskripsi: string
           divisi: string
           id: string
+          is_retroactive: boolean | null
           kategori: string
           nominal: number
+          original_month: string | null
+          retroactive_id: string | null
           tanggal: string
           updated_at: string
         }
         Insert: {
           cabang_id?: number
-          company_id: number
+          company_id?: number | null
           created_at?: string
           deskripsi: string
           divisi: string
           id?: string
+          is_retroactive?: boolean | null
           kategori: string
           nominal: number
+          original_month?: string | null
+          retroactive_id?: string | null
           tanggal: string
           updated_at?: string
         }
         Update: {
           cabang_id?: number
-          company_id?: number
+          company_id?: number | null
           created_at?: string
           deskripsi?: string
           divisi?: string
           id?: string
+          is_retroactive?: boolean | null
           kategori?: string
           nominal?: number
+          original_month?: string | null
+          retroactive_id?: string | null
           tanggal?: string
           updated_at?: string
         }
@@ -965,6 +1043,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_retroactive_id_fkey"
+            columns: ["retroactive_id"]
+            isOneToOne: false
+            referencedRelation: "retroactive_operational"
             referencedColumns: ["id"]
           },
         ]
@@ -1442,7 +1527,29 @@ export type Database = {
           tanggal?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pembukuan_history_cabang_id_fkey"
+            columns: ["cabang_id"]
+            isOneToOne: false
+            referencedRelation: "cabang"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pembukuan_history_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pembukuan_history_pembelian_id_fkey"
+            columns: ["pembelian_id"]
+            isOneToOne: false
+            referencedRelation: "pembelian"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pencatatan_asset: {
         Row: {
@@ -1450,6 +1557,7 @@ export type Database = {
           created_at: string | null
           divisi: string
           id: number
+          jenis_transaksi: string | null
           keterangan: string | null
           nama: string
           nominal: number
@@ -1462,6 +1570,7 @@ export type Database = {
           created_at?: string | null
           divisi: string
           id?: number
+          jenis_transaksi?: string | null
           keterangan?: string | null
           nama: string
           nominal?: number
@@ -1474,6 +1583,7 @@ export type Database = {
           created_at?: string | null
           divisi?: string
           id?: number
+          jenis_transaksi?: string | null
           keterangan?: string | null
           nama?: string
           nominal?: number
@@ -2167,6 +2277,56 @@ export type Database = {
           },
         ]
       }
+      profit_adjustments: {
+        Row: {
+          adjustment_type: string
+          created_at: string | null
+          deskripsi: string
+          divisi: string
+          id: number
+          kategori: string
+          nominal: number
+          operational_id: string | null
+          status: string
+          tanggal: string
+          updated_at: string | null
+        }
+        Insert: {
+          adjustment_type: string
+          created_at?: string | null
+          deskripsi: string
+          divisi: string
+          id?: number
+          kategori: string
+          nominal: number
+          operational_id?: string | null
+          status?: string
+          tanggal: string
+          updated_at?: string | null
+        }
+        Update: {
+          adjustment_type?: string
+          created_at?: string | null
+          deskripsi?: string
+          divisi?: string
+          id?: number
+          kategori?: string
+          nominal?: number
+          operational_id?: string | null
+          status?: string
+          tanggal?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profit_adjustments_operational_id_fkey"
+            columns: ["operational_id"]
+            isOneToOne: false
+            referencedRelation: "operational"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profit_distribution: {
         Row: {
           bulan: number
@@ -2266,6 +2426,80 @@ export type Database = {
             columns: ["pembelian_id"]
             isOneToOne: false
             referencedRelation: "pembelian"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      retroactive_operational: {
+        Row: {
+          adjustment_date: string
+          approved_at: string | null
+          approved_by: string | null
+          auto_approved: boolean | null
+          category: string
+          company_id: number
+          created_at: string | null
+          created_by: string
+          description: string
+          divisi: string
+          id: string
+          nominal: number
+          notes: string | null
+          original_month: string
+          original_year: number
+          rejected_reason: string | null
+          requires_approval: boolean | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          adjustment_date?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          auto_approved?: boolean | null
+          category: string
+          company_id: number
+          created_at?: string | null
+          created_by: string
+          description: string
+          divisi: string
+          id?: string
+          nominal: number
+          notes?: string | null
+          original_month: string
+          original_year: number
+          rejected_reason?: string | null
+          requires_approval?: boolean | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          adjustment_date?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          auto_approved?: boolean | null
+          category?: string
+          company_id?: number
+          created_at?: string | null
+          created_by?: string
+          description?: string
+          divisi?: string
+          id?: string
+          nominal?: number
+          notes?: string | null
+          original_month?: string
+          original_year?: number
+          rejected_reason?: string | null
+          requires_approval?: boolean | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retroactive_operational_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -2390,6 +2624,25 @@ export type Database = {
         }
         Relationships: []
       }
+      operational_combined: {
+        Row: {
+          cabang_id: number | null
+          closed_at: string | null
+          closed_month: number | null
+          closed_year: number | null
+          company_id: number | null
+          created_at: string | null
+          data_source: string | null
+          deskripsi: string | null
+          divisi: string | null
+          id: string | null
+          kategori: string | null
+          nominal: number | null
+          tanggal: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
       pembelian_combined: {
         Row: {
           brand_id: number | null
@@ -2486,6 +2739,35 @@ export type Database = {
         }
         Relationships: []
       }
+      profit_adjustments_view: {
+        Row: {
+          adjustment_type: string | null
+          created_at: string | null
+          deskripsi: string | null
+          divisi: string | null
+          id: number | null
+          kategori: string | null
+          nominal: number | null
+          operational_deskripsi: string | null
+          operational_divisi: string | null
+          operational_id: string | null
+          operational_kategori: string | null
+          operational_nominal: number | null
+          operational_tanggal: string | null
+          status: string | null
+          tanggal: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profit_adjustments_operational_id_fkey"
+            columns: ["operational_id"]
+            isOneToOne: false
+            referencedRelation: "operational"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       assign_user_role: {
@@ -2496,13 +2778,47 @@ export type Database = {
         Args: { notes?: string; target_month: number; target_year: number }
         Returns: Json
       }
+      close_month_by_division: {
+        Args: {
+          p_notes: string
+          target_division: string
+          target_month: number
+          target_year: number
+        }
+        Returns: Json
+      }
       decrement_qty: {
         Args: { jenis_motor_id: number }
         Returns: undefined
       }
+      deduct_profit: {
+        Args: {
+          p_deskripsi: string
+          p_divisi: string
+          p_kategori: string
+          p_nominal: number
+          p_operational_id: string
+          p_tanggal: string
+        }
+        Returns: number
+      }
+      get_closed_months: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          month_year: string
+        }[]
+      }
       get_monthly_data: {
         Args: { target_month: number; target_year: number }
         Returns: Json
+      }
+      get_profit_adjustments_total: {
+        Args: { p_divisi?: string; p_end_date?: string; p_start_date?: string }
+        Returns: {
+          net_adjustment: number
+          total_deductions: number
+          total_restorations: number
+        }[]
       }
       get_user_permissions: {
         Args: { user_id_param: number }
@@ -2519,13 +2835,27 @@ export type Database = {
         Args: { jenis_motor_id: number }
         Returns: undefined
       }
+      is_month_closed_retroactive: {
+        Args: { p_month: number; p_year: number }
+        Returns: boolean
+      }
       is_user_approved: {
         Args: { user_id: string }
         Returns: boolean
       }
       restore_month: {
-        Args: { target_month: number; target_year: number }
+        Args:
+          | {
+              target_division: string
+              target_month: number
+              target_year: number
+            }
+          | { target_month: number; target_year: number }
         Returns: Json
+      }
+      restore_profit: {
+        Args: { p_operational_id: string }
+        Returns: boolean
       }
       test_restore_assets_only: {
         Args: { target_month: number; target_year: number }

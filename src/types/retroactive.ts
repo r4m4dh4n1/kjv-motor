@@ -46,8 +46,10 @@ export interface RetroactiveOperationalForm {
 
 export interface AdjustmentImpact {
   profit_impact: number;
-  capital_impact: number;
-  description: string;
+  modal_impact: number;
+  company_name: string;
+  current_modal: number;
+  new_modal: number;
 }
 
 export type RetroactiveStatus = 'pending' | 'approved' | 'rejected';

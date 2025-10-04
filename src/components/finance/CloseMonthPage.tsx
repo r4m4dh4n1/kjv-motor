@@ -79,8 +79,7 @@ const CloseMonthPage = ({ selectedDivision }: CloseMonthPageProps) => {
     try {
       const { data, error } = await supabase.rpc('restore_month', {
         target_month: parseInt(targetMonth),
-        target_year: parseInt(targetYear),
-        target_division: selectedDivision
+        target_year: parseInt(targetYear)
       });
 
       if (error) throw error;
@@ -120,16 +119,8 @@ const CloseMonthPage = ({ selectedDivision }: CloseMonthPageProps) => {
 
     setIsLoadingPreview(true);
     try {
-      // Query to count records that would be affected
-      const [
-        { count: pembelianCount },
-        { count: penjualanCount }, 
-        { count: cicilanCount },
-        { count: feePenjualanCount },
-        { count: operationalCount },
-        { count: biroJasaCount },
-        { count: assetsCount }
-      ] = await Promise.all([
+      // Execute queries in batches to avoid deep type inference issues
+      const firstBatch = await Promise.all([
         supabase
           .from('pembelian')
           .select('*', { count: 'exact', head: true })
@@ -159,29 +150,45 @@ const CloseMonthPage = ({ selectedDivision }: CloseMonthPageProps) => {
           .select('*', { count: 'exact', head: true })
           .eq('divisi', selectedDivision)
           .gte('tanggal_fee', `${targetYear}-${targetMonth.padStart(2, '0')}-01`)
-          .lt('tanggal_fee', `${targetYear}-${parseInt(targetMonth) === 12 ? parseInt(targetYear) + 1 : targetYear}-${parseInt(targetMonth) === 12 ? '01' : (parseInt(targetMonth) + 1).toString().padStart(2, '0')}-01`),
-          
-        supabase
-          .from('operational')
-          .select('*', { count: 'exact', head: true })
-          .eq('divisi', selectedDivision)
-          .gte('tanggal', `${targetYear}-${targetMonth.padStart(2, '0')}-01`)
-          .lt('tanggal', `${targetYear}-${parseInt(targetMonth) === 12 ? parseInt(targetYear) + 1 : targetYear}-${parseInt(targetMonth) === 12 ? '01' : (parseInt(targetMonth) + 1).toString().padStart(2, '0')}-01`),
-          
-        supabase
-          .from('biro_jasa')
-          .select('*', { count: 'exact', head: true })
-          .eq('divisi', selectedDivision)
-          .gte('tanggal', `${targetYear}-${targetMonth.padStart(2, '0')}-01`)
-          .lt('tanggal', `${targetYear}-${parseInt(targetMonth) === 12 ? parseInt(targetYear) + 1 : targetYear}-${parseInt(targetMonth) === 12 ? '01' : (parseInt(targetMonth) + 1).toString().padStart(2, '0')}-01`),
-          
-        supabase
-          .from('assets')
-          .select('*', { count: 'exact', head: true })
-          .eq('divisi', selectedDivision)
-          .gte('tanggal_perolehan', `${targetYear}-${targetMonth.padStart(2, '0')}-01`)
-          .lt('tanggal_perolehan', `${targetYear}-${parseInt(targetMonth) === 12 ? parseInt(targetYear) + 1 : targetYear}-${parseInt(targetMonth) === 12 ? '01' : (parseInt(targetMonth) + 1).toString().padStart(2, '0')}-01`)
+          .lt('tanggal_fee', `${targetYear}-${parseInt(targetMonth) === 12 ? parseInt(targetYear) + 1 : targetYear}-${parseInt(targetMonth) === 12 ? '01' : (parseInt(targetMonth) + 1).toString().padStart(2, '0')}-01`)
       ]);
+      
+      const operationalResult: any = await supabase
+        .from('operational')
+        .select('*', { count: 'exact', head: true })
+        .eq('divisi', selectedDivision)
+        .gte('tanggal', `${targetYear}-${targetMonth.padStart(2, '0')}-01`)
+        .lt('tanggal', `${targetYear}-${parseInt(targetMonth) === 12 ? parseInt(targetYear) + 1 : targetYear}-${parseInt(targetMonth) === 12 ? '01' : (parseInt(targetMonth) + 1).toString().padStart(2, '0')}-01`);
+        
+      // @ts-ignore - Avoid deep type instantiation
+      const biroJasaResult: any = await supabase
+        .from('biro_jasa')
+        .select('*', { count: 'exact', head: true })
+        .eq('divisi', selectedDivision)
+        .gte('tanggal', `${targetYear}-${targetMonth.padStart(2, '0')}-01`)
+        .lt('tanggal', `${targetYear}-${parseInt(targetMonth) === 12 ? parseInt(targetYear) + 1 : targetYear}-${parseInt(targetMonth) === 12 ? '01' : (parseInt(targetMonth) + 1).toString().padStart(2, '0')}-01`);
+        
+      // @ts-ignore - Avoid deep type instantiation
+      const assetsResult: any = await supabase
+        .from('assets')
+        .select('*', { count: 'exact', head: true })
+        .eq('divisi', selectedDivision)
+        .gte('tanggal_perolehan', `${targetYear}-${targetMonth.padStart(2, '0')}-01`)
+        .lt('tanggal_perolehan', `${targetYear}-${parseInt(targetMonth) === 12 ? parseInt(targetYear) + 1 : targetYear}-${parseInt(targetMonth) === 12 ? '01' : (parseInt(targetMonth) + 1).toString().padStart(2, '0')}-01`);
+      
+      const secondBatch = [operationalResult, biroJasaResult, assetsResult];
+      
+      const results = [...firstBatch, ...secondBatch] as any[];
+      
+      const [
+        { count: pembelianCount },
+        { count: penjualanCount }, 
+        { count: cicilanCount },
+        { count: feePenjualanCount },
+        { count: operationalCount },
+        { count: biroJasaCount },
+        { count: assetsCount }
+      ] = results;
 
       setPreviewData({
         month: targetMonth,

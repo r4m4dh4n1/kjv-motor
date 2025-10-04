@@ -1,43 +1,22 @@
-import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarDays } from "lucide-react";
-import RetroactiveApprovalPage from "@/components/operational/RetroactiveApprovalPage";
+import React from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { AlertCircle } from "lucide-react";
 
 const RetroactiveApprovalPageWrapper = () => {
-  const [selectedDivision, setSelectedDivision] = useState('all');
-
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <CalendarDays className="h-8 w-8" />
-            Approval Retroactive Operational
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Kelola persetujuan untuk transaksi operational yang akan dicatat di bulan yang sudah di-close
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Divisi:</span>
-            <Select value={selectedDivision} onValueChange={setSelectedDivision}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Pilih divisi" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Divisi</SelectItem>
-                <SelectItem value="sport">Sport</SelectItem>
-                <SelectItem value="start">Start</SelectItem>
-              </SelectContent>
-            </Select>
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+            <h2 className="text-2xl font-bold mb-2">Fitur Dalam Pengembangan</h2>
+            <p className="text-muted-foreground max-w-md">
+              Halaman Approval Retroactive Operational sedang dalam tahap pengembangan.
+              Silakan gunakan fitur Retroactive di menu Operational untuk mencatat transaksi retroaktif.
+            </p>
           </div>
-        </div>
-      </div>
-
-      <RetroactiveApprovalPage selectedDivision={selectedDivision} />
+        </CardContent>
+      </Card>
     </div>
   );
 };

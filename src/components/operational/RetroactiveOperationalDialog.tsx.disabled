@@ -8,15 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarDays, AlertTriangle, DollarSign, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { RetroactiveOperationalForm, AdjustmentImpact, RETROACTIVE_CATEGORIES } from "@/types/retroactive";
-import { format } from "date-fns";
-import { id } from "date-fns/locale";
-import { cn } from "@/lib/utils";
 
 interface RetroactiveOperationalDialogProps {
   selectedDivision: string;
@@ -25,8 +20,8 @@ interface RetroactiveOperationalDialogProps {
 }
 
 interface Company {
-  id: number;
-  nama_perusahaan: string;
+  id: string;
+  nama: string;
   modal: number;
   divisi: string;
 }
@@ -41,16 +36,13 @@ const RetroactiveOperationalDialog = ({
   const [companies, setCompanies] = useState<Company[]>([]);
   const [closedMonths, setClosedMonths] = useState<string[]>([]);
   const [impact, setImpact] = useState<AdjustmentImpact | null>(null);
-  const [transactionDate, setTransactionDate] = useState<Date | undefined>();
-  const [targetMonthDate, setTargetMonthDate] = useState<Date | undefined>();
   const [formData, setFormData] = useState<RetroactiveOperationalForm>({
     original_month: '',
     category: '',
     nominal: 0,
     description: '',
     company_id: '',
-    notes: '',
-    divisi: selectedDivision === 'all' ? 'sport' : selectedDivision
+    notes: ''
   });
 
   const { toast } = useToast();
@@ -74,8 +66,8 @@ const RetroactiveOperationalDialog = ({
     try {
       let query = supabase
         .from('companies')
-        .select('id, nama_perusahaan, modal, divisi')
-        .order('nama_perusahaan');
+        .select('id, nama, modal, divisi')
+        .order('nama');
 
       if (selectedDivision !== 'all') {
         query = query.eq('divisi', selectedDivision);
@@ -98,13 +90,14 @@ const RetroactiveOperationalDialog = ({
     try {
       const { data, error } = await supabase
         .from('monthly_closures')
-        .select('closure_month, closure_year')
-        .order('closure_year', { ascending: false })
-        .order('closure_month', { ascending: false });
+        .select('month, year')
+        .eq('status', 'closed')
+        .order('year', { ascending: false })
+        .order('month', { ascending: false });
 
       if (error) throw error;
       
-      const months = data?.map(item => `${item.closure_year}-${item.closure_month.toString().padStart(2, '0')}`) || [];
+      const months = data?.map(item => `${item.year}-${item.month.toString().padStart(2, '0')}`) || [];
       setClosedMonths(months);
     } catch (error) {
       console.error('Error fetching closed months:', error);
@@ -118,7 +111,7 @@ const RetroactiveOperationalDialog = ({
 
   const calculateImpact = async () => {
     try {
-      const selectedCompany = companies.find(c => c.id.toString() === formData.company_id);
+      const selectedCompany = companies.find(c => c.id === formData.company_id);
       if (!selectedCompany) return;
 
       const isKurangProfitCategory = formData.category === 'Gaji Kurang Profit';
@@ -128,7 +121,7 @@ const RetroactiveOperationalDialog = ({
       setImpact({
         profit_impact: profitImpact,
         modal_impact: modalImpact,
-        company_name: selectedCompany.nama_perusahaan,
+        company_name: selectedCompany.nama,
         current_modal: selectedCompany.modal,
         new_modal: selectedCompany.modal - modalImpact
       });
@@ -137,14 +130,10 @@ const RetroactiveOperationalDialog = ({
     }
   };
 
-  // Check if category affects modal
-  const isModalReducingCategory = formData.category.includes('Kurang Modal');
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validation based on category type
-    if (!formData.category || !formData.company_id || formData.nominal <= 0) {
+    if (!formData.original_month || !formData.category || !formData.company_id || formData.nominal <= 0) {
       toast({
         title: "Error",
         description: "Mohon lengkapi semua field yang diperlukan",
@@ -153,67 +142,39 @@ const RetroactiveOperationalDialog = ({
       return;
     }
 
-    // Only validate target month for modal-reducing categories
-    if (isModalReducingCategory) {
-      if (!targetMonthDate) {
-        toast({
-          title: "Error",
-          description: "Bulan target wajib diisi untuk kategori yang mengurangi modal",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const targetMonthYear = format(targetMonthDate, 'yyyy-MM');
-      if (!closedMonths.includes(targetMonthYear)) {
-        toast({
-          title: "Error",
-          description: "Bulan target yang dipilih belum di-close atau tidak valid",
-          variant: "destructive",
-        });
-        return;
-      }
+    if (!closedMonths.includes(formData.original_month)) {
+      toast({
+        title: "Error",
+        description: "Bulan yang dipilih belum di-close atau tidak valid",
+        variant: "destructive",
+      });
+      return;
     }
 
     setLoading(true);
     try {
-      // Use today if transaction date is not provided
-      const finalTransactionDate = transactionDate || new Date();
-      const formattedTransactionDate = format(finalTransactionDate, 'yyyy-MM-dd');
+      const [year, month] = formData.original_month.split('-');
       
-      // For modal-reducing categories, use target month. Otherwise, use current month
-      const formattedTargetDate = isModalReducingCategory && targetMonthDate
-        ? format(targetMonthDate, 'yyyy-MM-dd')
-        : formattedTransactionDate;
-      
-      const descriptionSuffix = isModalReducingCategory && targetMonthDate
-        ? ` (Retroaktif - Masuk ke: ${format(targetMonthDate, 'MMMM yyyy', { locale: id })})`
-        : '';
-      
-      // Insert directly into operational table with retroactive flag
       const { error } = await supabase
-        .from('operational')
+        .from('retroactive_operational')
         .insert({
-          tanggal: formattedTransactionDate,
-          original_month: formattedTargetDate, // The month that should be affected
-          divisi: selectedDivision === 'all' ? companies.find(c => c.id.toString() === formData.company_id)?.divisi || 'sport' : selectedDivision,
-          kategori: formData.category,
-          deskripsi: `${formData.description}${descriptionSuffix}`,
+          original_month: formData.original_month,
+          original_year: parseInt(year),
+          category: formData.category,
           nominal: formData.nominal,
-          cabang_id: 1,
-          company_id: formData.company_id ? parseInt(formData.company_id) : null,
-          is_retroactive: isModalReducingCategory
-        } as any);
+          description: formData.description,
+          company_id: formData.company_id,
+          divisi: selectedDivision === 'all' ? companies.find(c => c.id === formData.company_id)?.divisi : selectedDivision,
+          status: 'pending',
+          notes: formData.notes,
+          adjustment_date: new Date().toISOString().split('T')[0]
+        });
 
       if (error) throw error;
 
-      const successMessage = isModalReducingCategory && targetMonthDate
-        ? `Transaksi retroaktif berhasil dibuat. Akan masuk ke laporan ${format(targetMonthDate, 'MMMM yyyy', { locale: id })}`
-        : 'Transaksi operational berhasil dibuat';
-      
       toast({
         title: "Berhasil",
-        description: successMessage,
+        description: "Pengajuan retroactive operational berhasil dibuat dan menunggu approval",
       });
 
       setOpen(false);
@@ -232,16 +193,13 @@ const RetroactiveOperationalDialog = ({
   };
 
   const resetForm = () => {
-    setTransactionDate(undefined);
-    setTargetMonthDate(undefined);
     setFormData({
       original_month: '',
       category: '',
       nominal: 0,
       description: '',
       company_id: '',
-      notes: '',
-      divisi: selectedDivision === 'all' ? 'sport' : selectedDivision
+      notes: ''
     });
     setImpact(null);
   };
@@ -290,106 +248,45 @@ const RetroactiveOperationalDialog = ({
         </Alert>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="category">Kategori</Label>
-            <Select
-              value={formData.category}
-              onValueChange={(value) => {
-                setFormData(prev => ({ ...prev, category: value }));
-                // Reset target month when category changes
-                if (!value.includes('Kurang Modal')) {
-                  setTargetMonthDate(undefined);
-                }
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Pilih kategori" />
-              </SelectTrigger>
-              <SelectContent>
-                {RETROACTIVE_CATEGORIES.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {isModalReducingCategory && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="transaction_date">Tanggal Input Transaksi (Opsional)</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !transactionDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarDays className="mr-2 h-4 w-4" />
-                      {transactionDate ? format(transactionDate, "dd MMMM yyyy", { locale: id }) : "Hari ini"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={transactionDate}
-                      onSelect={setTransactionDate}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <p className="text-xs text-muted-foreground">
-                  Kosongkan untuk menggunakan hari ini
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="target_date">Bulan Target (Sudah Close) *</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !targetMonthDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarDays className="mr-2 h-4 w-4" />
-                      {targetMonthDate ? format(targetMonthDate, "dd MMMM yyyy", { locale: id }) : "Pilih bulan target"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={targetMonthDate}
-                      onSelect={(date) => {
-                        setTargetMonthDate(date);
-                        if (date) {
-                          const monthYear = format(date, 'yyyy-MM');
-                          setFormData(prev => ({ ...prev, original_month: monthYear }));
-                        }
-                      }}
-                      disabled={(date) => {
-                        const monthYear = format(date, 'yyyy-MM');
-                        return !closedMonths.includes(monthYear) || date > new Date();
-                      }}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-                {targetMonthDate && (
-                  <p className="text-xs text-muted-foreground">
-                    Masuk ke laporan: {format(targetMonthDate, "MMMM yyyy", { locale: id })}
-                  </p>
-                )}
-              </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="original_month">Bulan Target (Sudah Close)</Label>
+              <Select
+                value={formData.original_month}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, original_month: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih bulan yang sudah close" />
+                </SelectTrigger>
+                <SelectContent>
+                  {closedMonths.map((month) => (
+                    <SelectItem key={month} value={month}>
+                      {formatMonth(month)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          )}
+
+            <div className="space-y-2">
+              <Label htmlFor="category">Kategori</Label>
+              <Select
+                value={formData.category}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih kategori" />
+                </SelectTrigger>
+                <SelectContent>
+                  {RETROACTIVE_CATEGORIES.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -403,8 +300,8 @@ const RetroactiveOperationalDialog = ({
                 </SelectTrigger>
                 <SelectContent>
                   {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id.toString()}>
-                      {company.nama_perusahaan} - {formatCurrency(company.modal)}
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.nama} - {formatCurrency(company.modal)}
                     </SelectItem>
                   ))}
                 </SelectContent>

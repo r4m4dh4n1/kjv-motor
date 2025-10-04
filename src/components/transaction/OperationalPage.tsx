@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ProfitAdjustmentSummary from "@/components/finance/ProfitAdjustmentSummary";
 import { isMonthClosed, formatMonthYear } from "@/utils/monthValidation";
-import { RetroactiveOperationalDialogSimple } from "@/components/RetroactiveOperationalDialogSimple";
+import RetroactiveOperationalDialog from "@/components/operational/RetroactiveOperationalDialog";
 
 interface OperationalPageProps {
   selectedDivision: string;
@@ -27,7 +27,6 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   const [operationalData, setOperationalData] = useState([]);
   const [companiesData, setCompaniesData] = useState([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isRetroactiveDialogOpen, setIsRetroactiveDialogOpen] = useState(false);
   const [editingOperational, setEditingOperational] = useState(null);
   
   // ✅ PERBAIKAN: Ganti dateFrom/dateTo dengan filter periode
@@ -157,13 +156,13 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         };
       case 'custom':
         return {
-          start: customStartDate || today.toISOString().split('T')[0],
-          end: customEndDate || today.toISOString().split('T')[0]
+          start: customStartDate || todayFormatted,
+          end: customEndDate || todayFormatted
         };
       default:
         return {
-          start: today.toISOString().split('T')[0],
-          end: today.toISOString().split('T')[0]
+          start: todayFormatted,
+          end: todayFormatted
         };
     }
   };
@@ -799,14 +798,21 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
             Tambah Operasional
           </Button>
           
-          <Button 
-            onClick={() => setIsRetroactiveDialogOpen(true)}
-            variant="outline"
-            className="border-orange-500 text-orange-600 hover:bg-orange-50"
-          >
-            <Clock className="w-4 h-4 mr-2" />
-            Transaksi Retroaktif
-          </Button>
+          <RetroactiveOperationalDialog
+            selectedDivision={selectedDivision}
+            onSuccess={() => {
+              fetchOperationalData();
+            }}
+            trigger={
+              <Button 
+                variant="outline"
+                className="border-orange-500 text-orange-600 hover:bg-orange-50"
+              >
+                <Clock className="w-4 h-4 mr-2" />
+                Transaksi Retroaktif
+              </Button>
+            }
+          />
         </div>
       </div>
 
@@ -1188,16 +1194,6 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         </CardContent>
       </Card>
 
-      {/* Retroactive Transaction Dialog */}
-      <RetroactiveOperationalDialogSimple
-        open={isRetroactiveDialogOpen}
-        onOpenChange={setIsRetroactiveDialogOpen}
-        divisi={selectedDivision}
-        onSuccess={() => {
-          setIsRetroactiveDialogOpen(false);
-          fetchOperationalData(); // Refresh data after successful retroactive transaction
-        }}
-      />
     </div>
   );
 };
