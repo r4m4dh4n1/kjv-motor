@@ -137,8 +137,10 @@ const RetroactiveOperationalDialog = ({
     }
   };
 
-  // Check if category affects modal
+  // Check if category affects modal or profit
   const isModalReducingCategory = formData.category.includes('Kurang Modal');
+  const isProfitReducingCategory = formData.category.includes('Kurang Profit');
+  const isRetroactiveCategory = isModalReducingCategory || isProfitReducingCategory;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,12 +155,12 @@ const RetroactiveOperationalDialog = ({
       return;
     }
 
-    // Only validate target month for modal-reducing categories
-    if (isModalReducingCategory) {
+    // Validate target month for retroactive categories (both profit and modal)
+    if (isRetroactiveCategory) {
       if (!targetMonthDate) {
         toast({
           title: "Error",
-          description: "Bulan target wajib diisi untuk kategori yang mengurangi modal",
+          description: "Bulan target wajib diisi untuk kategori retroaktif",
           variant: "destructive",
         });
         return;
@@ -181,34 +183,87 @@ const RetroactiveOperationalDialog = ({
       const finalTransactionDate = transactionDate || new Date();
       const formattedTransactionDate = format(finalTransactionDate, 'yyyy-MM-dd');
       
-      // For modal-reducing categories, use target month. Otherwise, use current month
-      const formattedTargetDate = isModalReducingCategory && targetMonthDate
+      // For retroactive categories, use target month. Otherwise, use current month
+      const formattedTargetDate = isRetroactiveCategory && targetMonthDate
         ? format(targetMonthDate, 'yyyy-MM-dd')
         : formattedTransactionDate;
       
-      const descriptionSuffix = isModalReducingCategory && targetMonthDate
-        ? ` (Retroaktif - Masuk ke: ${format(targetMonthDate, 'MMMM yyyy', { locale: id })})`
+      const categoryType = isProfitReducingCategory ? 'profit' : isModalReducingCategory ? 'modal' : 'normal';
+      const descriptionSuffix = isRetroactiveCategory && targetMonthDate
+        ? ` (Retroaktif ${categoryType === 'profit' ? 'Profit' : 'Modal'} - Masuk ke: ${format(targetMonthDate, 'MMMM yyyy', { locale: id })})`
         : '';
       
-      // Insert directly into operational table with retroactive flag
-      const { error } = await supabase
+      // Insert into operational table with retroactive flag
+      const { data: operationalData, error: operationalError } = await supabase
         .from('operational')
         .insert({
           tanggal: formattedTransactionDate,
-          original_month: formattedTargetDate, // The month that should be affected
+          original_month: formattedTargetDate,
           divisi: selectedDivision === 'all' ? companies.find(c => c.id.toString() === formData.company_id)?.divisi || 'sport' : selectedDivision,
           kategori: formData.category,
           deskripsi: `${formData.description}${descriptionSuffix}`,
           nominal: formData.nominal,
           cabang_id: 1,
           company_id: formData.company_id ? parseInt(formData.company_id) : null,
-          is_retroactive: isModalReducingCategory
-        } as any);
+          is_retroactive: isRetroactiveCategory
+        } as any)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (operationalError) throw operationalError;
 
-      const successMessage = isModalReducingCategory && targetMonthDate
-        ? `Transaksi retroaktif berhasil dibuat. Akan masuk ke laporan ${format(targetMonthDate, 'MMMM yyyy', { locale: id })}`
+      // ✅ KURANG MODAL: Catat di pembukuan sesuai TANGGAL INPUT TRANSAKSI (bukan target month)
+      if (isModalReducingCategory) {
+        const { error: pembukuanError } = await supabase
+          .from('pembukuan')
+          .insert({
+            tanggal: formattedTransactionDate, // ✅ Menggunakan tanggal input transaksi
+            divisi: selectedDivision === 'all' ? companies.find(c => c.id.toString() === formData.company_id)?.divisi || 'sport' : selectedDivision,
+            keterangan: `${formData.category} - ${formData.description}${descriptionSuffix}`,
+            debit: formData.nominal,
+            kredit: 0,
+            cabang_id: 1,
+            company_id: parseInt(formData.company_id)
+          });
+
+        if (pembukuanError) {
+          console.error('Error creating pembukuan for Kurang Modal:', pembukuanError);
+          toast({
+            title: "Warning",
+            description: "Transaksi retroaktif berhasil tapi gagal mencatat pembukuan",
+            variant: "destructive"
+          });
+        }
+
+        // Update modal perusahaan
+        const { error: modalError } = await supabase.rpc('update_company_modal', {
+          company_id: parseInt(formData.company_id),
+          amount: -formData.nominal
+        });
+
+        if (modalError) {
+          console.error('Error updating company modal:', modalError);
+        }
+      }
+
+      // ✅ KURANG PROFIT: Tidak masuk pembukuan, hanya kurangi profit
+      if (isProfitReducingCategory) {
+        const { error: profitError } = await supabase.rpc('deduct_profit' as any, {
+          p_operational_id: operationalData.id,
+          p_tanggal: formattedTargetDate, // Masuk ke target month
+          p_divisi: selectedDivision === 'all' ? companies.find(c => c.id.toString() === formData.company_id)?.divisi || 'sport' : selectedDivision,
+          p_kategori: formData.category,
+          p_deskripsi: formData.description,
+          p_nominal: formData.nominal
+        });
+
+        if (profitError) {
+          console.error('Error deducting profit:', profitError);
+        }
+      }
+
+      const successMessage = isRetroactiveCategory && targetMonthDate
+        ? `Transaksi retroaktif ${categoryType === 'profit' ? 'profit' : 'modal'} berhasil dibuat. Akan ${categoryType === 'profit' ? 'mengurangi profit' : 'mengurangi modal'} di laporan ${format(targetMonthDate, 'MMMM yyyy', { locale: id })}`
         : 'Transaksi operational berhasil dibuat';
       
       toast({
@@ -284,8 +339,9 @@ const RetroactiveOperationalDialog = ({
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Fitur ini digunakan untuk mencatat transaksi operational yang perlu dimasukkan ke bulan yang sudah di-close. 
-            Pengajuan akan memerlukan approval sebelum diterapkan.
+            Fitur ini digunakan untuk mencatat transaksi operational retroaktif:
+            <br />• <strong>Kurang Profit:</strong> Mengurangi profit bulan yang sudah di-close (tidak masuk pembukuan)
+            <br />• <strong>Kurang Modal:</strong> Dicatat di pembukuan sesuai tanggal input transaksi, mengurangi modal di bulan target
           </AlertDescription>
         </Alert>
 
@@ -296,8 +352,8 @@ const RetroactiveOperationalDialog = ({
               value={formData.category}
               onValueChange={(value) => {
                 setFormData(prev => ({ ...prev, category: value }));
-                // Reset target month when category changes
-                if (!value.includes('Kurang Modal')) {
+                // Reset target month when category changes to non-retroactive
+                if (!value.includes('Kurang Modal') && !value.includes('Kurang Profit')) {
                   setTargetMonthDate(undefined);
                 }
               }}
@@ -315,7 +371,7 @@ const RetroactiveOperationalDialog = ({
             </Select>
           </div>
 
-          {isModalReducingCategory && (
+          {isRetroactiveCategory && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="transaction_date">Tanggal Input Transaksi (Opsional)</Label>
@@ -348,7 +404,11 @@ const RetroactiveOperationalDialog = ({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="target_date">Bulan Target (Sudah Close) *</Label>
+                <Label htmlFor="target_date">
+                  Bulan Target (Sudah Close) *
+                  {isProfitReducingCategory && <span className="text-xs text-muted-foreground ml-2">(Mengurangi Profit)</span>}
+                  {isModalReducingCategory && <span className="text-xs text-muted-foreground ml-2">(Mengurangi Modal)</span>}
+                </Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button

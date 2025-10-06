@@ -32,15 +32,49 @@ interface PencatatanAssetTableProps {
 export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAssetTableProps) => {
   const { toast } = useToast();
 
-  const deleteMutation = {
-    isPending: false,
-    mutate: (id: number) => {
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      // 1. Ambil data asset yang akan dihapus
+      const assetToDelete = data.find(item => item.id === id);
+      if (!assetToDelete) throw new Error("Asset tidak ditemukan");
+
+      // 2. Kembalikan modal ke company (sumber dana)
+      if (assetToDelete.sumber_dana_id && assetToDelete.nominal > 0) {
+        const { error: modalError } = await supabase.rpc('update_company_modal', {
+          company_id: assetToDelete.sumber_dana_id,
+          amount: assetToDelete.nominal // Kembalikan nominal asset
+        });
+
+        if (modalError) {
+          console.error('Error returning modal to company:', modalError);
+          throw modalError;
+        }
+      }
+
+      // 3. Hapus data asset
+      const { error: deleteError } = await supabase
+        .from('assets')
+        .delete()
+        .eq('id', id);
+
+      if (deleteError) throw deleteError;
+    },
+    onSuccess: () => {
       toast({
-        title: "Info",
-        description: "Delete functionality akan tersedia setelah database types di-update",
+        title: "Berhasil",
+        description: "Data asset berhasil dihapus dan modal company dikembalikan",
       });
+      onRefetch();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Gagal menghapus data asset",
+        variant: "destructive",
+      });
+      console.error('Error deleting asset:', error);
     }
-  };
+  });
 
   const handleDelete = (id: number) => {
     if (window.confirm("Apakah Anda yakin ingin menghapus asset ini?")) {

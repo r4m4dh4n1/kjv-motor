@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, History, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Plus, History, TrendingUp, TrendingDown, Calendar, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { RetroactiveOperationalDialogSimple } from './RetroactiveOperationalDialogSimple';
+import { useToast } from '@/hooks/use-toast';
 
 interface RetroactiveOperationalSimpleProps {
   divisi: string;
@@ -31,6 +33,7 @@ interface AdjustmentSummary {
 export function RetroactiveOperationalSimple({ divisi }: RetroactiveOperationalSimpleProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [records, setRecords] = useState<RetroactiveRecord[]>([]);
+  const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [summary, setSummary] = useState<AdjustmentSummary>({
     total_adjustments: 0,
     total_impact_profit: 0,
@@ -38,6 +41,8 @@ export function RetroactiveOperationalSimple({ divisi }: RetroactiveOperationalS
     adjustment_count: 0
   });
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchRecords();
@@ -142,6 +147,68 @@ export function RetroactiveOperationalSimple({ divisi }: RetroactiveOperationalS
     fetchSummary();
   };
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedRecords(records.map(record => record.id));
+    } else {
+      setSelectedRecords([]);
+    }
+  };
+
+  const handleSelectRecord = (recordId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedRecords(prev => [...prev, recordId]);
+    } else {
+      setSelectedRecords(prev => prev.filter(id => id !== recordId));
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedRecords.length === 0) {
+      toast({
+        title: "Tidak ada data yang dipilih",
+        description: "Silakan pilih data yang ingin dihapus terlebih dahulu.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!confirm(`Apakah Anda yakin ingin menghapus ${selectedRecords.length} data yang dipilih?`)) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      
+      // Delete from retroactive_operational table
+      const { error } = await supabase
+        .from('retroactive_operational')
+        .delete()
+        .in('id', selectedRecords);
+
+      if (error) throw error;
+
+      toast({
+        title: "Berhasil menghapus data",
+        description: `${selectedRecords.length} data berhasil dihapus.`,
+      });
+
+      // Reset selection and refresh data
+      setSelectedRecords([]);
+      fetchRecords();
+      fetchSummary();
+    } catch (error) {
+      console.error('Error deleting records:', error);
+      toast({
+        title: "Gagal menghapus data",
+        description: "Terjadi kesalahan saat menghapus data. Silakan coba lagi.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -152,10 +219,22 @@ export function RetroactiveOperationalSimple({ divisi }: RetroactiveOperationalS
             Kelola adjustment operasional untuk bulan yang sudah di-close - {divisi}
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Buat Adjustment
-        </Button>
+        <div className="flex gap-2">
+          {selectedRecords.length > 0 && (
+            <Button 
+              variant="destructive" 
+              onClick={handleBatchDelete}
+              disabled={deleting}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {deleting ? 'Menghapus...' : `Hapus (${selectedRecords.length})`}
+            </Button>
+          )}
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Buat Adjustment
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -222,7 +301,21 @@ export function RetroactiveOperationalSimple({ divisi }: RetroactiveOperationalS
       {/* Recent Records */}
       <Card>
         <CardHeader>
-          <CardTitle>Adjustment Terbaru</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle>Adjustment Terbaru</CardTitle>
+            {records.length > 0 && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="select-all"
+                  checked={selectedRecords.length === records.length}
+                  onCheckedChange={handleSelectAll}
+                />
+                <label htmlFor="select-all" className="text-sm font-medium">
+                  Pilih Semua
+                </label>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -240,8 +333,15 @@ export function RetroactiveOperationalSimple({ divisi }: RetroactiveOperationalS
               {records.map((record) => (
                 <div
                   key={record.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                  className={`flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors ${
+                    selectedRecords.includes(record.id) ? 'bg-muted/30 border-primary' : ''
+                  }`}
                 >
+                  <Checkbox
+                    id={`record-${record.id}`}
+                    checked={selectedRecords.includes(record.id)}
+                    onCheckedChange={(checked) => handleSelectRecord(record.id, checked as boolean)}
+                  />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <Badge variant="outline">

@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import ProfitAdjustmentSummary from "@/components/finance/ProfitAdjustmentSummary";
 import { isMonthClosed, formatMonthYear } from "@/utils/monthValidation";
 import RetroactiveOperationalDialog from "@/components/operational/RetroactiveOperationalDialog";
+import DeleteOperationalHistoryDialog from "@/components/operational/DeleteOperationalHistoryDialog";
 
 interface OperationalPageProps {
   selectedDivision: string;
@@ -597,6 +598,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     setIsDialogOpen(true);
   };
 
+
   const handleDelete = async (id: number) => {
     if (!confirm("Apakah Anda yakin ingin menghapus data operasional ini?")) {
       return;
@@ -813,6 +815,14 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
               </Button>
             }
           />
+
+          <DeleteOperationalHistoryDialog
+            selectedDivision={selectedDivision}
+            onSuccess={() => {
+              fetchOperationalData();
+            }}
+          />
+
         </div>
       </div>
 
@@ -1119,7 +1129,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
               </TableHeader>
               <TableBody>
                 {operationalData.map((item, index) => (
-                  <TableRow key={item.id}>
+                  <TableRow key={`${item.data_source}-${item.id}`}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>{formatDate(item.tanggal)}</TableCell>
                     <TableCell>

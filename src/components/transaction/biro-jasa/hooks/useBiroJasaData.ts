@@ -74,17 +74,65 @@ export const useBiroJasaData = (selectedDivision: string) => {
   };
 
   const handleDelete = async (id: number) => {
+    if (!confirm("Apakah Anda yakin ingin menghapus data biro jasa ini?")) {
+      return;
+    }
+
     try {
-      const { error } = await supabase
+      // 1. Ambil data biro jasa yang akan dihapus
+      const { data: biroJasaToDelete, error: fetchError } = await supabase
+        .from('biro_jasa')
+        .select('biaya_modal, keuntungan, rekening_tujuan_id')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // 2. Jika ada biaya modal, kembalikan ke rekening tujuan (company)
+      if (biroJasaToDelete.rekening_tujuan_id && biroJasaToDelete.biaya_modal > 0) {
+        const { error: modalError } = await supabase.rpc('update_company_modal', {
+          company_id: biroJasaToDelete.rekening_tujuan_id,
+          amount: biroJasaToDelete.biaya_modal // Kembalikan biaya modal
+        });
+
+        if (modalError) {
+          console.error('Error returning modal to company:', modalError);
+        }
+      }
+
+      // 3. Jika ada keuntungan, kurangi dari modal company
+      if (biroJasaToDelete.rekening_tujuan_id && biroJasaToDelete.keuntungan > 0) {
+        const { error: keuntunganError } = await supabase.rpc('update_company_modal', {
+          company_id: biroJasaToDelete.rekening_tujuan_id,
+          amount: -biroJasaToDelete.keuntungan // Kurangi keuntungan
+        });
+
+        if (keuntunganError) {
+          console.error('Error subtracting keuntungan from company:', keuntunganError);
+        }
+      }
+
+      // 4. Hapus cicilan biro jasa jika ada
+      const { error: cicilanError } = await supabase
+        .from('biro_jasa_cicilan')
+        .delete()
+        .eq('biro_jasa_id', id);
+
+      if (cicilanError) {
+        console.error('Error deleting biro jasa cicilan:', cicilanError);
+      }
+
+      // 5. Hapus data biro jasa
+      const { error: deleteError } = await supabase
         .from('biro_jasa')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (deleteError) throw deleteError;
 
       toast({
         title: "Berhasil",
-        description: "Data biro jasa berhasil dihapus",
+        description: "Data biro jasa berhasil dihapus dan modal company disesuaikan",
       });
 
       // Refresh data after delete

@@ -88,13 +88,13 @@ const PriceHistoryUploadPage = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {unuploadedHistories.map((history) => {
+              {unuploadedHistories.map((history, index) => {
                 const totalBiaya = (history.biaya_pajak || 0) + (history.biaya_qc || 0) + (history.biaya_lain_lain || 0);
                 const selisihHarga = history.harga_beli_baru - history.harga_beli_lama;
                 const totalAmount = Math.max(totalBiaya, selisihHarga);
                 
                 return (
-                  <div key={history.id} className="flex justify-between items-center p-3 border rounded-lg">
+                  <div key={`page-history-${history.id}-${index}`} className="flex justify-between items-center p-3 border rounded-lg">
                     <div>
                       <p className="font-medium">
                         {history.pembelian?.brands?.name} - {history.pembelian?.jenis_motor?.jenis_motor}

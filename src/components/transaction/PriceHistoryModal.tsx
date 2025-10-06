@@ -162,7 +162,7 @@ const PriceHistoryModal = ({
               ) : priceHistory.length > 0 ? (
                 <div className="space-y-3">
                   {priceHistory.map((history, index) => (
-                    <div key={history.id} className="border border-gray-200 rounded-lg p-3">
+                    <div key={`price-history-${history.id}-${index}`} className="border border-gray-200 rounded-lg p-3">
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 bg-red-500 rounded-full"></div>

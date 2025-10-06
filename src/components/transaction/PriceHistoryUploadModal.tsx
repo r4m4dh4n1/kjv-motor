@@ -112,13 +112,13 @@ const PriceHistoryUploadModal = ({ isOpen, onClose }: PriceHistoryUploadModalPro
                 Tidak ada price history yang belum diupload
               </div>
             ) : (
-              unuploadedHistories.map((history) => {
+              unuploadedHistories.map((history, index) => {
                 const totalBiaya = (history.biaya_pajak || 0) + (history.biaya_qc || 0) + (history.biaya_lain_lain || 0);
                 const selisihHarga = history.harga_beli_baru - history.harga_beli_lama;
                 const totalAmount = Math.max(totalBiaya, selisihHarga);
                 
                 return (
-                  <div key={history.id} className="flex items-center space-x-3 p-3 border rounded-lg">
+                  <div key={`upload-history-${history.id}-${index}`} className="flex items-center space-x-3 p-3 border rounded-lg">
                     <Checkbox
                       checked={selectedHistories.includes(history.id)}
                       onCheckedChange={(checked) => handleSelectHistory(history.id, checked as boolean)}
