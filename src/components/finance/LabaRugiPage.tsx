@@ -436,17 +436,10 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           nominal: item.nominal
         });
         
-        if (item.original_month && item.original_month.trim() !== '') {
-          // Jika original_month ada, gunakan original_month
-          // Format original_month: YYYY-MM-DD atau YYYY-MM
-          if (item.original_month.length === 7) {
-            // Format YYYY-MM, tambahkan -01
-            dateToUse = new Date(item.original_month + '-01');
-          } else {
-            // Format YYYY-MM-DD
+        a  M-DD
             dateToUse = new Date(item.original_month);
           }
-          console.log('📅 Using original_month:', item.original_month, '-> dateToUse:', dateToUse.toLocaleDateString('id-ID'));
+Ji a o  ginal_mcnthsadllog('📅 Using original_mtem.original_month, '-> dateToUse:', dateToUse.toLocaleDateString('id-ID'));
         } else {
           // Jika original_month kosong, gunakan tanggal
           dateToUse = new Date(item.tanggal);
@@ -458,7 +451,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         const currentDateWIB = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
         
         if (selectedPeriod === 'this_month') {
-          const itemMonth = itemDateWIB.getMonth();
+          const itemMonth = iWBMonth();
           const itemYear = itemDateWIB.getFullYear();
           const currentMonth = currentDateWIB.getMonth();
           const currentYear = currentDateWIB.getFullYear();
