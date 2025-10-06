@@ -396,25 +396,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           // Gunakan data yang berhasil diambil
           operationalData = data || [];
           console.log(`📊 Operational data loaded: ${operationalData.length} records`);
-          
-          console.log(`🗃️ Raw operational data from database: ${operationalData?.length || 0} records`);
-        console.log('📋 Sample raw operational data:', operationalData?.slice(0, 3).map(item => ({
-          tanggal: item.tanggal,
-          original_month: item.original_month,
-          kategori: item.kategori,
-          nominal: item.nominal,
-          is_retroactive: item.is_retroactive
-        })));
-        
-        // Log semua data operasional untuk debugging
-        console.log('🔍 ALL operational data for debugging:', operationalData?.map(item => ({
-          tanggal: item.tanggal,
-          original_month: item.original_month,
-          kategori: item.kategori,
-          nominal: item.nominal,
-          is_retroactive: item.is_retroactive,
-          divisi: item.divisi
-        })));
         }
       } catch (err) {
         console.error('Error in operational query:', err);
@@ -463,6 +444,8 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       });
       
       console.log(`📊 After date filtering: ${filteredOperationalData.length} operational records`);
+      
+      console.log(`📊 After date filtering: ${filteredOperationalData.length} operational records`);
       console.log('📅 Sample operational dates:', filteredOperationalData.slice(0, 5).map(item => {
         const hasOriginalMonth = item.original_month && item.original_month.trim() !== '';
         const dateUsed = hasOriginalMonth ? item.original_month : item.tanggal;
@@ -476,15 +459,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           is_retroactive: item.is_retroactive
         };
       }));
-      
-      console.log('🔍 Current period and date info:', {
-        selectedPeriod,
-        currentDate: new Date().toLocaleDateString('id-ID'),
-        currentMonth: new Date().getMonth() + 1,
-        currentYear: new Date().getFullYear(),
-        dateRangeStart: dateRange.start.toLocaleDateString('id-ID'),
-        dateRangeEnd: dateRange.end.toLocaleDateString('id-ID')
-      });
   
       // Hitung biaya per kategori menggunakan data yang sudah difilter
       const biayaPerKategori: { [key: string]: number } = {};
