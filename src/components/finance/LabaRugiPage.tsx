@@ -360,19 +360,11 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           selectColumns += ', is_retroactive, original_month';
         }
         
-        // Untuk menangani original_month, kita ambil data dengan range yang lebih luas
-        // dan filter di aplikasi untuk akurasi yang lebih baik
         let operationalQuery = supabase
           .from(operationalTable as any)
-          .select(selectColumns);
-          
-        // Untuk periode custom, tambahkan filter tanggal dasar
-        // Data dengan original_month akan difilter di aplikasi
-        if (selectedPeriod === 'custom') {
-          operationalQuery = operationalQuery
-            .gte('tanggal', startDate)
-            .lte('tanggal', endDate);
-        }
+          .select(selectColumns)
+          .gte('tanggal', startDate)
+          .lte('tanggal', endDate);
   
         if (selectedDivision !== 'all') {
           operationalQuery = operationalQuery.eq('divisi', selectedDivision);
@@ -430,24 +422,25 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
   
       console.log(`Fetched ${operationalData.length} operational records before filtering`);
       
-      // Filter data berdasarkan periode untuk memastikan akurasi
-      // Gunakan original_month jika ada, atau tanggal jika kosong
+      // Definisi kategori "Kurang Modal"
+      const kurangModalCategories = [
+        'Gaji Kurang Modal',
+        'Bonus Kurang Modal', 
+        'Ops Bulanan Kurang Modal'
+      ];
+      
+      // Filter data berdasarkan periode dengan logika berbeda untuk setiap kategori
       const filteredOperationalData = operationalData.filter(item => {
-        // Tentukan tanggal yang akan digunakan untuk filtering
-        let dateToUse: Date;
+        const kategori = item.kategori || '';
+        const isKurangModal = kurangModalCategories.includes(kategori);
         
-        if (item.original_month && item.original_month.trim() !== '') {
-          // Jika original_month ada, gunakan original_month
-          // Format original_month: YYYY-MM-DD atau YYYY-MM
-          if (item.original_month.length === 7) {
-            // Format YYYY-MM, tambahkan -01
-            dateToUse = new Date(item.original_month + '-01');
-          } else {
-            // Format YYYY-MM-DD
-            dateToUse = new Date(item.original_month);
-          }
+        // Tentukan tanggal yang akan digunakan untuk filtering
+        let dateToUse;
+        if (isKurangModal && item.original_month) {
+          // Untuk kategori "Kurang Modal", gunakan original_month jika ada
+          dateToUse = new Date(item.original_month);
         } else {
-          // Jika original_month kosong, gunakan tanggal
+          // Untuk kategori standar atau jika original_month tidak ada, gunakan tanggal
           dateToUse = new Date(item.tanggal);
         }
         
@@ -462,27 +455,33 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           const lastMonthDate = new Date(currentDateWIB.getFullYear(), currentDateWIB.getMonth() - 1, 1);
           return itemDateWIB.getMonth() === lastMonthDate.getMonth() && 
                  itemDateWIB.getFullYear() === lastMonthDate.getFullYear();
-        } else if (selectedPeriod === 'custom') {
-          // Untuk periode custom, filter berdasarkan range tanggal yang dipilih
-          return dateToUse >= dateRange.start && dateToUse <= dateRange.end;
         }
         return true; // Untuk periode lain, gunakan filter database
       });
       
       console.log(`📊 After date filtering: ${filteredOperationalData.length} operational records`);
       
-      console.log(`📊 After date filtering: ${filteredOperationalData.length} operational records`);
-      console.log('📅 Sample operational dates:', filteredOperationalData.slice(0, 5).map(item => {
-        const hasOriginalMonth = item.original_month && item.original_month.trim() !== '';
-        const dateUsed = hasOriginalMonth ? item.original_month : item.tanggal;
+      // Log breakdown by category type
+      const standardCategories = filteredOperationalData.filter(item => 
+        !kurangModalCategories.includes(item.kategori || '')
+      );
+      const kurangModalData = filteredOperationalData.filter(item => 
+        kurangModalCategories.includes(item.kategori || '')
+      );
+      
+      console.log(`📊 Standard categories (using tanggal): ${standardCategories.length} records`);
+      console.log(`📊 Kurang Modal categories (using original_month/tanggal): ${kurangModalData.length} records`);
+      
+      console.log('📅 Sample operational data with filtering logic:', filteredOperationalData.slice(0, 5).map(item => {
+        const isKurangModal = kurangModalCategories.includes(item.kategori || '');
+        const dateUsed = isKurangModal && item.original_month ? item.original_month : item.tanggal;
         return {
+          kategori: item.kategori,
           tanggal: item.tanggal,
           original_month: item.original_month,
           dateUsedForFiltering: dateUsed,
-          usingOriginalMonth: hasOriginalMonth,
-          kategori: item.kategori,
-          nominal: item.nominal,
-          is_retroactive: item.is_retroactive
+          filteringMethod: isKurangModal && item.original_month ? 'original_month' : 'tanggal',
+          nominal: item.nominal
         };
       }));
   
