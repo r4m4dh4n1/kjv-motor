@@ -436,8 +436,13 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           nominal: item.nominal
         });
         
-        if (item.original_month && item.original_month.trim() !== '') {
-          // Jika original_month ada, gunakan original_month
+        // Untuk periode "this_month", gunakan tanggal aktual transaksi (bukan original_month)
+        // karena original_month digunakan untuk data retroaktif
+        if (selectedPeriod === 'this_month') {
+          dateToUse = new Date(item.tanggal);
+          console.log('📅 Using tanggal for this_month:', item.tanggal, '-> dateToUse:', dateToUse.toLocaleDateString('id-ID'));
+        } else if (item.original_month && item.original_month.trim() !== '') {
+          // Untuk periode lain, gunakan original_month jika ada
           // Format original_month: YYYY-MM-DD atau YYYY-MM
           if (item.original_month.length === 7) {
             // Format YYYY-MM, tambahkan -01
@@ -450,7 +455,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         } else {
           // Jika original_month kosong, gunakan tanggal
           dateToUse = new Date(item.tanggal);
-          console.log('📅 Using tanggal:', item.tanggal, '-> dateToUse:', dateToUse.toLocaleDateString('id-ID'));
+          console.log('📅 Using tanggal as fallback:', item.tanggal, '-> dateToUse:', dateToUse.toLocaleDateString('id-ID'));
         }
         
         const itemDateWIB = new Date(dateToUse.getTime() + (7 * 60 * 60 * 1000));
