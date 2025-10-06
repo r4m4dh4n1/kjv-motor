@@ -570,50 +570,60 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         const kategori = item.kategori || '';
         const isSpecialCategory = specialCategories.includes(kategori);
         
-        // Tentukan tanggal yang akan digunakan untuk filtering
-        let dateToUse;
-        let filteringMethod;
-        
         if (isSpecialCategory) {
-          // Untuk kategori khusus (Kurang Modal & Kurang Profit), WAJIB gunakan original_month jika ada
-          if (item.original_month) {
-            dateToUse = new Date(item.original_month);
-            filteringMethod = 'original_month';
-          } else {
-            // Jika tidak ada original_month, skip item ini untuk kategori khusus
-            console.log(`⚠️ Skipping "${kategori}" item without original_month:`, {
+          // Untuk kategori khusus (Kurang Modal & Kurang Profit), gunakan original_month untuk filtering periode
+          if (!item.original_month) {
+            console.log(`⚠️ Skipping special category "${kategori}" (no original_month):`, {
               tanggal: item.tanggal,
               nominal: item.nominal
             });
             return false;
           }
-        } else {
-          // Untuk kategori standar, gunakan tanggal
-          dateToUse = new Date(item.tanggal);
-          filteringMethod = 'tanggal';
+          
+          // Parse original_month (format: YYYY-MM)
+          const originalMonthDate = new Date(item.original_month + '-01');
+          const currentDate = new Date();
+          const currentDateWIB = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
+          
+          let shouldInclude = false;
+          
+          if (selectedPeriod === 'this_month') {
+            shouldInclude = originalMonthDate.getMonth() === currentDateWIB.getMonth() && 
+                           originalMonthDate.getFullYear() === currentDateWIB.getFullYear();
+          } else if (selectedPeriod === 'last_month') {
+            const lastMonthDate = new Date(currentDateWIB.getFullYear(), currentDateWIB.getMonth() - 1, 1);
+            shouldInclude = originalMonthDate.getMonth() === lastMonthDate.getMonth() && 
+                           originalMonthDate.getFullYear() === lastMonthDate.getFullYear();
+          } else if (selectedPeriod === 'this_year') {
+            shouldInclude = originalMonthDate.getFullYear() === currentDateWIB.getFullYear();
+          } else if (selectedPeriod === 'last_year') {
+            shouldInclude = originalMonthDate.getFullYear() === (currentDateWIB.getFullYear() - 1);
+          } else if (selectedPeriod === 'custom' && customStartDate && customEndDate) {
+            const startDate = new Date(customStartDate);
+            const endDate = new Date(customEndDate);
+            shouldInclude = originalMonthDate >= startDate && originalMonthDate <= endDate;
+          } else {
+            shouldInclude = true; // Untuk periode lain, gunakan filter database
+          }
+          
+          console.log(`✅ Special category "${kategori}" filtering (using original_month):`, {
+            original_month: item.original_month,
+            selectedPeriod,
+            shouldInclude,
+            nominal: item.nominal
+          });
+          
+          return shouldInclude;
         }
         
+        // Untuk kategori standar, terapkan filtering periode normal
+        const dateToUse = new Date(item.tanggal);
         const itemDateWIB = new Date(dateToUse.getTime() + (7 * 60 * 60 * 1000));
         const currentDate = new Date();
         const currentDateWIB = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
         
         let shouldInclude = false;
         
-        // Log informasi tanggal untuk debugging
-        if (selectedPeriod === 'last_month' || selectedPeriod === 'this_year') {
-          console.log(`🗓️ Date debugging for "${selectedPeriod}":`, {
-            kategori: item.kategori,
-            originalDate: dateToUse.toISOString(),
-            itemDateWIB: itemDateWIB.toISOString(),
-            currentDateWIB: currentDateWIB.toISOString(),
-            itemMonth: itemDateWIB.getMonth(),
-            itemYear: itemDateWIB.getFullYear(),
-            currentMonth: currentDateWIB.getMonth(),
-            currentYear: currentDateWIB.getFullYear()
-          });
-        }
-        
-        // Untuk semua periode, gunakan logika filtering yang konsisten
         if (selectedPeriod === 'this_month') {
           shouldInclude = itemDateWIB.getMonth() === currentDateWIB.getMonth() && 
                          itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
@@ -621,40 +631,8 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           const lastMonthDate = new Date(currentDateWIB.getFullYear(), currentDateWIB.getMonth() - 1, 1);
           shouldInclude = itemDateWIB.getMonth() === lastMonthDate.getMonth() && 
                          itemDateWIB.getFullYear() === lastMonthDate.getFullYear();
-          
-          // Log detail untuk last_month
-          const isExpectedCategory = expectedCategories.some(cat => item.kategori && item.kategori.includes(cat));
-          if (isExpectedCategory) {
-            console.log(`🔍 EXPECTED CATEGORY Last month filtering:`, {
-              kategori: item.kategori,
-              tanggal: item.tanggal,
-              original_month: item.original_month,
-              dateToUse: dateToUse.toISOString(),
-              lastMonthDate: lastMonthDate.toISOString(),
-              lastMonthMonth: lastMonthDate.getMonth(),
-              lastMonthYear: lastMonthDate.getFullYear(),
-              itemMonth: itemDateWIB.getMonth(),
-              itemYear: itemDateWIB.getFullYear(),
-              shouldInclude,
-              nominal: item.nominal
-            });
-          }
         } else if (selectedPeriod === 'this_year') {
           shouldInclude = itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
-          
-          // Log detail untuk this_year
-          if (isExpectedCategory) {
-            console.log(`🔍 EXPECTED CATEGORY This year filtering:`, {
-              kategori: item.kategori,
-              tanggal: item.tanggal,
-              original_month: item.original_month,
-              dateToUse: dateToUse.toISOString(),
-              itemYear: itemDateWIB.getFullYear(),
-              currentYear: currentDateWIB.getFullYear(),
-              shouldInclude,
-              nominal: item.nominal
-            });
-          }
         } else if (selectedPeriod === 'last_year') {
           shouldInclude = itemDateWIB.getFullYear() === (currentDateWIB.getFullYear() - 1);
         } else if (selectedPeriod === 'custom' && customStartDate && customEndDate) {
@@ -667,20 +645,12 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           shouldInclude = true; // Untuk periode lain, gunakan filter database
         }
         
-        // Log detail filtering untuk kategori khusus
-        if (isSpecialCategory) {
-          console.log(`🔍 Filtering "${kategori}":`, {
-            tanggal: item.tanggal,
-            original_month: item.original_month,
-            dateToUse: dateToUse.toISOString(),
-            filteringMethod,
-            itemDateWIB: itemDateWIB.toISOString(),
-            currentDateWIB: currentDateWIB.toISOString(),
-            selectedPeriod,
-            shouldInclude,
-            nominal: item.nominal
-          });
-        }
+        console.log(`🗓️ Standard category "${kategori}" filtering:`, {
+          tanggal: item.tanggal,
+          selectedPeriod,
+          shouldInclude,
+          nominal: item.nominal
+        });
         
         return shouldInclude;
       });
