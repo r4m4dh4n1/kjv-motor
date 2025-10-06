@@ -440,20 +440,20 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         // Jika original_month ada isinya, gunakan original_month
         // Jika kosong, baru gunakan tanggal
         if (item.original_month && item.original_month.trim() !== '') {
-          // Gunakan original_month jika ada
+          // Untuk periode lain, gunakan original_month jika ada
           // Format original_month: YYYY-MM-DD atau YYYY-MM
           if (item.original_month.length === 7) {
-            // Format YYYY-MM, tambahkan hari pertama
-            dateToUse = new Date(item.original_month + '-01T00:00:00+07:00');
+            // Format YYYY-MM, tambahkan -01
+            dateToUse = new Date(item.original_month + '-01');
           } else {
             // Format YYYY-MM-DD
-            dateToUse = new Date(item.original_month + 'T00:00:00+07:00');
+            dateToUse = new Date(item.original_month);
           }
           console.log('📅 Using original_month:', item.original_month, '-> dateToUse:', dateToUse.toLocaleDateString('id-ID'));
         } else {
           // Jika original_month kosong, gunakan tanggal
-          dateToUse = new Date(item.tanggal + 'T00:00:00+07:00');
-          console.log('📅 Using tanggal (original_month empty):', item.tanggal, '-> dateToUse:', dateToUse.toLocaleDateString('id-ID'));
+          dateToUse = new Date(item.tanggal);
+          console.log('📅 Using tanggal as fallback:', item.tanggal, '-> dateToUse:', dateToUse.toLocaleDateString('id-ID'));
         }
         
         const itemDateWIB = new Date(dateToUse.getTime() + (7 * 60 * 60 * 1000));
