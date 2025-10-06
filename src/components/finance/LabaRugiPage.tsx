@@ -343,8 +343,9 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       const startDate = dateRange.start.toISOString();
       const endDate = dateRange.end.toISOString();
   
-      // Gunakan tabel yang sesuai berdasarkan periode
-      const operationalTable = shouldUseCombined ? 'operational_combined' : 'operational';
+      // Selalu gunakan tabel 'operational' untuk memastikan kolom original_month tersedia
+      // operational_combined tidak memiliki kolom original_month yang diperlukan untuk retroactive data
+      const operationalTable = 'operational';
   
       console.log('Using operational table:', { operationalTable, shouldUseCombined });
   
@@ -352,13 +353,9 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       let operationalData: any[] = [];
       
       try {
-        // Query dengan kolom yang sesuai untuk setiap tabel
-        let selectColumns = 'kategori, nominal, deskripsi, tanggal, divisi, cabang_id';
-        
-        // Tambahkan kolom khusus hanya jika menggunakan tabel operational biasa
-        if (operationalTable === 'operational') {
-          selectColumns += ', is_retroactive, original_month';
-        }
+        // Query dengan kolom yang diperlukan dari tabel operational
+        // Selalu include original_month karena kita selalu menggunakan tabel operational
+        const selectColumns = 'kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month';
         
         // Untuk menangani original_month, kita ambil data dengan range yang lebih luas
         // dan filter di aplikasi untuk akurasi yang lebih baik
@@ -395,29 +392,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         
         if (error) {
           console.error(`Error fetching ${operationalTable} data:`, error);
-          // Jika error, coba fallback ke tabel operational biasa
-          if (operationalTable === 'operational_combined') {
-            console.log('Fallback to operational table');
-            const fallbackQuery = supabase
-              .from('operational')
-              .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month')
-              .gte('tanggal', startDate)
-              .lte('tanggal', endDate);
-              
-            if (selectedDivision !== 'all') {
-              fallbackQuery.eq('divisi', selectedDivision);
-            }
-            
-            if (selectedCabang !== 'all') {
-              fallbackQuery.eq('cabang_id', parseInt(selectedCabang));
-            }
-            
-            const { data: fallbackData, error: fallbackError } = await fallbackQuery;
-            
-            if (!fallbackError) {
-              operationalData = fallbackData || [];
-            }
-          }
+          operationalData = [];
         } else {
           // Gunakan data yang berhasil diambil
           operationalData = data || [];
