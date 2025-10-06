@@ -228,7 +228,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         // Filter data yang benar-benar dalam rentang bulan ini
         const filteredData = penjualanData.filter(item => {
           const itemDate = new Date(item.tanggal);
-          const itemDateWIB = new Date(dateToUse.getTime() + (7 * 60 * 60 * 1000));
+          const itemDateWIB = new Date(itemDate.getTime() + (7 * 60 * 60 * 1000));
           const currentDate = new Date();
           const currentDateWIB = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
           
