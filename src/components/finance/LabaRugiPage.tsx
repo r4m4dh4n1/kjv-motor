@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -79,9 +79,26 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
   // Gunakan penjualans_combined untuk periode tertentu
   const shouldUseCombined = ['this_month', 'last_month', 'this_year'].includes(selectedPeriod);
   
-  // CATATAN: operational_combined tidak memiliki field original_month yang diperlukan
-  // untuk special categories, jadi kita selalu gunakan tabel operational biasa
-  const shouldUseOperationalCombined = false; // Disabled karena tidak ada original_month
+  // ✅ PERBAIKAN: Update logika shouldUseOperationalCombined berdasarkan periode
+  const shouldUseOperationalCombined = useMemo(() => {
+    const periodsRequiringCombined = ['last_month', 'this_year', 'last_year'];
+    
+    if (periodsRequiringCombined.includes(selectedPeriod)) {
+      return true;
+    }
+    
+    if (selectedPeriod === 'custom' && customStartDate && customEndDate) {
+      const currentDate = new Date(2025, 9, 30); // Oktober 2025 (month 9 = Oktober)
+      const currentMonth = currentDate.getMonth();
+      const currentYear = currentDate.getFullYear();
+      const startDate = new Date(customStartDate);
+      
+      // Gunakan combined jika tanggal mulai dari bulan/tahun sebelumnya
+      return startDate.getMonth() < currentMonth || startDate.getFullYear() < currentYear;
+    }
+    
+    return false;
+  }, [selectedPeriod, customStartDate, customEndDate]);
 
   useEffect(() => {
     fetchInitialData();
@@ -380,15 +397,12 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           error = result.error;
           
         } else {
-          // Karena operational_combined tidak memiliki field original_month,
-          // kita perlu menggunakan pendekatan yang berbeda
-          console.log('⚠️ operational_combined tidak memiliki field original_month');
-          console.log('🔄 Menggunakan fallback ke tabel operational untuk periode ini');
+          // ✅ PERBAIKAN: Gunakan operational_combined yang sudah diupdate dengan original_month
+          console.log('📊 Using operational_combined with original_month field');
           
-          // Fallback ke tabel operational untuk memastikan special categories termasuk
           let operationalQuery = supabase
-            .from('operational')
-            .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month')
+            .from('operational_combined')
+            .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month, data_source')
             .gte('tanggal', startDate)
             .lte('tanggal', endDate);
 
@@ -404,7 +418,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           data = result.data || [];
           error = result.error;
           
-          console.log('📊 Fallback to operational table completed');
+          console.log('📊 operational_combined query completed');
         }
 
         console.log('🔍 Executing enhanced operational query...');
