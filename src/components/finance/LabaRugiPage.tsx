@@ -448,6 +448,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         const currentDate = new Date();
         const currentDateWIB = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
         
+        // Untuk semua periode, gunakan logika filtering yang konsisten
         if (selectedPeriod === 'this_month') {
           return itemDateWIB.getMonth() === currentDateWIB.getMonth() && 
                  itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
@@ -455,6 +456,16 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           const lastMonthDate = new Date(currentDateWIB.getFullYear(), currentDateWIB.getMonth() - 1, 1);
           return itemDateWIB.getMonth() === lastMonthDate.getMonth() && 
                  itemDateWIB.getFullYear() === lastMonthDate.getFullYear();
+        } else if (selectedPeriod === 'this_year') {
+          return itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
+        } else if (selectedPeriod === 'last_year') {
+          return itemDateWIB.getFullYear() === (currentDateWIB.getFullYear() - 1);
+        } else if (selectedPeriod === 'custom' && customStartDate && customEndDate) {
+          const startDate = new Date(customStartDate);
+          const endDate = new Date(customEndDate);
+          const startDateWIB = new Date(startDate.getTime() + (7 * 60 * 60 * 1000));
+          const endDateWIB = new Date(endDate.getTime() + (7 * 60 * 60 * 1000));
+          return itemDateWIB >= startDateWIB && itemDateWIB <= endDateWIB;
         }
         return true; // Untuk periode lain, gunakan filter database
       });
@@ -472,7 +483,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       console.log(`📊 Standard categories (using tanggal): ${standardCategories.length} records`);
       console.log(`📊 Kurang Modal categories (using original_month/tanggal): ${kurangModalData.length} records`);
       
-      console.log('📅 Sample operational data with filtering logic:', filteredOperationalData.slice(0, 5).map(item => {
+      console.log('📅 Sample operational data with filtering logic:', filteredOperationalData.slice(0, 10).map(item => {
         const isKurangModal = kurangModalCategories.includes(item.kategori || '');
         const dateUsed = isKurangModal && item.original_month ? item.original_month : item.tanggal;
         return {
@@ -481,9 +492,23 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           original_month: item.original_month,
           dateUsedForFiltering: dateUsed,
           filteringMethod: isKurangModal && item.original_month ? 'original_month' : 'tanggal',
-          nominal: item.nominal
+          nominal: item.nominal,
+          is_retroactive: item.is_retroactive
         };
       }));
+      
+      // Log khusus untuk kategori Kurang Modal
+      const kurangModalFiltered = filteredOperationalData.filter(item => 
+        kurangModalCategories.includes(item.kategori || '')
+      );
+      console.log('🔍 Kurang Modal data after filtering:', kurangModalFiltered.map(item => ({
+        kategori: item.kategori,
+        tanggal: item.tanggal,
+        original_month: item.original_month,
+        nominal: item.nominal,
+        dateUsedForFiltering: item.original_month || item.tanggal,
+        selectedPeriod: selectedPeriod
+      })));
   
       // Hitung biaya per kategori menggunakan data yang sudah difilter
       const biayaPerKategori: { [key: string]: number } = {};
