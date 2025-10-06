@@ -422,12 +422,48 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
   
       console.log(`Fetched ${operationalData.length} operational records before filtering`);
       
+      // Log raw data sample untuk debugging
+      console.log('🔍 Raw operational data sample (first 5 records):', operationalData.slice(0, 5).map(item => ({
+        id: item.id,
+        kategori: item.kategori,
+        tanggal: item.tanggal,
+        original_month: item.original_month,
+        nominal: item.nominal,
+        is_retroactive: item.is_retroactive,
+        divisi: item.divisi,
+        cabang_id: item.cabang_id
+      })));
+      
       // Definisi kategori "Kurang Modal"
       const kurangModalCategories = [
         'Gaji Kurang Modal',
         'Bonus Kurang Modal', 
         'Ops Bulanan Kurang Modal'
       ];
+      
+      // Log kategori yang ditemukan
+      const foundCategories = [...new Set(operationalData.map(item => item.kategori))];
+      console.log('📋 All categories found in data:', foundCategories);
+      console.log('📋 Kurang Modal categories to filter:', kurangModalCategories);
+      
+      // Log data per kategori sebelum filtering
+      kurangModalCategories.forEach(kategori => {
+        const itemsInCategory = operationalData.filter(item => item.kategori === kategori);
+        console.log(`📊 Category "${kategori}": ${itemsInCategory.length} records before filtering`);
+        if (itemsInCategory.length > 0) {
+          console.log(`   Sample data:`, itemsInCategory.slice(0, 3).map(item => ({
+            tanggal: item.tanggal,
+            original_month: item.original_month,
+            nominal: item.nominal,
+            hasOriginalMonth: !!item.original_month
+          })));
+        }
+      });
+      
+      console.log(`🗓️ Current filtering period: ${selectedPeriod}`);
+      if (selectedPeriod === 'custom') {
+        console.log(`🗓️ Custom date range: ${customStartDate} to ${customEndDate}`);
+      }
       
       // Filter data berdasarkan periode dengan logika berbeda untuk setiap kategori
       const filteredOperationalData = operationalData.filter(item => {
@@ -436,40 +472,73 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         
         // Tentukan tanggal yang akan digunakan untuk filtering
         let dateToUse;
-        if (isKurangModal && item.original_month) {
-          // Untuk kategori "Kurang Modal", gunakan original_month jika ada
-          dateToUse = new Date(item.original_month);
+        let filteringMethod;
+        
+        if (isKurangModal) {
+          // Untuk kategori "Kurang Modal", WAJIB gunakan original_month jika ada
+          if (item.original_month) {
+            dateToUse = new Date(item.original_month);
+            filteringMethod = 'original_month';
+          } else {
+            // Jika tidak ada original_month, skip item ini untuk kategori Kurang Modal
+            console.log(`⚠️ Skipping "${kategori}" item without original_month:`, {
+              tanggal: item.tanggal,
+              nominal: item.nominal
+            });
+            return false;
+          }
         } else {
-          // Untuk kategori standar atau jika original_month tidak ada, gunakan tanggal
+          // Untuk kategori standar, gunakan tanggal
           dateToUse = new Date(item.tanggal);
+          filteringMethod = 'tanggal';
         }
         
         const itemDateWIB = new Date(dateToUse.getTime() + (7 * 60 * 60 * 1000));
         const currentDate = new Date();
         const currentDateWIB = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
         
+        let shouldInclude = false;
+        
         // Untuk semua periode, gunakan logika filtering yang konsisten
         if (selectedPeriod === 'this_month') {
-          return itemDateWIB.getMonth() === currentDateWIB.getMonth() && 
-                 itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
+          shouldInclude = itemDateWIB.getMonth() === currentDateWIB.getMonth() && 
+                         itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
         } else if (selectedPeriod === 'last_month') {
           const lastMonthDate = new Date(currentDateWIB.getFullYear(), currentDateWIB.getMonth() - 1, 1);
-          return itemDateWIB.getMonth() === lastMonthDate.getMonth() && 
-                 itemDateWIB.getFullYear() === lastMonthDate.getFullYear();
+          shouldInclude = itemDateWIB.getMonth() === lastMonthDate.getMonth() && 
+                         itemDateWIB.getFullYear() === lastMonthDate.getFullYear();
         } else if (selectedPeriod === 'this_year') {
-          return itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
+          shouldInclude = itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
         } else if (selectedPeriod === 'last_year') {
-          return itemDateWIB.getFullYear() === (currentDateWIB.getFullYear() - 1);
+          shouldInclude = itemDateWIB.getFullYear() === (currentDateWIB.getFullYear() - 1);
         } else if (selectedPeriod === 'custom' && customStartDate && customEndDate) {
           const startDate = new Date(customStartDate);
           const endDate = new Date(customEndDate);
           const startDateWIB = new Date(startDate.getTime() + (7 * 60 * 60 * 1000));
           const endDateWIB = new Date(endDate.getTime() + (7 * 60 * 60 * 1000));
-          return itemDateWIB >= startDateWIB && itemDateWIB <= endDateWIB;
+          shouldInclude = itemDateWIB >= startDateWIB && itemDateWIB <= endDateWIB;
+        } else {
+          shouldInclude = true; // Untuk periode lain, gunakan filter database
         }
-        return true; // Untuk periode lain, gunakan filter database
+        
+        // Log detail filtering untuk kategori Kurang Modal
+        if (isKurangModal) {
+          console.log(`🔍 Filtering "${kategori}":`, {
+            tanggal: item.tanggal,
+            original_month: item.original_month,
+            dateToUse: dateToUse.toISOString(),
+            filteringMethod,
+            itemDateWIB: itemDateWIB.toISOString(),
+            currentDateWIB: currentDateWIB.toISOString(),
+            selectedPeriod,
+            shouldInclude,
+            nominal: item.nominal
+          });
+        }
+        
+        return shouldInclude;
       });
-      
+
       console.log(`📊 After date filtering: ${filteredOperationalData.length} operational records`);
       
       // Log breakdown by category type
@@ -481,8 +550,39 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       );
       
       console.log(`📊 Standard categories (using tanggal): ${standardCategories.length} records`);
-      console.log(`📊 Kurang Modal categories (using original_month/tanggal): ${kurangModalData.length} records`);
+      console.log(`📊 Kurang Modal categories (using original_month): ${kurangModalData.length} records`);
       
+      // Log detail untuk setiap kategori Kurang Modal
+      kurangModalCategories.forEach(kategori => {
+        const beforeFilter = operationalData.filter(item => item.kategori === kategori);
+        const afterFilter = filteredOperationalData.filter(item => item.kategori === kategori);
+        const withOriginalMonth = beforeFilter.filter(item => item.original_month);
+        const withoutOriginalMonth = beforeFilter.filter(item => !item.original_month);
+        
+        console.log(`📋 Category "${kategori}" filtering summary:`, {
+          totalBeforeFilter: beforeFilter.length,
+          totalAfterFilter: afterFilter.length,
+          withOriginalMonth: withOriginalMonth.length,
+          withoutOriginalMonth: withoutOriginalMonth.length,
+          selectedPeriod: selectedPeriod
+        });
+        
+        if (afterFilter.length > 0) {
+          console.log(`   ✅ Included items:`, afterFilter.map(item => ({
+            tanggal: item.tanggal,
+            original_month: item.original_month,
+            nominal: item.nominal
+          })));
+        }
+        
+        if (withoutOriginalMonth.length > 0) {
+          console.log(`   ⚠️ Skipped items (no original_month):`, withoutOriginalMonth.map(item => ({
+            tanggal: item.tanggal,
+            nominal: item.nominal
+          })));
+        }
+      });
+
       console.log('📅 Sample operational data with filtering logic:', filteredOperationalData.slice(0, 10).map(item => {
         const isKurangModal = kurangModalCategories.includes(item.kategori || '');
         const dateUsed = isKurangModal && item.original_month ? item.original_month : item.tanggal;
