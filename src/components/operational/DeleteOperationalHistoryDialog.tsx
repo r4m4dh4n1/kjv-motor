@@ -28,7 +28,39 @@ const DeleteOperationalHistoryDialog = ({
   });
   const { toast } = useToast();
 
+  // Define months array to avoid potential rendering issues
+  const months = [
+    { value: "1", label: "Januari" },
+    { value: "2", label: "Februari" },
+    { value: "3", label: "Maret" },
+    { value: "4", label: "April" },
+    { value: "5", label: "Mei" },
+    { value: "6", label: "Juni" },
+    { value: "7", label: "Juli" },
+    { value: "8", label: "Agustus" },
+    { value: "9", label: "September" },
+    { value: "10", label: "Oktober" },
+    { value: "11", label: "November" },
+    { value: "12", label: "Desember" }
+  ];
+
+  // Define years array to avoid potential rendering issues
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => ({
+    value: (currentYear - i).toString(),
+    label: (currentYear - i).toString()
+  }));
+
   const handleSearch = async () => {
+    if (!selectedDivision) {
+      toast({
+        title: "Error",
+        description: "Divisi harus dipilih terlebih dahulu",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       // Simple search for operational_history records
@@ -47,18 +79,21 @@ const DeleteOperationalHistoryDialog = ({
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('Search error:', error);
+        throw error;
+      }
 
       toast({
         title: "Pencarian Selesai",
         description: `Ditemukan ${data?.length || 0} record operational_history untuk divisi ${selectedDivision}.`,
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error searching:', error);
       toast({
         title: "Error",
-        description: `Gagal mencari data: ${error.message}`,
+        description: `Gagal mencari data: ${error?.message || 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {
@@ -116,9 +151,9 @@ const DeleteOperationalHistoryDialog = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Semua Bulan</SelectItem>
-                  {Array.from({ length: 12 }, (_, i) => (
-                    <SelectItem key={`month-${i + 1}`} value={(i + 1).toString()}>
-                      {new Date(2024, i).toLocaleDateString('id-ID', { month: 'long' })}
+                  {months.map((month) => (
+                    <SelectItem key={month.value} value={month.value}>
+                      {month.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -135,14 +170,11 @@ const DeleteOperationalHistoryDialog = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Semua Tahun</SelectItem>
-                  {Array.from({ length: 5 }, (_, i) => {
-                    const year = new Date().getFullYear() - i;
-                    return (
-                      <SelectItem key={`year-${year}`} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    );
-                  })}
+                  {years.map((year) => (
+                    <SelectItem key={year.value} value={year.value}>
+                      {year.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
