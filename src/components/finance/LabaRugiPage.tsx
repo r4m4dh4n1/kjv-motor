@@ -452,6 +452,12 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       // Gabungkan semua kategori khusus yang harus menggunakan original_month
       const specialCategories = [...kurangModalCategories, ...kurangProfitCategories];
       
+      // Log kategori yang ditemukan
+      console.log('📋 All categories found in data:', allCategories);
+      console.log('📋 Kurang Modal categories detected:', kurangModalCategories);
+      console.log('📋 Kurang Profit categories detected:', kurangProfitCategories);
+      console.log('📋 All special categories (using original_month):', specialCategories);
+      
       // Periksa kategori spesifik yang disebutkan user
       const expectedCategories = [
         'Gaji Kurang Profit',
@@ -461,12 +467,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         'Bonus Kurang Modal',
         'Ops Bulanan Kurang Modal'
       ];
-      
-      // Log kategori yang ditemukan
-      console.log('📋 All categories found in data:', allCategories);
-      console.log('📋 Kurang Modal categories detected:', kurangModalCategories);
-      console.log('📋 Kurang Profit categories detected:', kurangProfitCategories);
-      console.log('📋 All special categories (using original_month):', specialCategories);
       
       console.log('🔍 Checking for expected categories:');
       expectedCategories.forEach(expectedCat => {
@@ -698,7 +698,35 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         }
       });
       
-      [key: string]: number } = {};
+      console.log('📅 Sample operational data with filtering logic:', filteredOperationalData.slice(0, 10).map(item => {
+        const isSpecialCategory = specialCategories.includes(item.kategori || '');
+        const dateUsed = isSpecialCategory && item.original_month ? item.original_month : item.tanggal;
+        return {
+          kategori: item.kategori,
+          tanggal: item.tanggal,
+          original_month: item.original_month,
+          dateUsedForFiltering: dateUsed,
+          filteringMethod: isSpecialCategory && item.original_month ? 'original_month' : 'tanggal',
+          nominal: item.nominal,
+          is_retroactive: item.is_retroactive
+        };
+      }));
+      
+      // Log khusus untuk kategori khusus
+      const specialFiltered = filteredOperationalData.filter(item => 
+        specialCategories.includes(item.kategori || '')
+      );
+      console.log('🔍 Special categories data after filtering:', specialFiltered.map(item => ({
+        kategori: item.kategori,
+        tanggal: item.tanggal,
+        original_month: item.original_month,
+        nominal: item.nominal,
+        dateUsedForFiltering: item.original_month || item.tanggal,
+        selectedPeriod: selectedPeriod
+      })));
+  
+      // Hitung biaya per kategori menggunakan data yang sudah difilter
+      const biayaPerKategori: { [key: string]: number } = {};
       filteredOperationalData.forEach(item => {
         const kategori = item.kategori || 'Lainnya';
         biayaPerKategori[kategori] = (biayaPerKategori[kategori] || 0) + (item.nominal || 0);
