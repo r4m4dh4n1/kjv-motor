@@ -360,11 +360,19 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           selectColumns += ', is_retroactive, original_month';
         }
         
+        // Untuk menangani original_month, kita ambil data dengan range yang lebih luas
+        // dan filter di aplikasi untuk akurasi yang lebih baik
         let operationalQuery = supabase
           .from(operationalTable as any)
-          .select(selectColumns)
-          .gte('tanggal', startDate)
-          .lte('tanggal', endDate);
+          .select(selectColumns);
+          
+        // Untuk periode custom, tambahkan filter tanggal dasar
+        // Data dengan original_month akan difilter di aplikasi
+        if (selectedPeriod === 'custom') {
+          operationalQuery = operationalQuery
+            .gte('tanggal', startDate)
+            .lte('tanggal', endDate);
+        }
   
         if (selectedDivision !== 'all') {
           operationalQuery = operationalQuery.eq('divisi', selectedDivision);
@@ -423,9 +431,27 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       console.log(`Fetched ${operationalData.length} operational records before filtering`);
       
       // Filter data berdasarkan periode untuk memastikan akurasi
+      // Gunakan original_month jika ada, atau tanggal jika kosong
       const filteredOperationalData = operationalData.filter(item => {
-        const itemDate = new Date(item.tanggal);
-        const itemDateWIB = new Date(itemDate.getTime() + (7 * 60 * 60 * 1000));
+        // Tentukan tanggal yang akan digunakan untuk filtering
+        let dateToUse: Date;
+        
+        if (item.original_month && item.original_month.trim() !== '') {
+          // Jika original_month ada, gunakan original_month
+          // Format original_month: YYYY-MM-DD atau YYYY-MM
+          if (item.original_month.length === 7) {
+            // Format YYYY-MM, tambahkan -01
+            dateToUse = new Date(item.original_month + '-01');
+          } else {
+            // Format YYYY-MM-DD
+            dateToUse = new Date(item.original_month);
+          }
+        } else {
+          // Jika original_month kosong, gunakan tanggal
+          dateToUse = new Date(item.tanggal);
+        }
+        
+        const itemDateWIB = new Date(dateToUse.getTime() + (7 * 60 * 60 * 1000));
         const currentDate = new Date();
         const currentDateWIB = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
         
@@ -436,6 +462,9 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           const lastMonthDate = new Date(currentDateWIB.getFullYear(), currentDateWIB.getMonth() - 1, 1);
           return itemDateWIB.getMonth() === lastMonthDate.getMonth() && 
                  itemDateWIB.getFullYear() === lastMonthDate.getFullYear();
+        } else if (selectedPeriod === 'custom') {
+          // Untuk periode custom, filter berdasarkan range tanggal yang dipilih
+          return dateToUse >= dateRange.start && dateToUse <= dateRange.end;
         }
         return true; // Untuk periode lain, gunakan filter database
       });
@@ -443,14 +472,19 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       console.log(`📊 After date filtering: ${filteredOperationalData.length} operational records`);
       
       console.log(`📊 After date filtering: ${filteredOperationalData.length} operational records`);
-      console.log('📅 Sample operational dates:', filteredOperationalData.slice(0, 5).map(item => ({
-        tanggal: item.tanggal,
-        tanggalLocal: new Date(item.tanggal).toLocaleDateString('id-ID'),
-        kategori: item.kategori,
-        nominal: item.nominal,
-        is_retroactive: item.is_retroactive,
-        original_month: item.original_month
-      })));
+      console.log('📅 Sample operational dates:', filteredOperationalData.slice(0, 5).map(item => {
+        const hasOriginalMonth = item.original_month && item.original_month.trim() !== '';
+        const dateUsed = hasOriginalMonth ? item.original_month : item.tanggal;
+        return {
+          tanggal: item.tanggal,
+          original_month: item.original_month,
+          dateUsedForFiltering: dateUsed,
+          usingOriginalMonth: hasOriginalMonth,
+          kategori: item.kategori,
+          nominal: item.nominal,
+          is_retroactive: item.is_retroactive
+        };
+      }));
   
       // Hitung biaya per kategori menggunakan data yang sudah difilter
       const biayaPerKategori: { [key: string]: number } = {};
