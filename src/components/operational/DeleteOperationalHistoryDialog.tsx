@@ -128,22 +128,84 @@ const DeleteOperationalHistoryDialog = ({
 
     setDeletingId(recordId);
     try {
-      const { error } = await supabase
+      console.log('Attempting to delete record with ID:', recordId);
+      
+      // First, verify the record exists
+      const { data: existingRecord, error: checkError } = await supabase
+        .from('operational_history')
+        .select('id')
+        .eq('id', recordId)
+        .single();
+
+      if (checkError) {
+        console.error('Error checking record existence:', checkError);
+        throw new Error('Record tidak ditemukan');
+      }
+
+      console.log('Record found, proceeding with deletion:', existingRecord);
+
+      // Delete the record
+      const { error, data } = await supabase
         .from('operational_history')
         .delete()
-        .eq('id', recordId);
+        .eq('id', recordId)
+        .select();
 
       if (error) {
         console.error('Delete error:', error);
         throw error;
       }
 
-      // Remove the deleted record from the results
-      setSearchResults(prev => prev.filter(record => record.id !== recordId));
+      console.log('Delete operation completed, deleted data:', data);
+
+      // Verify deletion by checking if record still exists
+      const { data: verifyRecord, error: verifyError } = await supabase
+        .from('operational_history')
+        .select('id')
+        .eq('id', recordId)
+        .maybeSingle();
+
+      if (verifyError) {
+        console.error('Error verifying deletion:', verifyError);
+      } else if (verifyRecord) {
+        console.warn('Record still exists after deletion attempt:', verifyRecord);
+        throw new Error('Record gagal dihapus dari database');
+      } else {
+        console.log('Deletion verified: record no longer exists in database');
+      }
+
+      // Refresh data by performing search again to ensure UI is up-to-date
+      console.log('Refreshing data after successful deletion...');
+      
+      // Re-run the search to get updated results from database
+      let refreshQuery = supabase
+        .from('operational_history')
+        .select('*')
+        .eq('divisi', selectedDivision)
+        .order('created_at', { ascending: false });
+
+      if (searchFilters.month && searchFilters.month !== 'all') {
+        refreshQuery = refreshQuery.eq('closed_month', parseInt(searchFilters.month));
+      }
+      
+      if (searchFilters.year && searchFilters.year !== 'all') {
+        refreshQuery = refreshQuery.eq('closed_year', parseInt(searchFilters.year));
+      }
+
+      const { data: refreshedData, error: refreshError } = await refreshQuery;
+
+      if (refreshError) {
+        console.error('Error refreshing data:', refreshError);
+        // Fallback to local state update if refresh fails
+        setSearchResults(prev => prev.filter(record => record.id !== recordId));
+      } else {
+        console.log('Data refreshed successfully, new count:', refreshedData?.length || 0);
+        setSearchResults(refreshedData || []);
+      }
 
       toast({
         title: "Berhasil",
-        description: "Record berhasil dihapus",
+        description: "Record berhasil dihapus dari database",
       });
 
       // Call onSuccess callback if provided
