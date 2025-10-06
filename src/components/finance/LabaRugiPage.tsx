@@ -452,11 +452,38 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       // Gabungkan semua kategori khusus yang harus menggunakan original_month
       const specialCategories = [...kurangModalCategories, ...kurangProfitCategories];
       
+      // Periksa kategori spesifik yang disebutkan user
+      const expectedCategories = [
+        'Gaji Kurang Profit',
+        'Bonus Kurang Profit', 
+        'Ops Bulanan Kurang Profit',
+        'Gaji Kurang Modal',
+        'Bonus Kurang Modal',
+        'Ops Bulanan Kurang Modal'
+      ];
+      
       // Log kategori yang ditemukan
       console.log('📋 All categories found in data:', allCategories);
       console.log('📋 Kurang Modal categories detected:', kurangModalCategories);
       console.log('📋 Kurang Profit categories detected:', kurangProfitCategories);
       console.log('📋 All special categories (using original_month):', specialCategories);
+      
+      console.log('🔍 Checking for expected categories:');
+      expectedCategories.forEach(expectedCat => {
+        const found = allCategories.find(cat => cat.includes(expectedCat));
+        const dataCount = operationalData.filter(item => item.kategori && item.kategori.includes(expectedCat)).length;
+        console.log(`   "${expectedCat}": ${found ? 'FOUND' : 'NOT FOUND'} (${dataCount} records)`);
+        
+        if (dataCount > 0) {
+          const sampleData = operationalData.filter(item => item.kategori && item.kategori.includes(expectedCat)).slice(0, 2);
+          console.log(`     Sample data:`, sampleData.map(item => ({
+            kategori: item.kategori,
+            tanggal: item.tanggal,
+            original_month: item.original_month,
+            nominal: item.nominal
+          })));
+        }
+      });
       
       // Log data per kategori sebelum filtering
       specialCategories.forEach(kategori => {
@@ -565,25 +592,38 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                          itemDateWIB.getFullYear() === lastMonthDate.getFullYear();
           
           // Log detail untuk last_month
-          console.log(`📅 Last month filtering:`, {
-            kategori: item.kategori,
-            lastMonthDate: lastMonthDate.toISOString(),
-            lastMonthMonth: lastMonthDate.getMonth(),
-            lastMonthYear: lastMonthDate.getFullYear(),
-            itemMonth: itemDateWIB.getMonth(),
-            itemYear: itemDateWIB.getFullYear(),
-            shouldInclude
-          });
+          const isExpectedCategory = expectedCategories.some(cat => item.kategori && item.kategori.includes(cat));
+          if (isExpectedCategory) {
+            console.log(`🔍 EXPECTED CATEGORY Last month filtering:`, {
+              kategori: item.kategori,
+              tanggal: item.tanggal,
+              original_month: item.original_month,
+              dateToUse: dateToUse.toISOString(),
+              lastMonthDate: lastMonthDate.toISOString(),
+              lastMonthMonth: lastMonthDate.getMonth(),
+              lastMonthYear: lastMonthDate.getFullYear(),
+              itemMonth: itemDateWIB.getMonth(),
+              itemYear: itemDateWIB.getFullYear(),
+              shouldInclude,
+              nominal: item.nominal
+            });
+          }
         } else if (selectedPeriod === 'this_year') {
           shouldInclude = itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
           
           // Log detail untuk this_year
-          console.log(`📅 This year filtering:`, {
-            kategori: item.kategori,
-            itemYear: itemDateWIB.getFullYear(),
-            currentYear: currentDateWIB.getFullYear(),
-            shouldInclude
-          });
+          if (isExpectedCategory) {
+            console.log(`🔍 EXPECTED CATEGORY This year filtering:`, {
+              kategori: item.kategori,
+              tanggal: item.tanggal,
+              original_month: item.original_month,
+              dateToUse: dateToUse.toISOString(),
+              itemYear: itemDateWIB.getFullYear(),
+              currentYear: currentDateWIB.getFullYear(),
+              shouldInclude,
+              nominal: item.nominal
+            });
+          }
         } else if (selectedPeriod === 'last_year') {
           shouldInclude = itemDateWIB.getFullYear() === (currentDateWIB.getFullYear() - 1);
         } else if (selectedPeriod === 'custom' && customStartDate && customEndDate) {
@@ -653,6 +693,32 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         if (withoutOriginalMonth.length > 0) {
           console.log(`   ⚠️ Skipped items (no original_month):`, withoutOriginalMonth.map(item => ({
             tanggal: item.tanggal,
+            nominal: item.nominal
+          })));
+        }
+      });
+      
+      // Ringkasan khusus untuk kategori yang disebutkan user
+      console.log('🎯 SUMMARY for expected categories after filtering:');
+      expectedCategories.forEach(expectedCat => {
+        const beforeFilter = operationalData.filter(item => item.kategori && item.kategori.includes(expectedCat));
+        const afterFilter = filteredOperationalData.filter(item => item.kategori && item.kategori.includes(expectedCat));
+        const withOriginalMonth = beforeFilter.filter(item => item.original_month);
+        const withoutOriginalMonth = beforeFilter.filter(item => !item.original_month);
+        
+        console.log(`   "${expectedCat}":`, {
+          beforeFilter: beforeFilter.length,
+          afterFilter: afterFilter.length,
+          withOriginalMonth: withOriginalMonth.length,
+          withoutOriginalMonth: withoutOriginalMonth.length,
+          period: selectedPeriod,
+          totalNominal: afterFilter.reduce((sum, item) => sum + (item.nominal || 0), 0)
+        });
+        
+        if (beforeFilter.length > 0 && afterFilter.length === 0) {
+          console.log(`     ❌ NO DATA AFTER FILTERING - Check dates:`, beforeFilter.map(item => ({
+            tanggal: item.tanggal,
+            original_month: item.original_month,
             nominal: item.nominal
           })));
         }
