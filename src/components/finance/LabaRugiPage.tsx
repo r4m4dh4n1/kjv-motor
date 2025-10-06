@@ -373,7 +373,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           .from(operationalTable as any)
           .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month')
           .eq('is_retroactive', true)
-          .ilike('kategori', '%gaji%modal%')
+          .or('kategori.ilike.%gaji kurang modal%,kategori.ilike.%gaji%kurang%modal%,kategori.ilike.%salary reducing capital%')
           .gte('original_month', startDate.substring(0, 7)) // YYYY-MM format
           .lte('original_month', endDate.substring(0, 7));
 
@@ -385,6 +385,10 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           retroactiveQuery = retroactiveQuery.eq('cabang_id', parseInt(selectedCabang));
         }
 
+        console.log('🔍 Executing operational queries...');
+        console.log('📅 Date range:', { startDate, endDate });
+        console.log('🏢 Filters:', { selectedDivision, selectedCabang, operationalTable });
+
         const [normalResult, retroactiveResult] = await Promise.all([
           operationalQuery,
           retroactiveQuery
@@ -392,6 +396,13 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
 
         const { data, error } = normalResult;
         const { data: retroactiveData, error: retroactiveError } = retroactiveResult;
+        
+        console.log('📊 Query results:', {
+          normalData: data?.length || 0,
+          retroactiveData: retroactiveData?.length || 0,
+          normalError: error,
+          retroactiveError: retroactiveError
+        });
         
         if (error || retroactiveError) {
           console.error(`Error fetching ${operationalTable} data:`, { error, retroactiveError });
@@ -417,7 +428,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
               .from('operational')
               .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month')
               .eq('is_retroactive', true)
-              .ilike('kategori', '%gaji%modal%')
+              .or('kategori.ilike.%gaji kurang modal%,kategori.ilike.%gaji%kurang%modal%,kategori.ilike.%salary reducing capital%')
               .gte('original_month', startDate.substring(0, 7))
               .lte('original_month', endDate.substring(0, 7));
 
@@ -453,7 +464,12 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       // Filter data berdasarkan periode untuk memastikan akurasi
       const filteredOperationalData = operationalData.filter(item => {
         // Untuk data retroaktif "Gaji Kurang Modal", gunakan original_month
-        if (item.is_retroactive && item.kategori && item.kategori.toLowerCase().includes('gaji') && item.kategori.toLowerCase().includes('modal') && item.original_month) {
+        const isGajiKurangModal = item.kategori && (
+          item.kategori.toLowerCase().includes('gaji kurang modal') ||
+          (item.kategori.toLowerCase().includes('gaji') && item.kategori.toLowerCase().includes('kurang') && item.kategori.toLowerCase().includes('modal')) ||
+          item.kategori.toLowerCase().includes('salary reducing capital')
+        );
+        if (item.is_retroactive && isGajiKurangModal && item.original_month) {
           const originalMonthDate = new Date(item.original_month + '-01');
           const originalMonthWIB = new Date(originalMonthDate.getTime() + (7 * 60 * 60 * 1000));
           const currentDate = new Date();
@@ -490,8 +506,22 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       console.log(`📊 After date filtering: ${filteredOperationalData.length} operational records`);
       
       // Separate logging for retroactive and normal data
-      const retroactiveItems = filteredOperationalData.filter(item => item.is_retroactive && item.kategori && item.kategori.toLowerCase().includes('gaji') && item.kategori.toLowerCase().includes('modal'));
-      const normalItems = filteredOperationalData.filter(item => !item.is_retroactive || !item.kategori || !item.kategori.toLowerCase().includes('gaji') || !item.kategori.toLowerCase().includes('modal'));
+      const retroactiveItems = filteredOperationalData.filter(item => {
+        const isGajiKurangModal = item.kategori && (
+          item.kategori.toLowerCase().includes('gaji kurang modal') ||
+          (item.kategori.toLowerCase().includes('gaji') && item.kategori.toLowerCase().includes('kurang') && item.kategori.toLowerCase().includes('modal')) ||
+          item.kategori.toLowerCase().includes('salary reducing capital')
+        );
+        return item.is_retroactive && isGajiKurangModal;
+      });
+      const normalItems = filteredOperationalData.filter(item => {
+        const isGajiKurangModal = item.kategori && (
+          item.kategori.toLowerCase().includes('gaji kurang modal') ||
+          (item.kategori.toLowerCase().includes('gaji') && item.kategori.toLowerCase().includes('kurang') && item.kategori.toLowerCase().includes('modal')) ||
+          item.kategori.toLowerCase().includes('salary reducing capital')
+        );
+        return !item.is_retroactive || !isGajiKurangModal;
+      });
       
       console.log(`📊 Breakdown: ${normalItems.length} normal + ${retroactiveItems.length} retroactive "Gaji Kurang Modal"`);
       
