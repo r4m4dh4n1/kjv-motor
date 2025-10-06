@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Trash2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +16,18 @@ interface DeleteOperationalHistoryDialogProps {
   trigger?: React.ReactNode;
 }
 
+interface OperationalHistoryRecord {
+  id: string;
+  divisi: string;
+  closed_month: number;
+  closed_year: number;
+  kategori: string;
+  deskripsi: string;
+  company_name: string;
+  nominal: number;
+  created_at: string;
+}
+
 const DeleteOperationalHistoryDialog = ({ 
   selectedDivision, 
   onSuccess,
@@ -22,6 +35,9 @@ const DeleteOperationalHistoryDialog = ({
 }: DeleteOperationalHistoryDialogProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<OperationalHistoryRecord[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [searchFilters, setSearchFilters] = useState({
     month: '',
     year: ''
@@ -63,11 +79,12 @@ const DeleteOperationalHistoryDialog = ({
 
     setLoading(true);
     try {
-      // Simple search for operational_history records
+      // Search for operational_history records
       let query = supabase
         .from('operational_history')
         .select('*')
-        .eq('divisi', selectedDivision);
+        .eq('divisi', selectedDivision)
+        .order('created_at', { ascending: false });
 
       if (searchFilters.month && searchFilters.month !== 'all') {
         query = query.eq('closed_month', parseInt(searchFilters.month));
@@ -83,6 +100,9 @@ const DeleteOperationalHistoryDialog = ({
         console.error('Search error:', error);
         throw error;
       }
+
+      setSearchResults(data || []);
+      setShowResults(true);
 
       toast({
         title: "Pencarian Selesai",
@@ -101,6 +121,75 @@ const DeleteOperationalHistoryDialog = ({
     }
   };
 
+  const handleDeleteRecord = async (recordId: string) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus record ini?')) {
+      return;
+    }
+
+    setDeletingId(recordId);
+    try {
+      const { error } = await supabase
+        .from('operational_history')
+        .delete()
+        .eq('id', recordId);
+
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
+
+      // Remove the deleted record from the results
+      setSearchResults(prev => prev.filter(record => record.id !== recordId));
+
+      toast({
+        title: "Berhasil",
+        description: "Record berhasil dihapus",
+      });
+
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
+
+    } catch (error: any) {
+      console.error('Error deleting record:', error);
+      toast({
+        title: "Error",
+        description: `Gagal menghapus record: ${error?.message || 'Unknown error'}`,
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getMonthName = (monthNumber: number) => {
+    const monthNames = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    return monthNames[monthNumber - 1] || monthNumber.toString();
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -111,7 +200,7 @@ const DeleteOperationalHistoryDialog = ({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Trash2 className="h-5 w-5" />
@@ -191,11 +280,80 @@ const DeleteOperationalHistoryDialog = ({
             </Button>
           </div>
 
-          {/* Info */}
-          <div className="text-sm text-gray-600 text-center">
-            <p>Fitur ini sedang dalam pengembangan.</p>
-            <p>Saat ini hanya menampilkan jumlah record yang ditemukan.</p>
-          </div>
+          {/* Search Results Table */}
+          {showResults && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">
+                  Hasil Pencarian ({searchResults.length} record)
+                </h3>
+                {searchResults.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowResults(false)}
+                  >
+                    Sembunyikan Hasil
+                  </Button>
+                )}
+              </div>
+
+              {searchResults.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  Tidak ada data ditemukan untuk kriteria pencarian yang dipilih.
+                </div>
+              ) : (
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Periode</TableHead>
+                        <TableHead>Kategori</TableHead>
+                        <TableHead>Deskripsi</TableHead>
+                        <TableHead>Company</TableHead>
+                        <TableHead>Nominal</TableHead>
+                        <TableHead>Tanggal Dibuat</TableHead>
+                        <TableHead className="text-center">Aksi</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {searchResults.map((record) => (
+                        <TableRow key={record.id}>
+                          <TableCell>
+                            {getMonthName(record.closed_month)} {record.closed_year}
+                          </TableCell>
+                          <TableCell>{record.kategori}</TableCell>
+                          <TableCell className="max-w-xs truncate" title={record.deskripsi}>
+                            {record.deskripsi}
+                          </TableCell>
+                          <TableCell>{record.company_name}</TableCell>
+                          <TableCell>{formatCurrency(record.nominal)}</TableCell>
+                          <TableCell>{formatDate(record.created_at)}</TableCell>
+                          <TableCell className="text-center">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteRecord(record.id)}
+                              disabled={deletingId === record.id}
+                            >
+                              {deletingId === record.id ? (
+                                "Menghapus..."
+                              ) : (
+                                <>
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  Hapus
+                                </>
+                              )}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
