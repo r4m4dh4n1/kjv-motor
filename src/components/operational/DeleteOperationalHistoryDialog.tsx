@@ -69,11 +69,11 @@ const DeleteOperationalHistoryDialog = ({
         .select('*')
         .eq('divisi', selectedDivision);
 
-      if (searchFilters.month) {
+      if (searchFilters.month && searchFilters.month !== 'all') {
         query = query.eq('closed_month', parseInt(searchFilters.month));
       }
       
-      if (searchFilters.year) {
+      if (searchFilters.year && searchFilters.year !== 'all') {
         query = query.eq('closed_year', parseInt(searchFilters.year));
       }
 
@@ -150,7 +150,7 @@ const DeleteOperationalHistoryDialog = ({
                   <SelectValue placeholder="Pilih bulan" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Semua Bulan</SelectItem>
+                  <SelectItem value="all">Semua Bulan</SelectItem>
                   {months.map((month) => (
                     <SelectItem key={month.value} value={month.value}>
                       {month.label}
@@ -169,7 +169,7 @@ const DeleteOperationalHistoryDialog = ({
                   <SelectValue placeholder="Pilih tahun" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Semua Tahun</SelectItem>
+                  <SelectItem value="all">Semua Tahun</SelectItem>
                   {years.map((year) => (
                     <SelectItem key={year.value} value={year.value}>
                       {year.label}
