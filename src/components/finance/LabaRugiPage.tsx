@@ -544,17 +544,18 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         let filteringMethod;
         
         if (isSpecialCategory) {
-          // Untuk kategori khusus (Kurang Modal & Kurang Profit), WAJIB gunakan original_month jika ada
+          // Untuk kategori khusus (Kurang Modal & Kurang Profit), prioritas original_month, fallback ke tanggal
           if (item.original_month) {
             dateToUse = new Date(item.original_month);
             filteringMethod = 'original_month';
           } else {
-            // Jika tidak ada original_month, skip item ini untuk kategori khusus
-            console.log(`⚠️ Skipping "${kategori}" item without original_month:`, {
+            // Fallback ke tanggal jika tidak ada original_month
+            dateToUse = new Date(item.tanggal);
+            filteringMethod = 'tanggal_fallback';
+            console.log(`📅 Using tanggal fallback for special category "${kategori}":`, {
               tanggal: item.tanggal,
               nominal: item.nominal
             });
-            return false;
           }
         } else {
           // Untuk kategori standar, gunakan tanggal
