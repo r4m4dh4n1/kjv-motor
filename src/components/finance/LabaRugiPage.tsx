@@ -434,20 +434,31 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         cabang_id: item.cabang_id
       })));
       
-      // Definisi kategori "Kurang Modal"
+      // Definisi kategori "Kurang Modal" dan "Kurang Profit"
       const kurangModalCategories = [
         'Gaji Kurang Modal',
         'Bonus Kurang Modal', 
         'Ops Bulanan Kurang Modal'
       ];
       
+      const kurangProfitCategories = [
+        'Gaji Kurang Profit',
+        'Bonus Kurang Profit',
+        'Ops Bulanan Kurang Profit'
+      ];
+      
+      // Gabungkan semua kategori khusus yang harus menggunakan original_month
+      const specialCategories = [...kurangModalCategories, ...kurangProfitCategories];
+      
       // Log kategori yang ditemukan
       const foundCategories = [...new Set(operationalData.map(item => item.kategori))];
       console.log('📋 All categories found in data:', foundCategories);
       console.log('📋 Kurang Modal categories to filter:', kurangModalCategories);
+      console.log('📋 Kurang Profit categories to filter:', kurangProfitCategories);
+      console.log('📋 All special categories (using original_month):', specialCategories);
       
       // Log data per kategori sebelum filtering
-      kurangModalCategories.forEach(kategori => {
+      specialCategories.forEach(kategori => {
         const itemsInCategory = operationalData.filter(item => item.kategori === kategori);
         console.log(`📊 Category "${kategori}": ${itemsInCategory.length} records before filtering`);
         if (itemsInCategory.length > 0) {
@@ -468,19 +479,19 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       // Filter data berdasarkan periode dengan logika berbeda untuk setiap kategori
       const filteredOperationalData = operationalData.filter(item => {
         const kategori = item.kategori || '';
-        const isKurangModal = kurangModalCategories.includes(kategori);
+        const isSpecialCategory = specialCategories.includes(kategori);
         
         // Tentukan tanggal yang akan digunakan untuk filtering
         let dateToUse;
         let filteringMethod;
         
-        if (isKurangModal) {
-          // Untuk kategori "Kurang Modal", WAJIB gunakan original_month jika ada
+        if (isSpecialCategory) {
+          // Untuk kategori khusus (Kurang Modal & Kurang Profit), WAJIB gunakan original_month jika ada
           if (item.original_month) {
             dateToUse = new Date(item.original_month);
             filteringMethod = 'original_month';
           } else {
-            // Jika tidak ada original_month, skip item ini untuk kategori Kurang Modal
+            // Jika tidak ada original_month, skip item ini untuk kategori khusus
             console.log(`⚠️ Skipping "${kategori}" item without original_month:`, {
               tanggal: item.tanggal,
               nominal: item.nominal
@@ -521,8 +532,8 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           shouldInclude = true; // Untuk periode lain, gunakan filter database
         }
         
-        // Log detail filtering untuk kategori Kurang Modal
-        if (isKurangModal) {
+        // Log detail filtering untuk kategori khusus
+        if (isSpecialCategory) {
           console.log(`🔍 Filtering "${kategori}":`, {
             tanggal: item.tanggal,
             original_month: item.original_month,
@@ -543,17 +554,17 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       
       // Log breakdown by category type
       const standardCategories = filteredOperationalData.filter(item => 
-        !kurangModalCategories.includes(item.kategori || '')
+        !specialCategories.includes(item.kategori || '')
       );
-      const kurangModalData = filteredOperationalData.filter(item => 
-        kurangModalCategories.includes(item.kategori || '')
+      const specialCategoryData = filteredOperationalData.filter(item => 
+        specialCategories.includes(item.kategori || '')
       );
       
       console.log(`📊 Standard categories (using tanggal): ${standardCategories.length} records`);
-      console.log(`📊 Kurang Modal categories (using original_month): ${kurangModalData.length} records`);
+      console.log(`📊 Special categories (using original_month): ${specialCategoryData.length} records`);
       
-      // Log detail untuk setiap kategori Kurang Modal
-      kurangModalCategories.forEach(kategori => {
+      // Log detail untuk setiap kategori khusus
+      specialCategories.forEach(kategori => {
         const beforeFilter = operationalData.filter(item => item.kategori === kategori);
         const afterFilter = filteredOperationalData.filter(item => item.kategori === kategori);
         const withOriginalMonth = beforeFilter.filter(item => item.original_month);
@@ -582,26 +593,26 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           })));
         }
       });
-
+      
       console.log('📅 Sample operational data with filtering logic:', filteredOperationalData.slice(0, 10).map(item => {
-        const isKurangModal = kurangModalCategories.includes(item.kategori || '');
-        const dateUsed = isKurangModal && item.original_month ? item.original_month : item.tanggal;
+        const isSpecialCategory = specialCategories.includes(item.kategori || '');
+        const dateUsed = isSpecialCategory && item.original_month ? item.original_month : item.tanggal;
         return {
           kategori: item.kategori,
           tanggal: item.tanggal,
           original_month: item.original_month,
           dateUsedForFiltering: dateUsed,
-          filteringMethod: isKurangModal && item.original_month ? 'original_month' : 'tanggal',
+          filteringMethod: isSpecialCategory && item.original_month ? 'original_month' : 'tanggal',
           nominal: item.nominal,
           is_retroactive: item.is_retroactive
         };
       }));
       
-      // Log khusus untuk kategori Kurang Modal
-      const kurangModalFiltered = filteredOperationalData.filter(item => 
-        kurangModalCategories.includes(item.kategori || '')
+      // Log khusus untuk kategori khusus
+      const specialFiltered = filteredOperationalData.filter(item => 
+        specialCategories.includes(item.kategori || '')
       );
-      console.log('🔍 Kurang Modal data after filtering:', kurangModalFiltered.map(item => ({
+      console.log('🔍 Special categories data after filtering:', specialFiltered.map(item => ({
         kategori: item.kategori,
         tanggal: item.tanggal,
         original_month: item.original_month,
