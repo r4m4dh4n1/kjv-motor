@@ -436,26 +436,24 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           nominal: item.nominal
         });
         
-        // Untuk periode "this_month", gunakan tanggal aktual transaksi (bukan original_month)
-        // karena original_month digunakan untuk data retroaktif
-        if (selectedPeriod === 'this_month') {
-          dateToUse = new Date(item.tanggal);
-          console.log('📅 Using tanggal for this_month:', item.tanggal, '-> dateToUse:', dateToUse.toLocaleDateString('id-ID'));
-        } else if (item.original_month && item.original_month.trim() !== '') {
-          // Untuk periode lain, gunakan original_month jika ada
+        // Untuk semua periode termasuk "this_month", cek original_month dulu
+        // Jika original_month ada isinya, gunakan original_month
+        // Jika kosong, baru gunakan tanggal
+        if (item.original_month && item.original_month.trim() !== '') {
+          // Gunakan original_month jika ada
           // Format original_month: YYYY-MM-DD atau YYYY-MM
           if (item.original_month.length === 7) {
-            // Format YYYY-MM, tambahkan -01
-            dateToUse = new Date(item.original_month + '-01');
+            // Format YYYY-MM, tambahkan hari pertama
+            dateToUse = new Date(item.original_month + '-01T00:00:00+07:00');
           } else {
             // Format YYYY-MM-DD
-            dateToUse = new Date(item.original_month);
+            dateToUse = new Date(item.original_month + 'T00:00:00+07:00');
           }
           console.log('📅 Using original_month:', item.original_month, '-> dateToUse:', dateToUse.toLocaleDateString('id-ID'));
         } else {
           // Jika original_month kosong, gunakan tanggal
-          dateToUse = new Date(item.tanggal);
-          console.log('📅 Using tanggal as fallback:', item.tanggal, '-> dateToUse:', dateToUse.toLocaleDateString('id-ID'));
+          dateToUse = new Date(item.tanggal + 'T00:00:00+07:00');
+          console.log('📅 Using tanggal (original_month empty):', item.tanggal, '-> dateToUse:', dateToUse.toLocaleDateString('id-ID'));
         }
         
         const itemDateWIB = new Date(dateToUse.getTime() + (7 * 60 * 60 * 1000));
