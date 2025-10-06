@@ -129,22 +129,8 @@ const DeleteOperationalHistoryDialog = ({
     setDeletingId(recordId);
     try {
       console.log('Attempting to delete record with ID:', recordId);
-      
-      // First, verify the record exists
-      const { data: existingRecord, error: checkError } = await supabase
-        .from('operational_history')
-        .select('id')
-        .eq('id', recordId)
-        .single();
 
-      if (checkError) {
-        console.error('Error checking record existence:', checkError);
-        throw new Error('Record tidak ditemukan');
-      }
-
-      console.log('Record found, proceeding with deletion:', existingRecord);
-
-      // Delete the record
+      // Delete the record directly
       const { error, data } = await supabase
         .from('operational_history')
         .delete()
@@ -158,21 +144,13 @@ const DeleteOperationalHistoryDialog = ({
 
       console.log('Delete operation completed, deleted data:', data);
 
-      // Verify deletion by checking if record still exists
-      const { data: verifyRecord, error: verifyError } = await supabase
-        .from('operational_history')
-        .select('id')
-        .eq('id', recordId)
-        .maybeSingle();
-
-      if (verifyError) {
-        console.error('Error verifying deletion:', verifyError);
-      } else if (verifyRecord) {
-        console.warn('Record still exists after deletion attempt:', verifyRecord);
-        throw new Error('Record gagal dihapus dari database');
-      } else {
-        console.log('Deletion verified: record no longer exists in database');
+      // Check if any records were actually deleted
+      if (!data || data.length === 0) {
+        console.warn('No records were deleted - record may not exist');
+        throw new Error('Record tidak ditemukan atau sudah dihapus');
       }
+
+      console.log('Deletion successful:', data.length, 'record(s) deleted');
 
       // Refresh data by performing search again to ensure UI is up-to-date
       console.log('Refreshing data after successful deletion...');

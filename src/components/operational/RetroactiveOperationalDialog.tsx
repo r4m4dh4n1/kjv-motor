@@ -197,7 +197,7 @@ const RetroactiveOperationalDialog = ({
       const { data: operationalData, error: operationalError } = await supabase
         .from('operational')
         .insert({
-          tanggal: formattedTransactionDate,
+          tanggal: isModalReducingCategory ? formattedTargetDate : formattedTransactionDate, // Modal-reducing menggunakan target date
           original_month: formattedTargetDate,
           divisi: selectedDivision === 'all' ? companies.find(c => c.id.toString() === formData.company_id)?.divisi || 'sport' : selectedDivision,
           kategori: formData.category,
@@ -212,12 +212,12 @@ const RetroactiveOperationalDialog = ({
 
       if (operationalError) throw operationalError;
 
-      // ✅ KURANG MODAL: Catat di pembukuan sesuai TANGGAL INPUT TRANSAKSI (bukan target month)
+      // ✅ KURANG MODAL: Catat di pembukuan sesuai BULAN TARGET (untuk laporan laba rugi)
       if (isModalReducingCategory) {
         const { error: pembukuanError } = await supabase
           .from('pembukuan')
           .insert({
-            tanggal: formattedTransactionDate, // ✅ Menggunakan tanggal input transaksi
+            tanggal: formattedTargetDate, // ✅ Menggunakan bulan target untuk laporan laba rugi
             divisi: selectedDivision === 'all' ? companies.find(c => c.id.toString() === formData.company_id)?.divisi || 'sport' : selectedDivision,
             keterangan: `${formData.category} - ${formData.description}${descriptionSuffix}`,
             debit: formData.nominal,
