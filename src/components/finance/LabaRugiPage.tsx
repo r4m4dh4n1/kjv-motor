@@ -78,6 +78,10 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
 
   // Gunakan penjualans_combined untuk periode tertentu
   const shouldUseCombined = ['this_month', 'last_month', 'this_year'].includes(selectedPeriod);
+  
+  // CATATAN: operational_combined tidak memiliki field original_month yang diperlukan
+  // untuk special categories, jadi kita selalu gunakan tabel operational biasa
+  const shouldUseOperationalCombined = false; // Disabled karena tidak ada original_month
 
   useEffect(() => {
     fetchInitialData();
@@ -344,41 +348,68 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       const endDate = dateRange.end.toISOString();
   
       // Gunakan tabel yang sesuai berdasarkan periode
-      const operationalTable = shouldUseCombined ? 'operational_combined' : 'operational';
-  
-      console.log('Using operational table:', { operationalTable, shouldUseCombined });
+      const operationalTable = shouldUseOperationalCombined ? 'operational_combined' : 'operational';
+
+      console.log('Using operational table:', { operationalTable, shouldUseOperationalCombined });
   
       // Query operational dengan penanganan error yang lebih baik
       let operationalData: any[] = [];
       
       try {
-        // Query dengan kolom yang sesuai untuk setiap tabel
-        let selectColumns = 'kategori, nominal, deskripsi, tanggal, divisi, cabang_id';
+        let data: any[] = [];
+        let error: any = null;
         
-        // Tambahkan kolom khusus hanya jika menggunakan tabel operational biasa
         if (operationalTable === 'operational') {
-          selectColumns += ', is_retroactive, original_month';
-        }
-        
-        let operationalQuery = supabase
-          .from(operationalTable as any)
-          .select(selectColumns)
-          .gte('tanggal', startDate)
-          .lte('tanggal', endDate);
-  
-        if (selectedDivision !== 'all') {
-          operationalQuery = operationalQuery.eq('divisi', selectedDivision);
-        }
-  
-        if (selectedCabang !== 'all') {
-          operationalQuery = operationalQuery.eq('cabang_id', parseInt(selectedCabang));
+          // Query tabel operational biasa dengan semua kolom
+          let operationalQuery = supabase
+            .from('operational')
+            .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month')
+            .gte('tanggal', startDate)
+            .lte('tanggal', endDate);
+
+          if (selectedDivision !== 'all') {
+            operationalQuery = operationalQuery.eq('divisi', selectedDivision);
+          }
+          
+          if (selectedCabang !== 'all') {
+            operationalQuery = operationalQuery.eq('cabang_id', parseInt(selectedCabang));
+          }
+
+          const result = await operationalQuery;
+          data = result.data || [];
+          error = result.error;
+          
+        } else {
+          // Karena operational_combined tidak memiliki field original_month,
+          // kita perlu menggunakan pendekatan yang berbeda
+          console.log('⚠️ operational_combined tidak memiliki field original_month');
+          console.log('🔄 Menggunakan fallback ke tabel operational untuk periode ini');
+          
+          // Fallback ke tabel operational untuk memastikan special categories termasuk
+          let operationalQuery = supabase
+            .from('operational')
+            .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month')
+            .gte('tanggal', startDate)
+            .lte('tanggal', endDate);
+
+          if (selectedDivision !== 'all') {
+            operationalQuery = operationalQuery.eq('divisi', selectedDivision);
+          }
+          
+          if (selectedCabang !== 'all') {
+            operationalQuery = operationalQuery.eq('cabang_id', parseInt(selectedCabang));
+          }
+
+          const result = await operationalQuery;
+          data = result.data || [];
+          error = result.error;
+          
+          console.log('📊 Fallback to operational table completed');
         }
 
-        console.log('🔍 Executing simplified operational query...');
+        console.log('🔍 Executing enhanced operational query...');
         console.log('📅 Date range:', { startDate, endDate });
         console.log('🏢 Filters:', { selectedDivision, selectedCabang, operationalTable });
-
-        const { data, error } = await operationalQuery;
         
         console.log('📊 Query results:', {
           data: data?.length || 0,
