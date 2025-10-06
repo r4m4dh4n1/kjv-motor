@@ -429,21 +429,19 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         // Tentukan tanggal yang akan digunakan untuk filtering
         let dateToUse: Date;
         
-        console.log('🔍 Filtering item:', {
-          tanggal: item.tanggal,
-          original_month: item.original_month,
-          kategori: item.kategori,
-          nominal: item.nominal
-        });
-        
-        a  M-DD
+        if (item.original_month && item.original_month.trim() !== '') {
+          // Jika original_month ada, gunakan original_month
+          // Format original_month: YYYY-MM-DD atau YYYY-MM
+          if (item.original_month.length === 7) {
+            // Format YYYY-MM, tambahkan -01
+            dateToUse = new Date(item.original_month + '-01');
+          } else {
+            // Format YYYY-MM-DD
             dateToUse = new Date(item.original_month);
           }
-Ji a o  ginal_mcnthsadllog('📅 Using original_mtem.original_month, '-> dateToUse:', dateToUse.toLocaleDateString('id-ID'));
         } else {
           // Jika original_month kosong, gunakan tanggal
           dateToUse = new Date(item.tanggal);
-          console.log('📅 Using tanggal:', item.tanggal, '-> dateToUse:', dateToUse.toLocaleDateString('id-ID'));
         }
         
         const itemDateWIB = new Date(dateToUse.getTime() + (7 * 60 * 60 * 1000));
@@ -451,20 +449,8 @@ Ji a o  ginal_mcnthsadllog('📅 Using original_mtem.original_month, '-> dateToU
         const currentDateWIB = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
         
         if (selectedPeriod === 'this_month') {
-          const itemMonth = iWBMonth();
-          const itemYear = itemDateWIB.getFullYear();
-          const currentMonth = currentDateWIB.getMonth();
-          const currentYear = currentDateWIB.getFullYear();
-          
-          console.log('🗓️ Month comparison:', {
-            itemMonth: itemMonth + 1,
-            itemYear,
-            currentMonth: currentMonth + 1,
-            currentYear,
-            matches: itemMonth === currentMonth && itemYear === currentYear
-          });
-          
-          return itemMonth === currentMonth && itemYear === currentYear;
+          return itemDateWIB.getMonth() === currentDateWIB.getMonth() && 
+                 itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
         } else if (selectedPeriod === 'last_month') {
           const lastMonthDate = new Date(currentDateWIB.getFullYear(), currentDateWIB.getMonth() - 1, 1);
           return itemDateWIB.getMonth() === lastMonthDate.getMonth() && 
