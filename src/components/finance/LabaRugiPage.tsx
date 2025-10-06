@@ -352,11 +352,17 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       let operationalData: any[] = [];
       
       try {
-        // Query untuk data non-retroaktif (menggunakan tanggal biasa)
+        // Query dengan kolom yang sesuai untuk setiap tabel
+        let selectColumns = 'kategori, nominal, deskripsi, tanggal, divisi, cabang_id';
+        
+        // Tambahkan kolom khusus hanya jika menggunakan tabel operational biasa
+        if (operationalTable === 'operational') {
+          selectColumns += ', is_retroactive, original_month';
+        }
+        
         let operationalQuery = supabase
           .from(operationalTable as any)
-          .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month')
-          .or(`is_retroactive.is.null,is_retroactive.eq.false`)
+          .select(selectColumns)
           .gte('tanggal', startDate)
           .lte('tanggal', endDate);
   
@@ -368,51 +374,25 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           operationalQuery = operationalQuery.eq('cabang_id', parseInt(selectedCabang));
         }
 
-        // Query untuk data retroaktif "Gaji Kurang Modal" (menggunakan original_month)
-        let retroactiveQuery = supabase
-          .from(operationalTable as any)
-          .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month')
-          .eq('is_retroactive', true)
-          .or('kategori.ilike.%gaji kurang modal%,kategori.ilike.%gaji%kurang%modal%,kategori.ilike.%salary reducing capital%')
-          .gte('original_month', startDate.substring(0, 7)) // YYYY-MM format
-          .lte('original_month', endDate.substring(0, 7));
-
-        if (selectedDivision !== 'all') {
-          retroactiveQuery = retroactiveQuery.eq('divisi', selectedDivision);
-        }
-
-        if (selectedCabang !== 'all') {
-          retroactiveQuery = retroactiveQuery.eq('cabang_id', parseInt(selectedCabang));
-        }
-
-        console.log('🔍 Executing operational queries...');
+        console.log('🔍 Executing simplified operational query...');
         console.log('📅 Date range:', { startDate, endDate });
         console.log('🏢 Filters:', { selectedDivision, selectedCabang, operationalTable });
 
-        const [normalResult, retroactiveResult] = await Promise.all([
-          operationalQuery,
-          retroactiveQuery
-        ]);
-
-        const { data, error } = normalResult;
-        const { data: retroactiveData, error: retroactiveError } = retroactiveResult;
+        const { data, error } = await operationalQuery;
         
         console.log('📊 Query results:', {
-          normalData: data?.length || 0,
-          retroactiveData: retroactiveData?.length || 0,
-          normalError: error,
-          retroactiveError: retroactiveError
+          data: data?.length || 0,
+          error: error
         });
         
-        if (error || retroactiveError) {
-          console.error(`Error fetching ${operationalTable} data:`, { error, retroactiveError });
+        if (error) {
+          console.error(`Error fetching ${operationalTable} data:`, error);
           // Jika error, coba fallback ke tabel operational biasa
           if (operationalTable === 'operational_combined') {
             console.log('Fallback to operational table');
             const fallbackQuery = supabase
               .from('operational')
               .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month')
-              .or(`is_retroactive.is.null,is_retroactive.eq.false`)
               .gte('tanggal', startDate)
               .lte('tanggal', endDate);
               
@@ -423,36 +403,17 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             if (selectedCabang !== 'all') {
               fallbackQuery.eq('cabang_id', parseInt(selectedCabang));
             }
-
-            const fallbackRetroactiveQuery = supabase
-              .from('operational')
-              .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month')
-              .eq('is_retroactive', true)
-              .or('kategori.ilike.%gaji kurang modal%,kategori.ilike.%gaji%kurang%modal%,kategori.ilike.%salary reducing capital%')
-              .gte('original_month', startDate.substring(0, 7))
-              .lte('original_month', endDate.substring(0, 7));
-
-            if (selectedDivision !== 'all') {
-              fallbackRetroactiveQuery.eq('divisi', selectedDivision);
-            }
             
-            if (selectedCabang !== 'all') {
-              fallbackRetroactiveQuery.eq('cabang_id', parseInt(selectedCabang));
-            }
+            const { data: fallbackData, error: fallbackError } = await fallbackQuery;
             
-            const [fallbackNormal, fallbackRetroactive] = await Promise.all([
-              fallbackQuery,
-              fallbackRetroactiveQuery
-            ]);
-            
-            if (!fallbackNormal.error && !fallbackRetroactive.error) {
-              operationalData = [...(fallbackNormal.data || []), ...(fallbackRetroactive.data || [])];
+            if (!fallbackError) {
+              operationalData = fallbackData || [];
             }
           }
         } else {
-          // Gabungkan data normal dan retroaktif
-          operationalData = [...(data || []), ...(retroactiveData || [])];
-          console.log(`📊 Combined operational data: ${data?.length || 0} normal + ${retroactiveData?.length || 0} retroactive = ${operationalData.length} total`);
+          // Gunakan data yang berhasil diambil
+          operationalData = data || [];
+          console.log(`📊 Operational data loaded: ${operationalData.length} records`);
         }
       } catch (err) {
         console.error('Error in operational query:', err);
@@ -463,30 +424,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       
       // Filter data berdasarkan periode untuk memastikan akurasi
       const filteredOperationalData = operationalData.filter(item => {
-        // Untuk data retroaktif "Gaji Kurang Modal", gunakan original_month
-        const isGajiKurangModal = item.kategori && (
-          item.kategori.toLowerCase().includes('gaji kurang modal') ||
-          (item.kategori.toLowerCase().includes('gaji') && item.kategori.toLowerCase().includes('kurang') && item.kategori.toLowerCase().includes('modal')) ||
-          item.kategori.toLowerCase().includes('salary reducing capital')
-        );
-        if (item.is_retroactive && isGajiKurangModal && item.original_month) {
-          const originalMonthDate = new Date(item.original_month + '-01');
-          const originalMonthWIB = new Date(originalMonthDate.getTime() + (7 * 60 * 60 * 1000));
-          const currentDate = new Date();
-          const currentDateWIB = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
-          
-          if (selectedPeriod === 'this_month') {
-            return originalMonthWIB.getMonth() === currentDateWIB.getMonth() && 
-                   originalMonthWIB.getFullYear() === currentDateWIB.getFullYear();
-          } else if (selectedPeriod === 'last_month') {
-            const lastMonthDate = new Date(currentDateWIB.getFullYear(), currentDateWIB.getMonth() - 1, 1);
-            return originalMonthWIB.getMonth() === lastMonthDate.getMonth() && 
-                   originalMonthWIB.getFullYear() === lastMonthDate.getFullYear();
-          }
-          return true; // Untuk periode lain, sudah difilter di database
-        }
-        
-        // Untuk data normal, gunakan tanggal biasa
         const itemDate = new Date(item.tanggal);
         const itemDateWIB = new Date(itemDate.getTime() + (7 * 60 * 60 * 1000));
         const currentDate = new Date();
@@ -505,42 +442,14 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       
       console.log(`📊 After date filtering: ${filteredOperationalData.length} operational records`);
       
-      // Separate logging for retroactive and normal data
-      const retroactiveItems = filteredOperationalData.filter(item => {
-        const isGajiKurangModal = item.kategori && (
-          item.kategori.toLowerCase().includes('gaji kurang modal') ||
-          (item.kategori.toLowerCase().includes('gaji') && item.kategori.toLowerCase().includes('kurang') && item.kategori.toLowerCase().includes('modal')) ||
-          item.kategori.toLowerCase().includes('salary reducing capital')
-        );
-        return item.is_retroactive && isGajiKurangModal;
-      });
-      const normalItems = filteredOperationalData.filter(item => {
-        const isGajiKurangModal = item.kategori && (
-          item.kategori.toLowerCase().includes('gaji kurang modal') ||
-          (item.kategori.toLowerCase().includes('gaji') && item.kategori.toLowerCase().includes('kurang') && item.kategori.toLowerCase().includes('modal')) ||
-          item.kategori.toLowerCase().includes('salary reducing capital')
-        );
-        return !item.is_retroactive || !isGajiKurangModal;
-      });
-      
-      console.log(`📊 Breakdown: ${normalItems.length} normal + ${retroactiveItems.length} retroactive "Gaji Kurang Modal"`);
-      
-      console.log('📅 Sample normal operational dates:', normalItems.slice(0, 3).map(item => ({
+      console.log(`📊 After date filtering: ${filteredOperationalData.length} operational records`);
+      console.log('📅 Sample operational dates:', filteredOperationalData.slice(0, 5).map(item => ({
         tanggal: item.tanggal,
         tanggalLocal: new Date(item.tanggal).toLocaleDateString('id-ID'),
         kategori: item.kategori,
         nominal: item.nominal,
-        is_retroactive: item.is_retroactive
-      })));
-      
-      console.log('📅 Sample retroactive "Gaji Kurang Modal" dates:', retroactiveItems.slice(0, 3).map(item => ({
-        tanggal: item.tanggal,
-        tanggalLocal: new Date(item.tanggal).toLocaleDateString('id-ID'),
-        original_month: item.original_month,
-        originalMonthLocal: item.original_month ? new Date(item.original_month + '-01').toLocaleDateString('id-ID') : 'N/A',
-        kategori: item.kategori,
-        nominal: item.nominal,
-        is_retroactive: item.is_retroactive
+        is_retroactive: item.is_retroactive,
+        original_month: item.original_month
       })));
   
       // Hitung biaya per kategori menggunakan data yang sudah difilter

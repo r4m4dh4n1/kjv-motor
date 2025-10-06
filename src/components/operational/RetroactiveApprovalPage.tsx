@@ -176,7 +176,8 @@ const RetroactiveApprovalPage = ({ selectedDivision }: RetroactiveApprovalPagePr
           divisi: item.divisi,
           status: 'active',
           is_retroactive: true,
-          retroactive_id: item.id
+          retroactive_id: item.id,
+          original_month: `${item.original_month}-01` // Use proper DATE format (YYYY-MM-DD)
         })
         .select()
         .single();

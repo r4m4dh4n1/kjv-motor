@@ -268,6 +268,7 @@ export function RetroactiveOperationalDialogSimple({
           divisi: formData.divisi,
           is_retroactive: true,
           retroactive_id: retroactiveData.id,
+          original_month: dateForDatabase, // Use proper DATE format (YYYY-MM-DD)
         });
 
       if (operationalError) throw operationalError;
