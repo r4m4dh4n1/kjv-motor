@@ -133,7 +133,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           startLocal: dateRange.start.toLocaleDateString('id-ID'),
           endLocal: dateRange.end.toLocaleDateString('id-ID')
         },
-        shouldUseCombined,
+
         currentDate: new Date().toLocaleDateString('id-ID')
       });
       
@@ -172,7 +172,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
     console.log('📊 Fetching pendapatan data:', { 
       startDate, 
       endDate, 
-      shouldUseCombined, 
       selectedPeriod,
       startLocal: dateRange.start.toLocaleDateString('id-ID'),
       endLocal: dateRange.end.toLocaleDateString('id-ID')
@@ -347,7 +346,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       // operational_combined tidak memiliki kolom original_month yang diperlukan untuk retroactive data
       const operationalTable = 'operational';
   
-      console.log('Using operational table:', { operationalTable, shouldUseCombined });
+      console.log('Using operational table:', { operationalTable });
   
       // Query operational dengan penanganan error yang lebih baik
       let operationalData: any[] = [];
