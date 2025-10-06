@@ -544,18 +544,17 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         let filteringMethod;
         
         if (isSpecialCategory) {
-          // Untuk kategori khusus (Kurang Modal & Kurang Profit), prioritas original_month, fallback ke tanggal
+          // Untuk kategori khusus (Kurang Modal & Kurang Profit), WAJIB gunakan original_month jika ada
           if (item.original_month) {
             dateToUse = new Date(item.original_month);
             filteringMethod = 'original_month';
           } else {
-            // Fallback ke tanggal jika tidak ada original_month
-            dateToUse = new Date(item.tanggal);
-            filteringMethod = 'tanggal_fallback';
-            console.log(`📅 Using tanggal fallback for special category "${kategori}":`, {
+            // Jika tidak ada original_month, skip item ini untuk kategori khusus
+            console.log(`⚠️ Skipping "${kategori}" item without original_month:`, {
               tanggal: item.tanggal,
               nominal: item.nominal
             });
+            return false;
           }
         } else {
           // Untuk kategori standar, gunakan tanggal
@@ -699,61 +698,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         }
       });
       
-      // Ringkasan khusus untuk kategori yang disebutkan user
-      console.log('🎯 SUMMARY for expected categories after filtering:');
-      expectedCategories.forEach(expectedCat => {
-        const beforeFilter = operationalData.filter(item => item.kategori && item.kategori.includes(expectedCat));
-        const afterFilter = filteredOperationalData.filter(item => item.kategori && item.kategori.includes(expectedCat));
-        const withOriginalMonth = beforeFilter.filter(item => item.original_month);
-        const withoutOriginalMonth = beforeFilter.filter(item => !item.original_month);
-        
-        console.log(`   "${expectedCat}":`, {
-          beforeFilter: beforeFilter.length,
-          afterFilter: afterFilter.length,
-          withOriginalMonth: withOriginalMonth.length,
-          withoutOriginalMonth: withoutOriginalMonth.length,
-          period: selectedPeriod,
-          totalNominal: afterFilter.reduce((sum, item) => sum + (item.nominal || 0), 0)
-        });
-        
-        if (beforeFilter.length > 0 && afterFilter.length === 0) {
-          console.log(`     ❌ NO DATA AFTER FILTERING - Check dates:`, beforeFilter.map(item => ({
-            tanggal: item.tanggal,
-            original_month: item.original_month,
-            nominal: item.nominal
-          })));
-        }
-      });
-      
-      console.log('📅 Sample operational data with filtering logic:', filteredOperationalData.slice(0, 10).map(item => {
-        const isSpecialCategory = specialCategories.includes(item.kategori || '');
-        const dateUsed = isSpecialCategory && item.original_month ? item.original_month : item.tanggal;
-        return {
-          kategori: item.kategori,
-          tanggal: item.tanggal,
-          original_month: item.original_month,
-          dateUsedForFiltering: dateUsed,
-          filteringMethod: isSpecialCategory && item.original_month ? 'original_month' : 'tanggal',
-          nominal: item.nominal,
-          is_retroactive: item.is_retroactive
-        };
-      }));
-      
-      // Log khusus untuk kategori khusus
-      const specialFiltered = filteredOperationalData.filter(item => 
-        specialCategories.includes(item.kategori || '')
-      );
-      console.log('🔍 Special categories data after filtering:', specialFiltered.map(item => ({
-        kategori: item.kategori,
-        tanggal: item.tanggal,
-        original_month: item.original_month,
-        nominal: item.nominal,
-        dateUsedForFiltering: item.original_month || item.tanggal,
-        selectedPeriod: selectedPeriod
-      })));
-  
-      // Hitung biaya per kategori menggunakan data yang sudah difilter
-      const biayaPerKategori: { [key: string]: number } = {};
+      [key: string]: number } = {};
       filteredOperationalData.forEach(item => {
         const kategori = item.kategori || 'Lainnya';
         biayaPerKategori[kategori] = (biayaPerKategori[kategori] || 0) + (item.nominal || 0);
