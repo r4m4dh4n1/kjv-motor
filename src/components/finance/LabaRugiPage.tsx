@@ -362,9 +362,9 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           .from(operationalTable as any)
           .select(selectColumns);
           
-        // Untuk periode custom, tambahkan filter tanggal dasar
-        // Data dengan original_month akan difilter di aplikasi
-        if (selectedPeriod === 'custom') {
+        // Tambahkan filter tanggal dasar untuk semua periode kecuali yang memerlukan range lebih luas
+        // Data dengan original_month akan difilter lebih lanjut di aplikasi
+        if (selectedPeriod === 'custom' || selectedPeriod === 'this_month' || selectedPeriod === 'last_month' || selectedPeriod === 'this_year') {
           operationalQuery = operationalQuery
             .gte('tanggal', startDate)
             .lte('tanggal', endDate);
@@ -396,6 +396,25 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           // Gunakan data yang berhasil diambil
           operationalData = data || [];
           console.log(`📊 Operational data loaded: ${operationalData.length} records`);
+          
+          console.log(`🗃️ Raw operational data from database: ${operationalData?.length || 0} records`);
+        console.log('📋 Sample raw operational data:', operationalData?.slice(0, 3).map(item => ({
+          tanggal: item.tanggal,
+          original_month: item.original_month,
+          kategori: item.kategori,
+          nominal: item.nominal,
+          is_retroactive: item.is_retroactive
+        })));
+        
+        // Log semua data operasional untuk debugging
+        console.log('🔍 ALL operational data for debugging:', operationalData?.map(item => ({
+          tanggal: item.tanggal,
+          original_month: item.original_month,
+          kategori: item.kategori,
+          nominal: item.nominal,
+          is_retroactive: item.is_retroactive,
+          divisi: item.divisi
+        })));
         }
       } catch (err) {
         console.error('Error in operational query:', err);
@@ -410,6 +429,13 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         // Tentukan tanggal yang akan digunakan untuk filtering
         let dateToUse: Date;
         
+        console.log('🔍 Filtering item:', {
+          tanggal: item.tanggal,
+          original_month: item.original_month,
+          kategori: item.kategori,
+          nominal: item.nominal
+        });
+        
         if (item.original_month && item.original_month.trim() !== '') {
           // Jika original_month ada, gunakan original_month
           // Format original_month: YYYY-MM-DD atau YYYY-MM
@@ -420,9 +446,11 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             // Format YYYY-MM-DD
             dateToUse = new Date(item.original_month);
           }
+          console.log('📅 Using original_month:', item.original_month, '-> dateToUse:', dateToUse.toLocaleDateString('id-ID'));
         } else {
           // Jika original_month kosong, gunakan tanggal
           dateToUse = new Date(item.tanggal);
+          console.log('📅 Using tanggal:', item.tanggal, '-> dateToUse:', dateToUse.toLocaleDateString('id-ID'));
         }
         
         const itemDateWIB = new Date(dateToUse.getTime() + (7 * 60 * 60 * 1000));
@@ -430,8 +458,20 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         const currentDateWIB = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
         
         if (selectedPeriod === 'this_month') {
-          return itemDateWIB.getMonth() === currentDateWIB.getMonth() && 
-                 itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
+          const itemMonth = itemDateWIB.getMonth();
+          const itemYear = itemDateWIB.getFullYear();
+          const currentMonth = currentDateWIB.getMonth();
+          const currentYear = currentDateWIB.getFullYear();
+          
+          console.log('🗓️ Month comparison:', {
+            itemMonth: itemMonth + 1,
+            itemYear,
+            currentMonth: currentMonth + 1,
+            currentYear,
+            matches: itemMonth === currentMonth && itemYear === currentYear
+          });
+          
+          return itemMonth === currentMonth && itemYear === currentYear;
         } else if (selectedPeriod === 'last_month') {
           const lastMonthDate = new Date(currentDateWIB.getFullYear(), currentDateWIB.getMonth() - 1, 1);
           return itemDateWIB.getMonth() === lastMonthDate.getMonth() && 
@@ -442,8 +482,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         }
         return true; // Untuk periode lain, gunakan filter database
       });
-      
-      console.log(`📊 After date filtering: ${filteredOperationalData.length} operational records`);
       
       console.log(`📊 After date filtering: ${filteredOperationalData.length} operational records`);
       console.log('📅 Sample operational dates:', filteredOperationalData.slice(0, 5).map(item => {
@@ -459,6 +497,15 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           is_retroactive: item.is_retroactive
         };
       }));
+      
+      console.log('🔍 Current period and date info:', {
+        selectedPeriod,
+        currentDate: new Date().toLocaleDateString('id-ID'),
+        currentMonth: new Date().getMonth() + 1,
+        currentYear: new Date().getFullYear(),
+        dateRangeStart: dateRange.start.toLocaleDateString('id-ID'),
+        dateRangeEnd: dateRange.end.toLocaleDateString('id-ID')
+      });
   
       // Hitung biaya per kategori menggunakan data yang sudah difilter
       const biayaPerKategori: { [key: string]: number } = {};
