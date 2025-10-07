@@ -1,72 +1,62 @@
--- Update operational_combined view to include original_month field (FIXED VERSION)
--- This fixes the issue where special categories can't be filtered properly for historical periods
+-- MIGRATION: Create operational_combined view (Simplified Version)
+-- Jalankan script ini di Supabase SQL Editor
 
--- Check if columns exist in operational table
+-- Step 1: Drop view jika sudah ada (untuk memastikan clean slate)
+DROP VIEW IF EXISTS operational_combined;
+
+-- Step 2: Create operational_combined view dengan UNION yang benar
+CREATE VIEW operational_combined AS
 SELECT 
-  table_name, 
-  column_name, 
-  data_type 
-FROM information_schema.columns 
-WHERE table_name = 'operational' 
-AND column_name IN ('is_retroactive', 'original_month');
-
--- Check if columns exist in operational_history table  
-SELECT 
-  table_name, 
-  column_name, 
-  data_type 
-FROM information_schema.columns 
-WHERE table_name = 'operational_history' 
-AND column_name IN ('is_retroactive', 'original_month');
-
--- Drop existing view
-DROP VIEW IF EXISTS public.operational_combined;
-
--- Create updated view with only available columns
--- operational table has: is_retroactive, original_month
--- operational_history table has: closed_month, closed_year, closed_at (but NOT is_retroactive, original_month)
-CREATE OR REPLACE VIEW public.operational_combined AS
-SELECT 
-  id, tanggal, divisi, kategori, deskripsi, nominal, cabang_id, company_id,
-  created_at, updated_at,
-  'active' as data_source,
-  NULL as closed_month,
-  NULL as closed_year,
-  NULL as closed_at,
-  COALESCE(is_retroactive, false) as is_retroactive,
-  original_month
+    id,
+    kategori,
+    nominal,
+    deskripsi,
+    tanggal,
+    divisi,
+    cabang_id,
+    is_retroactive,
+    original_month,
+    'operational' as data_source
 FROM operational
+
 UNION ALL
+
 SELECT 
-  id, tanggal, divisi, kategori, deskripsi, nominal, cabang_id, company_id,
-  created_at, updated_at,
-  'history' as data_source,
-  closed_month,
-  closed_year,
-  closed_at,
-  false as is_retroactive,  -- Default to false since column doesn't exist in history
-  NULL as original_month    -- Default to NULL since column doesn't exist in history
+    id,
+    kategori,
+    nominal,
+    deskripsi,
+    tanggal,
+    divisi,
+    cabang_id,
+    false as is_retroactive,  -- Default untuk operational_history
+    NULL as original_month,   -- Default untuk operational_history
+    'operational_history' as data_source
 FROM operational_history;
 
--- Grant access to authenticated users
-GRANT SELECT ON public.operational_combined TO authenticated;
-GRANT SELECT ON public.operational_combined TO anon;
+-- Step 3: Grant permissions
+GRANT SELECT ON operational_combined TO authenticated;
+GRANT SELECT ON operational_combined TO anon;
 
--- Note: RLS policies cannot be applied to views, only to tables
--- The underlying tables (operational and operational_history) already have their own RLS policies
--- Views inherit security from their underlying tables
-
--- Add comment to document the change
-COMMENT ON VIEW public.operational_combined IS 'Combined view of operational and operational_history tables with original_month field for retroactive filtering (history records have NULL original_month)';
-
--- Test the view
+-- Step 4: Test query untuk memastikan view berfungsi
 SELECT 
-  data_source,
-  COUNT(*) as total_records,
-  COUNT(original_month) as records_with_original_month,
-  COUNT(CASE WHEN is_retroactive = true THEN 1 END) as retroactive_records
-FROM public.operational_combined 
-GROUP BY data_source;
+    data_source,
+    COUNT(*) as record_count,
+    MIN(tanggal) as earliest_date,
+    MAX(tanggal) as latest_date
+FROM operational_combined 
+GROUP BY data_source
+ORDER BY data_source;
 
--- Test query to verify the view works
-SELECT * FROM public.operational_combined LIMIT 5;
+-- Step 5: Test query untuk melihat sample data
+SELECT 
+    kategori,
+    nominal,
+    tanggal,
+    is_retroactive,
+    original_month,
+    data_source
+FROM operational_combined 
+WHERE tanggal >= '2024-01-01'
+ORDER BY tanggal DESC
+LIMIT 10;
