@@ -16,37 +16,22 @@ interface LabaRugiPageProps {
 }
 
 interface LabaRugiData {
-  // PENDAPATAN
   totalPenjualan: number;
   totalPendapatanLain: number;
   totalPendapatan: number;
-  
-  // HARGA POKOK PENJUALAN
   totalHargaBeli: number;
   totalBiayaPembelian: number;
   totalHPP: number;
-  
-  // LABA KOTOR
   labaKotor: number;
-  
-  // BIAYA OPERASIONAL
   totalBiayaOperasional: number;
   totalBiayaAdministrasi: number;
   totalBiayaPenjualan: number;
-  
-  // Breakdown per kategori
   biayaPerKategori: {
     [key: string]: number;
   };
-  
-  // LABA BERSIH
   labaBersih: number;
-  
-  // MARGIN
   marginKotor: number;
   marginBersih: number;
-  
-  // Detail data untuk dropdown
   penjualanDetail?: any[];
   operationalDetail?: any[];
 }
@@ -60,10 +45,8 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
   const [selectedCabang, setSelectedCabang] = useState('all');
   const [cabangList, setCabangList] = useState([]);
   
-  // State untuk dropdown detail
   const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({});
   
-  // State untuk menyimpan data detail
   const [detailData, setDetailData] = useState<{
     penjualanDetail: any[],
     operationalDetail: any[],
@@ -76,24 +59,21 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
     hargaBeliDetail: []
   });
 
-  // Gunakan penjualans_combined untuk periode tertentu
   const shouldUseCombined = ['this_month', 'last_month', 'this_year'].includes(selectedPeriod);
   
-  // ✅ PERBAIKAN: Update logika shouldUseOperationalCombined berdasarkan periode
   const shouldUseOperationalCombined = useMemo(() => {
-    const periodsRequiringCombined = ['last_month', 'this_year', 'last_year'];
+    const periodsRequiringCombined = ['this_month','last_month', 'this_year', 'last_year'];
     
     if (periodsRequiringCombined.includes(selectedPeriod)) {
       return true;
     }
     
     if (selectedPeriod === 'custom' && customStartDate && customEndDate) {
-      const currentDate = new Date(2025, 9, 30); // Oktober 2025 (month 9 = Oktober)
+      const currentDate = new Date(2025, 9, 30);
       const currentMonth = currentDate.getMonth();
       const currentYear = currentDate.getFullYear();
       const startDate = new Date(customStartDate);
       
-      // Gunakan combined jika tanggal mulai dari bulan/tahun sebelumnya
       return startDate.getMonth() < currentMonth || startDate.getFullYear() < currentYear;
     }
     
@@ -108,7 +88,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
     fetchLabaRugiData();
   }, [selectedPeriod, customStartDate, customEndDate, selectedDivision, selectedCabang]);
 
-  // Update expandedSections ketika labaRugiData berubah
   useEffect(() => {
     if (labaRugiData?.biayaPerKategori) {
       const newExpandedSections: {[key: string]: boolean} = {
@@ -118,7 +97,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         biayaPembelian: false,
       };
       
-      // Tambahkan state untuk setiap kategori biaya operasional
       Object.keys(labaRugiData.biayaPerKategori).forEach(kategori => {
         newExpandedSections[`biaya_${kategori}`] = false;
       });
@@ -145,8 +123,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
     try {
       const dateRange = getDateRange(selectedPeriod, customStartDate, customEndDate);
       
-      // Tambahkan logging untuk debugging
-      console.log('🔍 LabaRugi Debug Info:', {
+      console.log('?? LabaRugi Debug Info:', {
         selectedPeriod,
         dateRange: {
           start: dateRange.start.toISOString(),
@@ -166,7 +143,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       const calculatedData = calculateLabaRugi(pendapatanData, biayaData);
       setLabaRugiData(calculatedData);
       
-      // Set detail data untuk dropdown
       setDetailData({
         penjualanDetail: pendapatanData.penjualanDetail || [],
         operationalDetail: biayaData.operationalDetail || [],
@@ -190,7 +166,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
     const startDate = dateRange.start.toISOString();
     const endDate = dateRange.end.toISOString();
     
-    console.log('📊 Fetching pendapatan data:', { 
+    console.log('?? Fetching pendapatan data:', { 
       startDate, 
       endDate, 
       shouldUseCombined, 
@@ -201,7 +177,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
     
     try {
       if (shouldUseCombined) {
-        // Gunakan view penjualans_combined untuk periode tertentu
         let query = supabase
           .from('penjualans_combined')
           .select(`
@@ -238,15 +213,8 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         }
 
         const penjualanData = data || [];
-        console.log(`📈 Fetched ${penjualanData.length} combined penjualan records`);
-        console.log('📅 Sample dates from data:', penjualanData.slice(0, 5).map(item => ({
-          id: item.id,
-          tanggal: item.tanggal,
-          tanggalLocal: new Date(item.tanggal).toLocaleDateString('id-ID'),
-          dataSource: item.data_source
-        })));
+        console.log(`?? Fetched ${penjualanData.length} combined penjualan records`);
         
-        // Filter data yang benar-benar dalam rentang bulan ini
         const filteredData = penjualanData.filter(item => {
           const itemDate = new Date(item.tanggal);
           const itemDateWIB = new Date(itemDate.getTime() + (7 * 60 * 60 * 1000));
@@ -257,12 +225,11 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             return itemDateWIB.getMonth() === currentDateWIB.getMonth() && 
                    itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
           }
-          return true; // Untuk periode lain, gunakan filter database
+          return true;
         });
         
-        console.log(`📊 After date filtering: ${filteredData.length} records`);
+        console.log(`?? After date filtering: ${filteredData.length} records`);
         
-        // Fetch brand and jenis_motor data separately
         const brandIds = [...new Set(filteredData.map(item => item.brand_id).filter(Boolean))];
         const jenisIds = [...new Set(filteredData.map(item => item.jenis_id).filter(Boolean))];
         
@@ -274,7 +241,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         const brandMap = new Map((brandsResult.data || []).map(brand => [brand.id, brand]));
         const jenisMap = new Map((jenisMotorResult.data || []).map(jenis => [jenis.id, jenis]));
         
-        // Enrich the data with brand and jenis_motor information
         const enrichedData = filteredData.map(item => ({
           ...item,
           brands: brandMap.get(item.brand_id) || { name: `Brand ID: ${item.brand_id}` },
@@ -290,7 +256,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         };
         
       } else {
-        // Untuk periode lainnya, gunakan tabel penjualans biasa
         let query = supabase
           .from('penjualans')
           .select(`
@@ -326,7 +291,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       
         console.log(`Fetched ${penjualanData?.length || 0} penjualan records`);
         
-        // Fetch brand and jenis_motor data separately for regular penjualans
         const brandIds = [...new Set((penjualanData || []).map(item => item.brand_id).filter(Boolean))];
         const jenisIds = [...new Set((penjualanData || []).map(item => item.jenis_id).filter(Boolean))];
         
@@ -338,7 +302,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         const brandMap = new Map((brandsResult.data || []).map(brand => [brand.id, brand]));
         const jenisMap = new Map((jenisMotorResult.data || []).map(jenis => [jenis.id, jenis]));
         
-        // Enrich the data with brand and jenis_motor information
         const enrichedData = (penjualanData || []).map(item => ({
           ...item,
           brands: brandMap.get(item.brand_id) || { name: `Brand ID: ${item.brand_id}` },
@@ -364,12 +327,19 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       const startDate = dateRange.start.toISOString();
       const endDate = dateRange.end.toISOString();
   
-      // Gunakan tabel yang sesuai berdasarkan periode
       const operationalTable = shouldUseOperationalCombined ? 'operational_combined' : 'operational';
+      
+      // ? PERBAIKAN UTAMA: This Month pakai tanggal, Last Month & This Year pakai original_month
+      const shouldQueryByOriginalMonth = ['this_month','last_month', 'this_year'].includes(selectedPeriod);
 
-      console.log('Using operational table:', { operationalTable, shouldUseOperationalCombined });
+      console.log('?? Query Configuration:', { 
+        operationalTable, 
+        shouldUseOperationalCombined,
+        shouldQueryByOriginalMonth,
+        selectedPeriod,
+        queryField: shouldQueryByOriginalMonth ? 'original_month' : 'tanggal'
+      });
   
-      // Query operational dengan penanganan error yang lebih baik
       let operationalData: any[] = [];
       
       try {
@@ -377,12 +347,24 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         let error: any = null;
         
         if (operationalTable === 'operational') {
-          // Query tabel operational biasa dengan semua kolom
           let operationalQuery = supabase
             .from('operational')
-            .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month')
-            .gte('tanggal', startDate)
-            .lte('tanggal', endDate);
+            .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month');
+
+          // ? KUNCI: Query berdasarkan periode
+          if (shouldQueryByOriginalMonth) {
+            // Last Month & This Year ? Query pakai original_month
+            operationalQuery = operationalQuery
+              .gte('original_month', startDate)
+              .lte('original_month', endDate);
+            console.log('?? Query using: original_month');
+          } else {
+            // This Month ? Query pakai tanggal
+            operationalQuery = operationalQuery
+              .gte('tanggal', startDate)
+              .lte('tanggal', endDate);
+            console.log('?? Query using: tanggal');
+          }
 
           if (selectedDivision !== 'all') {
             operationalQuery = operationalQuery.eq('divisi', selectedDivision);
@@ -397,14 +379,26 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           error = result.error;
           
         } else {
-          // ✅ PERBAIKAN: Gunakan operational_combined yang sudah diupdate dengan original_month
-          console.log('📊 Using operational_combined with original_month field');
+          console.log('?? Using operational_combined');
           
           let operationalQuery = supabase
             .from('operational_combined')
-            .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month, data_source')
-            .gte('tanggal', startDate)
-            .lte('tanggal', endDate);
+            .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month, data_source');
+
+          // ? KUNCI: Query berdasarkan periode
+          if (shouldQueryByOriginalMonth) {
+            // Last Month & This Year ? Query pakai original_month
+            operationalQuery = operationalQuery
+              .gte('original_month', startDate)
+              .lte('original_month', endDate);
+            console.log('?? Query using: original_month');
+          } else {
+            // This Month ? Query pakai tanggal
+            operationalQuery = operationalQuery
+              .gte('tanggal', startDate)
+              .lte('tanggal', endDate);
+            console.log('?? Query using: tanggal');
+          }
 
           if (selectedDivision !== 'all') {
             operationalQuery = operationalQuery.eq('divisi', selectedDivision);
@@ -417,225 +411,110 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           const result = await operationalQuery;
           data = result.data || [];
           error = result.error;
-          
-          console.log('📊 operational_combined query completed');
         }
 
-        console.log('🔍 Executing enhanced operational query...');
-        console.log('📅 Date range:', { startDate, endDate });
-        console.log('🏢 Filters:', { selectedDivision, selectedCabang, operationalTable });
-        
-        console.log('📊 Query results:', {
-          data: data?.length || 0,
-          error: error
+        console.log('?? Query completed:', {
+          recordsFetched: data?.length || 0,
+          hasError: !!error
         });
         
         if (error) {
           console.error(`Error fetching ${operationalTable} data:`, error);
-          // Jika error, coba fallback ke tabel operational biasa
           if (operationalTable === 'operational_combined') {
-            console.log('Fallback to operational table');
-            const fallbackQuery = supabase
+            console.log('?? Fallback to operational table');
+            
+            let fallbackQuery = supabase
               .from('operational')
-              .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month')
-              .gte('tanggal', startDate)
-              .lte('tanggal', endDate);
+              .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month');
+            
+            // Fallback juga ikuti logika yang sama
+            if (shouldQueryByOriginalMonth) {
+              fallbackQuery = fallbackQuery
+                .gte('original_month', startDate)
+                .lte('original_month', endDate);
+            } else {
+              fallbackQuery = fallbackQuery
+                .gte('tanggal', startDate)
+                .lte('tanggal', endDate);
+            }
               
             if (selectedDivision !== 'all') {
-              fallbackQuery.eq('divisi', selectedDivision);
+              fallbackQuery = fallbackQuery.eq('divisi', selectedDivision);
             }
             
             if (selectedCabang !== 'all') {
-              fallbackQuery.eq('cabang_id', parseInt(selectedCabang));
+              fallbackQuery = fallbackQuery.eq('cabang_id', parseInt(selectedCabang));
             }
             
             const { data: fallbackData, error: fallbackError } = await fallbackQuery;
             
             if (!fallbackError) {
               operationalData = fallbackData || [];
+              console.log('? Fallback successful:', operationalData.length, 'records');
             }
           }
         } else {
-          // Gunakan data yang berhasil diambil
           operationalData = data || [];
-          console.log(`📊 Operational data loaded: ${operationalData.length} records`);
+          console.log(`?? Operational data loaded: ${operationalData.length} records`);
         }
       } catch (err) {
-        console.error('Error in operational query:', err);
+        console.error('? Error in operational query:', err);
         operationalData = [];
       }
   
-      console.log(`Fetched ${operationalData.length} operational records before filtering`);
+      console.log(`Fetched ${operationalData.length} operational records`);
       
-      // Log raw data sample untuk debugging
-      console.log('🔍 Raw operational data sample (first 5 records):', operationalData.slice(0, 5).map(item => ({
-        id: item.id,
+      console.log('?? Raw operational data sample (first 5 records):', operationalData.slice(0, 5).map(item => ({
         kategori: item.kategori,
         tanggal: item.tanggal,
         original_month: item.original_month,
-        nominal: item.nominal,
-        is_retroactive: item.is_retroactive,
-        divisi: item.divisi,
-        cabang_id: item.cabang_id
+        nominal: item.nominal
       })));
       
-      // Identifikasi kategori khusus berdasarkan kata kunci
       const allCategories = [...new Set(operationalData.map(item => item.kategori || ''))];
       
-      // Kategori yang mengandung "kurang modal" atau "mengurangi modal"
-      const kurangModalCategories = allCategories.filter(kategori => 
-        kategori.toLowerCase().includes('kurang modal') || 
-        kategori.toLowerCase().includes('mengurangi modal')
-      );
+      console.log('?? All categories found:', allCategories);
       
-      // Kategori yang mengandung "kurang profit" atau "mengurangi profit"  
-      const kurangProfitCategories = allCategories.filter(kategori => 
-        kategori.toLowerCase().includes('kurang profit') || 
-        kategori.toLowerCase().includes('mengurangi profit')
-      );
+      // ? PERBAIKAN UTAMA: Filter juga harus ikuti logika yang sama dengan query
+      const shouldUseOriginalMonthForFiltering = ['this_month','last_month', 'this_year'].includes(selectedPeriod);
       
-      // Gabungkan semua kategori khusus yang harus menggunakan original_month
-      const specialCategories = [...kurangModalCategories, ...kurangProfitCategories];
-      
-      // Log kategori yang ditemukan
-      console.log('📋 All categories found in data:', allCategories);
-      console.log('📋 Kurang Modal categories detected:', kurangModalCategories);
-      console.log('📋 Kurang Profit categories detected:', kurangProfitCategories);
-      console.log('📋 All special categories (using original_month):', specialCategories);
-      
-      // Periksa kategori spesifik yang disebutkan user
-      const expectedCategories = [
-        'Gaji Kurang Profit',
-        'Bonus Kurang Profit', 
-        'Ops Bulanan Kurang Profit',
-        'Gaji Kurang Modal',
-        'Bonus Kurang Modal',
-        'Ops Bulanan Kurang Modal'
-      ];
-      
-      console.log('🔍 Checking for expected categories:');
-      expectedCategories.forEach(expectedCat => {
-        const found = allCategories.find(cat => cat.includes(expectedCat));
-        const dataCount = operationalData.filter(item => item.kategori && item.kategori.includes(expectedCat)).length;
-        console.log(`   "${expectedCat}": ${found ? 'FOUND' : 'NOT FOUND'} (${dataCount} records)`);
-        
-        if (dataCount > 0) {
-          const sampleData = operationalData.filter(item => item.kategori && item.kategori.includes(expectedCat)).slice(0, 2);
-          console.log(`     Sample data:`, sampleData.map(item => ({
-            kategori: item.kategori,
-            tanggal: item.tanggal,
-            original_month: item.original_month,
-            nominal: item.nominal
-          })));
-        }
+      console.log(`??? Filtering Configuration:`, {
+        selectedPeriod,
+        shouldUseOriginalMonthForFiltering,
+        filterField: shouldUseOriginalMonthForFiltering ? 'original_month' : 'tanggal'
       });
       
-      // Log data per kategori sebelum filtering
-      specialCategories.forEach(kategori => {
-        const itemsInCategory = operationalData.filter(item => item.kategori === kategori);
-        console.log(`📊 Category "${kategori}": ${itemsInCategory.length} records before filtering`);
-        if (itemsInCategory.length > 0) {
-          console.log(`   Sample data:`, itemsInCategory.slice(0, 3).map(item => ({
-            tanggal: item.tanggal,
-            original_month: item.original_month,
-            nominal: item.nominal,
-            hasOriginalMonth: !!item.original_month
-          })));
-          
-          // Log khusus untuk periode yang bermasalah
-          if (selectedPeriod === 'last_month' || selectedPeriod === 'this_year') {
-            console.log(`   🔍 Detailed analysis for "${kategori}" in ${selectedPeriod}:`);
-            itemsInCategory.forEach((item, index) => {
-              const dateToUse = item.original_month ? new Date(item.original_month) : new Date(item.tanggal);
-              const itemDateWIB = new Date(dateToUse.getTime() + (7 * 60 * 60 * 1000));
-              const currentDate = new Date();
-              const currentDateWIB = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
-              
-              let shouldInclude = false;
-              if (selectedPeriod === 'last_month') {
-                const lastMonthDate = new Date(currentDateWIB.getFullYear(), currentDateWIB.getMonth() - 1, 1);
-                shouldInclude = itemDateWIB.getMonth() === lastMonthDate.getMonth() && 
-                               itemDateWIB.getFullYear() === lastMonthDate.getFullYear();
-              } else if (selectedPeriod === 'this_year') {
-                shouldInclude = itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
-              }
-              
-              console.log(`     Item ${index + 1}:`, {
-                tanggal: item.tanggal,
-                original_month: item.original_month,
-                dateUsed: dateToUse.toISOString(),
-                itemDateWIB: itemDateWIB.toISOString(),
-                currentDateWIB: currentDateWIB.toISOString(),
-                shouldInclude,
-                nominal: item.nominal
-              });
-            });
-          }
-        }
-      });
-      
-      console.log(`🗓️ Current filtering period: ${selectedPeriod}`);
-      if (selectedPeriod === 'custom') {
-        console.log(`🗓️ Custom date range: ${customStartDate} to ${customEndDate}`);
-      }
-      
-      // Filter data berdasarkan periode dengan logika berbeda untuk setiap kategori
       const filteredOperationalData = operationalData.filter(item => {
         const kategori = item.kategori || '';
-        const isSpecialCategory = specialCategories.includes(kategori);
+        const currentDate = new Date();
+        const currentDateWIB = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
         
-        if (isSpecialCategory) {
-          // Untuk kategori khusus (Kurang Modal & Kurang Profit), gunakan original_month untuk filtering periode
+        let dateToUse: Date;
+        let filteringMethod: string;
+        
+        if (shouldUseOriginalMonthForFiltering) {
+          // ? Last Month & This Year: WAJIB pakai original_month
           if (!item.original_month) {
-            console.log(`⚠️ Skipping special category "${kategori}" (no original_month):`, {
+            console.log(`?? Skipping "${kategori}" (no original_month):`, {
               tanggal: item.tanggal,
               nominal: item.nominal
             });
             return false;
           }
           
-          // Parse original_month (format: YYYY-MM)
-          const originalMonthDate = new Date(item.original_month + '-01');
-          const currentDate = new Date();
-          const currentDateWIB = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
-          
-          let shouldInclude = false;
-          
-          if (selectedPeriod === 'this_month') {
-            shouldInclude = originalMonthDate.getMonth() === currentDateWIB.getMonth() && 
-                           originalMonthDate.getFullYear() === currentDateWIB.getFullYear();
-          } else if (selectedPeriod === 'last_month') {
-            const lastMonthDate = new Date(currentDateWIB.getFullYear(), currentDateWIB.getMonth() - 1, 1);
-            shouldInclude = originalMonthDate.getMonth() === lastMonthDate.getMonth() && 
-                           originalMonthDate.getFullYear() === lastMonthDate.getFullYear();
-          } else if (selectedPeriod === 'this_year') {
-            shouldInclude = originalMonthDate.getFullYear() === currentDateWIB.getFullYear();
-          } else if (selectedPeriod === 'last_year') {
-            shouldInclude = originalMonthDate.getFullYear() === (currentDateWIB.getFullYear() - 1);
-          } else if (selectedPeriod === 'custom' && customStartDate && customEndDate) {
-            const startDate = new Date(customStartDate);
-            const endDate = new Date(customEndDate);
-            shouldInclude = originalMonthDate >= startDate && originalMonthDate <= endDate;
-          } else {
-            shouldInclude = true; // Untuk periode lain, gunakan filter database
+          let originalMonthStr = item.original_month;
+          if (originalMonthStr.length === 7) {
+            originalMonthStr += '-01';
           }
-          
-          console.log(`✅ Special category "${kategori}" filtering (using original_month):`, {
-            original_month: item.original_month,
-            selectedPeriod,
-            shouldInclude,
-            nominal: item.nominal
-          });
-          
-          return shouldInclude;
+          dateToUse = new Date(originalMonthStr);
+          filteringMethod = 'original_month';
+        } else {
+          // ? This Month: pakai tanggal
+          dateToUse = new Date(item.tanggal);
+          filteringMethod = 'tanggal';
         }
         
-        // Untuk kategori standar, terapkan filtering periode normal
-        const dateToUse = new Date(item.tanggal);
         const itemDateWIB = new Date(dateToUse.getTime() + (7 * 60 * 60 * 1000));
-        const currentDate = new Date();
-        const currentDateWIB = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
-        
         let shouldInclude = false;
         
         if (selectedPeriod === 'this_month') {
@@ -656,106 +535,55 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           const endDateWIB = new Date(endDate.getTime() + (7 * 60 * 60 * 1000));
           shouldInclude = itemDateWIB >= startDateWIB && itemDateWIB <= endDateWIB;
         } else {
-          shouldInclude = true; // Untuk periode lain, gunakan filter database
+          shouldInclude = true;
         }
         
-        console.log(`🗓️ Standard category "${kategori}" filtering:`, {
-          tanggal: item.tanggal,
-          selectedPeriod,
-          shouldInclude,
-          nominal: item.nominal
-        });
+        // Log sample untuk debugging
+        if (kategori.includes('Gaji Kurang Modal') && operationalData.indexOf(item) < 3) {
+          console.log(`?? "${kategori}" filtering (${filteringMethod}):`, {
+            tanggal: item.tanggal,
+            original_month: item.original_month,
+            dateUsed: dateToUse.toISOString().split('T')[0],
+            selectedPeriod,
+            shouldInclude,
+            nominal: item.nominal
+          });
+        }
         
         return shouldInclude;
       });
 
-      console.log(`📊 After date filtering: ${filteredOperationalData.length} operational records`);
+      console.log(`?? After filtering: ${filteredOperationalData.length} records`);
       
-      // Log breakdown by category type
-      const standardCategories = filteredOperationalData.filter(item => 
-        !specialCategories.includes(item.kategori || '')
+      const gajiKurangModal = filteredOperationalData.filter(item => 
+        item.kategori && item.kategori.includes('Gaji Kurang Modal')
       );
-      const specialCategoryData = filteredOperationalData.filter(item => 
-        specialCategories.includes(item.kategori || '')
-      );
-      
-      console.log(`📊 Standard categories (using tanggal): ${standardCategories.length} records`);
-      console.log(`📊 Special categories (using original_month): ${specialCategoryData.length} records`);
-      
-      // Log detail untuk setiap kategori khusus
-      specialCategories.forEach(kategori => {
-        const beforeFilter = operationalData.filter(item => item.kategori === kategori);
-        const afterFilter = filteredOperationalData.filter(item => item.kategori === kategori);
-        const withOriginalMonth = beforeFilter.filter(item => item.original_month);
-        const withoutOriginalMonth = beforeFilter.filter(item => !item.original_month);
-        
-        console.log(`📋 Category "${kategori}" filtering summary:`, {
-          totalBeforeFilter: beforeFilter.length,
-          totalAfterFilter: afterFilter.length,
-          withOriginalMonth: withOriginalMonth.length,
-          withoutOriginalMonth: withoutOriginalMonth.length,
-          selectedPeriod: selectedPeriod
-        });
-        
-        if (afterFilter.length > 0) {
-          console.log(`   ✅ Included items:`, afterFilter.map(item => ({
-            tanggal: item.tanggal,
-            original_month: item.original_month,
-            nominal: item.nominal
-          })));
-        }
-        
-        if (withoutOriginalMonth.length > 0) {
-          console.log(`   ⚠️ Skipped items (no original_month):`, withoutOriginalMonth.map(item => ({
-            tanggal: item.tanggal,
-            nominal: item.nominal
-          })));
-        }
-      });
-      
-      console.log('📅 Sample operational data with filtering logic:', filteredOperationalData.slice(0, 10).map(item => {
-        const isSpecialCategory = specialCategories.includes(item.kategori || '');
-        const dateUsed = isSpecialCategory && item.original_month ? item.original_month : item.tanggal;
-        return {
-          kategori: item.kategori,
+      console.log('? Gaji Kurang Modal included:', gajiKurangModal.length, 'records');
+      if (gajiKurangModal.length > 0) {
+        console.log('   Sample:', gajiKurangModal.slice(0, 3).map(item => ({
           tanggal: item.tanggal,
           original_month: item.original_month,
-          dateUsedForFiltering: dateUsed,
-          filteringMethod: isSpecialCategory && item.original_month ? 'original_month' : 'tanggal',
-          nominal: item.nominal,
-          is_retroactive: item.is_retroactive
-        };
-      }));
-      
-      // Log khusus untuk kategori khusus
-      const specialFiltered = filteredOperationalData.filter(item => 
-        specialCategories.includes(item.kategori || '')
-      );
-      console.log('🔍 Special categories data after filtering:', specialFiltered.map(item => ({
-        kategori: item.kategori,
-        tanggal: item.tanggal,
-        original_month: item.original_month,
-        nominal: item.nominal,
-        dateUsedForFiltering: item.original_month || item.tanggal,
-        selectedPeriod: selectedPeriod
-      })));
-  
-      // Hitung biaya per kategori menggunakan data yang sudah difilter
+          nominal: item.nominal
+        })));
+      }
+
       const biayaPerKategori: { [key: string]: number } = {};
       filteredOperationalData.forEach(item => {
         const kategori = item.kategori || 'Lainnya';
         biayaPerKategori[kategori] = (biayaPerKategori[kategori] || 0) + (item.nominal || 0);
       });
-  
+      
+      console.log('?? Biaya per kategori:', biayaPerKategori);
+
       const totalOperasional = Object.values(biayaPerKategori).reduce((sum, value) => sum + value, 0);
-  
+
       return {
         biayaPerKategori,
         totalBiayaOperasional: totalOperasional,
         operationalDetail: filteredOperationalData
       };
     } catch (error) {
-      console.error('Error in fetchBiayaData:', error);
+      console.error('? Error in fetchBiayaData:', error);
       return {
         biayaPerKategori: {},
         totalBiayaOperasional: 0,
@@ -769,41 +597,27 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
     const labaBersih = (pendapatanData.totalKeuntungan || 0) - totalBiayaOperasional;
     
     return {
-      // PENDAPATAN
       totalPenjualan: pendapatanData.totalPenjualan || 0,
-      totalPendapatanLain: 0, // Belum diimplementasi
+      totalPendapatanLain: 0,
       totalPendapatan: pendapatanData.totalPenjualan || 0,
-      
-      // HARGA POKOK PENJUALAN
       totalHargaBeli: pendapatanData.totalHargaBeli || 0,
-      totalBiayaPembelian: 0, // Belum diimplementasi
+      totalBiayaPembelian: 0,
       totalHPP: pendapatanData.totalHargaBeli || 0,
-      
-      // LABA KOTOR
       labaKotor: pendapatanData.totalKeuntungan || 0,
-      
-      // BIAYA OPERASIONAL
       totalBiayaOperasional,
-      totalBiayaAdministrasi: 0, // Bisa dipecah dari biayaPerKategori jika diperlukan
-      totalBiayaPenjualan: 0, // Bisa dipecah dari biayaPerKategori jika diperlukan
+      totalBiayaAdministrasi: 0,
+      totalBiayaPenjualan: 0,
       biayaPerKategori: biayaData.biayaPerKategori || {},
-      
-      // LABA BERSIH
       labaBersih,
-      
-      // MARGIN
       marginKotor: pendapatanData.totalPenjualan > 0 ? 
         ((pendapatanData.totalKeuntungan || 0) / pendapatanData.totalPenjualan) * 100 : 0,
       marginBersih: pendapatanData.totalPenjualan > 0 ? 
         (labaBersih / pendapatanData.totalPenjualan) * 100 : 0,
-        
-      // Detail data
       penjualanDetail: pendapatanData.penjualanDetail || [],
       operationalDetail: biayaData.operationalDetail || []
     };
   };
 
-  // Fungsi helper untuk mendapatkan detail biaya per kategori
   const getBiayaDetailByKategori = (kategori: string) => {
     return detailData.operationalDetail.filter(item => 
       (item.kategori || 'Lainnya') === kategori
@@ -822,7 +636,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
   };
 
   const handleExport = () => {
-    // Implementasi export ke Excel/PDF
     toast({
       title: "Export",
       description: "Fitur export akan segera tersedia",
@@ -839,7 +652,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Laporan Laba Rugi</h1>
@@ -859,7 +671,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         </div>
       </div>
 
-      {/* Filter Controls */}
       <Card>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -922,7 +733,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         </CardContent>
       </Card>
 
-      {/* Laporan Laba Rugi */}
       {labaRugiData && (
         <Card>
           <CardHeader>
@@ -931,7 +741,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           <CardContent>
             <Table>
               <TableBody>
-                {/* PENDAPATAN */}
                 <TableRow className="font-semibold bg-blue-50">
                   <TableCell colSpan={2} className="text-blue-700">PENDAPATAN</TableCell>
                 </TableRow>
@@ -950,7 +759,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                   </TableCell>
                 </TableRow>
                 
-                {/* Detail Penjualan */}
                 {expandedSections.penjualan && detailData.penjualanDetail.length > 0 && (
                   <TableRow>
                     <TableCell colSpan={2} className="pl-8">
@@ -1005,7 +813,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                   </TableCell>
                 </TableRow>
 
-                {/* HARGA POKOK PENJUALAN */}
                 <TableRow className="font-semibold bg-red-50">
                   <TableCell colSpan={2} className="text-red-700">HARGA POKOK PENJUALAN</TableCell>
                 </TableRow>
@@ -1024,7 +831,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                   </TableCell>
                 </TableRow>
                 
-                {/* Detail Harga Beli */}
                 {expandedSections.hargaBeli && detailData.penjualanDetail.length > 0 && (
                   <TableRow>
                     <TableCell colSpan={2} className="pl-8">
@@ -1080,7 +886,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                   </TableCell>
                 </TableRow>
                 
-                {/* Detail Biaya Pembelian - bisa ditambahkan jika ada data */}
                 {expandedSections.biayaPembelian && (
                   <TableRow>
                     <TableCell colSpan={2} className="pl-8">
@@ -1098,7 +903,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                   </TableCell>
                 </TableRow>
 
-                {/* LABA KOTOR */}
                 <TableRow className="font-semibold bg-green-50">
                   <TableCell className="text-green-700">LABA KOTOR</TableCell>
                   <TableCell className="text-right text-green-700">
@@ -1106,12 +910,10 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                   </TableCell>
                 </TableRow>
 
-                {/* BIAYA OPERASIONAL */}
                 <TableRow className="font-semibold bg-orange-50">
                   <TableCell colSpan={2} className="text-orange-700">BIAYA OPERASIONAL</TableCell>
                 </TableRow>
                 
-                {/* Breakdown Biaya per Kategori dengan Dropdown */}
                 {Object.entries(labaRugiData.biayaPerKategori).map(([kategori, nominal]) => {
                   const detailBiaya = getBiayaDetailByKategori(kategori);
                   const sectionKey = `biaya_${kategori}`;
@@ -1133,7 +935,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                         </TableCell>
                       </TableRow>
                       
-                      {/* Detail Biaya per Kategori */}
                       {expandedSections[sectionKey] && (
                         <TableRow>
                           <TableCell colSpan={2} className="pl-8">
@@ -1195,7 +996,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                   </TableCell>
                 </TableRow>
 
-                {/* LABA BERSIH */}
                 <TableRow className="font-bold bg-gray-100 text-lg">
                   <TableCell className="text-gray-800">LABA BERSIH</TableCell>
                   <TableCell className={`text-right ${
@@ -1210,7 +1010,6 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         </Card>
       )}
 
-      {/* Summary Cards */}
       {labaRugiData && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
