@@ -62,7 +62,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   const [selectedCabang, setSelectedCabang] = useState("all");
   const [selectedJenisPembelian, setSelectedJenisPembelian] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("ready");
-  const [dateFilter, setDateFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("this_month");
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
   
