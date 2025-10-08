@@ -419,7 +419,8 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
       query = query
         .gte('tanggal', start)
         .lte('tanggal', end)
-        .order('tanggal', { ascending: false });
+        .order('tanggal', { ascending: true })  // ASCENDING seperti mutasi bank
+        .order('created_at', { ascending: true }); // Untuk urutan dalam 1 hari
 
       if (selectedDivision !== 'all') {
         query = query.eq('divisi', selectedDivision);
