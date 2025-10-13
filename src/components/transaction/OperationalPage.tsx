@@ -256,8 +256,15 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           .order('tanggal', { ascending: false });
       } else {
         operationalQuery = supabase
-          .from('operational')
-          .select('*')
+         .from('operational')
+          .select(`
+            *,
+            companies:company_id (
+              id,
+              nama_perusahaan,
+              modal
+            )
+          `)
           .gte('tanggal', dateRange.start)
           .lte('tanggal', dateRange.end)
           .order('tanggal', { ascending: false });
@@ -305,7 +312,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       // Combine operational data with company information and set data_source
       const combinedData = operationalData?.map(item => ({
         ...item,
-        company_info: companiesMap.get(item.sumber_dana) || null,
+        company_info: item.companies || null,
         data_source: shouldUseCombined ? 'history' : 'active'
       })) || [];
 
