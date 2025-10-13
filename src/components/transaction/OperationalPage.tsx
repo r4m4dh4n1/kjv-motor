@@ -1148,10 +1148,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                     </TableCell>
                     <TableCell>{item.deskripsi}</TableCell>
                     <TableCell>
-                      {isKurangProfitCategory(item.kategori) 
-                        ? <span className="text-gray-500 italic">Tidak ada</span>
-                        : item.company_info?.nama_perusahaan
-                      }
+                      {item.company_info?.nama_perusahaan || <span className="text-gray-500 italic">-</span>}
                     </TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded-full text-xs ${
