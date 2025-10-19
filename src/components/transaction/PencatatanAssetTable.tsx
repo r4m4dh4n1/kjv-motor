@@ -130,9 +130,13 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
       render: (value: number) => <CurrencyCell amount={value} />
     },
     {
-      key: "companies.nama_perusahaan",
+      // ✅ PERBAIKAN KEY: Ubah dari "companies.nama_perusahaan" ke "companies"
+      key: "companies",
       header: "Sumber Dana",
-      render: (value: string) => <TextCell text={value || "-"} />
+      // ✅ PERBAIKAN RENDER: Akses nested object dari parameter row
+      render: (value: any, row: PencatatanAssetItem) => (
+        <TextCell text={row.companies?.nama_perusahaan || "-"} />
+      )
     },
     {
       key: "keterangan",

@@ -12,15 +12,26 @@ interface PencatatanAssetItem {
   keterangan?: string;
   created_at: string;
   updated_at: string;
+  companies?: {  // ✅ TAMBAH: interface untuk nested company data
+    nama_perusahaan: string;
+    id: number;
+  };
 }
 
 export const usePencatatanAssetData = (selectedDivision: string) => {
   return useQuery({
     queryKey: ["pencatatan-asset", selectedDivision],
     queryFn: async (): Promise<PencatatanAssetItem[]> => {
-      let query = (supabase as any)
-        .from('pencatatan_asset')
-        .select('*');
+     // ✅ PERBAIKAN: Tambahkan JOIN ke tabel companies
+     let query = (supabase as any)
+     .from('pencatatan_asset')
+     .select(`
+       *,
+       companies:sumber_dana_id (
+         id,
+         nama_perusahaan
+       )
+     `); 
       
       // Filter by division if provided
       if (selectedDivision) {
