@@ -9,6 +9,8 @@ import { Plus } from "lucide-react";
 import { PencatatanAssetForm } from "./PencatatanAssetForm";
 import { PencatatanAssetTable } from "./PencatatanAssetTable";
 import { PencatatanAssetHistoryTable } from "./PencatatanAssetHistoryTable";
+import { AssetPriceUpdateDialog } from "./AssetPriceUpdateDialog";
+import { AssetPriceHistoryTable } from "./AssetPriceHistoryTable";
 import { usePencatatanAssetData } from "./hooks/usePencatatanAssetData";
 import { usePencatatanAssetForm } from "./hooks/usePencatatanAssetForm";
 import { formatCurrency } from "@/utils/formatUtils";
@@ -76,10 +78,16 @@ export const PencatatanAssetPage = ({ selectedDivision }: PencatatanAssetPagePro
             Kelola pencatatan asset untuk divisi {selectedDivision}
           </p>
         </div>
-        <Button onClick={handleOpenDialog}>
-          <Plus className="w-4 h-4 mr-2" />
-          Tambah Asset
-        </Button>
+        <div className="flex gap-2">
+          <AssetPriceUpdateDialog 
+            selectedDivision={selectedDivision} 
+            onSuccess={refetch}
+          />
+          <Button onClick={handleOpenDialog}>
+            <Plus className="w-4 h-4 mr-2" />
+            Tambah Asset
+          </Button>
+        </div>
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -156,6 +164,7 @@ export const PencatatanAssetPage = ({ selectedDivision }: PencatatanAssetPagePro
         <TabsList>
           <TabsTrigger value="data">Data Aktif</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="price-history">Price History</TabsTrigger>
         </TabsList>
         
         <TabsContent value="data">
@@ -168,6 +177,10 @@ export const PencatatanAssetPage = ({ selectedDivision }: PencatatanAssetPagePro
         
         <TabsContent value="history">
           <PencatatanAssetHistoryTable selectedDivision={selectedDivision} />
+        </TabsContent>
+        
+        <TabsContent value="price-history">
+          <AssetPriceHistoryTable selectedDivision={selectedDivision} />
         </TabsContent>
       </Tabs>
     </div>
