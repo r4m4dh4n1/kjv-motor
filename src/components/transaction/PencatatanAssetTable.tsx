@@ -225,9 +225,7 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
           sumber_dana_id: currentAsset.sumber_dana_id,
           keterangan: `Update Nominal: ${formData.alasan}`,
           divisi: currentAsset.divisi,
-          cabang_id: currentAsset.cabang_id,
-          created_at: new Date().toISOString(),
-          created_by: 'system'
+          cabang_id: currentAsset.cabang_id
         }] as any);
 
       if (historyError) {

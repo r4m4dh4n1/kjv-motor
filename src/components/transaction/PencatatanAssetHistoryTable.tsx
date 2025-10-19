@@ -16,7 +16,6 @@ interface PencatatanAssetHistoryItem {
   divisi: string;
   cabang_id: number;
   created_at: string;
-  created_by?: string;
   companies?: {
     nama_perusahaan: string;
   };
