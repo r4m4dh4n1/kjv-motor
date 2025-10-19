@@ -63,16 +63,29 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
       
       const { data, error } = await supabase
         .from("pencatatan_asset_history")
-        .select(`
-          *,
-          companies:sumber_dana_id (
-            nama_perusahaan
-          )
-        `)
+        .select("*")
         .eq("nama", selectedAssetName)
         .order("created_at", { ascending: false });
       
       if (error) throw error;
+      
+      // ✅ PERBAIKAN: Manual join dengan companies untuk history
+      if (data && data.length > 0) {
+        const companyIds = [...new Set(data.map(item => item.sumber_dana_id))] as number[];
+        const { data: companiesData } = await supabase
+          .from('companies')
+          .select('id, nama_perusahaan')
+          .in('id', companyIds);
+        
+        // Merge data
+        const enrichedData = data.map(history => ({
+          ...history,
+          companies: companiesData?.find(company => company.id === history.sumber_dana_id)
+        }));
+        
+        return enrichedData as PencatatanAssetHistoryItem[];
+      }
+      
       return (data as any) || [];
     },
     enabled: !!selectedAssetName
