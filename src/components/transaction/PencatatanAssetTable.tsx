@@ -2,7 +2,10 @@ import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Edit, Trash2, History } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Edit, Trash2, History, DollarSign } from "lucide-react";
 import { EnhancedTable, DateCell, CurrencyCell, TextCell, ActionCell } from "./EnhancedTable";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,6 +57,12 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
   const { toast } = useToast();
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [selectedAssetName, setSelectedAssetName] = useState<string>("");
+  const [updateNominalDialogOpen, setUpdateNominalDialogOpen] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<PencatatanAssetItem | null>(null);
+  const [nominalFormData, setNominalFormData] = useState({
+    nominal: "",
+    alasan: ""
+  });
 
   // Query untuk mengambil history per asset
   const { data: assetHistory, isLoading: historyLoading } = useQuery({
@@ -83,7 +92,7 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
           companies: companiesData?.find(company => company.id === history.sumber_dana_id)
         }));
         
-        return enrichedData as PencatatanAssetHistoryItem[];
+        return enrichedData as any;
       }
       
       return (data as any) || [];
@@ -146,6 +155,162 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
     setHistoryDialogOpen(true);
   };
 
+  const handleUpdateNominal = (asset: PencatatanAssetItem) => {
+    setSelectedAsset(asset);
+    setNominalFormData({
+      nominal: new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0
+      }).format(asset.nominal),
+      alasan: ""
+    });
+    setUpdateNominalDialogOpen(true);
+  };
+
+  // Update nominal mutation
+  const updateNominalMutation = useMutation({
+    mutationFn: async ({ assetId, formData }: { assetId: number; formData: any }) => {
+      const nominalBaru = parseFloat(formData.nominal.replace(/[^\d]/g, ''));
+      
+      if (!selectedAsset) throw new Error("Asset tidak ditemukan");
+
+      // 1. Get current asset data
+      const { data: currentAsset, error: fetchError } = await supabase
+        .from("pencatatan_asset")
+        .select("*")
+        .eq("id", assetId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // 2. Calculate difference
+      const nominalLama = currentAsset.nominal;
+      const selisih = nominalBaru - nominalLama;
+
+      // 3. Update asset nominal
+      const { error: updateError } = await supabase
+        .from("pencatatan_asset")
+        .update({ nominal: nominalBaru })
+        .eq("id", assetId);
+
+      if (updateError) throw updateError;
+
+      // 4. Update company modal if there's a difference
+      if (selisih !== 0 && currentAsset.sumber_dana_id) {
+        const { error: modalError } = await supabase.rpc('update_company_modal', {
+          company_id: currentAsset.sumber_dana_id,
+          amount: selisih // Positive to add, negative to subtract
+        });
+
+        if (modalError) {
+          console.error('Error updating company modal:', modalError);
+          toast({
+            title: "Warning",
+            description: `Nominal asset terupdate tapi modal perusahaan gagal: ${modalError.message}`,
+            variant: "destructive"
+          });
+        }
+      }
+
+      // 5. Record to pencatatan_asset_history
+      const { error: historyError } = await supabase
+        .from("pencatatan_asset_history")
+        .insert([{
+          id: 0, // Will be auto-generated
+          tanggal: currentAsset.tanggal,
+          nama: currentAsset.nama,
+          nominal: nominalBaru,
+          sumber_dana_id: currentAsset.sumber_dana_id,
+          keterangan: `Update Nominal: ${formData.alasan}`,
+          divisi: currentAsset.divisi,
+          cabang_id: currentAsset.cabang_id,
+          closed_month: new Date().getMonth() + 1,
+          closed_year: new Date().getFullYear(),
+          closed_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }] as any);
+
+      if (historyError) {
+        console.error('Error recording to history:', historyError);
+        toast({
+          title: "Warning",
+          description: `Nominal asset terupdate tapi history gagal: ${historyError.message}`,
+          variant: "destructive"
+        });
+      }
+
+      // 6. Update pembukuan entry if exists
+      const { data: pembukuanData } = await supabase
+        .from("pembukuan")
+        .select("*")
+        .eq("keterangan", `Asset - ${currentAsset.nama}`)
+        .eq("company_id", currentAsset.sumber_dana_id);
+
+      if (pembukuanData && pembukuanData.length > 0) {
+        const pembukuanEntry = pembukuanData[0];
+        const isPengeluaran = pembukuanEntry.debit > 0;
+        
+        const { error: pembukuanError } = await supabase
+          .from("pembukuan")
+          .update({
+            debit: isPengeluaran ? nominalBaru : 0,
+            kredit: !isPengeluaran ? nominalBaru : 0
+          })
+          .eq("id", pembukuanEntry.id);
+
+        if (pembukuanError) {
+          console.error('Error updating pembukuan:', pembukuanError);
+          toast({
+            title: "Warning",
+            description: `Nominal asset terupdate tapi pembukuan gagal: ${pembukuanError.message}`,
+            variant: "destructive"
+          });
+        }
+      }
+    },
+    onSuccess: () => {
+      toast({
+        title: "Berhasil",
+        description: "Nominal asset berhasil diupdate",
+      });
+      setUpdateNominalDialogOpen(false);
+      setSelectedAsset(null);
+      setNominalFormData({ nominal: "", alasan: "" });
+      onRefetch();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Gagal mengupdate nominal asset",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleNominalSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedAsset) {
+      updateNominalMutation.mutate({
+        assetId: selectedAsset.id,
+        formData: nominalFormData
+      });
+    }
+  };
+
+  const handleCurrencyChange = (value: string) => {
+    // Remove non-numeric characters
+    const numericValue = value.replace(/[^\d]/g, '');
+    const formattedValue = new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
+    }).format(parseInt(numericValue) || 0);
+    
+    setNominalFormData(prev => ({ ...prev, nominal: formattedValue }));
+  };
+
   const columns = [
     {
       key: "tanggal",
@@ -200,6 +365,12 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
       label: "Edit",
       icon: Edit,
       onClick: onEdit,
+      variant: "outline" as const
+    },
+    {
+      label: "Update Nominal",
+      icon: DollarSign,
+      onClick: handleUpdateNominal,
       variant: "outline" as const
     },
     {
@@ -343,6 +514,69 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
               </Card>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Nominal Dialog */}
+      <Dialog open={updateNominalDialogOpen} onOpenChange={setUpdateNominalDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update Nominal Asset</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleNominalSubmit} className="space-y-4">
+            {selectedAsset && (
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground">Asset:</p>
+                <p className="font-medium">{selectedAsset.nama}</p>
+                <p className="text-sm text-muted-foreground">Nominal Saat Ini:</p>
+                <p className="font-medium">
+                  {new Intl.NumberFormat('id-ID', {
+                    style: 'currency',
+                    currency: 'IDR',
+                    minimumFractionDigits: 0
+                  }).format(selectedAsset.nominal)}
+                </p>
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="nominal">Nominal Baru</Label>
+              <Input
+                id="nominal"
+                value={nominalFormData.nominal}
+                onChange={(e) => handleCurrencyChange(e.target.value)}
+                placeholder="Masukkan nominal baru"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="alasan">Alasan Update</Label>
+              <Textarea
+                id="alasan"
+                value={nominalFormData.alasan}
+                onChange={(e) => setNominalFormData(prev => ({ ...prev, alasan: e.target.value }))}
+                placeholder="Masukkan alasan update nominal"
+                required
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setUpdateNominalDialogOpen(false)}
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                disabled={updateNominalMutation.isPending}
+              >
+                {updateNominalMutation.isPending ? "Mengupdate..." : "Update Nominal"}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </>

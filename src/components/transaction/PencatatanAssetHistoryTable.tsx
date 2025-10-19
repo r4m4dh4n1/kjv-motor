@@ -33,17 +33,30 @@ export const PencatatanAssetHistoryTable = ({ selectedDivision }: PencatatanAsse
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pencatatan_asset_history")
-        .select(`
-          *,
-          companies:company_id (
-            nama_perusahaan
-          )
-        `)
+        .select("*")
         .eq("divisi", selectedDivision)
         .order("created_at", { ascending: false });
       
       if (error) throw error;
-      return data;
+      
+      // ✅ PERBAIKAN: Manual join dengan companies untuk menghindari foreign key error
+      if (data && data.length > 0) {
+        const companyIds = [...new Set(data.map(item => item.sumber_dana_id))] as number[];
+        const { data: companiesData } = await supabase
+          .from('companies')
+          .select('id, nama_perusahaan')
+          .in('id', companyIds);
+        
+        // Merge data
+        const enrichedData = data.map(history => ({
+          ...history,
+          companies: companiesData?.find(company => company.id === history.sumber_dana_id)
+        }));
+        
+        return enrichedData;
+      }
+      
+      return data || [];
     },
   });
 
