@@ -25,6 +25,8 @@ interface AssetItem {
 export const AssetPriceUpdateDialog = ({ selectedDivision, onSuccess }: AssetPriceUpdateDialogProps) => {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  
+  console.log('AssetPriceUpdateDialog rendered with selectedDivision:', selectedDivision);
   const [formData, setFormData] = useState({
     asset_id: "",
     harga_baru: "",
@@ -44,7 +46,7 @@ export const AssetPriceUpdateDialog = ({ selectedDivision, onSuccess }: AssetPri
       if (error) throw error;
       return data || [];
     },
-    enabled: open && !!selectedDivision
+    enabled: !!selectedDivision
   });
 
   // Get selected asset details

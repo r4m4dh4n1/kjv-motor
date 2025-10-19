@@ -5,12 +5,13 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus } from "lucide-react";
+import { Plus, Edit } from "lucide-react";
 import { PencatatanAssetForm } from "./PencatatanAssetForm";
 import { PencatatanAssetTable } from "./PencatatanAssetTable";
 import { PencatatanAssetHistoryTable } from "./PencatatanAssetHistoryTable";
 import { AssetPriceUpdateDialog } from "./AssetPriceUpdateDialog";
 import { AssetPriceHistoryTable } from "./AssetPriceHistoryTable";
+import { SimpleAssetPriceUpdate } from "./SimpleAssetPriceUpdate";
 import { usePencatatanAssetData } from "./hooks/usePencatatanAssetData";
 import { usePencatatanAssetForm } from "./hooks/usePencatatanAssetForm";
 import { formatCurrency } from "@/utils/formatUtils";
@@ -79,7 +80,7 @@ export const PencatatanAssetPage = ({ selectedDivision }: PencatatanAssetPagePro
           </p>
         </div>
         <div className="flex gap-2">
-          <AssetPriceUpdateDialog 
+          <SimpleAssetPriceUpdate 
             selectedDivision={selectedDivision} 
             onSuccess={refetch}
           />
