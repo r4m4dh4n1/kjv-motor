@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface PencatatanAssetHistoryItem {
   id: number;
-  asset_id: number;
+  pencatatan_asset_id: number;
   tanggal: string;
   nama: string;
   nominal: number;
@@ -16,7 +16,7 @@ interface PencatatanAssetHistoryItem {
   divisi: string;
   cabang_id: number;
   created_at: string;
-  updated_at?: string;
+  created_by?: string;
   companies?: {
     nama_perusahaan: string;
   };

@@ -217,19 +217,17 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
       const { error: historyError } = await supabase
         .from("pencatatan_asset_history")
         .insert([{
-          id: 0, // Will be auto-generated
+          pencatatan_asset_id: assetId,
           tanggal: currentAsset.tanggal,
           nama: currentAsset.nama,
+          jenis_transaksi: 'update_nominal',
           nominal: nominalBaru,
           sumber_dana_id: currentAsset.sumber_dana_id,
           keterangan: `Update Nominal: ${formData.alasan}`,
           divisi: currentAsset.divisi,
           cabang_id: currentAsset.cabang_id,
-          closed_month: new Date().getMonth() + 1,
-          closed_year: new Date().getFullYear(),
-          closed_at: new Date().toISOString(),
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          created_by: 'system'
         }] as any);
 
       if (historyError) {
@@ -525,17 +523,25 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
           </DialogHeader>
           <form onSubmit={handleNominalSubmit} className="space-y-4">
             {selectedAsset && (
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">Asset:</p>
-                <p className="font-medium">{selectedAsset.nama}</p>
-                <p className="text-sm text-muted-foreground">Nominal Saat Ini:</p>
-                <p className="font-medium">
-                  {new Intl.NumberFormat('id-ID', {
-                    style: 'currency',
-                    currency: 'IDR',
-                    minimumFractionDigits: 0
-                  }).format(selectedAsset.nominal)}
-                </p>
+              <div className="p-3 bg-muted rounded-lg space-y-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Asset:</p>
+                  <p className="font-medium">{selectedAsset.nama}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Nominal Saat Ini:</p>
+                  <p className="font-medium">
+                    {new Intl.NumberFormat('id-ID', {
+                      style: 'currency',
+                      currency: 'IDR',
+                      minimumFractionDigits: 0
+                    }).format(selectedAsset.nominal)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Sumber Dana:</p>
+                  <p className="font-medium">{selectedAsset.companies?.nama_perusahaan || 'Unknown Company'}</p>
+                </div>
               </div>
             )}
 

@@ -9,11 +9,7 @@ import { Plus, Edit } from "lucide-react";
 import { PencatatanAssetForm } from "./PencatatanAssetForm";
 import { PencatatanAssetTable } from "./PencatatanAssetTable";
 import { PencatatanAssetHistoryTable } from "./PencatatanAssetHistoryTable";
-import { AssetPriceUpdateDialog } from "./AssetPriceUpdateDialog";
 import { AssetPriceHistoryTable } from "./AssetPriceHistoryTable";
-import { SimpleAssetPriceUpdate } from "./SimpleAssetPriceUpdate";
-import { BasicAssetUpdate } from "./BasicAssetUpdate";
-import { TestAssetUpdate } from "./TestAssetUpdate";
 import { usePencatatanAssetData } from "./hooks/usePencatatanAssetData";
 import { usePencatatanAssetForm } from "./hooks/usePencatatanAssetForm";
 import { formatCurrency } from "@/utils/formatUtils";
@@ -72,8 +68,6 @@ export const PencatatanAssetPage = ({ selectedDivision }: PencatatanAssetPagePro
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
 
-  console.log('PencatatanAssetPage rendered with selectedDivision:', selectedDivision);
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -84,22 +78,11 @@ export const PencatatanAssetPage = ({ selectedDivision }: PencatatanAssetPagePro
           </p>
         </div>
         <div className="flex gap-2">
-          <TestAssetUpdate 
-            selectedDivision={selectedDivision} 
-            onSuccess={refetch}
-          />
           <Button onClick={handleOpenDialog}>
             <Plus className="w-4 h-4 mr-2" />
             Tambah Asset
           </Button>
         </div>
-      </div>
-      
-      <div className="p-4 bg-green-100 border border-green-400 rounded">
-        <p className="text-green-800">
-          Debug: PencatatanAssetPage rendered successfully. 
-          Selected Division: {selectedDivision}
-        </p>
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
