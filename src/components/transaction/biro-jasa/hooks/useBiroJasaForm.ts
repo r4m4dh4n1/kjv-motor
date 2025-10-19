@@ -54,6 +54,10 @@ export const useBiroJasaForm = (onSuccess: () => void, selectedDivision: string)
       errors.push("Jenis Pengurusan harus dipilih");
     }
     
+    if (!formData.rekening_tujuan_id) {
+      errors.push("Rekening Tujuan harus dipilih");
+    }
+    
     // Validate estimasi_biaya is not negative
     const estimasiBiaya = parseCurrency(formData.estimasi_biaya) || 0;
     if (estimasiBiaya < 0) {
@@ -140,7 +144,7 @@ export const useBiroJasaForm = (onSuccess: () => void, selectedDivision: string)
 
         // If DP is filled, create pembukuan entry
         const dpAmount = parseCurrency(formData.dp);
-        if (dpAmount > 0 && insertedData && insertedData.length > 0) {
+        if (dpAmount > 0 && insertedData && insertedData.length > 0 && formData.rekening_tujuan_id) {
           const biroJasaId = insertedData[0].id;
           
           const pembukuanEntry = {
@@ -151,7 +155,7 @@ export const useBiroJasaForm = (onSuccess: () => void, selectedDivision: string)
             debit: 0,
             kredit: dpAmount,
             saldo: 0,
-            company_id: formData.rekening_tujuan_id ? parseInt(formData.rekening_tujuan_id) : null
+            company_id: parseInt(formData.rekening_tujuan_id)
           };
 
           const { error: pembukuanError } = await supabase
