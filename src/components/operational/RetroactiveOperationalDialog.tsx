@@ -122,8 +122,9 @@ const RetroactiveOperationalDialog = ({
       if (!selectedCompany) return;
 
       const isKurangProfitCategory = formData.category === 'Gaji Kurang Profit';
+      const isOPGlobalCategory = formData.category === 'OP Global';
       const profitImpact = isKurangProfitCategory ? formData.nominal : 0;
-      const modalImpact = formData.nominal;
+      const modalImpact = isOPGlobalCategory ? formData.nominal / 2 : formData.nominal; // OP Global: modal dikurangi setengah
 
       setImpact({
         profit_impact: profitImpact,
@@ -140,7 +141,8 @@ const RetroactiveOperationalDialog = ({
   // Check if category affects modal or profit
   const isModalReducingCategory = formData.category.includes('Kurang Modal');
   const isProfitReducingCategory = formData.category.includes('Kurang Profit');
-  const isRetroactiveCategory = isModalReducingCategory || isProfitReducingCategory;
+  const isOPGlobalCategory = formData.category === 'OP Global';
+  const isRetroactiveCategory = isModalReducingCategory || isProfitReducingCategory || isOPGlobalCategory;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,13 +216,16 @@ const RetroactiveOperationalDialog = ({
 
       // ✅ KURANG MODAL: Catat di pembukuan sesuai BULAN TARGET (untuk laporan laba rugi)
       if (isModalReducingCategory) {
+        // ✅ OP GLOBAL: Gunakan nominal setengah untuk pembukuan
+        const pembukuanAmount = isOPGlobalCategory ? formData.nominal / 2 : formData.nominal;
+        
         const { error: pembukuanError } = await supabase
           .from('pembukuan')
           .insert({
             tanggal: formattedTargetDate, // ✅ Menggunakan bulan target untuk laporan laba rugi
             divisi: selectedDivision === 'all' ? companies.find(c => c.id.toString() === formData.company_id)?.divisi || 'sport' : selectedDivision,
-            keterangan: `${formData.category} - ${formData.description}${descriptionSuffix}`,
-            debit: formData.nominal,
+            keterangan: `${formData.category} - ${formData.description}${descriptionSuffix}${isOPGlobalCategory ? ' (OP Global - Setengah Nominal)' : ''}`,
+            debit: pembukuanAmount,
             kredit: 0,
             cabang_id: 1,
             company_id: parseInt(formData.company_id)
@@ -236,9 +241,12 @@ const RetroactiveOperationalDialog = ({
         }
 
         // Update modal perusahaan
+        // ✅ OP GLOBAL: Gunakan nominal setengah untuk modal juga
+        const modalAmount = isOPGlobalCategory ? formData.nominal / 2 : formData.nominal;
+        
         const { error: modalError } = await supabase.rpc('update_company_modal', {
           company_id: parseInt(formData.company_id),
-          amount: -formData.nominal
+          amount: -modalAmount
         });
 
         if (modalError) {
@@ -525,6 +533,15 @@ const RetroactiveOperationalDialog = ({
                     -{formatCurrency(impact.modal_impact)}
                   </span>
                 </div>
+
+                {isOPGlobalCategory && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Dampak Pembukuan:</span>
+                    <span className="text-sm font-medium text-orange-600">
+                      -{formatCurrency(impact.modal_impact)}
+                    </span>
+                  </div>
+                )}
 
                 {impact.profit_impact > 0 && (
                   <div className="flex items-center justify-between">

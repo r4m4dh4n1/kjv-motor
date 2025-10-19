@@ -67,6 +67,7 @@ export const RETROACTIVE_CATEGORIES = [
   'Bonus Kurang Modal',
   'Ops Bulanan Kurang Profit',
   'Ops Bulanan Kurang Modal',
+  'OP Global',
   'Pajak & Retribusi',
   'Asuransi',
   'Lain-lain'

@@ -59,6 +59,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     "Bonus Kurang Modal",
     "Ops Bulanan Kurang Profit",
     "Ops Bulanan Kurang Modal",
+    "OP Global",
     "Pajak & Retribusi",
     "Asuransi",
     "Lain-lain"
@@ -197,6 +198,11 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   // Helper function to check if category is "Kurang Modal"
   const isKurangModalCategory = (kategori: string) => {
     return kategori.includes("Kurang Modal");
+  };
+
+  // Helper function to check if category is "OP Global"
+  const isOPGlobalCategory = (kategori: string) => {
+    return kategori === "OP Global";
   };
 
   useEffect(() => {
@@ -356,9 +362,10 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       return;
     }
 
-    // ✅ LOGIKA BARU: Cek kategori berdasarkan aturan baru
-    const isKurangProfit = isKurangProfitCategory(formData.kategori);
-    const isKurangModal = isKurangModalCategory(formData.kategori);
+        // ✅ LOGIKA BARU: Cek kategori berdasarkan aturan baru
+        const isKurangProfit = isKurangProfitCategory(formData.kategori);
+        const isKurangModal = isKurangModalCategory(formData.kategori);
+        const isOPGlobal = isOPGlobalCategory(formData.kategori);
 
     try {
       // ✅ LOGIKA BARU: Validasi modal untuk semua kategori kecuali "Kurang Profit"
@@ -414,8 +421,11 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
         // ✅ LOGIKA BARU: Update modal perusahaan untuk semua kategori kecuali "Kurang Profit"
         if (!isKurangProfit) {
-          // Update company modal (restore old amount and deduct new amount)
-          const modalDifference = editingOperational.nominal - nominalAmount;
+          // ✅ OP GLOBAL: Hitung modal difference dengan logika setengah
+          const oldModalAmount = isOPGlobalCategory(editingOperational.kategori) ? editingOperational.nominal / 2 : editingOperational.nominal;
+          const newModalAmount = isOPGlobal ? nominalAmount / 2 : nominalAmount;
+          const modalDifference = oldModalAmount - newModalAmount;
+          
           const { error: modalUpdateError } = await supabase.rpc('update_company_modal', {
             company_id: parseInt(formData.sumber_dana),
             amount: modalDifference
@@ -426,6 +436,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
         // ✅ LOGIKA BARU: Pembukuan untuk semua kategori kecuali "Kurang Profit"
         if (!isKurangProfit) {
+          // ✅ OP GLOBAL: Gunakan nominal setengah untuk pembukuan
+          const pembukuanAmount = isOPGlobal ? nominalAmount / 2 : nominalAmount;
+          
           // Update pembukuan entry - delete old and create new
           const oldKeterangan = `${editingOperational.kategori} - ${editingOperational.deskripsi}`;
           
@@ -445,8 +458,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
             .insert({
               tanggal: formData.tanggal,
               divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
-              keterangan: `${formData.kategori} - ${formData.deskripsi}`,
-              debit: nominalAmount,
+              keterangan: `${formData.kategori} - ${formData.deskripsi}${isOPGlobal ? ' (OP Global - Setengah Nominal)' : ''}`,
+              debit: pembukuanAmount,
               kredit: 0,
               cabang_id: 1,
               company_id: parseInt(formData.sumber_dana)
@@ -518,10 +531,13 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
         // ✅ LOGIKA BARU: Update modal perusahaan untuk semua kategori kecuali "Kurang Profit"
         if (!isKurangProfit) {
+          // ✅ OP GLOBAL: Gunakan nominal setengah untuk modal juga
+          const modalAmount = isOPGlobal ? nominalAmount / 2 : nominalAmount;
+          
           // Update company modal using the database function
           const { error: modalUpdateError } = await supabase.rpc('update_company_modal', {
             company_id: parseInt(formData.sumber_dana),
-            amount: -nominalAmount // Negative to deduct from modal
+            amount: -modalAmount // Negative to deduct from modal
           });
 
           if (modalUpdateError) throw modalUpdateError;
@@ -529,14 +545,17 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
         // ✅ LOGIKA BARU: Pembukuan untuk semua kategori kecuali "Kurang Profit"
         if (!isKurangProfit) {
+          // ✅ OP GLOBAL: Gunakan nominal setengah untuk pembukuan
+          const pembukuanAmount = isOPGlobal ? nominalAmount / 2 : nominalAmount;
+          
           // Create pembukuan entry for operational expense
           const { error: pembukuanError } = await supabase
             .from('pembukuan')
             .insert({
               tanggal: formData.tanggal,
               divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
-              keterangan: `${formData.kategori} - ${formData.deskripsi}`,
-              debit: nominalAmount,
+              keterangan: `${formData.kategori} - ${formData.deskripsi}${isOPGlobal ? ' (OP Global - Setengah Nominal)' : ''}`,
+              debit: pembukuanAmount,
               kredit: 0,
               cabang_id: 1,
               company_id: parseInt(formData.sumber_dana)
@@ -640,6 +659,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       // ✅ LOGIKA BARU: Cek kategori berdasarkan aturan baru
       const isKurangProfit = isKurangProfitCategory(operationalToDelete.kategori);
+      const isOPGlobal = isOPGlobalCategory(operationalToDelete.kategori);
 
       const { error: deleteError } = await supabase
         .from('operational')
@@ -650,6 +670,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       // ✅ LOGIKA BARU: Penghapusan pembukuan untuk semua kategori kecuali "Kurang Profit"
       if (!isKurangProfit) {
+        // ✅ OP GLOBAL: Hitung nominal pembukuan yang benar untuk delete
+        const pembukuanAmount = isOPGlobal ? operationalToDelete.nominal / 2 : operationalToDelete.nominal;
+        
         // Delete pembukuan entry dengan query yang lebih akurat
         const keteranganToDelete = `${operationalToDelete.kategori} - ${operationalToDelete.deskripsi}`;
         
@@ -657,7 +680,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           .from('pembukuan')
           .delete()
           .eq('keterangan', keteranganToDelete)
-          .eq('debit', operationalToDelete.nominal)
+          .eq('debit', pembukuanAmount)
           .eq('company_id', operationalToDelete.company_id);
 
         if (pembukuanDeleteError) {
@@ -672,10 +695,13 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       // ✅ LOGIKA BARU: Restore modal perusahaan untuk semua kategori kecuali "Kurang Profit"
       if (!isKurangProfit && operationalToDelete.company_id) {
+        // ✅ OP GLOBAL: Restore modal dengan logika setengah
+        const restoreModalAmount = isOPGlobal ? operationalToDelete.nominal / 2 : operationalToDelete.nominal;
+        
         // Restore company modal using the database function
         const { error: modalRestoreError } = await supabase.rpc('update_company_modal', {
           company_id: operationalToDelete.company_id,
-          amount: operationalToDelete.nominal // Positive to restore modal
+          amount: restoreModalAmount // Positive to restore modal
         });
 
         if (modalRestoreError) throw modalRestoreError;
@@ -779,6 +805,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   const getCategoryInfoMessage = (kategori: string) => {
     if (isKurangProfitCategory(kategori)) {
       return "Kategori ini tidak memerlukan sumber dana dan tidak akan mengurangi modal perusahaan. Pengeluaran ini akan mengurangi keuntungan.";
+    } else if (isOPGlobalCategory(kategori)) {
+      return "Kategori OP Global: Modal perusahaan akan dikurangi sebesar nominal penuh, namun yang dicatat di pembukuan hanya setengah dari nominal.";
     } else {
       return "Kategori ini akan mengurangi modal perusahaan dan dicatat dalam pembukuan sebagai debit.";
     }
@@ -1145,6 +1173,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                           ? 'bg-blue-100 text-blue-800'
                           : isKurangModalCategory(item.kategori)
                           ? 'bg-green-100 text-green-800'
+                          : isOPGlobalCategory(item.kategori)
+                          ? 'bg-orange-100 text-orange-800'
                           : 'bg-purple-100 text-purple-800'
                       }`}>
                         {item.kategori}

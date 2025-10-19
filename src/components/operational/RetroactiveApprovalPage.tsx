@@ -185,10 +185,13 @@ const RetroactiveApprovalPage = ({ selectedDivision }: RetroactiveApprovalPagePr
       if (operationalError) throw operationalError;
 
       // Update modal company
+      // ✅ OP GLOBAL: Gunakan nominal setengah untuk modal juga
+      const modalAmount = isOPGlobalCategory ? item.nominal / 2 : item.nominal;
+      
       const { error: modalError } = await supabase
         .from('companies')
         .update({
-          modal: item.company_modal - item.nominal
+          modal: item.company_modal - modalAmount
         })
         .eq('id', item.company_id);
 
@@ -209,14 +212,18 @@ const RetroactiveApprovalPage = ({ selectedDivision }: RetroactiveApprovalPagePr
       }
 
       // Insert ke pembukuan
+      // ✅ OP GLOBAL: Gunakan nominal setengah untuk pembukuan
+      const isOPGlobalCategory = item.category === 'OP Global';
+      const pembukuanAmount = isOPGlobalCategory ? item.nominal / 2 : item.nominal;
+      
       const { error: pembukuanError } = await supabase
         .from('pembukuan')
         .insert({
           tanggal: `${item.original_month}-01`,
           jenis_transaksi: 'operational_retroactive',
-          deskripsi: `[RETROACTIVE] ${item.description}`,
+          deskripsi: `[RETROACTIVE] ${item.description}${isOPGlobalCategory ? ' (OP Global - Setengah Nominal)' : ''}`,
           debit: 0,
-          kredit: item.nominal,
+          kredit: pembukuanAmount,
           company_id: item.company_id,
           divisi: item.divisi,
           referensi_id: item.id,
@@ -531,18 +538,25 @@ const RetroactiveApprovalPage = ({ selectedDivision }: RetroactiveApprovalPagePr
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm">Pengurangan Modal:</span>
-                    <span className="text-red-600 font-medium">-{formatCurrency(selectedItem.nominal)}</span>
+                    <span className="text-red-600 font-medium">-{formatCurrency(selectedItem.category === 'OP Global' ? selectedItem.nominal / 2 : selectedItem.nominal)}</span>
                   </div>
                   <div className="flex justify-between border-t pt-2">
                     <span className="text-sm font-medium">Modal Setelah Adjustment:</span>
-                    <span className={`font-medium ${selectedItem.company_modal - selectedItem.nominal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(selectedItem.company_modal - selectedItem.nominal)}
+                    <span className={`font-medium ${selectedItem.company_modal - (selectedItem.category === 'OP Global' ? selectedItem.nominal / 2 : selectedItem.nominal) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatCurrency(selectedItem.company_modal - (selectedItem.category === 'OP Global' ? selectedItem.nominal / 2 : selectedItem.nominal))}
                     </span>
                   </div>
                   {selectedItem.category === 'Gaji Kurang Profit' && (
                     <div className="flex justify-between">
                       <span className="text-sm">Dampak Profit:</span>
                       <span className="text-red-600 font-medium">-{formatCurrency(selectedItem.nominal)}</span>
+                    </div>
+                  )}
+                  
+                  {selectedItem.category === 'OP Global' && (
+                    <div className="flex justify-between">
+                      <span className="text-sm">Dampak Pembukuan:</span>
+                      <span className="text-orange-600 font-medium">-{formatCurrency(selectedItem.nominal / 2)}</span>
                     </div>
                   )}
                 </CardContent>
