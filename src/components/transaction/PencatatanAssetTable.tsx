@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Edit, Trash2, History } from "lucide-react";
 import { EnhancedTable, DateCell, CurrencyCell, TextCell, ActionCell } from "./EnhancedTable";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -31,6 +32,31 @@ interface PencatatanAssetTableProps {
 
 export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAssetTableProps) => {
   const { toast } = useToast();
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [selectedAssetName, setSelectedAssetName] = useState<string>("");
+
+  // Query untuk mengambil history per asset
+  const { data: assetHistory, isLoading: historyLoading } = useQuery({
+    queryKey: ["asset_history", selectedAssetName],
+    queryFn: async () => {
+      if (!selectedAssetName) return [];
+      
+      const { data, error } = await supabase
+        .from("pencatatan_asset_history")
+        .select(`
+          *,
+          companies:company_id (
+            nama_perusahaan
+          )
+        `)
+        .eq("nama", selectedAssetName)
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedAssetName
+  });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -82,6 +108,11 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
     }
   };
 
+  const handleShowHistory = (assetName: string) => {
+    setSelectedAssetName(assetName);
+    setHistoryDialogOpen(true);
+  };
+
   const columns = [
     {
       key: "tanggal",
@@ -118,6 +149,12 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
       variant: "outline" as const
     },
     {
+      label: "History",
+      icon: History,
+      onClick: (row: PencatatanAssetItem) => handleShowHistory(row.nama),
+      variant: "outline" as const
+    },
+    {
       label: "Delete", 
       icon: Trash2,
       onClick: (row: PencatatanAssetItem) => handleDelete(row.id),
@@ -125,23 +162,135 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
     }
   ];
 
+  // Hitung total nilai asset saat ini
+  const calculateCurrentAssetValue = () => {
+    if (!assetHistory) return 0;
+    
+    let total = 0;
+    assetHistory.forEach(entry => {
+      if (entry.jenis_transaksi === 'pengeluaran') {
+        total -= entry.nominal;
+      } else if (entry.jenis_transaksi === 'pemasukan') {
+        total += entry.nominal;
+      }
+    });
+    return total;
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Data Pencatatan Asset</CardTitle>
-        <CardDescription>
-          Daftar semua asset yang telah dicatat
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <EnhancedTable
-          title="Data Pencatatan Asset"
-          subtitle="Daftar semua asset yang telah dicatat"
-          data={data}
-          columns={columns}
-          actions={actions}
-        />
-      </CardContent>
-    </Card>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Data Pencatatan Asset</CardTitle>
+          <CardDescription>
+            Daftar semua asset yang telah dicatat
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <EnhancedTable
+            title="Data Pencatatan Asset"
+            subtitle="Daftar semua asset yang telah dicatat"
+            data={data}
+            columns={columns}
+            actions={actions}
+          />
+        </CardContent>
+      </Card>
+
+      {/* History Dialog */}
+      <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              History Asset: {selectedAssetName}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {historyLoading ? (
+            <div className="text-center py-8">Loading history...</div>
+          ) : (
+            <div className="space-y-4">
+              {/* Summary Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Ringkasan Asset</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Transaksi</p>
+                      <p className="text-2xl font-bold">{assetHistory?.length || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Nilai Asset Saat Ini</p>
+                      <p className={`text-2xl font-bold ${calculateCurrentAssetValue() >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {new Intl.NumberFormat('id-ID', {
+                          style: 'currency',
+                          currency: 'IDR',
+                          minimumFractionDigits: 0
+                        }).format(calculateCurrentAssetValue())}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* History Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Riwayat Transaksi</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {assetHistory && assetHistory.length > 0 ? (
+                    <div className="space-y-2">
+                      {assetHistory.map((entry, index) => (
+                        <div key={entry.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-4">
+                              <div className="text-sm text-muted-foreground">
+                                {new Date(entry.created_at).toLocaleDateString('id-ID')}
+                              </div>
+                              <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                entry.jenis_transaksi === 'pengeluaran' 
+                                  ? 'bg-red-100 text-red-800' 
+                                  : 'bg-green-100 text-green-800'
+                              }`}>
+                                {entry.jenis_transaksi === 'pengeluaran' ? 'Pengeluaran' : 'Pemasukan'}
+                              </div>
+                              <div className="text-sm">
+                                {entry.companies?.nama_perusahaan || 'Unknown Company'}
+                              </div>
+                            </div>
+                            {entry.keterangan && (
+                              <div className="text-sm text-muted-foreground mt-1">
+                                {entry.keterangan}
+                              </div>
+                            )}
+                          </div>
+                          <div className={`text-lg font-bold ${
+                            entry.jenis_transaksi === 'pengeluaran' ? 'text-red-600' : 'text-green-600'
+                          }`}>
+                            {entry.jenis_transaksi === 'pengeluaran' ? '-' : '+'}
+                            {new Intl.NumberFormat('id-ID', {
+                              style: 'currency',
+                              currency: 'IDR',
+                              minimumFractionDigits: 0
+                            }).format(entry.nominal)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Belum ada history untuk asset ini
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
