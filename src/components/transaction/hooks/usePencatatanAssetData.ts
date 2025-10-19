@@ -22,14 +22,15 @@ export const usePencatatanAssetData = (selectedDivision: string) => {
   return useQuery({
     queryKey: ["pencatatan-asset", selectedDivision],
     queryFn: async (): Promise<PencatatanAssetItem[]> => {
-     // ✅ PERBAIKAN: Tambahkan JOIN ke tabel companies
+     // ✅ PERBAIKAN: Tambahkan JOIN ke tabel companies dan integrasi dengan sistem
      let query = (supabase as any)
      .from('pencatatan_asset')
      .select(`
        *,
        companies:sumber_dana_id (
          id,
-         nama_perusahaan
+         nama_perusahaan,
+         modal
        )
      `); 
       
