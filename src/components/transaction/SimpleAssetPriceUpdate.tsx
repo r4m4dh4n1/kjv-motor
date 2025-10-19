@@ -123,16 +123,15 @@ export const SimpleAssetPriceUpdate = ({ selectedDivision, onSuccess }: SimpleAs
       const { error: historyError } = await supabase
         .from("pencatatan_asset_history")
         .insert([{
+          asset_id: assetId,
           tanggal: currentAsset.tanggal,
           nama: currentAsset.nama,
           nominal: hargaBaru,
+          jenis_transaksi: 'update_harga',
           sumber_dana_id: currentAsset.sumber_dana_id,
           keterangan: `Update Harga: ${formData.alasan}`,
           divisi: currentAsset.divisi,
           cabang_id: currentAsset.cabang_id,
-          closed_month: new Date().getMonth() + 1,
-          closed_year: new Date().getFullYear(),
-          closed_at: new Date().toISOString(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }] as any);
