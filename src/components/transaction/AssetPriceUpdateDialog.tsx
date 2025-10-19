@@ -26,7 +26,6 @@ export const AssetPriceUpdateDialog = ({ selectedDivision, onSuccess }: AssetPri
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   
-  console.log('AssetPriceUpdateDialog rendered with selectedDivision:', selectedDivision);
   const [formData, setFormData] = useState({
     asset_id: "",
     harga_baru: "",
