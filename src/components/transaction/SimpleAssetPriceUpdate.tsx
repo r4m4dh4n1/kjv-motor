@@ -30,7 +30,6 @@ export const SimpleAssetPriceUpdate = ({ selectedDivision, onSuccess }: SimpleAs
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   
-  console.log('SimpleAssetPriceUpdate rendered with selectedDivision:', selectedDivision);
   const [formData, setFormData] = useState({
     asset_id: "",
     harga_baru: "",

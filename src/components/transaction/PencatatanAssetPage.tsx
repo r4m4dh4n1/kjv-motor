@@ -71,8 +71,6 @@ export const PencatatanAssetPage = ({ selectedDivision }: PencatatanAssetPagePro
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
 
-  console.log('PencatatanAssetPage rendered with selectedDivision:', selectedDivision);
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -83,24 +81,15 @@ export const PencatatanAssetPage = ({ selectedDivision }: PencatatanAssetPagePro
           </p>
         </div>
         <div className="flex gap-2">
-          <button 
-            className="px-4 py-2 bg-blue-500 text-white rounded"
-            onClick={() => alert('Update Harga Asset clicked')}
-          >
-            Update Harga Asset
-          </button>
+          <SimpleAssetPriceUpdate 
+            selectedDivision={selectedDivision} 
+            onSuccess={refetch}
+          />
           <Button onClick={handleOpenDialog}>
             <Plus className="w-4 h-4 mr-2" />
             Tambah Asset
           </Button>
         </div>
-      </div>
-      
-      <div className="p-4 bg-yellow-100 border border-yellow-400 rounded">
-        <p className="text-yellow-800">
-          Debug: PencatatanAssetPage rendered successfully. 
-          Selected Division: {selectedDivision}
-        </p>
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
