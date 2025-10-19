@@ -121,14 +121,22 @@ export const PencatatanAssetForm = ({
 
       <div>
         <Label htmlFor="nama">Nama Asset *</Label>
-        <Input
-          id="nama"
-          type="text"
+        <Select
           value={formData.nama}
-          onChange={(e) => setFormData(prev => ({ ...prev, nama: e.target.value }))}
-          placeholder="Masukkan nama asset"
+          onValueChange={(value) => setFormData(prev => ({ ...prev, nama: value }))}
           required
-        />
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Pilih Nama Asset" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Kasbon">Kasbon</SelectItem>
+            <SelectItem value="Stargazer">Stargazer</SelectItem>
+            <SelectItem value="Sewa Ruko Jakarta">Sewa Ruko Jakarta</SelectItem>
+            <SelectItem value="Sewa Ruko Serpong">Sewa Ruko Serpong</SelectItem>
+            <SelectItem value="Asset Lainnya">Asset Lainnya</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div>

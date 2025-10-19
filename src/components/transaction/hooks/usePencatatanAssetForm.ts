@@ -92,6 +92,119 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
 
         if (error) throw error;
 
+        // Update modal perusahaan dan pembukuan untuk edit
+        const assetAmount = parseCurrency(formData.nominal);
+        if (assetAmount > 0 && formData.sumber_dana_id) {
+          try {
+            // 1. Restore modal lama dan update dengan modal baru
+            const oldModalAmount = formData.jenis_transaksi === 'pengeluaran' ? editingAsset.nominal : -editingAsset.nominal;
+            const newModalAmount = formData.jenis_transaksi === 'pengeluaran' ? -assetAmount : assetAmount;
+            const totalModalChange = oldModalAmount + newModalAmount;
+
+            const { error: modalError } = await supabase.rpc('update_company_modal', {
+              company_id: parseInt(formData.sumber_dana_id),
+              amount: totalModalChange
+            });
+
+            if (modalError) {
+              console.error('Error updating company modal:', modalError);
+              toast({
+                title: "Warning",
+                description: `Asset terupdate tapi modal gagal: ${modalError.message}`,
+                variant: "destructive"
+              });
+            }
+          } catch (modalUpdateError) {
+            console.error('CATCH ERROR saat update modal:', modalUpdateError);
+            toast({
+              title: "Warning",
+              description: "Asset terupdate tapi modal gagal",
+              variant: "destructive"
+            });
+          }
+
+          try {
+            // 2. Update pembukuan entry
+            const oldKeterangan = `Asset - ${editingAsset.nama}`;
+            const newKeterangan = `${formData.jenis_transaksi === 'pengeluaran' ? 'Pengeluaran' : 'Pemasukan'} Asset - ${formData.nama}${formData.keterangan ? ` - ${formData.keterangan}` : ''}`;
+
+            // Delete old pembukuan entry
+            await supabase
+              .from('pembukuan')
+              .delete()
+              .eq('keterangan', oldKeterangan)
+              .eq('company_id', editingAsset.sumber_dana_id);
+
+            // Insert new pembukuan entry
+            const pembukuanEntry = {
+              tanggal: convertDateToISO(formData.tanggal),
+              divisi: selectedDivision,
+              cabang_id: 1,
+              keterangan: newKeterangan,
+              debit: formData.jenis_transaksi === 'pengeluaran' ? assetAmount : 0,
+              kredit: formData.jenis_transaksi === 'pemasukan' ? assetAmount : 0,
+              saldo: 0,
+              company_id: parseInt(formData.sumber_dana_id)
+            };
+
+            const { error: pembukuanError } = await supabase
+              .from('pembukuan')
+              .insert([pembukuanEntry]);
+
+            if (pembukuanError) {
+              console.error('Pembukuan Error:', pembukuanError);
+              toast({
+                title: "Warning",
+                description: `Asset terupdate tapi pembukuan gagal: ${pembukuanError.message}`,
+                variant: "destructive"
+              });
+            }
+          } catch (pembukuanUpdateError) {
+            console.error('CATCH ERROR saat update pembukuan:', pembukuanUpdateError);
+            toast({
+              title: "Warning",
+              description: "Asset terupdate tapi pembukuan gagal",
+              variant: "destructive"
+            });
+          }
+
+          try {
+            // 3. Update history
+            const historyEntry = {
+              asset_id: editingAsset.id,
+              tanggal: convertDateToISO(formData.tanggal),
+              nama: formData.nama,
+              nominal: assetAmount,
+              jenis_transaksi: formData.jenis_transaksi,
+              sumber_dana_id: parseInt(formData.sumber_dana_id),
+              keterangan: formData.keterangan,
+              divisi: selectedDivision,
+              cabang_id: 1,
+              updated_at: new Date().toISOString()
+            };
+
+            const { error: historyError } = await supabase
+              .from('pencatatan_asset_history')
+              .upsert([historyEntry]);
+
+            if (historyError) {
+              console.error('History Error:', historyError);
+              toast({
+                title: "Warning",
+                description: `Asset terupdate tapi history gagal: ${historyError.message}`,
+                variant: "destructive"
+              });
+            }
+          } catch (historyUpdateError) {
+            console.error('CATCH ERROR saat update history:', historyUpdateError);
+            toast({
+              title: "Warning",
+              description: "Asset terupdate tapi history gagal",
+              variant: "destructive"
+            });
+          }
+        }
+
         toast({
           title: "Berhasil",
           description: "Asset berhasil diupdate",
@@ -105,16 +218,17 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
 
         if (error) throw error;
 
-        // PERBAIKAN: Mengurangi modal perusahaan dan mencatat ke pembukuan
+        // PERBAIKAN: Update modal perusahaan dan mencatat ke pembukuan berdasarkan jenis transaksi
         const assetAmount = parseCurrency(formData.nominal);
         if (assetAmount > 0 && formData.sumber_dana_id && insertedData && insertedData.length > 0) {
           const assetId = insertedData[0].id;
           
           try {
-            // 1. Update modal perusahaan menggunakan RPC function
+            // 1. Update modal perusahaan berdasarkan jenis transaksi
+            const modalAmount = formData.jenis_transaksi === 'pengeluaran' ? -assetAmount : assetAmount;
             const { error: modalError } = await supabase.rpc('update_company_modal', {
               company_id: parseInt(formData.sumber_dana_id),
-              amount: -assetAmount // Mengurangi modal perusahaan
+              amount: modalAmount // Pengeluaran = kurangi modal, Pemasukan = tambah modal
             });
 
             if (modalError) {
@@ -167,6 +281,42 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
               variant: "destructive"
             });
           }
+
+          try {
+            // 3. Simpan history ke tabel pencatatan_asset_history
+            const historyEntry = {
+              asset_id: assetId,
+              tanggal: convertDateToISO(formData.tanggal),
+              nama: formData.nama,
+              nominal: assetAmount,
+              jenis_transaksi: formData.jenis_transaksi,
+              sumber_dana_id: parseInt(formData.sumber_dana_id),
+              keterangan: formData.keterangan,
+              divisi: selectedDivision,
+              cabang_id: 1,
+              created_at: new Date().toISOString()
+            };
+
+            const { error: historyError } = await supabase
+              .from('pencatatan_asset_history')
+              .insert([historyEntry]);
+
+            if (historyError) {
+              console.error('History Error:', historyError);
+              toast({
+                title: "Warning",
+                description: `Asset tersimpan tapi history gagal: ${historyError.message}`,
+                variant: "destructive"
+              });
+            }
+          } catch (historyInsertError) {
+            console.error('CATCH ERROR saat insert history:', historyInsertError);
+            toast({
+              title: "Warning",
+              description: "Asset tersimpan tapi history gagal",
+              variant: "destructive"
+            });
+          }
         }
 
         toast({
@@ -193,7 +343,7 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
       nominal: formatCurrency(asset.nominal?.toString() || "0"),
       sumber_dana_id: asset.sumber_dana_id?.toString() || "",
       keterangan: asset.keterangan || "",
-      jenis_transaksi: "pembelian"
+      jenis_transaksi: "pengeluaran" // Default, user bisa ubah
     });
   };
 
@@ -204,7 +354,7 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
       nominal: "0",
       sumber_dana_id: "",
       keterangan: "",
-      jenis_transaksi: "pembelian"
+      jenis_transaksi: "pengeluaran"
     });
     setEditingAsset(null);
   };
