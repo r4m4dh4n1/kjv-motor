@@ -139,6 +139,23 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
       )
     },
     {
+      key: "companies.modal",
+      header: "Modal Perusahaan",
+      render: (value: any, row: PencatatanAssetItem) => (
+        <CurrencyCell amount={row.companies?.modal || 0} />
+      )
+    },
+    {
+      key: "jenis_transaksi",
+      header: "Jenis Transaksi",
+      render: (value: string) => (
+        <TextCell 
+          text={value === 'pengeluaran' ? 'Pengeluaran' : value === 'pemasukan' ? 'Pemasukan' : '-'} 
+          className={`font-medium ${value === 'pengeluaran' ? 'text-red-600' : value === 'pemasukan' ? 'text-green-600' : ''}`}
+        />
+      )
+    },
+    {
       key: "keterangan",
       header: "Keterangan",
       render: (value: string) => <TextCell text={value || "-"} />

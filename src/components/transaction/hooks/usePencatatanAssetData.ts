@@ -10,11 +10,13 @@ interface PencatatanAssetItem {
   cabang_id: number;
   sumber_dana_id: number;
   keterangan?: string;
+  jenis_transaksi?: string; // ✅ TAMBAH: Field jenis transaksi
   created_at: string;
   updated_at: string;
   companies?: {  // ✅ TAMBAH: interface untuk nested company data
     nama_perusahaan: string;
     id: number;
+    modal?: number; // ✅ TAMBAH: Field modal perusahaan
   };
 }
 
