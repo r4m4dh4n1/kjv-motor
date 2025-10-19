@@ -15,12 +15,14 @@ interface PencatatanAssetItem {
   nominal: number;
   sumber_dana_id: number;
   keterangan?: string;
+  jenis_transaksi?: string; // ✅ TAMBAH: Field jenis transaksi
   divisi: string;
   cabang_id: number;
   created_at: string;
   updated_at: string;
   companies?: {
     nama_perusahaan: string;
+    modal?: number; // ✅ TAMBAH: Field modal perusahaan
   };
 }
 
@@ -28,6 +30,24 @@ interface PencatatanAssetTableProps {
   data: PencatatanAssetItem[];
   onEdit: (asset: PencatatanAssetItem) => void;
   onRefetch: () => void;
+}
+
+interface PencatatanAssetHistoryItem {
+  id: number;
+  asset_id: number;
+  tanggal: string;
+  nama: string;
+  nominal: number;
+  jenis_transaksi: string;
+  sumber_dana_id: number;
+  keterangan?: string;
+  divisi: string;
+  cabang_id: number;
+  created_at: string;
+  updated_at?: string;
+  companies?: {
+    nama_perusahaan: string;
+  };
 }
 
 export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAssetTableProps) => {
@@ -38,14 +58,14 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
   // Query untuk mengambil history per asset
   const { data: assetHistory, isLoading: historyLoading } = useQuery({
     queryKey: ["asset_history", selectedAssetName],
-    queryFn: async () => {
+    queryFn: async (): Promise<PencatatanAssetHistoryItem[]> => {
       if (!selectedAssetName) return [];
       
       const { data, error } = await supabase
         .from("pencatatan_asset_history")
         .select(`
           *,
-          companies:company_id (
+          companies:sumber_dana_id (
             nama_perusahaan
           )
         `)
@@ -53,7 +73,7 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
         .order("created_at", { ascending: false });
       
       if (error) throw error;
-      return data;
+      return (data as any) || [];
     },
     enabled: !!selectedAssetName
   });
@@ -142,16 +162,16 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
       key: "companies.modal",
       header: "Modal Perusahaan",
       render: (value: any, row: PencatatanAssetItem) => (
-        <CurrencyCell amount={row.companies?.modal || 0} />
+        <CurrencyCell amount={(row.companies as any)?.modal || 0} />
       )
     },
     {
       key: "jenis_transaksi",
       header: "Jenis Transaksi",
-      render: (value: string) => (
+      render: (value: string, row: PencatatanAssetItem) => (
         <TextCell 
-          text={value === 'pengeluaran' ? 'Pengeluaran' : value === 'pemasukan' ? 'Pemasukan' : '-'} 
-          className={`font-medium ${value === 'pengeluaran' ? 'text-red-600' : value === 'pemasukan' ? 'text-green-600' : ''}`}
+          text={(row as any).jenis_transaksi === 'pengeluaran' ? 'Pengeluaran' : (row as any).jenis_transaksi === 'pemasukan' ? 'Pemasukan' : '-'} 
+          className={`font-medium ${(row as any).jenis_transaksi === 'pengeluaran' ? 'text-red-600' : (row as any).jenis_transaksi === 'pemasukan' ? 'text-green-600' : ''}`}
         />
       )
     },
@@ -272,14 +292,14 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
                                 {new Date(entry.created_at).toLocaleDateString('id-ID')}
                               </div>
                               <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                entry.jenis_transaksi === 'pengeluaran' 
+                                (entry as any).jenis_transaksi === 'pengeluaran' 
                                   ? 'bg-red-100 text-red-800' 
                                   : 'bg-green-100 text-green-800'
                               }`}>
-                                {entry.jenis_transaksi === 'pengeluaran' ? 'Pengeluaran' : 'Pemasukan'}
+                                {(entry as any).jenis_transaksi === 'pengeluaran' ? 'Pengeluaran' : 'Pemasukan'}
                               </div>
                               <div className="text-sm">
-                                {entry.companies?.nama_perusahaan || 'Unknown Company'}
+                                {(entry.companies as any)?.nama_perusahaan || 'Unknown Company'}
                               </div>
                             </div>
                             {entry.keterangan && (
@@ -289,9 +309,9 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
                             )}
                           </div>
                           <div className={`text-lg font-bold ${
-                            entry.jenis_transaksi === 'pengeluaran' ? 'text-red-600' : 'text-green-600'
+                            (entry as any).jenis_transaksi === 'pengeluaran' ? 'text-red-600' : 'text-green-600'
                           }`}>
-                            {entry.jenis_transaksi === 'pengeluaran' ? '-' : '+'}
+                            {(entry as any).jenis_transaksi === 'pengeluaran' ? '-' : '+'}
                             {new Intl.NumberFormat('id-ID', {
                               style: 'currency',
                               currency: 'IDR',
