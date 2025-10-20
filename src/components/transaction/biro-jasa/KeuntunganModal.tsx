@@ -139,10 +139,13 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
   
       // Catat biaya modal ke pembukuan sebagai debit (pengeluaran)
       const pembukuanData = {
-        tanggal: formData.tanggal,
+        tanggal: formData.tanggal.includes('/') ? 
+          new Date(formData.tanggal.split('/').reverse().join('-')).toISOString().split('T')[0] : 
+          formData.tanggal,
         keterangan: `Biaya Modal Biro Jasa - ${biroJasa.jenis_pengurusan} - ${biroJasa.plat_nomor || 'N/A'}`,
         debit: biayaModal,
         kredit: 0,
+        saldo: 0,
         divisi: selectedDivision,
         company_id: parseInt(formData.sumber_dana),
         cabang_id: 1
@@ -152,18 +155,19 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
 
       const { error: pembukuanError, data: pembukuanResult } = await supabase
         .from("pembukuan")
-        .insert(pembukuanData)
+        .insert([pembukuanData])
         .select();
 
       if (pembukuanError) {
         console.error('❌ Error inserting pembukuan:', pembukuanError);
+        console.error('❌ Pembukuan data that failed:', pembukuanData);
         toast({
           title: "Peringatan",
           description: `Data biro jasa tersimpan, namun gagal mencatat ke pembukuan: ${pembukuanError.message}`,
           variant: "destructive",
         });
       } else {
-        console.log('✅ Pembukuan entry created:', pembukuanResult);
+        console.log('✅ Pembukuan entry created successfully:', pembukuanResult);
         toast({
           title: "Berhasil",
           description: "Data keuntungan dan pembukuan berhasil disimpan",
