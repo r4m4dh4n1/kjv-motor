@@ -570,7 +570,9 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       const biayaPerKategori: { [key: string]: number } = {};
       filteredOperationalData.forEach(item => {
         const kategori = item.kategori || 'Lainnya';
-        biayaPerKategori[kategori] = (biayaPerKategori[kategori] || 0) + (item.nominal || 0);
+        // ✅ OP GLOBAL: Untuk kategori OP Global, gunakan nominal setengah untuk laporan laba rugi
+        const nominalToUse = kategori === 'OP Global' ? (item.nominal || 0) / 2 : (item.nominal || 0);
+        biayaPerKategori[kategori] = (biayaPerKategori[kategori] || 0) + nominalToUse;
       });
       
       console.log('?? Biaya per kategori:', biayaPerKategori);
@@ -928,7 +930,14 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                           <ChevronDown className={`h-4 w-4 mr-2 transition-transform ${
                             expandedSections[sectionKey] ? 'rotate-180' : ''
                           }`} />
-                          <span className="capitalize">{kategori}</span>
+                          <span className="capitalize">
+                            {kategori}
+                            {kategori === 'OP Global' && (
+                              <span className="ml-2 text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">
+                                (Setengah Nominal)
+                              </span>
+                            )}
+                          </span>
                         </TableCell>
                         <TableCell className="text-right">
                           {formatCurrency(nominal)}
@@ -959,7 +968,11 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                                           {item.deskripsi || '-'}
                                         </TableCell>
                                         <TableCell className="text-xs">
-                                          {formatCurrency(item.nominal || 0)}
+                                          {formatCurrency(
+                                            item.kategori === 'OP Global' 
+                                              ? (item.nominal || 0) / 2 
+                                              : (item.nominal || 0)
+                                          )}
                                         </TableCell>
                                         <TableCell className="text-xs">
                                           {item.divisi || '-'}
@@ -975,6 +988,11 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                                 )}
                                 <div className="text-xs font-medium text-gray-700 mt-2">
                                   Total {detailBiaya.length} transaksi: {formatCurrency(nominal)}
+                                  {kategori === 'OP Global' && (
+                                    <div className="text-xs text-orange-600 mt-1">
+                                      ℹ️ Menampilkan setengah nominal untuk laporan laba rugi
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             ) : (
