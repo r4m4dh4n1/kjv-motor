@@ -124,7 +124,7 @@ const RetroactiveOperationalDialog = ({
       const isKurangProfitCategory = formData.category === 'Gaji Kurang Profit';
       const isOPGlobalCategory = formData.category === 'OP Global';
       const profitImpact = isKurangProfitCategory ? formData.nominal : 0;
-      const modalImpact = isOPGlobalCategory ? formData.nominal / 2 : formData.nominal; // OP Global: modal dikurangi setengah
+      const modalImpact = isOPGlobalCategory ? formData.nominal : formData.nominal; // OP Global: modal dikurangi nominal penuh
 
       setImpact({
         profit_impact: profitImpact,
@@ -216,15 +216,15 @@ const RetroactiveOperationalDialog = ({
 
       // ✅ KURANG MODAL: Catat di pembukuan sesuai BULAN TARGET (untuk laporan laba rugi)
       if (isModalReducingCategory) {
-        // ✅ OP GLOBAL: Gunakan nominal setengah untuk pembukuan
-        const pembukuanAmount = isOPGlobalCategory ? formData.nominal / 2 : formData.nominal;
+        // ✅ OP GLOBAL: Gunakan nominal penuh untuk pembukuan
+        const pembukuanAmount = isOPGlobalCategory ? formData.nominal : formData.nominal;
         
         const { error: pembukuanError } = await supabase
           .from('pembukuan')
           .insert({
             tanggal: formattedTargetDate, // ✅ Menggunakan bulan target untuk laporan laba rugi
             divisi: selectedDivision === 'all' ? companies.find(c => c.id.toString() === formData.company_id)?.divisi || 'sport' : selectedDivision,
-            keterangan: `${formData.category} - ${formData.description}${descriptionSuffix}${isOPGlobalCategory ? ' (OP Global - Setengah Nominal)' : ''}`,
+            keterangan: `${formData.category} - ${formData.description}${descriptionSuffix}${isOPGlobalCategory ? ' (OP Global - Nominal Penuh)' : ''}`,
             debit: pembukuanAmount,
             kredit: 0,
             cabang_id: 1,
@@ -241,8 +241,8 @@ const RetroactiveOperationalDialog = ({
         }
 
         // Update modal perusahaan
-        // ✅ OP GLOBAL: Gunakan nominal setengah untuk modal juga
-        const modalAmount = isOPGlobalCategory ? formData.nominal / 2 : formData.nominal;
+        // ✅ OP GLOBAL: Gunakan nominal penuh untuk modal
+        const modalAmount = isOPGlobalCategory ? formData.nominal : formData.nominal;
         
         const { error: modalError } = await supabase.rpc('update_company_modal', {
           company_id: parseInt(formData.company_id),
