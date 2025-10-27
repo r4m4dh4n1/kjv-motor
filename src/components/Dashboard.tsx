@@ -359,7 +359,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       changeType: "positive"
     },
     {
-      title: "Stock Motors (Total Keseluruhan)",
+      title: "Stock Motors",
       value: (stats.sportMotors + stats.startMotors).toString(),
       unit: "Unit Available",
       icon: Package,
@@ -453,7 +453,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
               <span className="text-xs font-semibold bg-blue-200 text-blue-800 px-2 py-1 rounded">READY</span>
             </div>
             <div>
-              <p className="text-sm text-gray-600 mb-1">Total Pembelian (Ready)</p>
+              <p className="text-sm text-gray-600 mb-1">Total Pembelian (all periode)</p>
               <p className="text-2xl font-bold text-blue-700">{formatCurrency(stats.totalPembelianReady)}</p>
               <p className="text-xs text-gray-500 mt-1">{stats.totalUnitReady} Unit</p>
             </div>
@@ -467,7 +467,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
               <span className="text-xs font-semibold bg-green-200 text-green-800 px-2 py-1 rounded">READY</span>
             </div>
             <div>
-              <p className="text-sm text-gray-600 mb-1">Total Unit (Ready)</p>
+              <p className="text-sm text-gray-600 mb-1">Total Unit Ready (All Periode)</p>
               <p className="text-2xl font-bold text-green-700">{stats.totalUnitReady}</p>
               <p className="text-xs text-gray-500 mt-1">Unit Available</p>
             </div>
