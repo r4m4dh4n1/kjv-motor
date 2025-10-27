@@ -177,13 +177,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       const activeCompanies = companies.filter(c => c.status === 'active').length;
       const passiveCompanies = companies.filter(c => c.status === 'passive').length;
       const totalModal = companies.reduce((sum, c) => sum + c.modal, 0);
-      const stockMotorsBulanIni = pembelian.filter(p => p.status === 'ready').length;
-      const sportMotorsBulanIni = pembelian.filter(p => 
-        p.status === 'ready' && p.divisi === 'sport'
-      ).length;
-      const startMotorsBulanIni = pembelian.filter(p => 
-        p.status === 'ready' && p.divisi === 'start'
-      ).length;
+      const sportMotors = jenisMotor.filter(j => j.divisi === 'sport').reduce((sum, j) => sum + j.qty, 0);
+      const startMotors = jenisMotor.filter(j => j.divisi === 'start').reduce((sum, j) => sum + j.qty, 0);
+
       // Calculate financial stats
       const totalPembelian = pembelian.reduce((sum, p) => sum + p.harga_beli, 0);
       const totalPembelianUnit = pembelian.length;
@@ -330,6 +326,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
 
   // Define colors for charts
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+
+  // Calculate stock motors for this month (pembelian - penjualan)
+  const stockMotorsBulanIni = stats.totalPembelianUnit - stats.totalPenjualanUnit;
 
   const dashboardStats = [
     {
