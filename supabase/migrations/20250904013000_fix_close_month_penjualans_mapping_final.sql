@@ -221,12 +221,12 @@ AND EXTRACT(YEAR FROM tanggal_perolehan) = target_year;
 IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'pencatatan_asset') THEN
     INSERT INTO pencatatan_asset_history (
         id, tanggal, nama, nominal, divisi, cabang_id,
-        sumber_dana_id, keterangan, created_at, updated_at, 
+        sumber_dana_id, keterangan, jenis_transaksi, created_at, updated_at, 
         closed_month, closed_year, closed_at
     )
     SELECT 
         id, tanggal, nama, nominal, divisi, cabang_id,
-        sumber_dana_id, keterangan, created_at, updated_at, 
+        sumber_dana_id, keterangan, jenis_transaksi, created_at, updated_at, 
         target_month, target_year, now()
     FROM pencatatan_asset 
     WHERE EXTRACT(MONTH FROM tanggal) = target_month 

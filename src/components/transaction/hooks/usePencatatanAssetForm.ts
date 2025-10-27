@@ -79,6 +79,7 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
         nominal: parseCurrency(formData.nominal),
         sumber_dana_id: parseInt(formData.sumber_dana_id),
         keterangan: formData.keterangan,
+        jenis_transaksi: formData.jenis_transaksi,
         divisi: selectedDivision,
         cabang_id: 1, // Default cabang
       };

@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Edit, Trash2, History, DollarSign } from "lucide-react";
 import { EnhancedTable, DateCell, CurrencyCell, TextCell, ActionCell } from "./EnhancedTable";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -59,9 +60,26 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
   const [selectedAssetName, setSelectedAssetName] = useState<string>("");
   const [updateNominalDialogOpen, setUpdateNominalDialogOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<PencatatanAssetItem | null>(null);
+  const [companiesData, setCompaniesData] = useState<any[]>([]);
   const [nominalFormData, setNominalFormData] = useState({
     nominal: "",
+    jenis_transaksi: "",
+    sumber_dana_id: "",
     alasan: ""
+  });
+
+  // Query untuk mengambil data companies
+  const { data: companiesDataQuery } = useQuery({
+    queryKey: ["companies"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id, nama_perusahaan, modal')
+        .order('nama_perusahaan');
+      
+      if (error) throw error;
+      return data || [];
+    },
   });
 
   // Query untuk mengambil history per asset
@@ -106,22 +124,45 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
       const assetToDelete = data.find(item => item.id === id);
       if (!assetToDelete) throw new Error("Asset tidak ditemukan");
 
-      // 2. Kembalikan modal ke company (sumber dana)
+      // 2. Kembalikan modal ke company (sumber dana) berdasarkan jenis transaksi
       if (assetToDelete.sumber_dana_id && assetToDelete.nominal > 0) {
+        // Logika pengembalian modal berdasarkan jenis transaksi
+        let modalAmount = assetToDelete.nominal;
+        
+        // Jika jenis transaksi adalah 'pengeluaran', kembalikan modal (tambah modal)
+        // Jika jenis transaksi adalah 'pemasukan', kurangi modal (karena saat insert modal ditambah)
+        if (assetToDelete.jenis_transaksi === 'pemasukan') {
+          modalAmount = -assetToDelete.nominal; // Kurangi modal karena saat insert modal ditambah
+        }
+        // Untuk 'pengeluaran', modalAmount tetap positif (tambah modal karena saat insert modal dikurangi)
+        
         const { error: modalError } = await supabase.rpc('update_company_modal', {
           company_id: assetToDelete.sumber_dana_id,
-          amount: assetToDelete.nominal // Kembalikan nominal asset
+          amount: modalAmount
         });
 
         if (modalError) {
-          console.error('Error returning modal to company:', modalError);
+          console.error('Error updating company modal:', modalError);
           throw modalError;
         }
       }
 
-      // 3. Hapus data asset
+      // 3. Hapus pembukuan terkait (jika ada)
+      const keteranganPembukuan = `${assetToDelete.jenis_transaksi === 'pengeluaran' ? 'Pengeluaran' : 'Pemasukan'} Asset - ${assetToDelete.nama}`;
+      const { error: pembukuanDeleteError } = await supabase
+        .from('pembukuan')
+        .delete()
+        .eq('keterangan', keteranganPembukuan)
+        .eq('company_id', assetToDelete.sumber_dana_id);
+
+      if (pembukuanDeleteError) {
+        console.error('Error deleting pembukuan entry:', pembukuanDeleteError);
+        // Tidak throw error karena pembukuan mungkin tidak ada
+      }
+
+      // 4. Hapus data asset
       const { error: deleteError } = await supabase
-        .from('assets')
+        .from('pencatatan_asset')
         .delete()
         .eq('id', id);
 
@@ -163,6 +204,8 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
         currency: 'IDR',
         minimumFractionDigits: 0
       }).format(asset.nominal),
+      jenis_transaksi: asset.jenis_transaksi || 'pengeluaran',
+      sumber_dana_id: asset.sumber_dana_id?.toString() || '',
       alasan: ""
     });
     setUpdateNominalDialogOpen(true);
@@ -172,6 +215,8 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
   const updateNominalMutation = useMutation({
     mutationFn: async ({ assetId, formData }: { assetId: number; formData: any }) => {
       const nominalBaru = parseFloat(formData.nominal.replace(/[^\d]/g, ''));
+      const jenisTransaksiBaru = formData.jenis_transaksi;
+      const sumberDanaBaru = parseInt(formData.sumber_dana_id);
       
       if (!selectedAsset) throw new Error("Asset tidak ditemukan");
 
@@ -184,45 +229,74 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
 
       if (fetchError) throw fetchError;
 
-      // 2. Calculate difference
+      // 2. Calculate modal changes
       const nominalLama = currentAsset.nominal;
-      const selisih = nominalBaru - nominalLama;
+      const jenisTransaksiLama = currentAsset.jenis_transaksi;
+      const sumberDanaLama = currentAsset.sumber_dana_id;
 
-      // 3. Update asset nominal
+      // 3. Update asset data
       const { error: updateError } = await supabase
         .from("pencatatan_asset")
-        .update({ nominal: nominalBaru })
+        .update({ 
+          nominal: nominalBaru,
+          jenis_transaksi: jenisTransaksiBaru,
+          sumber_dana_id: sumberDanaBaru
+        })
         .eq("id", assetId);
 
       if (updateError) throw updateError;
 
-      // 4. Update company modal if there's a difference
-      if (selisih !== 0 && currentAsset.sumber_dana_id) {
-        const { error: modalError } = await supabase.rpc('update_company_modal', {
-          company_id: currentAsset.sumber_dana_id,
-          amount: selisih // Positive to add, negative to subtract
+      // 4. Handle modal changes for old company (restore)
+      if (sumberDanaLama && nominalLama > 0) {
+        let modalAmountLama = nominalLama;
+        if (jenisTransaksiLama === 'pemasukan') {
+          modalAmountLama = -nominalLama; // Kurangi modal karena saat insert modal ditambah
+        }
+        // Untuk 'pengeluaran', modalAmountLama tetap positif (tambah modal karena saat insert modal dikurangi)
+
+        const { error: modalRestoreError } = await supabase.rpc('update_company_modal', {
+          company_id: sumberDanaLama,
+          amount: modalAmountLama
         });
 
-        if (modalError) {
-          console.error('Error updating company modal:', modalError);
+        if (modalRestoreError) {
+          console.error('Error restoring old company modal:', modalRestoreError);
+        }
+      }
+
+      // 5. Handle modal changes for new company (apply)
+      if (sumberDanaBaru && nominalBaru > 0) {
+        let modalAmountBaru = -nominalBaru; // Default: kurangi modal
+        if (jenisTransaksiBaru === 'pemasukan') {
+          modalAmountBaru = nominalBaru; // Tambah modal karena pemasukan
+        }
+        // Untuk 'pengeluaran', modalAmountBaru tetap negatif (kurangi modal)
+
+        const { error: modalApplyError } = await supabase.rpc('update_company_modal', {
+          company_id: sumberDanaBaru,
+          amount: modalAmountBaru
+        });
+
+        if (modalApplyError) {
+          console.error('Error applying new company modal:', modalApplyError);
           toast({
             title: "Warning",
-            description: `Nominal asset terupdate tapi modal perusahaan gagal: ${modalError.message}`,
+            description: `Nominal asset terupdate tapi modal perusahaan gagal: ${modalApplyError.message}`,
             variant: "destructive"
           });
         }
       }
 
-      // 5. Record to pencatatan_asset_history
+      // 6. Record to pencatatan_asset_history
       const { error: historyError } = await supabase
         .from("pencatatan_asset_history")
         .insert([{
           pencatatan_asset_id: assetId,
           tanggal: currentAsset.tanggal,
           nama: currentAsset.nama,
-          jenis_transaksi: 'update_nominal',
+          jenis_transaksi: jenisTransaksiBaru,
           nominal: nominalBaru,
-          sumber_dana_id: currentAsset.sumber_dana_id,
+          sumber_dana_id: sumberDanaBaru,
           keterangan: `Update Nominal: ${formData.alasan}`,
           divisi: currentAsset.divisi,
           cabang_id: currentAsset.cabang_id
@@ -237,33 +311,37 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
         });
       }
 
-      // 6. Update pembukuan entry if exists
-      const { data: pembukuanData } = await supabase
+      // 7. Update pembukuan entries
+      // Delete old pembukuan entry
+      const oldKeterangan = `${jenisTransaksiLama === 'pengeluaran' ? 'Pengeluaran' : 'Pemasukan'} Asset - ${currentAsset.nama}`;
+      await supabase
         .from("pembukuan")
-        .select("*")
-        .eq("keterangan", `Asset - ${currentAsset.nama}`)
-        .eq("company_id", currentAsset.sumber_dana_id);
+        .delete()
+        .eq("keterangan", oldKeterangan)
+        .eq("company_id", sumberDanaLama);
 
-      if (pembukuanData && pembukuanData.length > 0) {
-        const pembukuanEntry = pembukuanData[0];
-        const isPengeluaran = pembukuanEntry.debit > 0;
-        
-        const { error: pembukuanError } = await supabase
-          .from("pembukuan")
-          .update({
-            debit: isPengeluaran ? nominalBaru : 0,
-            kredit: !isPengeluaran ? nominalBaru : 0
-          })
-          .eq("id", pembukuanEntry.id);
+      // Insert new pembukuan entry
+      const newKeterangan = `${jenisTransaksiBaru === 'pengeluaran' ? 'Pengeluaran' : 'Pemasukan'} Asset - ${currentAsset.nama}`;
+      const { error: pembukuanError } = await supabase
+        .from("pembukuan")
+        .insert([{
+          tanggal: currentAsset.tanggal,
+          divisi: currentAsset.divisi,
+          cabang_id: currentAsset.cabang_id,
+          keterangan: newKeterangan,
+          debit: jenisTransaksiBaru === 'pengeluaran' ? nominalBaru : 0,
+          kredit: jenisTransaksiBaru === 'pemasukan' ? nominalBaru : 0,
+          saldo: 0,
+          company_id: sumberDanaBaru
+        }]);
 
-        if (pembukuanError) {
-          console.error('Error updating pembukuan:', pembukuanError);
-          toast({
-            title: "Warning",
-            description: `Nominal asset terupdate tapi pembukuan gagal: ${pembukuanError.message}`,
-            variant: "destructive"
-          });
-        }
+      if (pembukuanError) {
+        console.error('Error updating pembukuan:', pembukuanError);
+        toast({
+          title: "Warning",
+          description: `Nominal asset terupdate tapi pembukuan gagal: ${pembukuanError.message}`,
+          variant: "destructive"
+        });
       }
     },
     onSuccess: () => {
@@ -273,7 +351,7 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
       });
       setUpdateNominalDialogOpen(false);
       setSelectedAsset(null);
-      setNominalFormData({ nominal: "", alasan: "" });
+      setNominalFormData({ nominal: "", jenis_transaksi: "", sumber_dana_id: "", alasan: "" });
       onRefetch();
     },
     onError: (error: Error) => {
@@ -552,6 +630,51 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
                 placeholder="Masukkan nominal baru"
                 required
               />
+            </div>
+
+            <div>
+              <Label htmlFor="jenis_transaksi">Jenis Transaksi *</Label>
+              <Select
+                value={nominalFormData.jenis_transaksi}
+                onValueChange={(value) => setNominalFormData(prev => ({ ...prev, jenis_transaksi: value }))}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Jenis Transaksi" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pengeluaran">Pengeluaran Asset (Mengurangi Modal)</SelectItem>
+                  <SelectItem value="pemasukan">Pemasukan Asset (Menambah Modal)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="sumber_dana_id">Sumber Dana *</Label>
+              <Select
+                value={nominalFormData.sumber_dana_id}
+                onValueChange={(value) => setNominalFormData(prev => ({ ...prev, sumber_dana_id: value }))}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Sumber Dana" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companiesDataQuery?.map((company) => (
+                    <SelectItem key={company.id} value={company.id.toString()}>
+                      {company.nama_perusahaan}
+                      <br />
+                      <small className="text-gray-500">
+                        Modal: {new Intl.NumberFormat('id-ID', {
+                          style: 'currency',
+                          currency: 'IDR',
+                          minimumFractionDigits: 0
+                        }).format(company.modal || 0)}
+                      </small>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
