@@ -40,6 +40,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
     totalUnitPajakMati: 0, // Total unit yang tanggal pajak <= hari ini
     totalBookedAll: 0, // Total booked (harga_beli)
     totalUnitBookedAll: 0, // Total unit booked
+    stockMotorsBulanIni: 0, // Stock motors bulan ini (pembelian bulan ini dengan status ready)
     modalPerCompany: [] as Array<{name: string, modal: number}>,
     monthlyTrend: [] as Array<{month: string, pembelian: number, penjualan: number, keuntungan: number}>,
     statusTrend: [] as Array<{date: string, ready: number, booked: number, sold: number}>,
@@ -97,6 +98,14 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         .select('*')
         .eq('status', 'ready');
       
+      // ✅ FIX: Query pembelian bulan ini dengan status ready (untuk Stock Motors Bulan ini)
+      let pembelianReadyBulanIniQuery = supabase
+        .from('pembelian')
+        .select('*')
+        .eq('status', 'ready')
+        .gte('tanggal_pembelian', `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`)
+        .lt('tanggal_pembelian', `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-01`);
+      
       // ✅ TAMBAH: Query penjualan status booked (tanpa filter periode)
       let penjualanBookedQuery = supabase
         .from('penjualans')
@@ -111,6 +120,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         bookedOrdersQuery = bookedOrdersQuery.eq('divisi', selectedDivision);
         operationalQuery = operationalQuery.eq('divisi', selectedDivision);
         pembelianReadyQuery = pembelianReadyQuery.eq('divisi', selectedDivision); // ✅ TAMBAH
+        pembelianReadyBulanIniQuery = pembelianReadyBulanIniQuery.eq('divisi', selectedDivision); // ✅ FIX
         penjualanBookedQuery = penjualanBookedQuery.eq('divisi', selectedDivision); // ✅ TAMBAH
       }
 
@@ -120,6 +130,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         bookedOrdersQuery = bookedOrdersQuery.eq('cabang_id', parseInt(selectedCabang));
         operationalQuery = operationalQuery.eq('cabang_id', parseInt(selectedCabang));
         pembelianReadyQuery = pembelianReadyQuery.eq('cabang_id', parseInt(selectedCabang)); // ✅ TAMBAH: Filter cabang untuk pembelian ready
+        pembelianReadyBulanIniQuery = pembelianReadyBulanIniQuery.eq('cabang_id', parseInt(selectedCabang)); // ✅ FIX
         penjualanBookedQuery = penjualanBookedQuery.eq('cabang_id', parseInt(selectedCabang)); // ✅ TAMBAH: Filter cabang untuk penjualan booked
       }
 
@@ -134,7 +145,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         bookedOrdersResult,
         operationalResult,
         pembelianReadyResult, // ✅ TAMBAH
-        penjualanBookedResult  // ✅ TAMBAH
+        penjualanBookedResult,  // ✅ TAMBAH
+        pembelianReadyBulanIniResult  // ✅ FIX
       ] = await Promise.all([
         supabase.from('brands').select('*'),
         jenisMotorQuery,
@@ -146,7 +158,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         bookedOrdersQuery,
         operationalQuery,
         pembelianReadyQuery, // ✅ TAMBAH
-        penjualanBookedQuery // ✅ TAMBAH
+        penjualanBookedQuery, // ✅ TAMBAH
+        pembelianReadyBulanIniQuery // ✅ FIX
       ]);
 
       if (brandsResult.error) throw brandsResult.error;
@@ -157,6 +170,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       if (operationalResult.error) throw operationalResult.error;
       if (pembelianReadyResult.error) throw pembelianReadyResult.error; // ✅ TAMBAH
       if (penjualanBookedResult.error) throw penjualanBookedResult.error; // ✅ TAMBAH
+      if (pembelianReadyBulanIniResult.error) throw pembelianReadyBulanIniResult.error; // ✅ FIX
 
       const brands: Brand[] = brandsResult.data || [];
       const jenisMotor: JenisMotor[] = jenisMotorResult.data || [];
@@ -169,6 +183,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       const operational = operationalResult.data || [];
       const pembelianReady = pembelianReadyResult.data || []; // ✅ TAMBAH
       const penjualanBooked = penjualanBookedResult.data || []; // ✅ TAMBAH
+      const pembelianReadyBulanIni = pembelianReadyBulanIniResult.data || []; // ✅ FIX
 
       // Set cabang data for filter
       setCabangData(cabang);
@@ -222,6 +237,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       
       // 5. Total Unit Booked
       const totalUnitBookedAll = penjualanBooked.length;
+
+      // 6. Stock Motors Bulan Ini (pembelian bulan ini dengan status ready)
+      const stockMotorsBulanIni = pembelianReadyBulanIni.length;
 
       // Modal per company
       const modalPerCompany = companies.map(c => ({
@@ -303,6 +321,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         totalUnitPajakMati,
         totalBookedAll,
         totalUnitBookedAll,
+        stockMotorsBulanIni,
         modalPerCompany,
         monthlyTrend,
         statusTrend,
@@ -327,8 +346,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
   // Define colors for charts
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
-  // Calculate stock motors for this month (pembelian - penjualan)
-  const stockMotorsBulanIni = stats.totalPembelianUnit - stats.totalPenjualanUnit;
+  // ✅ FIX: Stock motors bulan ini sudah dihitung dengan benar dari pembelian bulan ini yang statusnya ready
+  const stockMotorsBulanIni = stats.stockMotorsBulanIni;
 
   const dashboardStats = [
     {
