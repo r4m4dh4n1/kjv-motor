@@ -41,6 +41,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
     totalBookedAll: 0, // Total booked (harga_beli)
     totalUnitBookedAll: 0, // Total unit booked
     stockMotorsBulanIni: 0, // Stock motors bulan ini (pembelian bulan ini dengan status ready)
+    totalUnitStokTua: 0, // Total unit yang tanggal pembeliannya sudah lama (> 3 bulan) tapi masih ready
     modalPerCompany: [] as Array<{name: string, modal: number}>,
     monthlyTrend: [] as Array<{month: string, pembelian: number, penjualan: number, keuntungan: number}>,
     statusTrend: [] as Array<{date: string, ready: number, booked: number, sold: number}>,
@@ -106,6 +107,17 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         .gte('tanggal_pembelian', `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`)
         .lt('tanggal_pembelian', `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-01`);
       
+      // ✅ TAMBAH: Query pembelian lama (> 3 bulan) yang masih ready
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+      const threeMonthsAgoStr = threeMonthsAgo.toISOString().split('T')[0];
+      
+      let pembelianStokTuaQuery = supabase
+        .from('pembelian')
+        .select('*')
+        .eq('status', 'ready')
+        .lt('tanggal_pembelian', threeMonthsAgoStr);
+      
       // ✅ TAMBAH: Query penjualan status booked (tanpa filter periode)
       let penjualanBookedQuery = supabase
         .from('penjualans')
@@ -121,6 +133,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         operationalQuery = operationalQuery.eq('divisi', selectedDivision);
         pembelianReadyQuery = pembelianReadyQuery.eq('divisi', selectedDivision); // ✅ TAMBAH
         pembelianReadyBulanIniQuery = pembelianReadyBulanIniQuery.eq('divisi', selectedDivision); // ✅ FIX
+        pembelianStokTuaQuery = pembelianStokTuaQuery.eq('divisi', selectedDivision); // ✅ TAMBAH: Filter divisi untuk stok tua
         penjualanBookedQuery = penjualanBookedQuery.eq('divisi', selectedDivision); // ✅ TAMBAH
       }
 
@@ -131,6 +144,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         operationalQuery = operationalQuery.eq('cabang_id', parseInt(selectedCabang));
         pembelianReadyQuery = pembelianReadyQuery.eq('cabang_id', parseInt(selectedCabang)); // ✅ TAMBAH: Filter cabang untuk pembelian ready
         pembelianReadyBulanIniQuery = pembelianReadyBulanIniQuery.eq('cabang_id', parseInt(selectedCabang)); // ✅ FIX
+        pembelianStokTuaQuery = pembelianStokTuaQuery.eq('cabang_id', parseInt(selectedCabang)); // ✅ TAMBAH: Filter cabang untuk stok tua
         penjualanBookedQuery = penjualanBookedQuery.eq('cabang_id', parseInt(selectedCabang)); // ✅ TAMBAH: Filter cabang untuk penjualan booked
       }
 
@@ -146,7 +160,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         operationalResult,
         pembelianReadyResult, // ✅ TAMBAH
         penjualanBookedResult,  // ✅ TAMBAH
-        pembelianReadyBulanIniResult  // ✅ FIX
+        pembelianReadyBulanIniResult,  // ✅ FIX
+        pembelianStokTuaResult  // ✅ TAMBAH: Stock tua
       ] = await Promise.all([
         supabase.from('brands').select('*'),
         jenisMotorQuery,
@@ -159,7 +174,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         operationalQuery,
         pembelianReadyQuery, // ✅ TAMBAH
         penjualanBookedQuery, // ✅ TAMBAH
-        pembelianReadyBulanIniQuery // ✅ FIX
+        pembelianReadyBulanIniQuery, // ✅ FIX
+        pembelianStokTuaQuery // ✅ TAMBAH: Stock tua
       ]);
 
       if (brandsResult.error) throw brandsResult.error;
@@ -171,6 +187,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       if (pembelianReadyResult.error) throw pembelianReadyResult.error; // ✅ TAMBAH
       if (penjualanBookedResult.error) throw penjualanBookedResult.error; // ✅ TAMBAH
       if (pembelianReadyBulanIniResult.error) throw pembelianReadyBulanIniResult.error; // ✅ FIX
+      if (pembelianStokTuaResult.error) throw pembelianStokTuaResult.error; // ✅ TAMBAH
 
       const brands: Brand[] = brandsResult.data || [];
       const jenisMotor: JenisMotor[] = jenisMotorResult.data || [];
@@ -184,6 +201,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       const pembelianReady = pembelianReadyResult.data || []; // ✅ TAMBAH
       const penjualanBooked = penjualanBookedResult.data || []; // ✅ TAMBAH
       const pembelianReadyBulanIni = pembelianReadyBulanIniResult.data || []; // ✅ FIX
+      const pembelianStokTua = pembelianStokTuaResult.data || []; // ✅ TAMBAH
 
       // Set cabang data for filter
       setCabangData(cabang);
@@ -196,7 +214,11 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       const startMotors = jenisMotor.filter(j => j.divisi === 'start').reduce((sum, j) => sum + j.qty, 0);
 
       // Calculate financial stats
-      const totalPembelian = pembelian.reduce((sum, p) => sum + p.harga_beli, 0);
+      // ✅ FIX: Gunakan harga_final jika ada, jika tidak pakai harga_beli (konsisten dengan Total Pembelian Ready)
+      const totalPembelian = pembelian.reduce((sum, p) => {
+        const harga = (p.harga_final && p.harga_final > 0) ? p.harga_final : p.harga_beli;
+        return sum + harga;
+      }, 0);
       const totalPembelianUnit = pembelian.length;
       const totalPenjualan = penjualan.reduce((sum, p) => sum + p.harga_jual, 0);
       const totalPenjualanUnit = penjualan.length;
@@ -240,6 +262,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
 
       // 6. Stock Motors Bulan Ini (pembelian bulan ini dengan status ready)
       const stockMotorsBulanIni = pembelianReadyBulanIni.length;
+
+      // 7. Total Unit Stock Tua (> 3 bulan tapi masih ready)
+      const totalUnitStokTua = pembelianStokTua.length;
 
       // Modal per company
       const modalPerCompany = companies.map(c => ({
@@ -322,6 +347,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         totalBookedAll,
         totalUnitBookedAll,
         stockMotorsBulanIni,
+        totalUnitStokTua,
         modalPerCompany,
         monthlyTrend,
         statusTrend,
@@ -466,8 +492,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         })}
       </div>
 
-      {/* ✅ TAMBAH: Grid untuk 5 card baru */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* ✅ TAMBAH: Grid untuk 6 card baru */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 shadow-lg hover:shadow-xl transition-all">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-3">
@@ -534,6 +560,20 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
               <p className="text-sm text-gray-600 mb-1">Total Unit Booked</p>
               <p className="text-2xl font-bold text-purple-700">{stats.totalUnitBookedAll}</p>
               <p className="text-xs text-gray-500 mt-1">Unit</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100 shadow-lg hover:shadow-xl transition-all">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-3">
+              <Activity className="w-8 h-8 text-amber-600" />
+              <span className="text-xs font-semibold bg-amber-200 text-amber-800 px-2 py-1 rounded">⚠️ LAMA</span>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Stock Tua (&gt; 3 Bulan)</p>
+              <p className="text-2xl font-bold text-amber-700">{stats.totalUnitStokTua}</p>
+              <p className="text-xs text-gray-500 mt-1">Belum Terjual</p>
             </div>
           </CardContent>
         </Card>
