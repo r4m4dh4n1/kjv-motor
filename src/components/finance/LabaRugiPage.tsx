@@ -18,6 +18,7 @@ interface LabaRugiPageProps {
 interface LabaRugiData {
   totalPenjualan: number;
   totalPendapatanLain: number;
+  totalKeuntunganBiroJasa: number; // ✅ TAMBAH: Total keuntungan dari biro jasa
   totalPendapatan: number;
   totalHargaBeli: number;
   totalBiayaPembelian: number;
@@ -34,6 +35,7 @@ interface LabaRugiData {
   marginBersih: number;
   penjualanDetail?: any[];
   operationalDetail?: any[];
+  biroJasaDetail?: any[]; // ✅ TAMBAH: Detail biro jasa
 }
 
 const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
@@ -93,6 +95,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       const newExpandedSections: {[key: string]: boolean} = {
         penjualan: false,
         pendapatanLain: false,
+        biroJasa: false, // ✅ TAMBAH: Section untuk biro jasa
         hargaBeli: false,
         biayaPembelian: false,
       };
@@ -135,12 +138,13 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         currentDate: new Date().toLocaleDateString('id-ID')
       });
       
-      const [pendapatanData, biayaData] = await Promise.all([
+      const [pendapatanData, biayaData, biroJasaData] = await Promise.all([
         fetchPendapatanData(dateRange),
-        fetchBiayaData(dateRange)
+        fetchBiayaData(dateRange),
+        fetchBiroJasaKeuntungan(dateRange) // ✅ TAMBAH: Fetch keuntungan biro jasa
       ]);
       
-      const calculatedData = calculateLabaRugi(pendapatanData, biayaData);
+      const calculatedData = calculateLabaRugi(pendapatanData, biayaData, biroJasaData);
       setLabaRugiData(calculatedData);
       
       setDetailData({
@@ -594,29 +598,80 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
     }
   };
 
-  const calculateLabaRugi = (pendapatanData: any, biayaData: any): LabaRugiData => {
+  // ✅ TAMBAH: Fungsi untuk mengambil keuntungan biro jasa
+  const fetchBiroJasaKeuntungan = async (dateRange: { start: Date; end: Date }) => {
+    try {
+      const startDate = dateRange.start.toISOString();
+      const endDate = dateRange.end.toISOString();
+      
+      let query = supabase
+        .from('biro_jasa')
+        .select('keuntungan, tanggal, plat, jenis_pengurusan')
+        .eq('status', 'Selesai')
+        .gte('tanggal', startDate)
+        .lte('tanggal', endDate);
+      
+      if (selectedDivision !== 'all') {
+        query = query.eq('divisi', selectedDivision);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error fetching biro jasa data:', error);
+        return {
+          totalKeuntunganBiroJasa: 0,
+          biroJasaDetail: []
+        };
+      }
+      
+      const biroJasaDetail = data || [];
+      const totalKeuntunganBiroJasa = biroJasaDetail.reduce((sum, item) => sum + (item.keuntungan || 0), 0);
+      
+      return {
+        totalKeuntunganBiroJasa,
+        biroJasaDetail
+      };
+    } catch (error) {
+      console.error('Error in fetchBiroJasaKeuntungan:', error);
+      return {
+        totalKeuntunganBiroJasa: 0,
+        biroJasaDetail: []
+      };
+    }
+  };
+
+  const calculateLabaRugi = (pendapatanData: any, biayaData: any, biroJasaData: any): LabaRugiData => {
     const totalBiayaOperasional = biayaData.totalBiayaOperasional || 0;
-    const labaBersih = (pendapatanData.totalKeuntungan || 0) - totalBiayaOperasional;
+    const totalKeuntunganBiroJasa = biroJasaData.totalKeuntunganBiroJasa || 0;
+    
+    // ✅ PERBAIKAN: Tambahkan keuntungan biro jasa ke pendapatan
+    const totalPendapatan = (pendapatanData.totalPenjualan || 0) + totalKeuntunganBiroJasa;
+    
+    // Laba bersih = (keuntungan penjualan + keuntungan biro jasa) - biaya operasional
+    const labaBersih = ((pendapatanData.totalKeuntungan || 0) + totalKeuntunganBiroJasa) - totalBiayaOperasional;
     
     return {
       totalPenjualan: pendapatanData.totalPenjualan || 0,
       totalPendapatanLain: 0,
-      totalPendapatan: pendapatanData.totalPenjualan || 0,
+      totalKeuntunganBiroJasa, // ✅ TAMBAH: Total keuntungan biro jasa
+      totalPendapatan, // ✅ PERBAIKAN: Penjualan + biro jasa
       totalHargaBeli: pendapatanData.totalHargaBeli || 0,
       totalBiayaPembelian: 0,
       totalHPP: pendapatanData.totalHargaBeli || 0,
-      labaKotor: pendapatanData.totalKeuntungan || 0,
+      labaKotor: (pendapatanData.totalKeuntungan || 0) + totalKeuntunganBiroJasa, // ✅ PERBAIKAN: Include biro jasa
       totalBiayaOperasional,
       totalBiayaAdministrasi: 0,
       totalBiayaPenjualan: 0,
       biayaPerKategori: biayaData.biayaPerKategori || {},
       labaBersih,
-      marginKotor: pendapatanData.totalPenjualan > 0 ? 
-        ((pendapatanData.totalKeuntungan || 0) / pendapatanData.totalPenjualan) * 100 : 0,
-      marginBersih: pendapatanData.totalPenjualan > 0 ? 
-        (labaBersih / pendapatanData.totalPenjualan) * 100 : 0,
+      marginKotor: totalPendapatan > 0 ? 
+        (((pendapatanData.totalKeuntungan || 0) + totalKeuntunganBiroJasa) / totalPendapatan) * 100 : 0,
+      marginBersih: totalPendapatan > 0 ? 
+        (labaBersih / totalPendapatan) * 100 : 0,
       penjualanDetail: pendapatanData.penjualanDetail || [],
-      operationalDetail: biayaData.operationalDetail || []
+      operationalDetail: biayaData.operationalDetail || [],
+      biroJasaDetail: biroJasaData.biroJasaDetail || [] // ✅ TAMBAH: Detail biro jasa
     };
   };
 
@@ -807,6 +862,61 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                     {formatCurrency(labaRugiData.totalPendapatanLain)}
                   </TableCell>
                 </TableRow>
+                
+                {/* ✅ TAMBAH: Keuntungan Biro Jasa */}
+                <TableRow 
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => toggleSection('biroJasa')}
+                >
+                  <TableCell className="pl-4 flex items-center">
+                    <ChevronDown className={`h-4 w-4 mr-2 transition-transform ${
+                      expandedSections.biroJasa ? 'rotate-180' : ''
+                    }`} />
+                    Keuntungan Biro Jasa
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(labaRugiData.totalKeuntunganBiroJasa)}
+                  </TableCell>
+                </TableRow>
+                
+                {/* ✅ TAMBAH: Detail Biro Jasa (expanded) */}
+                {expandedSections.biroJasa && labaRugiData.biroJasaDetail && labaRugiData.biroJasaDetail.length > 0 && (
+                  <TableRow>
+                    <TableCell colSpan={2} className="pl-8">
+                      <div className="max-h-40 overflow-y-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="text-xs">Tanggal</TableHead>
+                              <TableHead className="text-xs">Plat</TableHead>
+                              <TableHead className="text-xs">Jenis</TableHead>
+                              <TableHead className="text-xs">Keuntungan</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {labaRugiData.biroJasaDetail.slice(0, 5).map((item: any) => (
+                              <TableRow key={item.id}>
+                                <TableCell className="text-xs">
+                                  {new Date(item.tanggal).toLocaleDateString('id-ID')}
+                                </TableCell>
+                                <TableCell className="text-xs">{item.plat || '-'}</TableCell>
+                                <TableCell className="text-xs">{item.jenis_pengurusan || '-'}</TableCell>
+                                <TableCell className="text-xs font-semibold">
+                                  {formatCurrency(item.keuntungan || 0)}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                        {labaRugiData.biroJasaDetail.length > 5 && (
+                          <div className="text-xs text-gray-500 mt-2">
+                            ... dan {labaRugiData.biroJasaDetail.length - 5} data lainnya
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
                 
                 <TableRow className="font-semibold border-t">
                   <TableCell className="pl-4">Total Penjualan</TableCell>

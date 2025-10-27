@@ -34,6 +34,12 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
     totalBooked: 0,
     totalBookedUnit: 0,
     totalOperational: 0,
+    // ✅ TAMBAH: Field untuk card baru
+    totalPembelianReady: 0, // Total pembelian status ready
+    totalUnitReady: 0, // Total unit status ready
+    totalUnitPajakMati: 0, // Total unit yang tanggal pajak <= hari ini
+    totalBookedAll: 0, // Total booked (harga_beli)
+    totalUnitBookedAll: 0, // Total unit booked
     modalPerCompany: [] as Array<{name: string, modal: number}>,
     monthlyTrend: [] as Array<{month: string, pembelian: number, penjualan: number, keuntungan: number}>,
     statusTrend: [] as Array<{date: string, ready: number, booked: number, sold: number}>,
@@ -85,6 +91,18 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         .gte('tanggal', `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`)
         .lt('tanggal', `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-01`);
       
+      // ✅ TAMBAH: Query pembelian status ready (tanpa filter periode)
+      let pembelianReadyQuery = supabase
+        .from('pembelian')
+        .select('*')
+        .eq('status', 'ready');
+      
+      // ✅ TAMBAH: Query penjualan status booked (tanpa filter periode)
+      let penjualanBookedQuery = supabase
+        .from('penjualans')
+        .select('*')
+        .in('status', ['Booked', 'booked']);
+      
       if (selectedDivision !== 'all') {
         jenisMotorQuery = jenisMotorQuery.eq('divisi', selectedDivision);
         companiesQuery = companiesQuery.eq('divisi', selectedDivision);
@@ -92,6 +110,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         penjualanQuery = penjualanQuery.eq('divisi', selectedDivision);
         bookedOrdersQuery = bookedOrdersQuery.eq('divisi', selectedDivision);
         operationalQuery = operationalQuery.eq('divisi', selectedDivision);
+        pembelianReadyQuery = pembelianReadyQuery.eq('divisi', selectedDivision); // ✅ TAMBAH
+        penjualanBookedQuery = penjualanBookedQuery.eq('divisi', selectedDivision); // ✅ TAMBAH
       }
 
       if (selectedCabang !== 'all') {
@@ -99,6 +119,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         penjualanQuery = penjualanQuery.eq('cabang_id', parseInt(selectedCabang));
         bookedOrdersQuery = bookedOrdersQuery.eq('cabang_id', parseInt(selectedCabang));
         operationalQuery = operationalQuery.eq('cabang_id', parseInt(selectedCabang));
+        pembelianReadyQuery = pembelianReadyQuery.eq('cabang_id', parseInt(selectedCabang)); // ✅ TAMBAH: Filter cabang untuk pembelian ready
+        penjualanBookedQuery = penjualanBookedQuery.eq('cabang_id', parseInt(selectedCabang)); // ✅ TAMBAH: Filter cabang untuk penjualan booked
       }
 
       const [
@@ -110,7 +132,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         pembelianResult,
         penjualanResult,
         bookedOrdersResult,
-        operationalResult
+        operationalResult,
+        pembelianReadyResult, // ✅ TAMBAH
+        penjualanBookedResult  // ✅ TAMBAH
       ] = await Promise.all([
         supabase.from('brands').select('*'),
         jenisMotorQuery,
@@ -120,7 +144,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         pembelianQuery,
         penjualanQuery,
         bookedOrdersQuery,
-        operationalQuery
+        operationalQuery,
+        pembelianReadyQuery, // ✅ TAMBAH
+        penjualanBookedQuery // ✅ TAMBAH
       ]);
 
       if (brandsResult.error) throw brandsResult.error;
@@ -129,6 +155,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       if (assetsResult.error) throw assetsResult.error;
       if (bookedOrdersResult.error) throw bookedOrdersResult.error;
       if (operationalResult.error) throw operationalResult.error;
+      if (pembelianReadyResult.error) throw pembelianReadyResult.error; // ✅ TAMBAH
+      if (penjualanBookedResult.error) throw penjualanBookedResult.error; // ✅ TAMBAH
 
       const brands: Brand[] = brandsResult.data || [];
       const jenisMotor: JenisMotor[] = jenisMotorResult.data || [];
@@ -139,6 +167,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       const penjualan = penjualanResult.data || [];
       const bookedOrders = bookedOrdersResult.data || [];
       const operational = operationalResult.data || [];
+      const pembelianReady = pembelianReadyResult.data || []; // ✅ TAMBAH
+      const penjualanBooked = penjualanBookedResult.data || []; // ✅ TAMBAH
 
       // Set cabang data for filter
       setCabangData(cabang);
@@ -166,6 +196,32 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       const totalBookedUnit = bookedPenjualan.length;
       
       const totalOperational = operational.reduce((sum, o) => sum + o.nominal, 0);
+
+      // ✅ TAMBAH: Calculate stats untuk card baru
+      // 1. Total Pembelian Ready (pakai harga_final jika ada, jika tidak pakai harga_beli)
+      const totalPembelianReady = pembelianReady.reduce((sum, p) => {
+        const harga = (p.harga_final && p.harga_final > 0) ? p.harga_final : p.harga_beli;
+        return sum + harga;
+      }, 0);
+      
+      // 2. Total Unit Ready
+      const totalUnitReady = pembelianReady.length;
+      
+      // 3. Total Unit Pajak Mati (tanggal_pajak <= hari ini)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const totalUnitPajakMati = pembelianReady.filter(p => {
+        if (!p.tanggal_pajak) return false;
+        const tanggalPajak = new Date(p.tanggal_pajak);
+        tanggalPajak.setHours(0, 0, 0, 0);
+        return tanggalPajak <= today;
+      }).length;
+      
+      // 4. Total Booked (harga_beli dari penjualan booked)
+      const totalBookedAll = penjualanBooked.reduce((sum, p) => sum + (p.harga_beli || 0), 0);
+      
+      // 5. Total Unit Booked
+      const totalUnitBookedAll = penjualanBooked.length;
 
       // Modal per company
       const modalPerCompany = companies.map(c => ({
@@ -241,6 +297,12 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         totalBooked,
         totalBookedUnit,
         totalOperational,
+        // ✅ TAMBAH: Field untuk card baru
+        totalPembelianReady,
+        totalUnitReady,
+        totalUnitPajakMati,
+        totalBookedAll,
+        totalUnitBookedAll,
         modalPerCompany,
         monthlyTrend,
         statusTrend,
@@ -297,7 +359,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       changeType: "positive"
     },
     {
-      title: "Stock Motors",
+      title: "Stock Motors (Total Keseluruhan)",
       value: (stats.sportMotors + stats.startMotors).toString(),
       unit: "Unit Available",
       icon: Package,
@@ -380,6 +442,79 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
             </Card>
           );
         })}
+      </div>
+
+      {/* ✅ TAMBAH: Grid untuk 5 card baru */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 shadow-lg hover:shadow-xl transition-all">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-3">
+              <ShoppingCart className="w-8 h-8 text-blue-600" />
+              <span className="text-xs font-semibold bg-blue-200 text-blue-800 px-2 py-1 rounded">READY</span>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Total Pembelian (Ready)</p>
+              <p className="text-2xl font-bold text-blue-700">{formatCurrency(stats.totalPembelianReady)}</p>
+              <p className="text-xs text-gray-500 mt-1">{stats.totalUnitReady} Unit</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-green-100 shadow-lg hover:shadow-xl transition-all">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-3">
+              <Package className="w-8 h-8 text-green-600" />
+              <span className="text-xs font-semibold bg-green-200 text-green-800 px-2 py-1 rounded">READY</span>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Total Unit (Ready)</p>
+              <p className="text-2xl font-bold text-green-700">{stats.totalUnitReady}</p>
+              <p className="text-xs text-gray-500 mt-1">Unit Available</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-2 border-red-200 bg-gradient-to-br from-red-50 to-red-100 shadow-lg hover:shadow-xl transition-all">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-3">
+              <TrendingDown className="w-8 h-8 text-red-600" />
+              <span className="text-xs font-semibold bg-red-200 text-red-800 px-2 py-1 rounded">WARNING</span>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Unit Pajak Mati</p>
+              <p className="text-2xl font-bold text-red-700">{stats.totalUnitPajakMati}</p>
+              <p className="text-xs text-gray-500 mt-1">Tanggal Pajak ≤ Hari Ini</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-2 border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 shadow-lg hover:shadow-xl transition-all">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-3">
+              <BookOpen className="w-8 h-8 text-yellow-600" />
+              <span className="text-xs font-semibold bg-yellow-200 text-yellow-800 px-2 py-1 rounded">BOOKED</span>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Total Booked</p>
+              <p className="text-2xl font-bold text-yellow-700">{formatCurrency(stats.totalBookedAll)}</p>
+              <p className="text-xs text-gray-500 mt-1">{stats.totalUnitBookedAll} Unit</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 shadow-lg hover:shadow-xl transition-all">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-3">
+              <Briefcase className="w-8 h-8 text-purple-600" />
+              <span className="text-xs font-semibold bg-purple-200 text-purple-800 px-2 py-1 rounded">BOOKED</span>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Total Unit Booked</p>
+              <p className="text-2xl font-bold text-purple-700">{stats.totalUnitBookedAll}</p>
+              <p className="text-xs text-gray-500 mt-1">Unit</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Charts Row */}
