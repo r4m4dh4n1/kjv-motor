@@ -100,10 +100,14 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         .gte('tanggal', `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`)
         .lt('tanggal', `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-01`);
       
-      // ✅ TAMBAH: Query pembelian status ready (tanpa filter periode)
+      // ✅ TAMBAH: Query pembelian status ready (tanpa filter periode) - dengan join untuk brand dan jenis motor
       let pembelianReadyQuery = supabase
         .from('pembelian')
-        .select('*')
+        .select(`
+          *,
+          brands:brand_id(name),
+          jenis_motor:jenis_motor_id(jenis_motor)
+        `)
         .eq('status', 'ready');
       
       // ✅ FIX: Query pembelian bulan ini dengan status ready (untuk Stock Motors Bulan ini)
@@ -114,14 +118,18 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         .gte('tanggal_pembelian', `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`)
         .lt('tanggal_pembelian', `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-01`);
       
-      // ✅ TAMBAH: Query pembelian lama (> 3 bulan) yang masih ready
+      // ✅ TAMBAH: Query pembelian lama (> 3 bulan) yang masih ready - dengan join
       const threeMonthsAgo = new Date();
       threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
       const threeMonthsAgoStr = threeMonthsAgo.toISOString().split('T')[0];
       
       let pembelianStokTuaQuery = supabase
         .from('pembelian')
-        .select('*')
+        .select(`
+          *,
+          brands:brand_id(name),
+          jenis_motor:jenis_motor_id(jenis_motor)
+        `)
         .eq('status', 'ready')
         .lt('tanggal_pembelian', threeMonthsAgoStr);
       
@@ -509,12 +517,12 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         <Card className="border border-blue-200 bg-blue-50 shadow-md hover:shadow-lg transition-all hover:scale-105">
           <CardContent className="p-4">
             <div className="flex items-start justify-between mb-2">
-              <ShoppingCart className="w-6 h-6 text-blue-600" />
+              <DollarSign className="w-6 h-6 text-blue-600" />
               <span className="text-[10px] font-semibold bg-blue-200 text-blue-800 px-2 py-0.5 rounded">READY</span>
             </div>
-            <p className="text-[11px] text-gray-600 mb-1">Pembelian Ready</p>
-            <p className="text-lg font-bold text-blue-700">{stats.totalUnitReady}</p>
-            <p className="text-[10px] text-gray-500">Unit</p>
+            <p className="text-[11px] text-gray-600 mb-1">Total Pembelian Ready</p>
+            <p className="text-lg font-bold text-blue-700">{formatCurrency(stats.totalPembelianReady)}</p>
+            <p className="text-[10px] text-gray-500">{stats.totalUnitReady} Unit</p>
           </CardContent>
         </Card>
 
@@ -524,7 +532,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
               <Package className="w-6 h-6 text-green-600" />
               <span className="text-[10px] font-semibold bg-green-200 text-green-800 px-2 py-0.5 rounded">READY</span>
             </div>
-            <p className="text-[11px] text-gray-600 mb-1">Total Ready</p>
+            <p className="text-[11px] text-gray-600 mb-1">Total Unit Ready</p>
             <p className="text-lg font-bold text-green-700">{stats.totalUnitReady}</p>
             <p className="text-[10px] text-gray-500">All Periode</p>
           </CardContent>
@@ -558,9 +566,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                     <thead>
                       <tr className="bg-gray-100">
                         <th className="border p-2 text-left text-xs font-semibold">No</th>
-                        <th className="border p-2 text-left text-xs font-semibold">Plat Motor</th>
                         <th className="border p-2 text-left text-xs font-semibold">Brand</th>
-                        <th className="border p-2 text-left text-xs font-semibold">Model</th>
+                        <th className="border p-2 text-left text-xs font-semibold">Jenis Motor</th>
+                        <th className="border p-2 text-left text-xs font-semibold">Plat Nomor</th>
                         <th className="border p-2 text-left text-xs font-semibold">Tanggal Pajak</th>
                         <th className="border p-2 text-left text-xs font-semibold">Status</th>
                       </tr>
@@ -569,9 +577,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                       {detailPajakMati.map((unit, idx) => (
                         <tr key={unit.id} className="hover:bg-gray-50">
                           <td className="border p-2 text-xs">{idx + 1}</td>
-                          <td className="border p-2 text-xs font-semibold">{unit.plat_motor || '-'}</td>
-                          <td className="border p-2 text-xs">{unit.brand || '-'}</td>
-                          <td className="border p-2 text-xs">{unit.model || '-'}</td>
+                          <td className="border p-2 text-xs">{unit.brands?.name || '-'}</td>
+                          <td className="border p-2 text-xs">{unit.jenis_motor?.jenis_motor || '-'}</td>
+                          <td className="border p-2 text-xs font-semibold">{unit.plat_nomor || '-'}</td>
                           <td className="border p-2 text-xs">{unit.tanggal_pajak || '-'}</td>
                           <td className="border p-2">
                             <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px]">
@@ -642,9 +650,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                     <thead>
                       <tr className="bg-gray-100">
                         <th className="border p-2 text-left text-xs font-semibold">No</th>
-                        <th className="border p-2 text-left text-xs font-semibold">Plat Motor</th>
                         <th className="border p-2 text-left text-xs font-semibold">Brand</th>
-                        <th className="border p-2 text-left text-xs font-semibold">Model</th>
+                        <th className="border p-2 text-left text-xs font-semibold">Jenis Motor</th>
+                        <th className="border p-2 text-left text-xs font-semibold">Plat Nomor</th>
                         <th className="border p-2 text-left text-xs font-semibold">Tanggal Pembelian</th>
                         <th className="border p-2 text-left text-xs font-semibold">Status</th>
                       </tr>
@@ -653,9 +661,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                       {detailStockTua.map((unit, idx) => (
                         <tr key={unit.id} className="hover:bg-gray-50">
                           <td className="border p-2 text-xs">{idx + 1}</td>
-                          <td className="border p-2 text-xs font-semibold">{unit.plat_motor || '-'}</td>
-                          <td className="border p-2 text-xs">{unit.brand || '-'}</td>
-                          <td className="border p-2 text-xs">{unit.model || '-'}</td>
+                          <td className="border p-2 text-xs">{unit.brands?.name || '-'}</td>
+                          <td className="border p-2 text-xs">{unit.jenis_motor?.jenis_motor || '-'}</td>
+                          <td className="border p-2 text-xs font-semibold">{unit.plat_nomor || '-'}</td>
                           <td className="border p-2 text-xs">{unit.tanggal_pembelian || '-'}</td>
                           <td className="border p-2">
                             <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px]">
