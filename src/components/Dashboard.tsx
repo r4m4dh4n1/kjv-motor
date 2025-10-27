@@ -270,8 +270,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       });
       const totalUnitPajakMati = detailUnitPajakMati.length;
       
-      // 4. Total Booked (harga_beli dari penjualan booked)
-      const totalBookedAll = penjualanBooked.reduce((sum, p) => sum + (p.harga_beli || 0), 0);
+      // 4. Total Booked (DP/Uang Muka dari penjualan booked)
+      const totalBookedAll = penjualanBooked.reduce((sum, p) => sum + (p.dp || 0), 0);
       
       // 5. Total Unit Booked
       const totalUnitBookedAll = penjualanBooked.length;
@@ -601,12 +601,12 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         <Card className="border border-yellow-200 bg-yellow-50 shadow-md hover:shadow-lg transition-all hover:scale-105">
           <CardContent className="p-4">
             <div className="flex items-start justify-between mb-2">
-              <BookOpen className="w-6 h-6 text-yellow-600" />
+              <DollarSign className="w-6 h-6 text-yellow-600" />
               <span className="text-[10px] font-semibold bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">BOOKED</span>
             </div>
-            <p className="text-[11px] text-gray-600 mb-1">Total Booked</p>
-            <p className="text-lg font-bold text-yellow-700">{stats.totalUnitBookedAll}</p>
-            <p className="text-[10px] text-gray-500">Unit</p>
+            <p className="text-[11px] text-gray-600 mb-1">Total DP Booked</p>
+            <p className="text-lg font-bold text-yellow-700">{formatCurrency(stats.totalBookedAll)}</p>
+            <p className="text-[10px] text-gray-500">{stats.totalUnitBookedAll} Unit</p>
           </CardContent>
         </Card>
 
