@@ -97,9 +97,14 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
         const assetAmount = parseCurrency(formData.nominal);
         if (assetAmount > 0 && formData.sumber_dana_id) {
           try {
-            // 1. Restore modal lama dan update dengan modal baru
-            const oldModalAmount = formData.jenis_transaksi === 'pengeluaran' ? editingAsset.nominal : -editingAsset.nominal;
+            // 1. Restore modal lama berdasarkan jenis transaksi lama
+            const jenisTransaksiLama = editingAsset.jenis_transaksi || 'pengeluaran';
+            const oldModalAmount = jenisTransaksiLama === 'pengeluaran' ? editingAsset.nominal : -editingAsset.nominal;
+            
+            // 2. Apply modal baru berdasarkan jenis transaksi baru
             const newModalAmount = formData.jenis_transaksi === 'pengeluaran' ? -assetAmount : assetAmount;
+            
+            // 3. Total perubahan modal
             const totalModalChange = oldModalAmount + newModalAmount;
 
             const { error: modalError } = await supabase.rpc('update_company_modal', {
@@ -126,7 +131,8 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
 
           try {
             // 2. Update pembukuan entry
-            const oldKeterangan = `Asset - ${editingAsset.nama}`;
+            const jenisTransaksiLama = editingAsset.jenis_transaksi || 'pengeluaran';
+            const oldKeterangan = `${jenisTransaksiLama === 'pengeluaran' ? 'Pengeluaran' : 'Pemasukan'} Asset - ${editingAsset.nama}`;
             const newKeterangan = `${formData.jenis_transaksi === 'pengeluaran' ? 'Pengeluaran' : 'Pemasukan'} Asset - ${formData.nama}${formData.keterangan ? ` - ${formData.keterangan}` : ''}`;
 
             // Delete old pembukuan entry

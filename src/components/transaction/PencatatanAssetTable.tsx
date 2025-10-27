@@ -199,11 +199,7 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
   const handleUpdateNominal = (asset: PencatatanAssetItem) => {
     setSelectedAsset(asset);
     setNominalFormData({
-      nominal: new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0
-      }).format(asset.nominal),
+      nominal: "0", // ✅ PERBAIKAN: Default ke 0 bukan nominal saat ini
       jenis_transaksi: asset.jenis_transaksi || 'pengeluaran',
       sumber_dana_id: asset.sumber_dana_id?.toString() || '',
       alasan: ""
@@ -622,12 +618,12 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
             )}
 
             <div>
-              <Label htmlFor="nominal">Nominal Baru</Label>
+              <Label htmlFor="nominal">Nominal</Label>
               <Input
                 id="nominal"
                 value={nominalFormData.nominal}
                 onChange={(e) => handleCurrencyChange(e.target.value)}
-                placeholder="Masukkan nominal baru"
+                placeholder="Masukkan nominal"
                 required
               />
             </div>
