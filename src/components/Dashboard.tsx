@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Building, Car, Briefcase, Package, TrendingUp, Users, DollarSign, ShoppingCart, Receipt, TrendingDown, BookOpen, Activity, BarChart3, PieChart } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, LineChart, Line, AreaChart, Area, Legend } from 'recharts';
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +20,11 @@ interface DashboardProps {
 const Dashboard = ({ selectedDivision }: DashboardProps) => {
   const [selectedCabang, setSelectedCabang] = useState<string>("all");
   const [cabangData, setCabangData] = useState<any[]>([]);
+  const [detailPajakMati, setDetailPajakMati] = useState<any[]>([]);
+  const [detailStockTua, setDetailStockTua] = useState<any[]>([]);
+  const [openDialogPajakMati, setOpenDialogPajakMati] = useState(false);
+  const [openDialogStockTua, setOpenDialogStockTua] = useState(false);
+  
   const [stats, setStats] = useState({
     totalAssets: 0,
     activeCompanies: 0,
@@ -247,12 +254,13 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       // 3. Total Unit Pajak Mati (tanggal_pajak <= hari ini)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const totalUnitPajakMati = pembelianReady.filter(p => {
+      const detailUnitPajakMati = pembelianReady.filter(p => {
         if (!p.tanggal_pajak) return false;
         const tanggalPajak = new Date(p.tanggal_pajak);
         tanggalPajak.setHours(0, 0, 0, 0);
         return tanggalPajak <= today;
-      }).length;
+      });
+      const totalUnitPajakMati = detailUnitPajakMati.length;
       
       // 4. Total Booked (harga_beli dari penjualan booked)
       const totalBookedAll = penjualanBooked.reduce((sum, p) => sum + (p.harga_beli || 0), 0);
@@ -265,6 +273,10 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
 
       // 7. Total Unit Stock Tua (> 3 bulan tapi masih ready)
       const totalUnitStokTua = pembelianStokTua.length;
+      
+      // Set detail untuk popup
+      setDetailPajakMati(detailUnitPajakMati);
+      setDetailStockTua(pembelianStokTua);
 
       // Modal per company
       const modalPerCompany = companies.map(c => ({
@@ -492,91 +504,175 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         })}
       </div>
 
-      {/* ✅ TAMBAH: Grid untuk 6 card baru */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-        <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 shadow-lg hover:shadow-xl transition-all">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-3">
-              <ShoppingCart className="w-8 h-8 text-blue-600" />
-              <span className="text-xs font-semibold bg-blue-200 text-blue-800 px-2 py-1 rounded">READY</span>
+      {/* ✅ REDESIGN: Grid untuk 6 card baru - Lebih compact */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+        <Card className="border border-blue-200 bg-blue-50 shadow-md hover:shadow-lg transition-all hover:scale-105">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-2">
+              <ShoppingCart className="w-6 h-6 text-blue-600" />
+              <span className="text-[10px] font-semibold bg-blue-200 text-blue-800 px-2 py-0.5 rounded">READY</span>
             </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Total Pembelian (all periode)</p>
-              <p className="text-2xl font-bold text-blue-700">{formatCurrency(stats.totalPembelianReady)}</p>
-              <p className="text-xs text-gray-500 mt-1">{stats.totalUnitReady} Unit</p>
-            </div>
+            <p className="text-[11px] text-gray-600 mb-1">Pembelian Ready</p>
+            <p className="text-lg font-bold text-blue-700">{stats.totalUnitReady}</p>
+            <p className="text-[10px] text-gray-500">Unit</p>
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-green-100 shadow-lg hover:shadow-xl transition-all">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-3">
-              <Package className="w-8 h-8 text-green-600" />
-              <span className="text-xs font-semibold bg-green-200 text-green-800 px-2 py-1 rounded">READY</span>
+        <Card className="border border-green-200 bg-green-50 shadow-md hover:shadow-lg transition-all hover:scale-105">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-2">
+              <Package className="w-6 h-6 text-green-600" />
+              <span className="text-[10px] font-semibold bg-green-200 text-green-800 px-2 py-0.5 rounded">READY</span>
             </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Total Unit Ready (All Periode)</p>
-              <p className="text-2xl font-bold text-green-700">{stats.totalUnitReady}</p>
-              <p className="text-xs text-gray-500 mt-1">Unit Available</p>
-            </div>
+            <p className="text-[11px] text-gray-600 mb-1">Total Ready</p>
+            <p className="text-lg font-bold text-green-700">{stats.totalUnitReady}</p>
+            <p className="text-[10px] text-gray-500">All Periode</p>
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-red-200 bg-gradient-to-br from-red-50 to-red-100 shadow-lg hover:shadow-xl transition-all">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-3">
-              <TrendingDown className="w-8 h-8 text-red-600" />
-              <span className="text-xs font-semibold bg-red-200 text-red-800 px-2 py-1 rounded">WARNING</span>
+        {/* Card Pajak Mati dengan Popup */}
+        <Dialog open={openDialogPajakMati} onOpenChange={setOpenDialogPajakMati}>
+          <Card 
+            className="border border-red-200 bg-red-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
+            onClick={() => setOpenDialogPajakMati(true)}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <TrendingDown className="w-6 h-6 text-red-600" />
+                <span className="text-[10px] font-semibold bg-red-200 text-red-800 px-2 py-0.5 rounded">⚠️</span>
+              </div>
+              <p className="text-[11px] text-gray-600 mb-1">Pajak Mati</p>
+              <p className="text-lg font-bold text-red-700">{stats.totalUnitPajakMati}</p>
+              <p className="text-[10px] text-gray-500">Unit</p>
+            </CardContent>
+          </Card>
+          
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Unit Pajak Mati</DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              {detailPajakMati.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border p-2 text-left text-xs font-semibold">No</th>
+                        <th className="border p-2 text-left text-xs font-semibold">Plat Motor</th>
+                        <th className="border p-2 text-left text-xs font-semibold">Brand</th>
+                        <th className="border p-2 text-left text-xs font-semibold">Model</th>
+                        <th className="border p-2 text-left text-xs font-semibold">Tanggal Pajak</th>
+                        <th className="border p-2 text-left text-xs font-semibold">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detailPajakMati.map((unit, idx) => (
+                        <tr key={unit.id} className="hover:bg-gray-50">
+                          <td className="border p-2 text-xs">{idx + 1}</td>
+                          <td className="border p-2 text-xs font-semibold">{unit.plat_motor || '-'}</td>
+                          <td className="border p-2 text-xs">{unit.brand || '-'}</td>
+                          <td className="border p-2 text-xs">{unit.model || '-'}</td>
+                          <td className="border p-2 text-xs">{unit.tanggal_pajak || '-'}</td>
+                          <td className="border p-2">
+                            <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px]">
+                              Pajak Mati
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-center py-4 text-gray-500">Tidak ada data</p>
+              )}
             </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Unit Pajak Mati</p>
-              <p className="text-2xl font-bold text-red-700">{stats.totalUnitPajakMati}</p>
-              <p className="text-xs text-gray-500 mt-1">Tanggal Pajak ≤ Hari Ini</p>
+          </DialogContent>
+        </Dialog>
+
+        <Card className="border border-yellow-200 bg-yellow-50 shadow-md hover:shadow-lg transition-all hover:scale-105">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-2">
+              <BookOpen className="w-6 h-6 text-yellow-600" />
+              <span className="text-[10px] font-semibold bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">BOOKED</span>
             </div>
+            <p className="text-[11px] text-gray-600 mb-1">Total Booked</p>
+            <p className="text-lg font-bold text-yellow-700">{stats.totalUnitBookedAll}</p>
+            <p className="text-[10px] text-gray-500">Unit</p>
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 shadow-lg hover:shadow-xl transition-all">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-3">
-              <BookOpen className="w-8 h-8 text-yellow-600" />
-              <span className="text-xs font-semibold bg-yellow-200 text-yellow-800 px-2 py-1 rounded">BOOKED</span>
+        <Card className="border border-purple-200 bg-purple-50 shadow-md hover:shadow-lg transition-all hover:scale-105">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-2">
+              <Briefcase className="w-6 h-6 text-purple-600" />
+              <span className="text-[10px] font-semibold bg-purple-200 text-purple-800 px-2 py-0.5 rounded">BOOKED</span>
             </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Total Booked</p>
-              <p className="text-2xl font-bold text-yellow-700">{formatCurrency(stats.totalBookedAll)}</p>
-              <p className="text-xs text-gray-500 mt-1">{stats.totalUnitBookedAll} Unit</p>
-            </div>
+            <p className="text-[11px] text-gray-600 mb-1">Unit Booked</p>
+            <p className="text-lg font-bold text-purple-700">{stats.totalUnitBookedAll}</p>
+            <p className="text-[10px] text-gray-500">All Periode</p>
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 shadow-lg hover:shadow-xl transition-all">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-3">
-              <Briefcase className="w-8 h-8 text-purple-600" />
-              <span className="text-xs font-semibold bg-purple-200 text-purple-800 px-2 py-1 rounded">BOOKED</span>
+        {/* Card Stock Tua dengan Popup */}
+        <Dialog open={openDialogStockTua} onOpenChange={setOpenDialogStockTua}>
+          <Card 
+            className="border border-amber-200 bg-amber-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
+            onClick={() => setOpenDialogStockTua(true)}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <Activity className="w-6 h-6 text-amber-600" />
+                <span className="text-[10px] font-semibold bg-amber-200 text-amber-800 px-2 py-0.5 rounded">⚠️</span>
+              </div>
+              <p className="text-[11px] text-gray-600 mb-1">Stock Tua</p>
+              <p className="text-lg font-bold text-amber-700">{stats.totalUnitStokTua}</p>
+              <p className="text-[10px] text-gray-500">&gt; 3 Bulan</p>
+            </CardContent>
+          </Card>
+          
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Unit Stock Tua (&gt; 3 Bulan)</DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              {detailStockTua.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border p-2 text-left text-xs font-semibold">No</th>
+                        <th className="border p-2 text-left text-xs font-semibold">Plat Motor</th>
+                        <th className="border p-2 text-left text-xs font-semibold">Brand</th>
+                        <th className="border p-2 text-left text-xs font-semibold">Model</th>
+                        <th className="border p-2 text-left text-xs font-semibold">Tanggal Pembelian</th>
+                        <th className="border p-2 text-left text-xs font-semibold">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detailStockTua.map((unit, idx) => (
+                        <tr key={unit.id} className="hover:bg-gray-50">
+                          <td className="border p-2 text-xs">{idx + 1}</td>
+                          <td className="border p-2 text-xs font-semibold">{unit.plat_motor || '-'}</td>
+                          <td className="border p-2 text-xs">{unit.brand || '-'}</td>
+                          <td className="border p-2 text-xs">{unit.model || '-'}</td>
+                          <td className="border p-2 text-xs">{unit.tanggal_pembelian || '-'}</td>
+                          <td className="border p-2">
+                            <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px]">
+                              Ready
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-center py-4 text-gray-500">Tidak ada data</p>
+              )}
             </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Total Unit Booked</p>
-              <p className="text-2xl font-bold text-purple-700">{stats.totalUnitBookedAll}</p>
-              <p className="text-xs text-gray-500 mt-1">Unit</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100 shadow-lg hover:shadow-xl transition-all">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-3">
-              <Activity className="w-8 h-8 text-amber-600" />
-              <span className="text-xs font-semibold bg-amber-200 text-amber-800 px-2 py-1 rounded">⚠️ LAMA</span>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Stock Tua (&gt; 3 Bulan)</p>
-              <p className="text-2xl font-bold text-amber-700">{stats.totalUnitStokTua}</p>
-              <p className="text-xs text-gray-500 mt-1">Belum Terjual</p>
-            </div>
-          </CardContent>
-        </Card>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Charts Row */}
