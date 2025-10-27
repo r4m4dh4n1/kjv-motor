@@ -62,6 +62,7 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
   const [selectedAsset, setSelectedAsset] = useState<PencatatanAssetItem | null>(null);
   const [companiesData, setCompaniesData] = useState<any[]>([]);
   const [nominalFormData, setNominalFormData] = useState({
+    tanggal_update: "",
     nominal: "",
     jenis_transaksi: "",
     sumber_dana_id: "",
@@ -199,6 +200,7 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
   const handleUpdateNominal = (asset: PencatatanAssetItem) => {
     setSelectedAsset(asset);
     setNominalFormData({
+      tanggal_update: new Date().toISOString().split('T')[0],
       nominal: "0", // ✅ PERBAIKAN: Default ke 0 bukan nominal saat ini
       jenis_transaksi: asset.jenis_transaksi || 'pengeluaran',
       sumber_dana_id: asset.sumber_dana_id?.toString() || '',
@@ -321,7 +323,7 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
       const { error: pembukuanError } = await supabase
         .from("pembukuan")
         .insert([{
-          tanggal: currentAsset.tanggal,
+          tanggal: formData.tanggal_update,
           divisi: currentAsset.divisi,
           cabang_id: currentAsset.cabang_id,
           keterangan: newKeterangan,
@@ -347,7 +349,7 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
       });
       setUpdateNominalDialogOpen(false);
       setSelectedAsset(null);
-      setNominalFormData({ nominal: "", jenis_transaksi: "", sumber_dana_id: "", alasan: "" });
+      setNominalFormData({ tanggal_update: "", nominal: "", jenis_transaksi: "", sumber_dana_id: "", alasan: "" });
       onRefetch();
     },
     onError: (error: Error) => {
@@ -616,6 +618,17 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
                 </div>
               </div>
             )}
+
+            <div>
+              <Label htmlFor="tanggal_update">Tanggal Update</Label>
+              <Input
+                id="tanggal_update"
+                type="date"
+                value={(nominalFormData as any).tanggal_update}
+                onChange={(e) => setNominalFormData(prev => ({ ...prev, tanggal_update: e.target.value }))}
+                required
+              />
+            </div>
 
             <div>
               <Label htmlFor="nominal">Nominal</Label>

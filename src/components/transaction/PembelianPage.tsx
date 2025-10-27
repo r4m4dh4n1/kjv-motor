@@ -356,31 +356,21 @@ const PembelianPage = ({ selectedDivision }: PembelianPageProps) => {
         if (updateModalError) throw updateModalError;
       }
 
-      // Update harga_final di tabel pembelian
-      updateMutation.mutate(
-        { 
-          id: updatingHargaPembelian.id, 
-          data: { harga_final: hargaFinal } 
-        },
-        {
-          onSuccess: () => {
-            toast({
-              title: "Sukses",
-              description: selisihHarga > 0 
-                ? "Harga berhasil diupdate, history tersimpan, dan modal telah dikurangi"
-                : "Harga berhasil diupdate dan history tersimpan"
-            });
-            closeAllDialogs();
-          },
-          onError: () => {
-            toast({
-              title: "Error",
-              description: "Gagal mengupdate harga",
-              variant: "destructive"
-            });
-          }
-        }
-      );
+      // Update harga_final di tabel pembelian - PERBAIKAN: Langsung update tanpa mutation
+      const { error: updateHargaError } = await supabase
+        .from("pembelian")
+        .update({ harga_final: hargaFinal })
+        .eq("id", updatingHargaPembelian.id);
+
+      if (updateHargaError) throw updateHargaError;
+
+      toast({
+        title: "Sukses",
+        description: selisihHarga > 0 
+          ? "Harga berhasil diupdate, history tersimpan, dan modal telah dikurangi"
+          : "Harga berhasil diupdate dan history tersimpan"
+      });
+      closeAllDialogs();
     } catch (error) {
       toast({
         title: "Error",
