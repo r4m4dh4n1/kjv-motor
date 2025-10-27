@@ -46,11 +46,16 @@ export const useBookedUpdateHarga = () => {
 
       const newHargaBeli = originalHargaBeli + totalBiayaTambahan;
 
-      // Update penjualan - update harga_beli
+      // ✅ PERBAIKAN: Hitung ulang keuntungan setelah harga_beli berubah
+      const hargaJual = currentPenjualan.harga_jual || 0;
+      const newKeuntungan = hargaJual - newHargaBeli;
+
+      // Update penjualan - update harga_beli DAN keuntungan
       const { error: penjualanError } = await supabase
         .from('penjualans')
         .update({
           harga_beli: newHargaBeli,
+          keuntungan: newKeuntungan, // ✅ UPDATE: Hitung ulang keuntungan
           biaya_qc: data.biaya_qc,
           biaya_pajak: data.biaya_pajak,
           biaya_lain_lain: data.biaya_lain_lain,

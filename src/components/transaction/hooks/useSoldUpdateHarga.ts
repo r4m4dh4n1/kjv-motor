@@ -33,14 +33,16 @@ export const useSoldUpdateHarga = () => {
         throw new Error('Hanya penjualan dengan status "selesai" yang bisa diupdate');
       }
 
-      const newKeuntungan = (currentPenjualan.keuntungan || 0) - updateData.biaya_tambahan;
-      const companyId = currentPenjualan.company_id;
       const newHargaBeli = (currentPenjualan.harga_beli || 0) + updateData.biaya_tambahan;
       
       // Additional validation for reduction
       if (updateData.operation_mode === 'kurang' && newHargaBeli < 0) {
         throw new Error('Pengurangan tidak boleh membuat harga beli negatif');
       }
+
+      // ✅ PERBAIKAN: Hitung ulang keuntungan dari harga_jual - harga_beli
+      const hargaJual = currentPenjualan.harga_jual || 0;
+      const newKeuntungan = hargaJual - newHargaBeli;
 
       // 2. Update penjualan
       const updateFields: any = {
