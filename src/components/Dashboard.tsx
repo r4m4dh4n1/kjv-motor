@@ -680,7 +680,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {detailPajakMati.map((unit, idx) => (
+                    {[...detailPajakMati]
+                    .sort((a, b) => new Date(a.tanggal_pajak).getTime() - new Date(b.tanggal_pajak).getTime())
+                    .map((unit, idx) => (
                         <tr key={unit.id} className="hover:bg-gray-50">
                           <td className="border p-2 text-xs">{idx + 1}</td>
                           <td className="border p-2 text-xs">{unit.brands?.name || '-'}</td>
@@ -854,7 +856,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {detailStockTua.map((unit, idx) => (
+                      {[...detailStockTua]
+                      .sort((a, b) => new Date(a.tanggal_pembelian).getTime() - new Date(b.tanggal_pembelian).getTime())
+                      .map((unit, idx) => (
                         <tr key={unit.id} className="hover:bg-gray-50">
                           <td className="border p-2 text-xs">{idx + 1}</td>
                           <td className="border p-2 text-xs">{unit.brands?.name || '-'}</td>
