@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Eye, DollarSign, CheckCircle, History, TrendingUp, Car, Calendar } from "lucide-react";
+import { Pencil, Trash2, Eye, DollarSign, CheckCircle, History, TrendingUp, Car, Calendar, FileText } from "lucide-react";
 import { EnhancedTable, CurrencyCell, DateCell, StatusBadge } from "./EnhancedTable";
 
 interface PembelianTableProps {
@@ -12,6 +12,7 @@ interface PembelianTableProps {
   handleQC: (pembelian: any) => void;
   handleViewQcHistory: (pembelian: any) => void;
   handleViewPriceHistory: (pembelian: any) => void;
+  handleQCReport: (pembelian: any) => void;
   deleteMutation: any;
 }
 
@@ -23,6 +24,7 @@ const PembelianTable = ({
   handleQC,
   handleViewQcHistory,
   handleViewPriceHistory,
+  handleQCReport,
   deleteMutation 
 }: PembelianTableProps) => {
   
@@ -175,6 +177,13 @@ const PembelianTable = ({
       onClick: handleQC,
       variant: "outline" as const,
       className: "hover:bg-purple-50 hover:text-purple-600"
+    },
+    {
+      label: "Report QC",
+      icon: FileText,
+      onClick: handleQCReport,
+      variant: "outline" as const,
+      className: "hover:bg-cyan-50 hover:text-cyan-600"
     },
     {
       label: "Hapus",
