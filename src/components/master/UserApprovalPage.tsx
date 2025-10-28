@@ -52,6 +52,21 @@ const UserApprovalPage = () => {
     try {
       console.log('Starting approval change for user:', userId, 'approve:', approve);
       
+      // Check current user's role for debugging
+      const { data: currentUser } = await supabase.auth.getUser();
+      console.log('Current user:', currentUser.user?.id);
+      
+      if (currentUser.user) {
+        const { data: userRoles } = await supabase
+          .from('user_roles')
+          .select(`
+            role_id,
+            roles!inner(role_name, description)
+          `)
+          .eq('user_id', currentUser.user.id);
+        console.log('Current user roles:', userRoles);
+      }
+      
       const { data: updateData, error: updateError } = await supabase
         .from('profiles')
         .update({ is_approved: approve })
@@ -85,6 +100,24 @@ const UserApprovalPage = () => {
           
         if (roleError) {
           console.error('Role query error:', roleError);
+          // Try alternative role names
+          const { data: altRoles, error: altRoleError } = await supabase
+            .from('roles')
+            .select('role_id')
+            .in('role_name', ['staff', 'viewer'])
+            .single();
+            
+          if (!altRoleError && altRoles) {
+            const { data: insertData, error: insertError } = await supabase
+              .from('user_roles')
+              .insert({
+                user_id: userId,
+                role_id: altRoles.role_id
+              })
+              .select();
+              
+            console.log('User role insert result (alternative):', { insertData, insertError });
+          }
         } else if (roles) {
           const { data: insertData, error: insertError } = await supabase
             .from('user_roles')
@@ -98,6 +131,11 @@ const UserApprovalPage = () => {
           
           if (insertError) {
             console.error('User role insert error:', insertError);
+            toast({
+              title: "Warning",
+              description: "User approved but role assignment failed. Please assign role manually.",
+              variant: "destructive",
+            });
           }
         }
       }
