@@ -609,10 +609,13 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         .select('id, keuntungan, tanggal, plat_nomor, jenis_pengurusan, divisi')
         .in('status', ['Selesai', 'selesai'])
         .gte('tanggal', startDate)
-        .lte('tanggal', endDate);
+        .lte('tanggal', endDate)
+        .order('tanggal', { ascending: false });
       
       if (selectedDivision !== 'all') {
-        query = query.eq('divisi', selectedDivision);
+        // Sertakan data tanpa divisi agar tidak terfilter habis
+        // Supabase or() syntax: comma-separated conditions
+        query = query.or(`divisi.eq.${selectedDivision},divisi.is.null`);
       }
       
       const { data, error } = await query;
