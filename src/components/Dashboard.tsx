@@ -571,7 +571,13 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                           // Sort 2: Jika tanggal sama, sort by harga (terbesar ke terkecil)
                           const hargaA = (a.harga_final && a.harga_final > 0) ? a.harga_final : a.harga_beli;
                           const hargaB = (b.harga_final && b.harga_final > 0) ? b.harga_final : b.harga_beli;
-                          return hargaB - hargaA;
+                          const hargaCompare = hargaB - hargaA;
+                          if (hargaCompare !== 0) return hargaCompare;
+                          
+                          // Sort 3: Jika tanggal dan harga sama, sort by Brand (A-Z)
+                          const brandA = a.brands?.name || '';
+                          const brandB = b.brands?.name || '';
+                          return brandA.localeCompare(brandB);
                         })
                         .map((unit, idx) => {
                           const harga = (unit.harga_final && unit.harga_final > 0) ? unit.harga_final : unit.harga_beli;
@@ -638,7 +644,13 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                             // Sort 2: Jika tanggal sama, sort by harga (terbesar ke terkecil)
                             const hargaA = (a.harga_final && a.harga_final > 0) ? a.harga_final : a.harga_beli;
                             const hargaB = (b.harga_final && b.harga_final > 0) ? b.harga_final : b.harga_beli;
-                            return hargaB - hargaA;
+                            const hargaCompare = hargaB - hargaA;
+                            if (hargaCompare !== 0) return hargaCompare;
+                            
+                            // Sort 3: Jika tanggal dan harga sama, sort by Brand (A-Z)
+                            const brandA = a.jenis_motor?.jenis_motor || '';
+                            const brandB = b.jenis_motor?.jenis_motor || '';
+                            return brandA.localeCompare(brandB);
                           })
                           .map((unit, idx) => {
                           const harga = (unit.harga_final && unit.harga_final > 0) ? unit.harga_final : unit.harga_beli;
