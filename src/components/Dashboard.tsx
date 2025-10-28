@@ -568,10 +568,16 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                       const dateCompare = new Date(b.tanggal_pembelian).getTime() - new Date(a.tanggal_pembelian).getTime();
                       if (dateCompare !== 0) return dateCompare;
                       
-                      // Sort 2: Jika tanggal sama, sort by harga (terbesar ke terkecil)
+                      // Sort 2: Jika tanggal sama, sort by harga_beli (terbesar ke terkecil)
                       const hargaA = (a.harga_final && a.harga_final > 0) ? a.harga_final : a.harga_beli;
                       const hargaB = (b.harga_final && b.harga_final > 0) ? b.harga_final : b.harga_beli;
-                      return hargaB - hargaA;
+                      const hargaCompare = hargaB - hargaA;
+                      if (hargaCompare !== 0) return hargaCompare;
+                      
+                      // Sort 3: Jika harga sama, sort by brand (A sampai Z)
+                      const brandA = a.brands?.name || '';
+                      const brandB = b.brands?.name || '';
+                      return brandA.localeCompare(brandB);
                     })
                     .map((unit, idx) => {
                           const harga = (unit.harga_final && unit.harga_final > 0) ? unit.harga_final : unit.harga_beli;
@@ -635,10 +641,16 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                           const dateCompare = new Date(b.tanggal_pembelian).getTime() - new Date(a.tanggal_pembelian).getTime();
                           if (dateCompare !== 0) return dateCompare;
                           
-                          // Sort 2: Jika tanggal sama, sort by harga (terbesar ke terkecil)
+                          // Sort 2: Jika tanggal sama, sort by harga_beli (terbesar ke terkecil)
                           const hargaA = (a.harga_final && a.harga_final > 0) ? a.harga_final : a.harga_beli;
                           const hargaB = (b.harga_final && b.harga_final > 0) ? b.harga_final : b.harga_beli;
-                          return hargaB - hargaA;
+                          const hargaCompare = hargaB - hargaA;
+                          if (hargaCompare !== 0) return hargaCompare;
+                          
+                          // Sort 3: Jika harga sama, sort by brand (A sampai Z)
+                          const brandA = a.brands?.name || '';
+                          const brandB = b.brands?.name || '';
+                          return brandA.localeCompare(brandB);
                         })
                         .map((unit, idx) => {
                           const harga = (unit.harga_final && unit.harga_final > 0) ? unit.harga_final : unit.harga_beli;
