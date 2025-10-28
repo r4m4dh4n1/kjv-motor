@@ -562,26 +562,18 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {[...readyUnits]
-                        .sort((a, b) => {
-                          // Sort 1: Tanggal pembelian (terbaru ke terlama)
-                          const dateA = a.tanggal_pembelian ? new Date(a.tanggal_pembelian).getTime() : 0;
-                          const dateB = b.tanggal_pembelian ? new Date(b.tanggal_pembelian).getTime() : 0;
-                          const dateCompare = dateB - dateA;
-                          if (dateCompare !== 0) return dateCompare;
-                          
-                          // Sort 2: Jika tanggal sama, sort by harga (terbesar ke terkecil)
-                          const hargaA = (a.harga_final && a.harga_final > 0) ? a.harga_final : (a.harga_beli || 0);
-                          const hargaB = (b.harga_final && b.harga_final > 0) ? b.harga_final : (b.harga_beli || 0);
-                          const hargaCompare = hargaB - hargaA;
-                          if (hargaCompare !== 0) return hargaCompare;
-                          
-                          // Sort 3: Jika tanggal dan harga sama, sort by Brand (A-Z)
-                          const brandA = (a.brands?.name || '').toLowerCase();
-                          const brandB = (b.brands?.name || '').toLowerCase();
-                          return brandA.localeCompare(brandB);
-                        })
-                        .map((unit, idx) => {
+                    {[...readyUnits]
+                    .sort((a, b) => {
+                      // Sort 1: Tanggal pembelian (terbaru ke terlama)
+                      const dateCompare = new Date(b.tanggal_pembelian).getTime() - new Date(a.tanggal_pembelian).getTime();
+                      if (dateCompare !== 0) return dateCompare;
+                      
+                      // Sort 2: Jika tanggal sama, sort by harga (terbesar ke terkecil)
+                      const hargaA = (a.harga_final && a.harga_final > 0) ? a.harga_final : a.harga_beli;
+                      const hargaB = (b.harga_final && b.harga_final > 0) ? b.harga_final : b.harga_beli;
+                      return hargaB - hargaA;
+                    })
+                    .map((unit, idx) => {
                           const harga = (unit.harga_final && unit.harga_final > 0) ? unit.harga_final : unit.harga_beli;
                           return (
                             <tr key={unit.id} className="hover:bg-gray-50">
@@ -638,25 +630,17 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                     </thead>
                     <tbody>
                       {[...readyUnits]
-                      .sort((a, b) => {
-                        // Sort 1: Tanggal pembelian (terbaru ke terlama)
-                        const dateA = a.tanggal_pembelian ? new Date(a.tanggal_pembelian).getTime() : 0;
-                        const dateB = b.tanggal_pembelian ? new Date(b.tanggal_pembelian).getTime() : 0;
-                        const dateCompare = dateB - dateA;
-                        if (dateCompare !== 0) return dateCompare;
-                        
-                        // Sort 2: Jika tanggal sama, sort by harga (terbesar ke terkecil)
-                        const hargaA = (a.harga_final && a.harga_final > 0) ? a.harga_final : (a.harga_beli || 0);
-                        const hargaB = (b.harga_final && b.harga_final > 0) ? b.harga_final : (b.harga_beli || 0);
-                        const hargaCompare = hargaB - hargaA;
-                        if (hargaCompare !== 0) return hargaCompare;
-                        
-                        // Sort 3: Jika tanggal dan harga sama, sort by Brand (A-Z)
-                        const brandA = (a.brands?.name || '').toLowerCase();
-                        const brandB = (b.brands?.name || '').toLowerCase();
-                        return brandA.localeCompare(brandB);
-                      })
-                      .map((unit, idx) => {
+                        .sort((a, b) => {
+                          // Sort 1: Tanggal pembelian (terbaru ke terlama)
+                          const dateCompare = new Date(b.tanggal_pembelian).getTime() - new Date(a.tanggal_pembelian).getTime();
+                          if (dateCompare !== 0) return dateCompare;
+                          
+                          // Sort 2: Jika tanggal sama, sort by harga (terbesar ke terkecil)
+                          const hargaA = (a.harga_final && a.harga_final > 0) ? a.harga_final : a.harga_beli;
+                          const hargaB = (b.harga_final && b.harga_final > 0) ? b.harga_final : b.harga_beli;
+                          return hargaB - hargaA;
+                        })
+                        .map((unit, idx) => {
                           const harga = (unit.harga_final && unit.harga_final > 0) ? unit.harga_final : unit.harga_beli;
                           return (
                             <tr key={unit.id} className="hover:bg-gray-50">
