@@ -606,8 +606,8 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       
       let query = supabase
         .from('biro_jasa')
-        .select('keuntungan, tanggal, plat, jenis_pengurusan')
-        .eq('status', 'Selesai')
+        .select('id, keuntungan, tanggal, plat_nomor, jenis_pengurusan, divisi')
+        .in('status', ['Selesai', 'selesai'])
         .gte('tanggal', startDate)
         .lte('tanggal', endDate);
       
@@ -899,7 +899,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                                 <TableCell className="text-xs">
                                   {new Date(item.tanggal).toLocaleDateString('id-ID')}
                                 </TableCell>
-                                <TableCell className="text-xs">{item.plat || '-'}</TableCell>
+                                <TableCell className="text-xs">{item.plat_nomor || '-'}</TableCell>
                                 <TableCell className="text-xs">{item.jenis_pengurusan || '-'}</TableCell>
                                 <TableCell className="text-xs font-semibold">
                                   {formatCurrency(item.keuntungan || 0)}
