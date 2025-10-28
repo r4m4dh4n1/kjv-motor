@@ -606,7 +606,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       
       let query = supabase
         .from('biro_jasa')
-        .select('id, keuntungan, tanggal, plat_nomor, jenis_pengurusan, divisi')
+        .select('id, keuntungan, total_bayar, biaya_modal, tanggal, plat_nomor, jenis_pengurusan, divisi')
         .in('status', ['Selesai', 'selesai'])
         .gte('tanggal', startDate)
         .lte('tanggal', endDate)
@@ -628,8 +628,11 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         };
       }
       
-      const biroJasaDetail = data || [];
-      const totalKeuntunganBiroJasa = biroJasaDetail.reduce((sum, item) => sum + (item.keuntungan || 0), 0);
+      const biroJasaDetail = (data || []).map((item: any) => {
+        const calculated = (item.keuntungan ?? ((item.total_bayar || 0) - (item.biaya_modal || 0))) || 0;
+        return { ...item, keuntungan: calculated };
+      });
+      const totalKeuntunganBiroJasa = biroJasaDetail.reduce((sum: number, item: any) => sum + (item.keuntungan || 0), 0);
       
       return {
         totalKeuntunganBiroJasa,

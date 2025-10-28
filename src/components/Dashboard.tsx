@@ -240,9 +240,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       const activeCompanies = companies.filter(c => c.status === 'active').length;
       const passiveCompanies = companies.filter(c => c.status === 'passive').length;
       const totalModal = companies.reduce((sum, c) => sum + c.modal, 0);
-      const sportMotors = jenisMotor.filter(j => j.divisi === 'sport').reduce((sum, j) => sum + j.qty, 0);
-      const startMotors = jenisMotor.filter(j => j.divisi === 'start').reduce((sum, j) => sum + j.qty, 0);
-
+      const sportMotors = pembelianReady.filter(p => p.divisi === 'sport').length;
+      const startMotors = pembelianReady.filter(p => p.divisi === 'start').length;
       // Calculate financial stats
       // ✅ FIX: Gunakan harga_final jika ada, jika tidak pakai harga_beli (konsisten dengan Total Pembelian Ready)
       const totalPembelian = pembelian.reduce((sum, p) => {
