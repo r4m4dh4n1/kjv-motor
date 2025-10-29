@@ -12,6 +12,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -898,6 +899,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Modal Unit Ready</DialogTitle>
+              <DialogDescription>
+                Daftar unit dengan status ready dan modal yang dibutuhkan
+              </DialogDescription>
             </DialogHeader>
             <div className="mt-4">
               {readyUnits.length > 0 ? (
@@ -980,6 +984,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Unit Belum QC</DialogTitle>
+              <DialogDescription>
+                Daftar unit yang belum melalui proses Quality Control
+              </DialogDescription>
             </DialogHeader>
             <div className="mt-4">
               {detailBelumQC.length > 0 ? (
@@ -1101,6 +1108,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Unit Sudah QC</DialogTitle>
+              <DialogDescription>
+                Daftar unit yang sudah selesai melalui proses Quality Control
+              </DialogDescription>
             </DialogHeader>
             <div className="mt-4">
               {detailSudahQC.length > 0 ? (
@@ -1229,6 +1239,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Unit Pajak Mati</DialogTitle>
+              <DialogDescription>
+                Daftar unit yang pajak kendaraannya sudah mati atau expired
+              </DialogDescription>
             </DialogHeader>
             <div className="mt-4">
               {detailPajakMati.length > 0 ? (
@@ -1320,6 +1333,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>DP Booked</DialogTitle>
+              <DialogDescription>
+                Daftar unit yang sudah dibooking dan total DP yang diterima
+              </DialogDescription>
             </DialogHeader>
             <div className="mt-4">
               {bookedUnits.length > 0 ? (
@@ -1414,6 +1430,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Unit Booked</DialogTitle>
+              <DialogDescription>
+                Daftar lengkap unit yang sudah dibooking oleh customer
+              </DialogDescription>
             </DialogHeader>
             <div className="mt-4">
               {bookedUnits.length > 0 ? (
@@ -1506,6 +1525,10 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Unit Stock Tua (&gt; 3 Bulan)</DialogTitle>
+              <DialogDescription>
+                Daftar unit yang sudah lebih dari 3 bulan sejak pembelian namun
+                masih berstatus ready
+              </DialogDescription>
             </DialogHeader>
             <div className="mt-4">
               {detailStockTua.length > 0 ? (
