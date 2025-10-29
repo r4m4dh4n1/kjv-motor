@@ -780,7 +780,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                     <p className="text-sm font-medium text-white/80 mb-1">
                       {stat.title}
                     </p>
-                    <p className="text-2xl font-bold mb-1 truncate">
+                    <p className="text-2xl font-bold mb-1 whitespace-normal">
                       {stat.value}
                     </p>
                     {stat.unit && (
