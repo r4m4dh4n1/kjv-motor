@@ -368,6 +368,15 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         throw pembelianReadyBulanIniResult.error; // ✅ FIX
       if (pembelianStokTuaResult.error) throw pembelianStokTuaResult.error; // ✅ TAMBAH
 
+      // Check qcReportResult error
+      if (qcReportResult.error) {
+        console.error(
+          "[Dashboard] qcReportResult error:",
+          qcReportResult.error
+        );
+        // Don't throw, just log and continue with empty array
+      }
+
       const brands: Brand[] = brandsResult.data || [];
       const jenisMotor: JenisMotor[] = jenisMotorResult.data || [];
       const companies: Company[] = companiesResult.data || [];
@@ -496,16 +505,24 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       const totalUnitStokTua = pembelianStokTua.length;
       // 8. QC processing: use qc_report directly and filter client-side
       //    This is simpler and more reliable than view-based approach
+      console.debug("[Dashboard] Starting QC processing", {
+        totalQcReport: qcReport.length,
+        selectedDivision,
+        selectedCabang,
+      });
+
       let qcAll = qcReport;
       if (selectedDivision !== "all") {
         qcAll = qcAll.filter(
           (q: any) => q.pembelian?.divisi === selectedDivision
         );
+        console.debug("[Dashboard] After division filter:", qcAll.length);
       }
       if (selectedCabang !== "all") {
         qcAll = qcAll.filter(
           (q: any) => q.pembelian?.cabang_id === parseInt(selectedCabang)
         );
+        console.debug("[Dashboard] After cabang filter:", qcAll.length);
       }
 
       // Filter by QC rules:
