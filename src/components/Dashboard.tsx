@@ -559,6 +559,42 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         );
       }
 
+      // Try to read pre-aggregated summary view in DB (preferred, deterministic)
+      let unitBelumQCView: number | null = null;
+      let unitSudahQCView: number | null = null;
+      try {
+        const { data: summaryRows, error: summaryErr } = await supabase
+          .from("qc_report_summary_per_pembelian")
+          .select(
+            "pembelian_id,is_belum_qc,is_sudah_qc,status,divisi,cabang_id"
+          );
+
+        if (!summaryErr && Array.isArray(summaryRows)) {
+          let rows: any[] = summaryRows as any[];
+          if (selectedDivision !== "all")
+            rows = rows.filter((r) => r.divisi === selectedDivision);
+          if (selectedCabang !== "all")
+            rows = rows.filter(
+              (r) => Number(r.cabang_id) === parseInt(selectedCabang)
+            );
+
+          unitBelumQCView = rows.filter((r) => r.is_belum_qc).length;
+          unitSudahQCView = rows.filter((r) => r.is_sudah_qc).length;
+          console.debug(
+            "[Dashboard] qc_report_summary rows:",
+            rows.length,
+            "belum:",
+            unitBelumQCView,
+            "sudah:",
+            unitSudahQCView
+          );
+        } else if (summaryErr) {
+          console.debug("[Dashboard] qc_report_summary error:", summaryErr);
+        }
+      } catch (e) {
+        console.debug("[Dashboard] qc_report_summary fetch failed:", e);
+      }
+
       // Rule change (requested):
       // - Unit Belum QC: estimasi_nominal_qc == 0 AND real_nominal_qc == 0
       // - Unit Sudah QC: real_nominal_qc != 0
@@ -598,7 +634,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         return estimasi === 0 && real === 0;
       });
       const uniqueBelumIds = new Set(qcBelum.map((q: any) => q.pembelian_id));
-      const unitBelumQC = uniqueBelumIds.size;
+      const fallbackUnitBelum = uniqueBelumIds.size;
       setDetailBelumQC(qcBelum);
 
       // sudah QC: real_nominal_qc present and not zero (consider fallback)
@@ -620,8 +656,14 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         if (!mapSudah.has(q.pembelian_id)) mapSudah.set(q.pembelian_id, q);
       });
       const uniqueSudahList = Array.from(mapSudah.values());
-      const unitSudahQC = mapSudah.size;
+      const fallbackUnitSudah = mapSudah.size;
       setDetailSudahQC(uniqueSudahList);
+
+      // Finalize counts: prefer DB view if available, otherwise use client-side fallback
+      const unitBelumQC =
+        unitBelumQCView !== null ? unitBelumQCView : fallbackUnitBelum;
+      const unitSudahQC =
+        unitSudahQCView !== null ? unitSudahQCView : fallbackUnitSudah;
 
       // Set detail untuk popup
       setDetailPajakMati(detailUnitPajakMati);
