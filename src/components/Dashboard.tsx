@@ -233,16 +233,16 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         .eq("status", "ready")
         .lt("tanggal_pembelian", threeMonthsAgoStr);
 
-      // ✅ TAMBAH: Query qc_report for QC entries where real_nominal_qc is null or 0
-      // We'll fetch related pembelian info via foreign key join and filter on client-side for divisi/cabang
-      // Fetch all qc_report rows (we'll split into 'belum' and 'sudah' QC on the client)
+      // ✅ TAMBAH: Query qc_report. Also include price_histories_pembelian (biaya_qc, created_at)
+      // so frontend can fallback to latest biaya_qc if qc_report.real_nominal_qc is empty.
       let qcReportQuery = supabase.from("qc_report").select(
         `
           *,
           pembelian:pembelian_id(
             *,
             brands:brand_id(name),
-            jenis_motor:jenis_motor_id(jenis_motor)
+            jenis_motor:jenis_motor_id(jenis_motor),
+            price_histories:price_histories_pembelian(biaya_qc, created_at)
           )
         `
       );
@@ -473,6 +473,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       const totalUnitStokTua = pembelianStokTua.length;
       // 8. QC processing: split qc_report into 'belum' and 'sudah' client-side.
       // qcReport may contain multiple rows per pembelian, so dedupe by pembelian_id when counting "unit" values.
+      // Use fallback: if qc_report.real_nominal_qc is empty/0, try to use latest price_histories_pembelian.biaya_qc
       let qcAll = qcReport;
       if (selectedDivision !== "all") {
         qcAll = qcAll.filter(
@@ -488,20 +489,39 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       // Rule change (requested):
       // - Unit Belum QC: estimasi_nominal_qc == 0 AND real_nominal_qc == 0
       // - Unit Sudah QC: real_nominal_qc != 0
-      // We'll treat null as 0 for numeric checks (so null -> considered 0)
+      // We'll treat null as 0 for numeric checks (so null -> considered 0).
+      // Additionally, fallback to latest price_histories_pembelian.biaya_qc when qc_report.real_nominal_qc is empty.
+
+      const getLatestBiayaQc = (q: any) => {
+        const ph = q?.pembelian?.price_histories;
+        if (!Array.isArray(ph) || ph.length === 0) return 0;
+        let latest = ph.reduce((acc: any, cur: any) => {
+          if (!acc) return cur;
+          return new Date(cur.created_at).getTime() >
+            new Date(acc.created_at).getTime()
+            ? cur
+            : acc;
+        }, null as any);
+        return Number(latest?.biaya_qc ?? 0);
+      };
+
       const qcBelum = qcAll.filter((q: any) => {
-        const estimasi = q.estimasi_nominal_qc ?? 0;
-        const real = q.real_nominal_qc ?? 0;
-        return Number(estimasi) === 0 && Number(real) === 0;
+        const estimasi = Number(q.estimasi_nominal_qc ?? 0);
+        const realFromReport = Number(q.real_nominal_qc ?? 0);
+        const realFallback = getLatestBiayaQc(q);
+        const real = realFromReport !== 0 ? realFromReport : realFallback;
+        return estimasi === 0 && real === 0;
       });
       const uniqueBelumIds = new Set(qcBelum.map((q: any) => q.pembelian_id));
       const unitBelumQC = uniqueBelumIds.size;
       setDetailBelumQC(qcBelum);
 
-      // sudah QC: real_nominal_qc present and not zero
+      // sudah QC: real_nominal_qc present and not zero (consider fallback)
       const qcSudah = qcAll.filter((q: any) => {
-        const real = q.real_nominal_qc ?? 0;
-        return Number(real) !== 0;
+        const realFromReport = Number(q.real_nominal_qc ?? 0);
+        const realFallback = getLatestBiayaQc(q);
+        const real = realFromReport !== 0 ? realFromReport : realFallback;
+        return real !== 0;
       });
       // dedupe by pembelian_id and keep the first occurrence for display
       const mapSudah = new Map<number | string, any>();

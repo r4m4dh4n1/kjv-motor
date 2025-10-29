@@ -80,25 +80,55 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
         console.error("Error fetching QC history:", qcError);
       }
 
-      // Get real nominal QC from price_histories_pembelian
+      // Get real nominal QC from qc_report (preferred) and price_histories_pembelian as fallback
+      const { data: qcReportRows, error: qcReportError } = await supabase
+        .from("qc_report")
+        .select("*")
+        .eq("pembelian_id", pembelian.id)
+        .limit(1);
+
+      if (qcReportError) {
+        console.error("Error fetching qc_report:", qcReportError);
+      }
+
+      const qcReport =
+        Array.isArray(qcReportRows) && qcReportRows.length > 0
+          ? qcReportRows[0]
+          : null;
+
+      // Get price history for fallback
       const { data: priceHistory, error: priceError } = await supabase
         .from("price_histories_pembelian")
-        .select("biaya_qc")
-        .eq("pembelian_id", pembelian.id);
+        .select("biaya_qc, created_at")
+        .eq("pembelian_id", pembelian.id)
+        .order("created_at", { ascending: false });
 
       if (priceError) {
         console.error("Error fetching price history:", priceError);
       }
 
-      // Calculate total real nominal QC from both sources
-      const priceHistoryQC =
-        priceHistory?.reduce((sum, item) => sum + (item.biaya_qc || 0), 0) || 0;
+      // Sum qc_history totals
       const qcHistoryTotal =
         qcHistory?.reduce(
           (sum, item) => sum + (item.total_pengeluaran || 0),
           0
         ) || 0;
-      const realNominalQC = priceHistoryQC + qcHistoryTotal;
+
+      // Latest biaya_qc from price history (0 if none)
+      const latestBiayaQc =
+        (Array.isArray(priceHistory) && priceHistory[0]?.biaya_qc) || 0;
+
+      // Determine real nominal QC:
+      // Prefer qc_report.real_nominal_qc if present and non-zero.
+      // Otherwise use latestBiayaQc + qcHistoryTotal (existing behavior).
+      const realFromReport = Number(qcReport?.real_nominal_qc ?? 0);
+      const realFallback =
+        Number(latestBiayaQc ?? 0) + Number(qcHistoryTotal ?? 0);
+      const realNominalQC =
+        realFromReport !== 0 ? realFromReport : realFallback;
+
+      // For estimasi, prefer qc_report.estimasi_nominal_qc if available
+      const estimasiFromReport = Number(qcReport?.estimasi_nominal_qc ?? 0);
 
       // Set QC data
       setQcData({
@@ -107,7 +137,7 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
         warna: pembelian.warna || "",
         kilometer: pembelian.kilometer || 0,
         plat_nomor: pembelian.plat_nomor || "",
-        estimasiNominalQC: 0, // User will input this
+        estimasiNominalQC: estimasiFromReport || 0, // Prefill if present
         realNominalQC: realNominalQC,
         keterangan: "",
         qcHistory: qcHistory || [],
