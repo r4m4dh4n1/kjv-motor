@@ -382,10 +382,83 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       const pembelianStokTua = pembelianStokTuaResult.data || []; // ✅ TAMBAH
       const qcReport = qcReportResult.data || [];
 
+      // DEBUG: log qc_report summary to help diagnose why counts may be zero
+      try {
+        console.debug("[Dashboard] qcReport rows fetched:", qcReport.length);
+        if (qcReport.length > 0) {
+          const sample = qcReport.slice(0, 5).map((q: any) => ({
+            id: q.id,
+            pembelian_id: q.pembelian_id,
+            real_nominal_qc: q.real_nominal_qc,
+            estimasi_nominal_qc: q.estimasi_nominal_qc,
+            pembelian_exists: !!q.pembelian,
+            price_histories_len: (q.pembelian?.price_histories || []).length,
+            latest_biaya_qc:
+              (q.pembelian?.price_histories &&
+                q.pembelian.price_histories[0]?.biaya_qc) ||
+              0,
+          }));
+          console.debug("[Dashboard] qcReport sample:", sample);
+        }
+      } catch (e) {
+        console.debug("[Dashboard] qcReport debug failed", e);
+      }
+
       // Set cabang data for filter
       setCabangData(cabang);
       setReadyUnits(pembelianReady);
       setBookedUnits(penjualanBooked);
+
+      // Fetch price_histories and qc_history for pembelian in pembelianReady as a reliable fallback
+      let latestPriceHistories: any[] = [];
+      let qcHistoryForPembelian: any[] = [];
+      try {
+        const pembelianIds = pembelianReady
+          .map((p: any) => p.id)
+          .filter(Boolean);
+        if (pembelianIds.length > 0) {
+          const [priceHistResult, qcHistResult] = await Promise.all([
+            supabase
+              .from("price_histories_pembelian")
+              .select("pembelian_id, biaya_qc, created_at")
+              .in("pembelian_id", pembelianIds),
+            supabase
+              .from("qc_history")
+              .select("pembelian_id, total_pengeluaran, tanggal_qc")
+              .in("pembelian_id", pembelianIds),
+          ]);
+
+          if (priceHistResult.error) throw priceHistResult.error;
+          if (qcHistResult.error) throw qcHistResult.error;
+
+          latestPriceHistories = priceHistResult.data || [];
+          qcHistoryForPembelian = qcHistResult.data || [];
+        }
+      } catch (err) {
+        console.error("Error fetching price/qc history fallback:", err);
+      }
+
+      // Build maps for quick lookup: latest biaya_qc per pembelian_id, and total qc_history per pembelian_id
+      const latestBiayaMap = new Map<number | string, any>();
+      latestPriceHistories.forEach((ph: any) => {
+        const existing = latestBiayaMap.get(ph.pembelian_id);
+        if (!existing) latestBiayaMap.set(ph.pembelian_id, ph);
+        else if (
+          new Date(ph.created_at).getTime() >
+          new Date(existing.created_at).getTime()
+        ) {
+          latestBiayaMap.set(ph.pembelian_id, ph);
+        }
+      });
+
+      const qcHistoryTotalsMap = new Map<number | string, number>();
+      qcHistoryForPembelian.forEach((qh: any) => {
+        const prev = qcHistoryTotalsMap.get(qh.pembelian_id) || 0;
+        qcHistoryTotalsMap.set(
+          qh.pembelian_id,
+          prev + (qh.total_pengeluaran || 0)
+        );
+      });
 
       // Calculate stats
       const activeCompanies = companies.filter(
@@ -493,9 +566,15 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       // Additionally, fallback to latest price_histories_pembelian.biaya_qc when qc_report.real_nominal_qc is empty.
 
       const getLatestBiayaQc = (q: any) => {
-        const ph = q?.pembelian?.price_histories;
-        if (!Array.isArray(ph) || ph.length === 0) return 0;
-        let latest = ph.reduce((acc: any, cur: any) => {
+        const pembelianId = q?.pembelian_id ?? q?.pembelian?.id;
+        if (pembelianId != null) {
+          const ph = latestBiayaMap.get(pembelianId);
+          if (ph) return Number(ph.biaya_qc ?? 0);
+        }
+        // Fallback to nested relation if maps not available
+        const nested = q?.pembelian?.price_histories;
+        if (!Array.isArray(nested) || nested.length === 0) return 0;
+        let latest = nested.reduce((acc: any, cur: any) => {
           if (!acc) return cur;
           return new Date(cur.created_at).getTime() >
             new Date(acc.created_at).getTime()
@@ -508,7 +587,13 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       const qcBelum = qcAll.filter((q: any) => {
         const estimasi = Number(q.estimasi_nominal_qc ?? 0);
         const realFromReport = Number(q.real_nominal_qc ?? 0);
-        const realFallback = getLatestBiayaQc(q);
+        const pembelianId = q?.pembelian_id ?? q?.pembelian?.id;
+        const biaya = getLatestBiayaQc(q);
+        const qcHistTotal =
+          pembelianId != null
+            ? Number(qcHistoryTotalsMap.get(pembelianId) ?? 0)
+            : 0;
+        const realFallback = Number(biaya || 0) + Number(qcHistTotal || 0);
         const real = realFromReport !== 0 ? realFromReport : realFallback;
         return estimasi === 0 && real === 0;
       });
@@ -519,7 +604,13 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       // sudah QC: real_nominal_qc present and not zero (consider fallback)
       const qcSudah = qcAll.filter((q: any) => {
         const realFromReport = Number(q.real_nominal_qc ?? 0);
-        const realFallback = getLatestBiayaQc(q);
+        const pembelianId = q?.pembelian_id ?? q?.pembelian?.id;
+        const biaya = getLatestBiayaQc(q);
+        const qcHistTotal =
+          pembelianId != null
+            ? Number(qcHistoryTotalsMap.get(pembelianId) ?? 0)
+            : 0;
+        const realFallback = Number(biaya || 0) + Number(qcHistTotal || 0);
         const real = realFromReport !== 0 ? realFromReport : realFallback;
         return real !== 0;
       });
