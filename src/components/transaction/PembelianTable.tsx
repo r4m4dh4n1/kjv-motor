@@ -1,8 +1,24 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Eye, DollarSign, CheckCircle, History, TrendingUp, Car, Calendar, FileText } from "lucide-react";
-import { EnhancedTable, CurrencyCell, DateCell, StatusBadge } from "./EnhancedTable";
+import {
+  Pencil,
+  Trash2,
+  Eye,
+  DollarSign,
+  CheckCircle,
+  History,
+  TrendingUp,
+  Car,
+  Calendar,
+  FileText,
+} from "lucide-react";
+import {
+  EnhancedTable,
+  CurrencyCell,
+  DateCell,
+  StatusBadge,
+} from "./EnhancedTable";
 
 interface PembelianTableProps {
   pembelianData: any[];
@@ -16,24 +32,23 @@ interface PembelianTableProps {
   deleteMutation: any;
 }
 
-const PembelianTable = ({ 
-  pembelianData, 
-  handleEdit, 
+const PembelianTable = ({
+  pembelianData,
+  handleEdit,
   handleView,
   handleUpdateHarga,
   handleQC,
   handleViewQcHistory,
   handleViewPriceHistory,
   handleQCReport,
-  deleteMutation 
+  deleteMutation,
 }: PembelianTableProps) => {
-  
   const columns = [
     {
       key: "tanggal_pembelian",
       header: "Tanggal",
       width: "w-32",
-      render: (value: string) => <DateCell date={value} />
+      render: (value: string) => <DateCell date={value} />,
     },
     {
       key: "divisi",
@@ -43,13 +58,13 @@ const PembelianTable = ({
         <Badge variant="outline" className="capitalize">
           {value}
         </Badge>
-      )
+      ),
     },
     {
       key: "cabang",
       header: "Cabang",
       width: "w-28",
-      render: (value: any) => value?.nama || "-"
+      render: (value: any) => value?.nama || "-",
     },
     {
       key: "motor_info",
@@ -67,7 +82,7 @@ const PembelianTable = ({
             Tahun: {row.tahun} | Warna: {row.warna}
           </div>
         </div>
-      )
+      ),
     },
     {
       key: "plat_nomor",
@@ -77,7 +92,7 @@ const PembelianTable = ({
         <Badge variant="secondary" className="font-mono">
           {value}
         </Badge>
-      )
+      ),
     },
     {
       key: "tanggal_pajak",
@@ -88,7 +103,7 @@ const PembelianTable = ({
           <Calendar className="w-3 h-3 text-muted-foreground" />
           <DateCell date={value} className="text-xs" checkOverdue={true} />
         </div>
-      )
+      ),
     },
     {
       key: "harga_beli",
@@ -97,7 +112,7 @@ const PembelianTable = ({
       className: "text-right",
       render: (value: number) => (
         <CurrencyCell amount={value} className="text-blue-600" />
-      )
+      ),
     },
     {
       key: "harga_final",
@@ -105,11 +120,11 @@ const PembelianTable = ({
       width: "w-32",
       className: "text-right",
       render: (value: number, row: any) => (
-        <CurrencyCell 
-          amount={value || row.harga_beli} 
-          className="text-green-600 font-semibold" 
+        <CurrencyCell
+          amount={value || row.harga_beli}
+          className="text-green-600 font-semibold"
         />
-      )
+      ),
     },
     {
       key: "status",
@@ -117,22 +132,33 @@ const PembelianTable = ({
       width: "w-24",
       render: (value: string) => {
         const statusConfig = {
-          ready: { variant: "default" as const, color: "bg-green-100 text-green-800" },
-          sold: { variant: "secondary" as const, color: "bg-blue-100 text-blue-800" },
-          draft: { variant: "outline" as const, color: "bg-yellow-100 text-yellow-800" }
+          ready: {
+            variant: "default" as const,
+            color: "bg-green-100 text-green-800",
+          },
+          sold: {
+            variant: "secondary" as const,
+            color: "bg-blue-100 text-blue-800",
+          },
+          draft: {
+            variant: "outline" as const,
+            color: "bg-yellow-100 text-yellow-800",
+          },
         };
-        
-        const config = statusConfig[value as keyof typeof statusConfig] || statusConfig.ready;
-        
+
+        const config =
+          statusConfig[value as keyof typeof statusConfig] ||
+          statusConfig.ready;
+
         return (
-          <StatusBadge 
-            status={value} 
+          <StatusBadge
+            status={value}
             variant={config.variant}
             className={config.color}
           />
         );
-      }
-    }
+      },
+    },
   ];
 
   const actions = [
@@ -141,57 +167,64 @@ const PembelianTable = ({
       icon: Eye,
       onClick: handleView,
       variant: "outline" as const,
-      className: "hover:bg-blue-50 hover:text-blue-600"
+      className: "hover:bg-blue-50 hover:text-blue-600",
+    },
+    {
+      label: "View Report QC",
+      icon: FileText,
+      onClick: handleQCReport,
+      variant: "outline" as const,
+      className: "hover:bg-cyan-50 hover:text-cyan-600",
     },
     {
       label: "History QC",
       icon: History,
       onClick: handleViewQcHistory,
       variant: "outline" as const,
-      className: "hover:bg-indigo-50 hover:text-indigo-600"
+      className: "hover:bg-indigo-50 hover:text-indigo-600",
     },
     {
       label: "History Harga",
       icon: TrendingUp,
       onClick: handleViewPriceHistory,
       variant: "outline" as const,
-      className: "hover:bg-amber-50 hover:text-amber-600"
+      className: "hover:bg-amber-50 hover:text-amber-600",
     },
     {
       label: "Edit",
       icon: Pencil,
       onClick: handleEdit,
       variant: "outline" as const,
-      className: "hover:bg-green-50 hover:text-green-600"
+      className: "hover:bg-green-50 hover:text-green-600",
     },
     {
       label: "Update Harga",
       icon: DollarSign,
       onClick: handleUpdateHarga,
       variant: "outline" as const,
-      className: "hover:bg-orange-50 hover:text-orange-600"
+      className: "hover:bg-orange-50 hover:text-orange-600",
     },
     {
       label: "Quality Control",
       icon: CheckCircle,
       onClick: handleQC,
       variant: "outline" as const,
-      className: "hover:bg-purple-50 hover:text-purple-600"
+      className: "hover:bg-purple-50 hover:text-purple-600",
     },
     {
       label: "Report QC",
       icon: FileText,
       onClick: handleQCReport,
       variant: "outline" as const,
-      className: "hover:bg-cyan-50 hover:text-cyan-600"
+      className: "hover:bg-cyan-50 hover:text-cyan-600",
     },
     {
       label: "Hapus",
       icon: Trash2,
       onClick: (row: any) => deleteMutation.mutate(row.id),
       variant: "destructive" as const,
-      className: "hover:bg-red-50"
-    }
+      className: "hover:bg-red-50",
+    },
   ];
 
   return (

@@ -846,28 +846,20 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                     <tbody>
                       {[...readyUnits]
                         .sort((a, b) => {
-                          // Sort 1: Tanggal pembelian (terbaru ke terlama)
-                          const dateCompare =
-                            new Date(b.tanggal_pembelian).getTime() -
-                            new Date(a.tanggal_pembelian).getTime();
-                          if (dateCompare !== 0) return dateCompare;
+                          // Primary sort: Brand name A -> Z
+                          const brandA = (a.brands?.name || "").toLowerCase();
+                          const brandB = (b.brands?.name || "").toLowerCase();
+                          const brandCompare = brandA.localeCompare(brandB);
+                          if (brandCompare !== 0) return brandCompare;
 
-                          // Sort 2: Jika tanggal sama, sort by harga_beli (terbesar ke terkecil)
-                          const hargaA =
-                            a.harga_final && a.harga_final > 0
-                              ? a.harga_final
-                              : a.harga_beli;
-                          const hargaB =
-                            b.harga_final && b.harga_final > 0
-                              ? b.harga_final
-                              : b.harga_beli;
-                          const hargaCompare = hargaB - hargaA;
-                          if (hargaCompare !== 0) return hargaCompare;
-
-                          // Sort 3: Jika harga sama, sort by brand (A sampai Z)
-                          const brandA = a.brands?.name || "";
-                          const brandB = b.brands?.name || "";
-                          return brandA.localeCompare(brandB);
+                          // Tie-breaker: Tanggal pembelian (terbaru ke terlama)
+                          const dateA = new Date(
+                            a.tanggal_pembelian || 0
+                          ).getTime();
+                          const dateB = new Date(
+                            b.tanggal_pembelian || 0
+                          ).getTime();
+                          return dateB - dateA;
                         })
                         .map((unit, idx) => {
                           const harga =
@@ -955,28 +947,20 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                     <tbody>
                       {[...readyUnits]
                         .sort((a, b) => {
-                          // Sort 1: Tanggal pembelian (terbaru ke terlama)
-                          const dateCompare =
-                            new Date(b.tanggal_pembelian).getTime() -
-                            new Date(a.tanggal_pembelian).getTime();
-                          if (dateCompare !== 0) return dateCompare;
+                          // Primary sort: Brand name A -> Z
+                          const brandA = (a.brands?.name || "").toLowerCase();
+                          const brandB = (b.brands?.name || "").toLowerCase();
+                          const brandCompare = brandA.localeCompare(brandB);
+                          if (brandCompare !== 0) return brandCompare;
 
-                          // Sort 2: Jika tanggal sama, sort by harga_beli (terbesar ke terkecil)
-                          const hargaA =
-                            a.harga_final && a.harga_final > 0
-                              ? a.harga_final
-                              : a.harga_beli;
-                          const hargaB =
-                            b.harga_final && b.harga_final > 0
-                              ? b.harga_final
-                              : b.harga_beli;
-                          const hargaCompare = hargaB - hargaA;
-                          if (hargaCompare !== 0) return hargaCompare;
-
-                          // Sort 3: Jika harga sama, sort by brand (A sampai Z)
-                          const brandA = a.brands?.name || "";
-                          const brandB = b.brands?.name || "";
-                          return brandA.localeCompare(brandB);
+                          // Tie-breaker: Tanggal pembelian (terbaru ke terlama)
+                          const dateA = new Date(
+                            a.tanggal_pembelian || 0
+                          ).getTime();
+                          const dateB = new Date(
+                            b.tanggal_pembelian || 0
+                          ).getTime();
+                          return dateB - dateA;
                         })
                         .map((unit, idx) => {
                           const harga =
