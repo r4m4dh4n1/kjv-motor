@@ -45,7 +45,7 @@ const BiroJasaPageEnhanced = ({ selectedDivision }: { selectedDivision: string }
 
   // Enhanced filtering function
   const getFilteredData = () => {
-    let filtered = biroJasaData.filter((item) => {
+    const filtered = biroJasaData.filter((item) => {
       const matchesSearch = 
         item.plat_nomor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.brands?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

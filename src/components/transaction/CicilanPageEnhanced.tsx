@@ -109,7 +109,7 @@ const CicilanPageEnhanced = ({ selectedDivision }: CicilanPageEnhancedProps) => 
   };
 
   const fetchCicilanData = async () => {
-    let query = supabase
+    const query = supabase
       .from('cicilan')
       .select(`
         *,

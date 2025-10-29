@@ -236,7 +236,7 @@ const KeuntunganMotorPage = ({ selectedDivision }: KeuntunganMotorPageProps) => 
     
     const biroJasaTable = shouldUseCombined ? 'biro_jasa_history' : 'biro_jasa';
     
-    let biroJasaQuery = supabase
+    const biroJasaQuery = supabase
       .from(biroJasaTable)
       .select('keuntungan, tanggal')
       .eq('status', 'Selesai');
