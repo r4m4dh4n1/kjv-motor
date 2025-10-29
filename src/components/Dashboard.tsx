@@ -531,6 +531,12 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         unitBelumQC = belumIds.length;
         unitSudahQC = sudahIds.length;
 
+        console.debug("[Dashboard] qc summary fetched:", {
+          total: rows.length,
+          belumCount: unitBelumQC,
+          sudahCount: unitSudahQC,
+        });
+
         // Fetch detail qc_report rows for popups (if any)
         const [belumDetailRes, sudahDetailRes] = await Promise.all([
           belumIds.length > 0
@@ -556,6 +562,17 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
 
         const belumRows = (belumDetailRes.data || []) as any[];
         const sudahRows = (sudahDetailRes.data || []) as any[];
+
+        console.debug("[Dashboard] qc detail fetched:", {
+          belumRows: belumRows.length,
+          sudahRows: sudahRows.length,
+          belumSample: belumRows
+            .slice(0, 5)
+            .map((r: any) => ({ id: r.id, pembelian_id: r.pembelian_id })),
+          sudahSample: sudahRows
+            .slice(0, 5)
+            .map((r: any) => ({ id: r.id, pembelian_id: r.pembelian_id })),
+        });
 
         // For display, keep one row per pembelian_id (prefer the first). Then sort:
         // Brand A->Z, Jenis A->Z, Tanggal Pembelian newest-first
