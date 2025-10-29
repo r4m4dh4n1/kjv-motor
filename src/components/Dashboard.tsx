@@ -66,9 +66,11 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
   const [detailPajakMati, setDetailPajakMati] = useState<any[]>([]);
   const [detailStockTua, setDetailStockTua] = useState<any[]>([]);
   const [detailBelumQC, setDetailBelumQC] = useState<any[]>([]);
+  const [detailSudahQC, setDetailSudahQC] = useState<any[]>([]);
   const [openDialogPajakMati, setOpenDialogPajakMati] = useState(false);
   const [openDialogStockTua, setOpenDialogStockTua] = useState(false);
   const [openDialogBelumQC, setOpenDialogBelumQC] = useState(false);
+  const [openDialogSudahQC, setOpenDialogSudahQC] = useState(false);
   const [openDialogReadyTotal, setOpenDialogReadyTotal] = useState(false);
   const [openDialogBookedDP, setOpenDialogBookedDP] = useState(false);
   const [openDialogBookedUnit, setOpenDialogBookedUnit] = useState(false);
@@ -100,6 +102,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
     stockMotorsBulanIni: 0, // Stock motors bulan ini (pembelian bulan ini dengan status ready)
     totalUnitStokTua: 0, // Total unit yang tanggal pembeliannya sudah lama (> 3 bulan) tapi masih ready
     unitBelumQC: 0, // Total unit yang belum QC (unique pembelian_id where real_nominal_qc is null or 0)
+    totalUnitSudahQC: 0,
     modalPerCompany: [] as Array<{ name: string; modal: number }>,
     monthlyTrend: [] as Array<{
       month: string;
@@ -232,10 +235,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
 
       // ✅ TAMBAH: Query qc_report for QC entries where real_nominal_qc is null or 0
       // We'll fetch related pembelian info via foreign key join and filter on client-side for divisi/cabang
-      let qcReportQuery = supabase
-        .from("qc_report")
-        .select(
-          `
+      // Fetch all qc_report rows (we'll split into 'belum' and 'sudah' QC on the client)
+      let qcReportQuery = supabase.from("qc_report").select(
+        `
           *,
           pembelian:pembelian_id(
             *,
@@ -243,8 +245,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
             jenis_motor:jenis_motor_id(jenis_motor)
           )
         `
-        )
-        .or("real_nominal_qc.eq.0,real_nominal_qc.is.null");
+      );
 
       // ✅ TAMBAH: Query penjualan status booked (tanpa filter periode)
       let penjualanBookedQuery = supabase
@@ -470,27 +471,40 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
 
       // 7. Total Unit Stock Tua (> 3 bulan tapi masih ready)
       const totalUnitStokTua = pembelianStokTua.length;
-      // 8. Unit belum QC: count unique pembelian_id where real_nominal_qc is null or 0
-      // qcReport may contain multiple rows per pembelian, so count unique pembelian_id
-      // Apply client-side filtering by divisi and cabang because qc_report doesn't have those fields directly
-      let qcFiltered = qcReport;
+      // 8. QC processing: split qc_report into 'belum' and 'sudah' client-side.
+      // qcReport may contain multiple rows per pembelian, so dedupe by pembelian_id when counting "unit" values.
+      let qcAll = qcReport;
       if (selectedDivision !== "all") {
-        qcFiltered = qcFiltered.filter(
+        qcAll = qcAll.filter(
           (q: any) => q.pembelian?.divisi === selectedDivision
         );
       }
       if (selectedCabang !== "all") {
-        qcFiltered = qcFiltered.filter(
+        qcAll = qcAll.filter(
           (q: any) => q.pembelian?.cabang_id === parseInt(selectedCabang)
         );
       }
-      const uniquePembelianIds = new Set(
-        qcFiltered.map((q: any) => q.pembelian_id)
-      );
-      const unitBelumQC = uniquePembelianIds.size;
 
-      // Set detail for popup (show qc rows)
-      setDetailBelumQC(qcFiltered);
+      // belum QC: real_nominal_qc is null or 0
+      const qcBelum = qcAll.filter(
+        (q: any) => q.real_nominal_qc == null || Number(q.real_nominal_qc) === 0
+      );
+      const uniqueBelumIds = new Set(qcBelum.map((q: any) => q.pembelian_id));
+      const unitBelumQC = uniqueBelumIds.size;
+      setDetailBelumQC(qcBelum);
+
+      // sudah QC: real_nominal_qc present and not zero (also ensure estimasi exists if desired)
+      const qcSudah = qcAll.filter(
+        (q: any) => q.real_nominal_qc != null && Number(q.real_nominal_qc) !== 0
+      );
+      // dedupe by pembelian_id and keep the first occurrence for display
+      const mapSudah = new Map<number | string, any>();
+      qcSudah.forEach((q: any) => {
+        if (!mapSudah.has(q.pembelian_id)) mapSudah.set(q.pembelian_id, q);
+      });
+      const uniqueSudahList = Array.from(mapSudah.values());
+      const unitSudahQC = mapSudah.size;
+      setDetailSudahQC(uniqueSudahList);
 
       // Set detail untuk popup
       setDetailPajakMati(detailUnitPajakMati);
@@ -613,6 +627,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         stockMotorsBulanIni,
         totalUnitStokTua,
         unitBelumQC,
+        totalUnitSudahQC: unitSudahQC,
         modalPerCompany,
         monthlyTrend,
         statusTrend,
@@ -679,7 +694,6 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       changeType: "positive",
     },
     {
-      title: "Stock Motors Bulan ini",
       title: "Unit belum QC",
       value: stats.unitBelumQC.toString(),
       unit: "Unit",
@@ -977,6 +991,131 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                                 {isDone ? (
                                   <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px]">
                                     Done
+                                  </span>
+                                ) : (
+                                  <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px]">
+                                    QC belum Selesai
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-center py-4 text-gray-500">Tidak ada data</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Unit Sudah QC (popup + card) */}
+        <Dialog open={openDialogSudahQC} onOpenChange={setOpenDialogSudahQC}>
+          <Card
+            className="border border-green-200 bg-green-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
+            onClick={() => setOpenDialogSudahQC(true)}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <Package className="w-6 h-6 text-green-600" />
+                <span className="text-[10px] font-semibold bg-green-200 text-green-800 px-2 py-0.5 rounded">
+                  QC
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-600 mb-1">Unit sudah QC</p>
+              <p className="text-lg font-bold text-green-700">
+                {stats.totalUnitSudahQC}
+              </p>
+              <p className="text-[10px] text-gray-500">All Periode</p>
+            </CardContent>
+          </Card>
+
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Unit Sudah QC</DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              {detailSudahQC.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          No
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Brand
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Jenis Motor
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Plat Nomor
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Tanggal Pembelian
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Estimasi QC
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Real QC
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Status
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...detailSudahQC]
+                        .sort(
+                          (a, b) =>
+                            new Date(
+                              b.pembelian?.tanggal_pembelian || b.created_at
+                            ).getTime() -
+                            new Date(
+                              a.pembelian?.tanggal_pembelian || a.created_at
+                            ).getTime()
+                        )
+                        .map((qc, idx) => {
+                          const estimasi = qc.estimasi_nominal_qc;
+                          const real = qc.real_nominal_qc;
+                          const hasEstimasi =
+                            estimasi != null && estimasi !== 0;
+                          const hasReal = real != null && real !== 0;
+                          const isDone = hasEstimasi && hasReal;
+                          return (
+                            <tr
+                              key={`${qc.id}-${qc.pembelian_id}-${idx}`}
+                              className="hover:bg-gray-50"
+                            >
+                              <td className="border p-2 text-xs">{idx + 1}</td>
+                              <td className="border p-2 text-xs">
+                                {qc.pembelian?.brands?.name || "-"}
+                              </td>
+                              <td className="border p-2 text-xs">
+                                {qc.pembelian?.jenis_motor?.jenis_motor || "-"}
+                              </td>
+                              <td className="border p-2 text-xs font-semibold">
+                                {qc.pembelian?.plat_nomor || "-"}
+                              </td>
+                              <td className="border p-2 text-xs">
+                                {qc.pembelian?.tanggal_pembelian || "-"}
+                              </td>
+                              <td className="border p-2 text-xs font-semibold">
+                                {hasEstimasi
+                                  ? formatCurrency(Number(estimasi))
+                                  : "-"}
+                              </td>
+                              <td className="border p-2 text-xs font-semibold">
+                                {hasReal ? formatCurrency(Number(real)) : "-"}
+                              </td>
+                              <td className="border p-2">
+                                {isDone ? (
+                                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px]">
+                                    Selesai
                                   </span>
                                 ) : (
                                   <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px]">
