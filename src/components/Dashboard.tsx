@@ -234,17 +234,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         .eq("status", "ready")
         .lt("tanggal_pembelian", threeMonthsAgoStr);
 
-      // ✅ TAMBAH: Query qc_report with clean join (no price_histories to avoid ambiguity)
-      let qcReportQuery = supabase.from("qc_report").select(
-        `
-          *,
-          pembelian:pembelian_id(
-            *,
-            brands:brand_id(name),
-            jenis_motor:jenis_motor_id(jenis_motor)
-          )
-        `
-      );
+      // ✅ TAMBAH: Query qc_report WITHOUT join to avoid PGRST201 error
+      // We'll join manually in client-side with pembelianReady data
+      let qcReportQuery = supabase.from("qc_report").select("*");
 
       // ✅ TAMBAH: Query penjualan status booked (tanpa filter periode)
       let penjualanBookedQuery = supabase
@@ -495,14 +487,36 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       // 7. Total Unit Stock Tua (> 3 bulan tapi masih ready)
       const totalUnitStokTua = pembelianStokTua.length;
       // 8. QC processing: use qc_report directly and filter client-side
-      //    This is simpler and more reliable than view-based approach
+      //    Manual join with pembelianReady to avoid PGRST201 error
       console.debug("[Dashboard] Starting QC processing", {
         totalQcReport: qcReport.length,
+        totalPembelianReady: pembelianReady.length,
         selectedDivision,
         selectedCabang,
       });
 
-      let qcAll = qcReport;
+      // Create a map of pembelian by ID for quick lookup
+      const pembelianMap = new Map();
+      pembelianReady.forEach((p: any) => {
+        pembelianMap.set(p.id, p);
+      });
+
+      // Enrich qc_report with pembelian data manually
+      const qcReportEnriched = qcReport
+        .map((q: any) => {
+          const pembelian = pembelianMap.get(q.pembelian_id);
+          if (!pembelian) return null; // Skip if pembelian not found
+          return {
+            ...q,
+            pembelian: pembelian,
+          };
+        })
+        .filter(Boolean); // Remove nulls
+
+      console.debug("[Dashboard] QC enriched:", qcReportEnriched.length);
+
+      // Now filter by division and cabang
+      let qcAll = qcReportEnriched;
       if (selectedDivision !== "all") {
         qcAll = qcAll.filter(
           (q: any) => q.pembelian?.divisi === selectedDivision
