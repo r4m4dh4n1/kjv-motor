@@ -55,6 +55,8 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
     qcHistory: [],
   });
   const [loading, setLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     if (isOpen && pembelian) {
@@ -156,7 +158,10 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
       if (updateError) throw updateError;
 
       if (updated && (updated as any).length > 0) {
-        console.log("QC Report updated successfully");
+        // Show success message box inside dialog
+        setSuccessMessage("QC Report updated successfully");
+        setShowSuccess(true);
+        setLoading(false);
         return;
       }
 
@@ -172,7 +177,10 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
 
       if (insertError) throw insertError;
 
-      console.log("QC Report created successfully");
+      // Show success message box on create
+      setSuccessMessage("QC Report created successfully");
+      setShowSuccess(true);
+      setLoading(false);
     } catch (error) {
       console.error("Error saving QC report:", error);
     }
@@ -208,6 +216,20 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
   };
 
   if (!pembelian) return null;
+  const handleSuccessOk = () => {
+    // Close dialog
+    setShowSuccess(false);
+    onClose();
+
+    // Notify parent/global app to navigate to pembelian menu
+    try {
+      window.dispatchEvent(
+        new CustomEvent("navigate-to-menu", { detail: "pembelian" })
+      );
+    } catch (e) {
+      // ignore
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -457,6 +479,22 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
             </Button>
           </div>
         </div>
+        {/* Success message overlay inside dialog */}
+        {showSuccess && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-96">
+              <h3 className="text-lg font-semibold mb-4">{successMessage}</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Data berhasil disimpan. Klik OK untuk kembali ke menu Pembelian.
+              </p>
+              <div className="flex justify-end">
+                <Button onClick={handleSuccessOk} className="bg-blue-600">
+                  OK
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

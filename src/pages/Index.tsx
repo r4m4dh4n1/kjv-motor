@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -12,7 +12,7 @@ import EmployeesPage from "@/components/master/EmployeesPage";
 import UserApprovalPage from "@/components/master/UserApprovalPage";
 import PembelianPageEnhanced from "../components/transaction/PembelianPageEnhanced";
 import PenjualanPage from "@/components/transaction/PenjualanPage";
-import CicilanPageEnhanced from '../components/transaction/CicilanPageEnhanced';
+import CicilanPageEnhanced from "../components/transaction/CicilanPageEnhanced";
 import OperationalPage from "@/components/transaction/OperationalPage";
 import BiroJasaPageEnhanced from "../components/transaction/BiroJasaPageEnhanced";
 import FeePenjualanPageEnhanced from "../components/transaction/FeePenjualanPageEnhanced";
@@ -44,6 +44,19 @@ const Index = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(isMobile);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Listen for programmatic navigation requests from dialogs/components
+  useEffect(() => {
+    const handler = (ev: any) => {
+      const menu = ev?.detail;
+      if (menu && typeof menu === "string") {
+        setActiveMenu(menu);
+      }
+    };
+    window.addEventListener("navigate-to-menu", handler as EventListener);
+    return () =>
+      window.removeEventListener("navigate-to-menu", handler as EventListener);
+  }, []);
+
   const renderContent = () => {
     switch (activeMenu) {
       case "dashboard":
@@ -63,21 +76,27 @@ const Index = () => {
       case "users":
         return <UserApprovalPage />;
       case "pembelian":
-      return <PembelianPageEnhanced selectedDivision={selectedDivision} />;
-        case "penjualan-booked":
-  return <PenjualanBookedPageEnhanced selectedDivision={selectedDivision} />;
-case "penjualan-sold":
-  return <PenjualanSoldPageEnhanced selectedDivision={selectedDivision} />;
-case "penjualan-canceled-booked":
-  return <PenjualanCanceledBookedPage selectedDivision={selectedDivision} />;
-      case 'cicilan':
-  return <CicilanPageEnhanced selectedDivision={selectedDivision} />;
+        return <PembelianPageEnhanced selectedDivision={selectedDivision} />;
+      case "penjualan-booked":
+        return (
+          <PenjualanBookedPageEnhanced selectedDivision={selectedDivision} />
+        );
+      case "penjualan-sold":
+        return (
+          <PenjualanSoldPageEnhanced selectedDivision={selectedDivision} />
+        );
+      case "penjualan-canceled-booked":
+        return (
+          <PenjualanCanceledBookedPage selectedDivision={selectedDivision} />
+        );
+      case "cicilan":
+        return <CicilanPageEnhanced selectedDivision={selectedDivision} />;
       case "operational":
         return <OperationalPage selectedDivision={selectedDivision} />;
-      case 'biro-jasa':
-  return <BiroJasaPageEnhanced selectedDivision={selectedDivision} />;
-case 'fee-penjualan':
-  return <FeePenjualanPageEnhanced selectedDivision={selectedDivision} />;
+      case "biro-jasa":
+        return <BiroJasaPageEnhanced selectedDivision={selectedDivision} />;
+      case "fee-penjualan":
+        return <FeePenjualanPageEnhanced selectedDivision={selectedDivision} />;
       case "pembukuan":
         return <PembukuanPage selectedDivision={selectedDivision} />;
       case "reports":
@@ -92,24 +111,24 @@ case 'fee-penjualan':
         return <UserRolesPage />;
       case "breakdown-percabang":
         return <BreakdownPercabangPage selectedDivision={selectedDivision} />;
-        case "keuntungan-motor":
-          return <KeuntunganMotorPage selectedDivision={selectedDivision} />;
-        case "profit-distribution":
-          return <ProfitDistributionPage selectedDivision={selectedDivision} />;
-        case "close-month":
-          return <CloseMonthPage selectedDivision={selectedDivision} />;
-        case "pencatatan-asset":
-          return <PencatatanAssetPage selectedDivision={selectedDivision} />;
-        case "price-history-upload":
-          return <PriceHistoryUploadPage />;
-        case "laba-rugi":
-          return <LabaRugiPage selectedDivision={selectedDivision} />;
-        case "modal-reduction": // ✅ Tambahkan case ini
-          return <ModalReductionPage />;
-        case "modal-history": // ✅ Tambahkan case ini juga
-          return <ModalHistoryPage />;
-        case "profit-adjustment-summary":
-          return <ProfitAdjustmentSummary selectedDivision={selectedDivision} />;
+      case "keuntungan-motor":
+        return <KeuntunganMotorPage selectedDivision={selectedDivision} />;
+      case "profit-distribution":
+        return <ProfitDistributionPage selectedDivision={selectedDivision} />;
+      case "close-month":
+        return <CloseMonthPage selectedDivision={selectedDivision} />;
+      case "pencatatan-asset":
+        return <PencatatanAssetPage selectedDivision={selectedDivision} />;
+      case "price-history-upload":
+        return <PriceHistoryUploadPage />;
+      case "laba-rugi":
+        return <LabaRugiPage selectedDivision={selectedDivision} />;
+      case "modal-reduction": // ✅ Tambahkan case ini
+        return <ModalReductionPage />;
+      case "modal-history": // ✅ Tambahkan case ini juga
+        return <ModalHistoryPage />;
+      case "profit-adjustment-summary":
+        return <ProfitAdjustmentSummary selectedDivision={selectedDivision} />;
       default:
         return <Dashboard selectedDivision={selectedDivision} />;
     }
@@ -119,21 +138,23 @@ case 'fee-penjualan':
     <div className="flex h-screen bg-background">
       {/* Mobile overlay */}
       {isMobile && mobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
-      
+
       {/* Sidebar */}
-      <div className={`
-        ${isMobile ? 'fixed inset-y-0 left-0 z-50' : 'relative'}
-        ${isMobile && !mobileMenuOpen ? '-translate-x-full' : 'translate-x-0'}
+      <div
+        className={`
+        ${isMobile ? "fixed inset-y-0 left-0 z-50" : "relative"}
+        ${isMobile && !mobileMenuOpen ? "-translate-x-full" : "translate-x-0"}
         transition-transform duration-300 ease-in-out
-        ${isMobile ? 'w-64' : ''}
-      `}>
-        <Sidebar 
-          activeMenu={activeMenu} 
+        ${isMobile ? "w-64" : ""}
+      `}
+      >
+        <Sidebar
+          activeMenu={activeMenu}
           setActiveMenu={(menu) => {
             setActiveMenu(menu);
             if (isMobile) setMobileMenuOpen(false);
@@ -151,10 +172,14 @@ case 'fee-penjualan':
           isMobile={isMobile}
         />
       </div>
-      
+
       {/* Main content */}
-      <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${isMobile ? 'w-full' : ''}`}>
-        <Header 
+      <div
+        className={`flex-1 flex flex-col overflow-hidden min-w-0 ${
+          isMobile ? "w-full" : ""
+        }`}
+      >
+        <Header
           onMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)}
           isMobile={isMobile}
         />
