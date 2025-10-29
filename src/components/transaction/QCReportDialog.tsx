@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,7 +40,7 @@ interface QCReportData {
 const QCReportDialog: React.FC<QCReportDialogProps> = ({
   isOpen,
   onClose,
-  pembelian
+  pembelian,
 }) => {
   const [qcData, setQcData] = useState<QCReportData>({
     brand: "",
@@ -46,7 +51,7 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
     estimasiNominalQC: 0,
     realNominalQC: 0,
     keterangan: "",
-    qcHistory: []
+    qcHistory: [],
   });
   const [loading, setLoading] = useState(false);
 
@@ -63,28 +68,33 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
     try {
       // Get QC history from qc_history table
       const { data: qcHistory, error: qcError } = await supabase
-        .from('qc_history')
-        .select('*')
-        .eq('pembelian_id', pembelian.id)
-        .order('tanggal_qc', { ascending: false });
+        .from("qc_history")
+        .select("*")
+        .eq("pembelian_id", pembelian.id)
+        .order("tanggal_qc", { ascending: false });
 
       if (qcError) {
-        console.error('Error fetching QC history:', qcError);
+        console.error("Error fetching QC history:", qcError);
       }
 
       // Get real nominal QC from price_histories_pembelian
       const { data: priceHistory, error: priceError } = await supabase
-        .from('price_histories_pembelian')
-        .select('biaya_qc')
-        .eq('pembelian_id', pembelian.id);
+        .from("price_histories_pembelian")
+        .select("biaya_qc")
+        .eq("pembelian_id", pembelian.id);
 
       if (priceError) {
-        console.error('Error fetching price history:', priceError);
+        console.error("Error fetching price history:", priceError);
       }
 
       // Calculate total real nominal QC from both sources
-      const priceHistoryQC = priceHistory?.reduce((sum, item) => sum + (item.biaya_qc || 0), 0) || 0;
-      const qcHistoryTotal = qcHistory?.reduce((sum, item) => sum + (item.total_pengeluaran || 0), 0) || 0;
+      const priceHistoryQC =
+        priceHistory?.reduce((sum, item) => sum + (item.biaya_qc || 0), 0) || 0;
+      const qcHistoryTotal =
+        qcHistory?.reduce(
+          (sum, item) => sum + (item.total_pengeluaran || 0),
+          0
+        ) || 0;
       const realNominalQC = priceHistoryQC + qcHistoryTotal;
 
       // Set QC data
@@ -97,10 +107,10 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
         estimasiNominalQC: 0, // User will input this
         realNominalQC: realNominalQC,
         keterangan: "",
-        qcHistory: qcHistory || []
+        qcHistory: qcHistory || [],
       });
     } catch (error) {
-      console.error('Error loading QC data:', error);
+      console.error("Error loading QC data:", error);
     } finally {
       setLoading(false);
     }
@@ -108,15 +118,15 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
 
   const handleEstimasiChange = (value: string) => {
     // Remove non-numeric characters except dots
-    const numericValue = value.replace(/[^\d.]/g, '');
-    
+    const numericValue = value.replace(/[^\d.]/g, "");
+
     // Convert to number for calculation
-    const numericAmount = parseFloat(numericValue.replace(/\./g, '')) || 0;
-    
-    setQcData(prev => ({
+    const numericAmount = parseFloat(numericValue.replace(/\./g, "")) || 0;
+
+    setQcData((prev) => ({
       ...prev,
       estimasiNominalQC: numericAmount,
-      keterangan: calculateKeterangan(numericAmount, prev.realNominalQC)
+      keterangan: calculateKeterangan(numericAmount, prev.realNominalQC),
     }));
   };
 
@@ -127,22 +137,43 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
 
     try {
       // Insert QC report data
-      const { error } = await supabase
-        .from('qc_report' as any)
-        .upsert({
+      // Upsert via update-then-insert to avoid requiring a UNIQUE constraint on pembelian_id
+      setLoading(true);
+
+      // Try update first
+      const { data: updated, error: updateError } = await supabase
+        .from("qc_report" as any)
+        .update({
+          estimasi_nominal_qc: qcData.estimasiNominalQC,
+          real_nominal_qc: qcData.realNominalQC,
+          keterangan: qcData.keterangan,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("pembelian_id", pembelian.id)
+        .select();
+
+      if (updateError) throw updateError;
+
+      if (updated && (updated as any).length > 0) {
+        console.log("QC Report updated successfully");
+        return;
+      }
+
+      // If no rows were updated, insert a new row
+      const { error: insertError } = await supabase
+        .from("qc_report" as any)
+        .insert({
           pembelian_id: pembelian.id,
           estimasi_nominal_qc: qcData.estimasiNominalQC,
           real_nominal_qc: qcData.realNominalQC,
-          keterangan: qcData.keterangan
-        }, {
-          onConflict: 'pembelian_id'
+          keterangan: qcData.keterangan,
         });
 
-      if (error) throw error;
-      
-      console.log('QC Report saved successfully');
+      if (insertError) throw insertError;
+
+      console.log("QC Report created successfully");
     } catch (error) {
-      console.error('Error saving QC report:', error);
+      console.error("Error saving QC report:", error);
     }
   };
 
@@ -157,7 +188,7 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
   };
 
   const formatCurrencyInput = (amount: number): string => {
-    return new Intl.NumberFormat('id-ID').format(amount);
+    return new Intl.NumberFormat("id-ID").format(amount);
   };
 
   const formatCurrencyDisplay = (amount: number): string => {
@@ -196,31 +227,41 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">Brand</Label>
+                  <Label className="text-sm font-medium text-gray-600">
+                    Brand
+                  </Label>
                   <div className="mt-1 p-2 bg-gray-50 rounded border">
                     {qcData.brand}
                   </div>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">Jenis Motor</Label>
+                  <Label className="text-sm font-medium text-gray-600">
+                    Jenis Motor
+                  </Label>
                   <div className="mt-1 p-2 bg-gray-50 rounded border">
                     {qcData.jenis_motor}
                   </div>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">Warna</Label>
+                  <Label className="text-sm font-medium text-gray-600">
+                    Warna
+                  </Label>
                   <div className="mt-1 p-2 bg-gray-50 rounded border">
                     {qcData.warna}
                   </div>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">Kilometer</Label>
+                  <Label className="text-sm font-medium text-gray-600">
+                    Kilometer
+                  </Label>
                   <div className="mt-1 p-2 bg-gray-50 rounded border">
-                    {qcData.kilometer.toLocaleString('id-ID')} km
+                    {qcData.kilometer.toLocaleString("id-ID")} km
                   </div>
                 </div>
                 <div className="col-span-2">
-                  <Label className="text-sm font-medium text-gray-600">Plat Nomor</Label>
+                  <Label className="text-sm font-medium text-gray-600">
+                    Plat Nomor
+                  </Label>
                   <div className="mt-1 p-2 bg-gray-50 rounded border">
                     <Badge variant="secondary" className="font-mono text-lg">
                       {qcData.plat_nomor}
@@ -241,7 +282,10 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="estimasi-qc" className="text-sm font-medium text-gray-600">
+                <Label
+                  htmlFor="estimasi-qc"
+                  className="text-sm font-medium text-gray-600"
+                >
                   Estimasi Nominal QC
                 </Label>
                 <div className="mt-1 relative">
@@ -252,7 +296,11 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
                     id="estimasi-qc"
                     type="text"
                     placeholder="Masukkan estimasi QC (contoh: 1.000.000)"
-                    value={qcData.estimasiNominalQC > 0 ? formatCurrencyInput(qcData.estimasiNominalQC) : ""}
+                    value={
+                      qcData.estimasiNominalQC > 0
+                        ? formatCurrencyInput(qcData.estimasiNominalQC)
+                        : ""
+                    }
                     onChange={(e) => handleEstimasiChange(e.target.value)}
                     className="pl-10"
                   />
@@ -271,7 +319,8 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Diambil dari qc_history.total_pengeluaran + price_histories_pembelian.biaya_qc
+                    Diambil dari qc_history.total_pengeluaran +
+                    price_histories_pembelian.biaya_qc
                   </p>
                 </div>
               </div>
@@ -281,12 +330,15 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
                   Keterangan
                 </Label>
                 <div className="mt-1 p-3 rounded border">
-                  <Badge 
-                    variant="outline" 
-                    className={`${getKeteranganColor(qcData.keterangan)} border-0`}
+                  <Badge
+                    variant="outline"
+                    className={`${getKeteranganColor(
+                      qcData.keterangan
+                    )} border-0`}
                   >
                     <AlertCircle className="w-4 h-4 mr-1" />
-                    {qcData.keterangan || "Masukkan Estimasi Nominal QC untuk melihat keterangan"}
+                    {qcData.keterangan ||
+                      "Masukkan Estimasi Nominal QC untuk melihat keterangan"}
                   </Badge>
                 </div>
               </div>
@@ -305,21 +357,34 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
               {qcData.qcHistory.length > 0 ? (
                 <div className="space-y-3">
                   {qcData.qcHistory.map((qc, index) => (
-                    <div key={qc.id || index} className="p-4 bg-gray-50 rounded-lg border">
+                    <div
+                      key={qc.id || index}
+                      className="p-4 bg-gray-50 rounded-lg border"
+                    >
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label className="text-sm font-medium text-gray-600">Tanggal QC</Label>
-                          <p className="text-sm">{new Date(qc.tanggal_qc).toLocaleDateString('id-ID')}</p>
+                          <Label className="text-sm font-medium text-gray-600">
+                            Tanggal QC
+                          </Label>
+                          <p className="text-sm">
+                            {new Date(qc.tanggal_qc).toLocaleDateString(
+                              "id-ID"
+                            )}
+                          </p>
                         </div>
                         <div>
-                          <Label className="text-sm font-medium text-gray-600">Total Pengeluaran</Label>
+                          <Label className="text-sm font-medium text-gray-600">
+                            Total Pengeluaran
+                          </Label>
                           <p className="text-sm font-semibold text-red-600">
                             {formatCurrencyDisplay(qc.total_pengeluaran)}
                           </p>
                         </div>
                         <div className="col-span-2">
-                          <Label className="text-sm font-medium text-gray-600">Keterangan</Label>
-                          <p className="text-sm">{qc.keterangan || '-'}</p>
+                          <Label className="text-sm font-medium text-gray-600">
+                            Keterangan
+                          </Label>
+                          <p className="text-sm">{qc.keterangan || "-"}</p>
                         </div>
                       </div>
                     </div>
@@ -356,12 +421,18 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
               </div>
               <div className="mt-4 text-center">
                 <div className="text-sm text-gray-600 mb-1">Selisih</div>
-                <div className={`text-xl font-bold ${
-                  qcData.estimasiNominalQC > qcData.realNominalQC ? 'text-red-600' :
-                  qcData.estimasiNominalQC < qcData.realNominalQC ? 'text-yellow-600' :
-                  'text-green-600'
-                }`}>
-                  {formatCurrencyDisplay(Math.abs(qcData.estimasiNominalQC - qcData.realNominalQC))}
+                <div
+                  className={`text-xl font-bold ${
+                    qcData.estimasiNominalQC > qcData.realNominalQC
+                      ? "text-red-600"
+                      : qcData.estimasiNominalQC < qcData.realNominalQC
+                      ? "text-yellow-600"
+                      : "text-green-600"
+                  }`}
+                >
+                  {formatCurrencyDisplay(
+                    Math.abs(qcData.estimasiNominalQC - qcData.realNominalQC)
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -372,7 +443,7 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
             <Button variant="outline" onClick={onClose}>
               Tutup
             </Button>
-            <Button 
+            <Button
               onClick={saveQCReport}
               disabled={qcData.estimasiNominalQC === 0}
               className="bg-blue-600 hover:bg-blue-700"
