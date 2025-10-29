@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -216,6 +217,10 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
             <FileText className="w-5 h-5 text-cyan-600" />
             Report QC - {pembelian.plat_nomor}
           </DialogTitle>
+          <DialogDescription>
+            Ringkasan dan perhitungan QC untuk unit ini. Gunakan tombol "Simpan
+            Report QC" untuk menyimpan estimasi dan keterangan.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
