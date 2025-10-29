@@ -493,136 +493,84 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
 
       // 7. Total Unit Stock Tua (> 3 bulan tapi masih ready)
       const totalUnitStokTua = pembelianStokTua.length;
-      // 8. QC processing: rely solely on DB view `qc_report_summary_per_pembelian`
-      //    to determine which pembelian are belum/sudah QC. Then fetch
-      //    detail rows from qc_report for the popups. This removes the
-      //    legacy fallback to price_histories/qc_history and makes the
-      //    frontend deterministic.
-      let unitBelumQC = 0;
-      let unitSudahQC = 0;
-      try {
-        const { data: summaryRows, error: summaryErr } = await supabase
-          .from("qc_report_summary_per_pembelian")
-          .select(
-            "pembelian_id,is_belum_qc,is_sudah_qc,status,divisi,cabang_id"
-          );
-
-        if (summaryErr) throw summaryErr;
-
-        let rows: any[] = Array.isArray(summaryRows)
-          ? (summaryRows as any[])
-          : [];
-        if (selectedDivision !== "all") {
-          rows = rows.filter((r) => r.divisi === selectedDivision);
-        }
-        if (selectedCabang !== "all") {
-          rows = rows.filter(
-            (r) => Number(r.cabang_id) === parseInt(selectedCabang)
-          );
-        }
-
-        const belumIds = rows
-          .filter((r) => r.is_belum_qc)
-          .map((r) => r.pembelian_id);
-        const sudahIds = rows
-          .filter((r) => r.is_sudah_qc)
-          .map((r) => r.pembelian_id);
-
-        unitBelumQC = belumIds.length;
-        unitSudahQC = sudahIds.length;
-
-        console.debug("[Dashboard] qc summary fetched:", {
-          total: rows.length,
-          belumCount: unitBelumQC,
-          sudahCount: unitSudahQC,
-        });
-
-        // Fetch detail qc_report rows for popups (if any)
-        const [belumDetailRes, sudahDetailRes] = await Promise.all([
-          belumIds.length > 0
-            ? supabase
-                .from("qc_report")
-                .select(
-                  `*, pembelian:pembelian_id(*, brands:brand_id(name), jenis_motor:jenis_motor_id(jenis_motor))`
-                )
-                .in("pembelian_id", belumIds)
-            : Promise.resolve({ data: [], error: null }),
-          sudahIds.length > 0
-            ? supabase
-                .from("qc_report")
-                .select(
-                  `*, pembelian:pembelian_id(*, brands:brand_id(name), jenis_motor:jenis_motor_id(jenis_motor))`
-                )
-                .in("pembelian_id", sudahIds)
-            : Promise.resolve({ data: [], error: null }),
-        ] as any);
-
-        if (belumDetailRes.error) throw belumDetailRes.error;
-        if (sudahDetailRes.error) throw sudahDetailRes.error;
-
-        const belumRows = (belumDetailRes.data || []) as any[];
-        const sudahRows = (sudahDetailRes.data || []) as any[];
-
-        console.debug("[Dashboard] qc detail fetched:", {
-          belumRows: belumRows.length,
-          sudahRows: sudahRows.length,
-          belumSample: belumRows
-            .slice(0, 5)
-            .map((r: any) => ({ id: r.id, pembelian_id: r.pembelian_id })),
-          sudahSample: sudahRows
-            .slice(0, 5)
-            .map((r: any) => ({ id: r.id, pembelian_id: r.pembelian_id })),
-        });
-
-        // For display, keep one row per pembelian_id (prefer the first). Then sort:
-        // Brand A->Z, Jenis A->Z, Tanggal Pembelian newest-first
-        const dedupeByPembelian = (rows: any[]) => {
-          const map = new Map<number | string, any>();
-          for (const r of rows) {
-            const pid = r.pembelian_id ?? r.pembelian?.id;
-            if (!map.has(pid)) map.set(pid, r);
-          }
-          return Array.from(map.values());
-        };
-
-        const sortDisplay = (rows: any[]) =>
-          rows.sort((a: any, b: any) => {
-            const brandA = (a.pembelian?.brands?.name || "").toLowerCase();
-            const brandB = (b.pembelian?.brands?.name || "").toLowerCase();
-            const brandCompare = brandA.localeCompare(brandB);
-            if (brandCompare !== 0) return brandCompare;
-
-            const jenisA = (
-              a.pembelian?.jenis_motor?.jenis_motor || ""
-            ).toLowerCase();
-            const jenisB = (
-              b.pembelian?.jenis_motor?.jenis_motor || ""
-            ).toLowerCase();
-            const jenisCompare = jenisA.localeCompare(jenisB);
-            if (jenisCompare !== 0) return jenisCompare;
-
-            const dateA = new Date(
-              a.pembelian?.tanggal_pembelian || a.created_at || 0
-            ).getTime();
-            const dateB = new Date(
-              b.pembelian?.tanggal_pembelian || b.created_at || 0
-            ).getTime();
-            return dateB - dateA; // newest first
-          });
-
-        const displayBelum = sortDisplay(dedupeByPembelian(belumRows));
-        const displaySudah = sortDisplay(dedupeByPembelian(sudahRows));
-
-        setDetailBelumQC(displayBelum);
-        setDetailSudahQC(displaySudah);
-      } catch (err) {
-        console.error("Error fetching qc summary/details:", err);
-        // Fallback to empty lists and zero counts if anything fails
-        unitBelumQC = unitBelumQC || 0;
-        unitSudahQC = unitSudahQC || 0;
-        setDetailBelumQC([]);
-        setDetailSudahQC([]);
+      // 8. QC processing: use qc_report directly and filter client-side
+      //    This is simpler and more reliable than view-based approach
+      let qcAll = qcReport;
+      if (selectedDivision !== "all") {
+        qcAll = qcAll.filter(
+          (q: any) => q.pembelian?.divisi === selectedDivision
+        );
       }
+      if (selectedCabang !== "all") {
+        qcAll = qcAll.filter(
+          (q: any) => q.pembelian?.cabang_id === parseInt(selectedCabang)
+        );
+      }
+
+      // Filter by QC rules:
+      // - Belum QC: estimasi_nominal_qc == 0 AND real_nominal_qc == 0
+      // - Sudah QC: real_nominal_qc != 0
+      const qcBelum = qcAll.filter((q: any) => {
+        const estimasi = Number(q.estimasi_nominal_qc ?? 0);
+        const real = Number(q.real_nominal_qc ?? 0);
+        return estimasi === 0 && real === 0;
+      });
+
+      const qcSudah = qcAll.filter((q: any) => {
+        const real = Number(q.real_nominal_qc ?? 0);
+        return real !== 0;
+      });
+
+      // Dedupe by pembelian_id and keep the first occurrence for display
+      const dedupeByPembelian = (rows: any[]) => {
+        const map = new Map<number | string, any>();
+        for (const r of rows) {
+          const pid = r.pembelian_id ?? r.pembelian?.id;
+          if (!map.has(pid)) map.set(pid, r);
+        }
+        return Array.from(map.values());
+      };
+
+      const sortDisplay = (rows: any[]) =>
+        rows.sort((a: any, b: any) => {
+          const brandA = (a.pembelian?.brands?.name || "").toLowerCase();
+          const brandB = (b.pembelian?.brands?.name || "").toLowerCase();
+          const brandCompare = brandA.localeCompare(brandB);
+          if (brandCompare !== 0) return brandCompare;
+
+          const jenisA = (
+            a.pembelian?.jenis_motor?.jenis_motor || ""
+          ).toLowerCase();
+          const jenisB = (
+            b.pembelian?.jenis_motor?.jenis_motor || ""
+          ).toLowerCase();
+          const jenisCompare = jenisA.localeCompare(jenisB);
+          if (jenisCompare !== 0) return jenisCompare;
+
+          const dateA = new Date(
+            a.pembelian?.tanggal_pembelian || a.created_at || 0
+          ).getTime();
+          const dateB = new Date(
+            b.pembelian?.tanggal_pembelian || b.created_at || 0
+          ).getTime();
+          return dateB - dateA; // newest first
+        });
+
+      const uniqueBelum = dedupeByPembelian(qcBelum);
+      const uniqueSudah = dedupeByPembelian(qcSudah);
+
+      const unitBelumQC = uniqueBelum.length;
+      const unitSudahQC = uniqueSudah.length;
+
+      setDetailBelumQC(sortDisplay(uniqueBelum));
+      setDetailSudahQC(sortDisplay(uniqueSudah));
+
+      console.debug("[Dashboard] QC processed:", {
+        totalQC: qcReport.length,
+        filteredQC: qcAll.length,
+        belumQC: unitBelumQC,
+        sudahQC: unitSudahQC,
+      });
 
       // Set detail untuk popup
       setDetailPajakMati(detailUnitPajakMati);
@@ -756,122 +704,6 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       console.error("Error fetching dashboard data:", error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Fetch popup details on demand to ensure fresh data when user opens dialogs.
-  const fetchPopupDetails = async (type: "belum" | "sudah") => {
-    try {
-      // Get pembelian ids from the summary view first (fast, small payload)
-      const { data: summaryRows, error: summaryErr } = await supabase
-        .from("qc_report_summary_per_pembelian")
-        .select("pembelian_id,is_belum_qc,is_sudah_qc,divisi,cabang_id");
-
-      if (summaryErr) throw summaryErr;
-
-      let rows: any[] = Array.isArray(summaryRows) ? summaryRows : [];
-      if (selectedDivision !== "all")
-        rows = rows.filter((r) => r.divisi === selectedDivision);
-      if (selectedCabang !== "all")
-        rows = rows.filter(
-          (r) => Number(r.cabang_id) === parseInt(selectedCabang)
-        );
-
-      const ids = rows
-        .filter((r) => (type === "belum" ? r.is_belum_qc : r.is_sudah_qc))
-        .map((r) => r.pembelian_id)
-        .filter(Boolean);
-
-      let detailRows: any[] = [];
-
-      if (ids.length > 0) {
-        // Try fetch by ids (cast to numbers to avoid type mismatch)
-        const castIds = ids.map((id) => Number(id));
-        const { data: detailRes, error: detailErr } = await supabase
-          .from("qc_report")
-          .select(
-            `*, pembelian:pembelian_id(*, brands:brand_id(name), jenis_motor:jenis_motor_id(jenis_motor))`
-          )
-          .in("pembelian_id", castIds);
-
-        if (detailErr) throw detailErr;
-
-        detailRows = detailRes || [];
-      }
-
-      // If no rows found (possible typing/permission issue), fallback to scanning qc_report and filtering client-side
-      if (!detailRows || detailRows.length === 0) {
-        const { data: allQc, error: allErr } = await supabase
-          .from("qc_report")
-          .select(
-            `*, pembelian:pembelian_id(*, brands:brand_id(name), jenis_motor:jenis_motor_id(jenis_motor))`
-          )
-          .limit(2000);
-
-        if (allErr) throw allErr;
-
-        const list = (allQc || []).filter((q: any) => {
-          const p = q.pembelian;
-          if (!p) return false;
-          if (selectedDivision !== "all" && p.divisi !== selectedDivision)
-            return false;
-          if (
-            selectedCabang !== "all" &&
-            Number(p.cabang_id) !== parseInt(selectedCabang)
-          )
-            return false;
-          const estimasi = Number(q.estimasi_nominal_qc ?? 0);
-          const real = Number(q.real_nominal_qc ?? 0);
-          if (type === "belum") return estimasi === 0 && real === 0;
-          return real !== 0;
-        });
-
-        detailRows = list;
-      }
-
-      // Dedupe and sort as in main flow
-      const dedupe = (rows: any[]) => {
-        const map = new Map<number | string, any>();
-        for (const r of rows) {
-          const pid = r.pembelian_id ?? r.pembelian?.id;
-          if (!map.has(pid)) map.set(pid, r);
-        }
-        return Array.from(map.values());
-      };
-
-      const sorted = (rows: any[]) =>
-        rows.sort((a: any, b: any) => {
-          const brandA = (a.pembelian?.brands?.name || "").toLowerCase();
-          const brandB = (b.pembelian?.brands?.name || "").toLowerCase();
-          const brandCompare = brandA.localeCompare(brandB);
-          if (brandCompare !== 0) return brandCompare;
-
-          const jenisA = (
-            a.pembelian?.jenis_motor?.jenis_motor || ""
-          ).toLowerCase();
-          const jenisB = (
-            b.pembelian?.jenis_motor?.jenis_motor || ""
-          ).toLowerCase();
-          const jenisCompare = jenisA.localeCompare(jenisB);
-          if (jenisCompare !== 0) return jenisCompare;
-
-          const dateA = new Date(
-            a.pembelian?.tanggal_pembelian || a.created_at || 0
-          ).getTime();
-          const dateB = new Date(
-            b.pembelian?.tanggal_pembelian || b.created_at || 0
-          ).getTime();
-          return dateB - dateA;
-        });
-
-      const display = sorted(dedupe(detailRows));
-
-      if (type === "belum") setDetailBelumQC(display);
-      else setDetailSudahQC(display);
-    } catch (err) {
-      console.error("Error fetching popup qc details:", err);
-      if (type === "belum") setDetailBelumQC([]);
-      else setDetailSudahQC([]);
     }
   };
 
@@ -1144,13 +976,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         {/* Total Unit Ready card removed as requested */}
 
         {/* Unit Belum QC (popup) */}
-        <Dialog
-          open={openDialogBelumQC}
-          onOpenChange={(open) => {
-            setOpenDialogBelumQC(open);
-            if (open) fetchPopupDetails("belum");
-          }}
-        >
+        <Dialog open={openDialogBelumQC} onOpenChange={setOpenDialogBelumQC}>
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Unit Belum QC</DialogTitle>
@@ -1252,13 +1078,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         </Dialog>
 
         {/* Unit Sudah QC (popup + card) */}
-        <Dialog
-          open={openDialogSudahQC}
-          onOpenChange={(open) => {
-            setOpenDialogSudahQC(open);
-            if (open) fetchPopupDetails("sudah");
-          }}
-        >
+        <Dialog open={openDialogSudahQC} onOpenChange={setOpenDialogSudahQC}>
           <Card
             className="border border-green-200 bg-green-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
             onClick={() => setOpenDialogSudahQC(true)}
