@@ -911,16 +911,13 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                           No
                         </th>
                         <th className="border p-2 text-left text-xs font-semibold">
-                          Tanggal Report
-                        </th>
-                        <th className="border p-2 text-left text-xs font-semibold">
-                          Pembelian ID
-                        </th>
-                        <th className="border p-2 text-left text-xs font-semibold">
                           Brand
                         </th>
                         <th className="border p-2 text-left text-xs font-semibold">
                           Jenis Motor
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Plat Nomor
                         </th>
                         <th className="border p-2 text-left text-xs font-semibold">
                           Tanggal Pembelian
@@ -932,7 +929,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                           Real QC
                         </th>
                         <th className="border p-2 text-left text-xs font-semibold">
-                          Keterangan
+                          Status
                         </th>
                       </tr>
                     </thead>
@@ -943,46 +940,67 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                             new Date(b.created_at).getTime() -
                             new Date(a.created_at).getTime()
                         )
-                        .map((qc, idx) => (
-                          <tr
-                            key={`${qc.id}-${qc.pembelian_id}-${idx}`}
-                            className="hover:bg-gray-50"
-                          >
-                            <td className="border p-2 text-xs">{idx + 1}</td>
-                            <td className="border p-2 text-xs">
-                              {qc.created_at
-                                ? new Date(qc.created_at).toLocaleString()
-                                : "-"}
-                            </td>
-                            <td className="border p-2 text-xs">
-                              {qc.pembelian_id || "-"}
-                            </td>
-                            <td className="border p-2 text-xs">
-                              {qc.pembelian?.brands?.name || "-"}
-                            </td>
-                            <td className="border p-2 text-xs">
-                              {qc.pembelian?.jenis_motor?.jenis_motor || "-"}
-                            </td>
-                            <td className="border p-2 text-xs">
-                              {qc.pembelian?.tanggal_pembelian || "-"}
-                            </td>
-                            <td className="border p-2 text-xs font-semibold">
-                              {formatCurrency(
-                                Number(qc.estimasi_nominal_qc || 0)
-                              )}
-                            </td>
-                            <td className="border p-2 text-xs font-semibold">
-                              {qc.real_nominal_qc == null
-                                ? "-"
-                                : formatCurrency(
-                                    Number(qc.real_nominal_qc || 0)
-                                  )}
-                            </td>
-                            <td className="border p-2 text-xs">
-                              {qc.keterangan || "-"}
-                            </td>
-                          </tr>
-                        ))}
+                        .map((qc, idx) => {
+                          const pembelian = qc.pembelian || {};
+                          const estimasiVal = Number(
+                            qc.estimasi_nominal_qc || 0
+                          );
+                          const realVal =
+                            qc.real_nominal_qc == null
+                              ? null
+                              : Number(qc.real_nominal_qc || 0);
+                          const hasEstimasi = estimasiVal > 0;
+                          const hasReal = realVal != null && realVal > 0;
+                          const statusDone = hasEstimasi && hasReal;
+                          const statusText = statusDone
+                            ? "Done"
+                            : "QC belum Selesai";
+                          const statusClass = statusDone
+                            ? "bg-green-100 text-green-800 px-2 py-1 rounded text-[10px]"
+                            : "bg-red-100 text-red-800 px-2 py-1 rounded text-[10px]";
+
+                          return (
+                            <tr
+                              key={`${qc.id}-${qc.pembelian_id}-${idx}`}
+                              className="hover:bg-gray-50"
+                            >
+                              <td className="border p-2 text-xs">{idx + 1}</td>
+                              <td className="border p-2 text-xs">
+                                {pembelian.brands?.name ||
+                                  pembelian.brands ||
+                                  "-"}
+                              </td>
+                              <td className="border p-2 text-xs">
+                                {pembelian.jenis_motor?.jenis_motor ||
+                                  pembelian.jenis_motor ||
+                                  "-"}
+                              </td>
+                              <td className="border p-2 text-xs">
+                                {pembelian.plat_nomor ||
+                                  pembelian.platNomor ||
+                                  "-"}
+                              </td>
+                              <td className="border p-2 text-xs">
+                                {pembelian.tanggal_pembelian || "-"}
+                              </td>
+                              <td className="border p-2 text-xs font-semibold">
+                                {hasEstimasi
+                                  ? formatCurrency(estimasiVal)
+                                  : "-"}
+                              </td>
+                              <td className="border p-2 text-xs font-semibold">
+                                {hasReal
+                                  ? formatCurrency(realVal as number)
+                                  : "-"}
+                              </td>
+                              <td className="border p-2">
+                                <span className={statusClass}>
+                                  {statusText}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                     </tbody>
                   </table>
                 </div>
