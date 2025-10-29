@@ -48,6 +48,157 @@ import {
   Area,
   Legend,
 } from "recharts";
+import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
+
+type Company = Tables<"companies">;
+type JenisMotor = Tables<"jenis_motor">;
+type Brand = Tables<"brands">;
+type Asset = Tables<"assets">;
+
+interface DashboardProps {
+  selectedDivision: string;
+}
+
+const Dashboard = ({ selectedDivision }: DashboardProps) => {
+  const [selectedCabang, setSelectedCabang] = useState<string>("all");
+  const [cabangData, setCabangData] = useState<any[]>([]);
+  const [detailPajakMati, setDetailPajakMati] = useState<any[]>([]);
+  const [detailStockTua, setDetailStockTua] = useState<any[]>([]);
+  const [detailBelumQC, setDetailBelumQC] = useState<any[]>([]);
+  const [openDialogPajakMati, setOpenDialogPajakMati] = useState(false);
+  const [openDialogStockTua, setOpenDialogStockTua] = useState(false);
+  const [openDialogBelumQC, setOpenDialogBelumQC] = useState(false);
+  const [openDialogReadyTotal, setOpenDialogReadyTotal] = useState(false);
+  const [openDialogReadyUnit, setOpenDialogReadyUnit] = useState(false);
+  const [openDialogBookedDP, setOpenDialogBookedDP] = useState(false);
+  const [openDialogBookedUnit, setOpenDialogBookedUnit] = useState(false);
+  const [readyUnits, setReadyUnits] = useState<any[]>([]);
+  const [bookedUnits, setBookedUnits] = useState<any[]>([]);
+
+  const [stats, setStats] = useState({
+    totalAssets: 0,
+    activeCompanies: 0,
+    passiveCompanies: 0,
+    totalModal: 0,
+    sportMotors: 0,
+    startMotors: 0,
+    totalPembelian: 0,
+    totalPembelianUnit: 0,
+    totalPenjualan: 0,
+    totalPenjualanUnit: 0,
+    totalKeuntungan: 0,
+    totalKeuntunganUnit: 0,
+    totalBooked: 0,
+    totalBookedUnit: 0,
+    totalOperational: 0,
+    // ✅ TAMBAH: Field untuk card baru
+    totalPembelianReady: 0, // Total pembelian status ready
+    totalUnitReady: 0, // Total unit status ready
+    totalUnitPajakMati: 0, // Total unit yang tanggal pajak <= hari ini
+    totalBookedAll: 0, // Total booked (harga_beli)
+    totalUnitBookedAll: 0, // Total unit booked
+    stockMotorsBulanIni: 0, // Stock motors bulan ini (pembelian bulan ini dengan status ready)
+    totalUnitStokTua: 0, // Total unit yang tanggal pembeliannya sudah lama (> 3 bulan) tapi masih ready
+    unitBelumQC: 0, // Total unit yang belum QC (unique pembelian_id where real_nominal_qc is null or 0)
+    modalPerCompany: [] as Array<{ name: string; modal: number }>,
+    monthlyTrend: [] as Array<{
+      month: string;
+      pembelian: number;
+      penjualan: number;
+      keuntungan: number;
+    }>,
+    statusTrend: [] as Array<{
+      date: string;
+      ready: number;
+      booked: number;
+      sold: number;
+    }>,
+    salesByDivision: [] as Array<{
+      name: string;
+      value: number;
+      color: string;
+    }>,
+    stockDistribution: [] as Array<{
+      name: string;
+      stock: number;
+      value: number;
+    }>,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [selectedDivision, selectedCabang]);
+
+  // Get current month and year
+  const getCurrentMonthYear = () => {
+    const now = new Date();
+    return {
+      month: now.getMonth() + 1, // JavaScript months are 0-indexed
+      year: now.getFullYear(),
+    };
+  };
+
+  const fetchDashboardData = async () => {
+    try {
+      const { month: currentMonth, year: currentYear } = getCurrentMonthYear();
+
+      // Build queries with division, cabang, and current month filter
+      let jenisMotorQuery = supabase.from("jenis_motor").select("*");
+      let companiesQuery = supabase.from("companies").select("*");
+      let pembelianQuery = supabase
+        .from("pembelian")
+        .select("*")
+        .gte(
+          "tanggal_pembelian",
+          `${currentYear}-${currentMonth.toString().padStart(2, "0")}-01`
+        )
+        .lt(
+          "tanggal_pembelian",
+          `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}-01`
+        );
+      let penjualanQuery = supabase
+        .from("penjualans")
+        .select("*")
+        .gte(
+          "tanggal",
+          `${currentYear}-${currentMonth.toString().padStart(2, "0")}-01`
+        )
+        .lt(
+          "tanggal",
+          `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}-01`
+        );
+
+      // Query terpisah untuk booked orders - ambil semua data tanpa filter waktu
+      let bookedOrdersQuery = supabase
+        .from("penjualans")
+        .select("*")
+        .in("status", ["Booked", "booked"]);
+
+      let operationalQuery = supabase
+        .from("operational")
+        .select("*")
+        .gte(
+          "tanggal",
+          `${currentYear}-${currentMonth.toString().padStart(2, "0")}-01`
+        )
+        .lt(
+          "tanggal",
+          `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}-01`
+        );
+
+      // ✅ TAMBAH: Query pembelian status ready (tanpa filter periode) - dengan join untuk brand dan jenis motor
+      let pembelianReadyQuery = supabase
+        .from("pembelian")
+        .select(
+          `
+          *,
+          brands:brand_id(name),
+          jenis_motor:jenis_motor_id(jenis_motor)
+        `
+        )
+        .eq("status", "ready");
 
       // ✅ FIX: Query pembelian bulan ini dengan status ready (untuk Stock Motors Bulan ini)
       let pembelianReadyBulanIniQuery = supabase
@@ -80,10 +231,12 @@ import {
         .eq("status", "ready")
         .lt("tanggal_pembelian", threeMonthsAgoStr);
 
-      // ✅ TAMBAH: Query qc_report (fetch all qc_report rows and split client-side into belum/sudah QC)
+      // ✅ TAMBAH: Query qc_report for QC entries where real_nominal_qc is null or 0
       // We'll fetch related pembelian info via foreign key join and filter on client-side for divisi/cabang
-      let qcReportQuery = supabase.from("qc_report").select(
-        `
+      let qcReportQuery = supabase
+        .from("qc_report")
+        .select(
+          `
           *,
           pembelian:pembelian_id(
             *,
@@ -91,7 +244,8 @@ import {
             jenis_motor:jenis_motor_id(jenis_motor)
           )
         `
-      );
+        )
+        .or("real_nominal_qc.eq.0,real_nominal_qc.is.null");
 
       // ✅ TAMBAH: Query penjualan status booked (tanpa filter periode)
       let penjualanBookedQuery = supabase
@@ -317,37 +471,27 @@ import {
 
       // 7. Total Unit Stock Tua (> 3 bulan tapi masih ready)
       const totalUnitStokTua = pembelianStokTua.length;
-      // 8. QC: split qc_report rows into belum QC and sudah QC (client-side)
-      // qcReport may contain multiple rows per pembelian, so we count unique pembelian_id for each group
-      let qcAll = qcReport;
+      // 8. Unit belum QC: count unique pembelian_id where real_nominal_qc is null or 0
+      // qcReport may contain multiple rows per pembelian, so count unique pembelian_id
+      // Apply client-side filtering by divisi and cabang because qc_report doesn't have those fields directly
+      let qcFiltered = qcReport;
       if (selectedDivision !== "all") {
-        qcAll = qcAll.filter(
+        qcFiltered = qcFiltered.filter(
           (q: any) => q.pembelian?.divisi === selectedDivision
         );
       }
       if (selectedCabang !== "all") {
-        qcAll = qcAll.filter(
+        qcFiltered = qcFiltered.filter(
           (q: any) => q.pembelian?.cabang_id === parseInt(selectedCabang)
         );
       }
-
-      const qcBelum = qcAll.filter(
-        (q: any) => q.real_nominal_qc == null || Number(q.real_nominal_qc) === 0
+      const uniquePembelianIds = new Set(
+        qcFiltered.map((q: any) => q.pembelian_id)
       );
+      const unitBelumQC = uniquePembelianIds.size;
 
-      const qcSudah = qcAll.filter(
-        (q: any) => q.real_nominal_qc != null && Number(q.real_nominal_qc) > 0
-      );
-
-      const uniqueBelum = new Set(qcBelum.map((q: any) => q.pembelian_id));
-      const unitBelumQC = uniqueBelum.size;
-
-      const uniqueSudah = new Set(qcSudah.map((q: any) => q.pembelian_id));
-      const unitSudahQC = uniqueSudah.size;
-
-      // Set detail for popups
-      setDetailBelumQC(qcBelum);
-      setDetailSudahQC(qcSudah);
+      // Set detail for popup (show qc rows)
+      setDetailBelumQC(qcFiltered);
 
       // Set detail untuk popup
       setDetailPajakMati(detailUnitPajakMati);
@@ -470,7 +614,6 @@ import {
         stockMotorsBulanIni,
         totalUnitStokTua,
         unitBelumQC,
-        unitSudahQC,
         modalPerCompany,
         monthlyTrend,
         statusTrend,
@@ -537,14 +680,15 @@ import {
       changeType: "positive",
     },
     {
-      title: "Modal Unit Ready",
-      value: formatCurrency(stats.totalPembelianReady),
-      unit: `${stats.totalUnitReady} Unit`,
-      icon: DollarSign,
-      color: "text-blue-600",
-      bgColor: "bg-gradient-to-r from-blue-500 to-blue-600",
-      change: "+1.2%",
-      changeType: "positive",
+      title: "Stock Motors Bulan ini",
+      title: "Unit belum QC",
+      value: stats.unitBelumQC.toString(),
+      unit: "Unit",
+      icon: Package,
+      color: "text-purple-600",
+      bgColor: "bg-gradient-to-r from-purple-500 to-purple-600",
+      change: "-2.3%",
+      changeType: "negative",
     },
   ];
 
@@ -589,24 +733,15 @@ import {
       </div>
 
       {/* Main Stats Cards with Gradient */}
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {dashboardStats.map((stat, index) => {
           const Icon = stat.icon;
-          const isClickable =
-            stat.title === "Unit belum QC" ||
-            stat.title === "Unit sudah QC" ||
-            stat.title === "Modal Unit Ready";
+          const isClickable = stat.title === "Unit belum QC";
           return (
             <Card
               key={index}
               onClick={
-                isClickable
-                  ? () => {
-                      if (stat.title === "Unit belum QC") setOpenDialogBelumQC(true);
-                      else if (stat.title === "Unit sudah QC") setOpenDialogSudahQC(true);
-                      else if (stat.title === "Modal Unit Ready") setOpenDialogReadyTotal(true);
-                    }
-                  : undefined
+                isClickable ? () => setOpenDialogBelumQC(true) : undefined
               }
               className={`relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 group ${
                 isClickable ? "cursor-pointer" : ""
@@ -619,7 +754,7 @@ import {
                     <p className="text-sm font-medium text-white/80 mb-1">
                       {stat.title}
                     </p>
-                    <p className="text-2xl font-bold mb-1 whitespace-normal">
+                    <p className="text-2xl font-bold mb-1 truncate">
                       {stat.value}
                     </p>
                     {stat.unit && (
@@ -654,272 +789,680 @@ import {
         })}
       </div>
 
-      {/* ✅ REDESIGN: Second row - compact small cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        {/* Small: Unit Belum QC (opens dialog) */}
-        <Card
-          className="border border-purple-200 bg-purple-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
-          onClick={() => setOpenDialogBelumQC(true)}
+      {/* ✅ REDESIGN: Grid untuk 6 card baru - Lebih compact */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+        {/* Modal Unit Ready */}
+        <Dialog
+          open={openDialogReadyTotal}
+          onOpenChange={setOpenDialogReadyTotal}
         >
-          <CardContent className="p-3 flex flex-col justify-between min-h-[110px]">
-            <div className="flex items-center justify-between mb-1">
-              <div className="p-2 bg-white/20 rounded-md">
-                <Package className="w-5 h-5 text-purple-600" />
+          <Card
+            className="border border-blue-200 bg-blue-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
+            onClick={() => setOpenDialogReadyTotal(true)}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <DollarSign className="w-6 h-6 text-blue-600" />
+                <span className="text-[10px] font-semibold bg-blue-200 text-blue-800 px-2 py-0.5 rounded">
+                  READY
+                </span>
               </div>
-              <span className="text-[10px] font-semibold bg-purple-200 text-purple-800 px-2 py-0.5 rounded">
-                QC
-              </span>
-            </div>
-            <div>
-              <p className="text-[11px] text-gray-600 mb-1">Unit Belum QC</p>
-              <p className="text-lg font-bold text-purple-700">{stats.unitBelumQC}</p>
-            </div>
-            <p className="text-[10px] text-gray-500">Unit</p>
-          </CardContent>
-        </Card>
+              <p className="text-[11px] text-gray-600 mb-1">Modal Unit Ready</p>
+              <p className="text-lg font-bold text-blue-700">
+                {formatCurrency(stats.totalPembelianReady)}
+              </p>
+              <p className="text-[10px] text-gray-500">
+                {stats.totalUnitReady} Unit
+              </p>
+            </CardContent>
+          </Card>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Modal Unit Ready</DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              {readyUnits.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          No
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Tanggal Beli
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Brand
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Jenis Motor
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Harga
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...readyUnits]
+                        .sort((a, b) => {
+                          // Primary sort: Brand name A -> Z
+                          const brandA = (a.brands?.name || "").toLowerCase();
+                          const brandB = (b.brands?.name || "").toLowerCase();
+                          const brandCompare = brandA.localeCompare(brandB);
+                          if (brandCompare !== 0) return brandCompare;
 
-        {/* Small: Unit Sudah QC (opens dialog) */}
-        <Card
-          className="border border-green-200 bg-green-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
-          onClick={() => setOpenDialogSudahQC(true)}
-        >
-          <CardContent className="p-3 flex flex-col justify-between min-h-[110px]">
-            <div className="flex items-center justify-between mb-1">
-              <div className="p-2 bg-white/20 rounded-md">
-                <Package className="w-5 h-5 text-green-600" />
-              </div>
-              <span className="text-[10px] font-semibold bg-green-200 text-green-800 px-2 py-0.5 rounded">
-                QC
-              </span>
+                          // Tie-breaker: Tanggal pembelian (terbaru ke terlama)
+                          const dateA = new Date(
+                            a.tanggal_pembelian || 0
+                          ).getTime();
+                          const dateB = new Date(
+                            b.tanggal_pembelian || 0
+                          ).getTime();
+                          return dateB - dateA;
+                        })
+                        .map((unit, idx) => {
+                          const harga =
+                            unit.harga_final && unit.harga_final > 0
+                              ? unit.harga_final
+                              : unit.harga_beli;
+                          return (
+                            <tr key={unit.id} className="hover:bg-gray-50">
+                              <td className="border p-2 text-xs">{idx + 1}</td>
+                              <td className="border p-2 text-xs">
+                                {unit.tanggal_pembelian || "-"}
+                              </td>
+                              <td className="border p-2 text-xs">
+                                {unit.brands?.name || "-"}
+                              </td>
+                              <td className="border p-2 text-xs">
+                                {unit.jenis_motor?.jenis_motor || "-"}
+                              </td>
+                              <td className="border p-2 text-xs font-semibold">
+                                {formatCurrency(harga)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-center py-4 text-gray-500">Tidak ada data</p>
+              )}
             </div>
-            <div>
-              <p className="text-[11px] text-gray-600 mb-1">Unit Sudah QC</p>
-              <p className="text-lg font-bold text-green-700">{stats.unitSudahQC}</p>
-            </div>
-            <p className="text-[10px] text-gray-500">Unit</p>
-          </CardContent>
-        </Card>
+          </DialogContent>
+        </Dialog>
 
-        {/* Small: Pajak Mati (opens dialog) */}
-        <Card
-          className="border border-red-200 bg-red-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
-          onClick={() => setOpenDialogPajakMati(true)}
+        {/* Total Unit Ready */}
+        <Dialog
+          open={openDialogReadyUnit}
+          onOpenChange={setOpenDialogReadyUnit}
         >
-          <CardContent className="p-3 flex flex-col justify-between min-h-[110px]">
-            <div className="flex items-center justify-between mb-1">
-              <div className="p-2 bg-white/20 rounded-md">
-                <TrendingDown className="w-5 h-5 text-red-600" />
+          <Card
+            className="border border-green-200 bg-green-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
+            onClick={() => setOpenDialogReadyUnit(true)}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <Package className="w-6 h-6 text-green-600" />
+                <span className="text-[10px] font-semibold bg-green-200 text-green-800 px-2 py-0.5 rounded">
+                  READY
+                </span>
               </div>
-              <span className="text-[10px] font-semibold bg-red-200 text-red-800 px-2 py-0.5 rounded">
-                ⚠️
-              </span>
+              <p className="text-[11px] text-gray-600 mb-1">Total Unit Ready</p>
+              <p className="text-lg font-bold text-green-700">
+                {stats.totalUnitReady}
+              </p>
+              <p className="text-[10px] text-gray-500">All Periode</p>
+            </CardContent>
+          </Card>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Unit Ready</DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              {readyUnits.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          No
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Tanggal Beli
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Brand
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Jenis Motor
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Harga
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...readyUnits]
+                        .sort((a, b) => {
+                          // Primary sort: Brand name A -> Z
+                          const brandA = (a.brands?.name || "").toLowerCase();
+                          const brandB = (b.brands?.name || "").toLowerCase();
+                          const brandCompare = brandA.localeCompare(brandB);
+                          if (brandCompare !== 0) return brandCompare;
+
+                          // Tie-breaker: Tanggal pembelian (terbaru ke terlama)
+                          const dateA = new Date(
+                            a.tanggal_pembelian || 0
+                          ).getTime();
+                          const dateB = new Date(
+                            b.tanggal_pembelian || 0
+                          ).getTime();
+                          return dateB - dateA;
+                        })
+                        .map((unit, idx) => {
+                          const harga =
+                            unit.harga_final && unit.harga_final > 0
+                              ? unit.harga_final
+                              : unit.harga_beli;
+                          return (
+                            <tr key={unit.id} className="hover:bg-gray-50">
+                              <td className="border p-2 text-xs">{idx + 1}</td>
+                              <td className="border p-2 text-xs">
+                                {unit.tanggal_pembelian || "-"}
+                              </td>
+                              <td className="border p-2 text-xs">
+                                {unit.brands?.name || "-"}
+                              </td>
+                              <td className="border p-2 text-xs">
+                                {unit.jenis_motor?.jenis_motor || "-"}
+                              </td>
+                              <td className="border p-2 text-xs font-semibold">
+                                {formatCurrency(harga)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-center py-4 text-gray-500">Tidak ada data</p>
+              )}
             </div>
-            <div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Unit Belum QC (popup) */}
+        <Dialog open={openDialogBelumQC} onOpenChange={setOpenDialogBelumQC}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Unit Belum QC</DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              {detailBelumQC.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          No
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Tanggal Report
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Pembelian ID
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Brand
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Jenis Motor
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Tanggal Pembelian
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Estimasi QC
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Real QC
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Keterangan
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...detailBelumQC]
+                        .sort(
+                          (a, b) =>
+                            new Date(b.created_at).getTime() -
+                            new Date(a.created_at).getTime()
+                        )
+                        .map((qc, idx) => (
+                          <tr
+                            key={`${qc.id}-${qc.pembelian_id}-${idx}`}
+                            className="hover:bg-gray-50"
+                          >
+                            <td className="border p-2 text-xs">{idx + 1}</td>
+                            <td className="border p-2 text-xs">
+                              {qc.created_at
+                                ? new Date(qc.created_at).toLocaleString()
+                                : "-"}
+                            </td>
+                            <td className="border p-2 text-xs">
+                              {qc.pembelian_id || "-"}
+                            </td>
+                            <td className="border p-2 text-xs">
+                              {qc.pembelian?.brands?.name || "-"}
+                            </td>
+                            <td className="border p-2 text-xs">
+                              {qc.pembelian?.jenis_motor?.jenis_motor || "-"}
+                            </td>
+                            <td className="border p-2 text-xs">
+                              {qc.pembelian?.tanggal_pembelian || "-"}
+                            </td>
+                            <td className="border p-2 text-xs font-semibold">
+                              {formatCurrency(
+                                Number(qc.estimasi_nominal_qc || 0)
+                              )}
+                            </td>
+                            <td className="border p-2 text-xs font-semibold">
+                              {qc.real_nominal_qc == null
+                                ? "-"
+                                : formatCurrency(
+                                    Number(qc.real_nominal_qc || 0)
+                                  )}
+                            </td>
+                            <td className="border p-2 text-xs">
+                              {qc.keterangan || "-"}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-center py-4 text-gray-500">Tidak ada data</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Card Pajak Mati dengan Popup */}
+        <Dialog
+          open={openDialogPajakMati}
+          onOpenChange={setOpenDialogPajakMati}
+        >
+          <Card
+            className="border border-red-200 bg-red-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
+            onClick={() => setOpenDialogPajakMati(true)}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <TrendingDown className="w-6 h-6 text-red-600" />
+                <span className="text-[10px] font-semibold bg-red-200 text-red-800 px-2 py-0.5 rounded">
+                  ⚠️
+                </span>
+              </div>
               <p className="text-[11px] text-gray-600 mb-1">Pajak Mati</p>
-              <p className="text-lg font-bold text-red-700">{stats.totalUnitPajakMati}</p>
-            </div>
-            <p className="text-[10px] text-gray-500">Unit</p>
-          </CardContent>
-        </Card>
+              <p className="text-lg font-bold text-red-700">
+                {stats.totalUnitPajakMati}
+              </p>
+              <p className="text-[10px] text-gray-500">Unit</p>
+            </CardContent>
+          </Card>
 
-        {/* Small: Total DP Booked (opens dialog) */}
-        <Card
-          className="border border-yellow-200 bg-yellow-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
-          onClick={() => setOpenDialogBookedDP(true)}
-        >
-          <CardContent className="p-3 flex flex-col justify-between min-h-[110px]">
-            <div className="flex items-center justify-between mb-1">
-              <div className="p-2 bg-white/20 rounded-md">
-                <DollarSign className="w-5 h-5 text-yellow-600" />
-              </div>
-              <span className="text-[10px] font-semibold bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">
-                BOOKED
-              </span>
-            </div>
-            <div>
-              <p className="text-[11px] text-gray-600 mb-1">Total DP Booked</p>
-              <p className="text-lg font-bold text-yellow-700">{formatCurrency(stats.totalBookedAll)}</p>
-            </div>
-            <p className="text-[10px] text-gray-500">{stats.totalUnitBookedAll} Unit</p>
-          </CardContent>
-        </Card>
-
-        {/* Small: Stock Tua (opens dialog) */}
-        <Card
-          className="border border-amber-200 bg-amber-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
-          onClick={() => setOpenDialogStockTua(true)}
-        >
-          <CardContent className="p-3 flex flex-col justify-between min-h-[110px]">
-            <div className="flex items-center justify-between mb-1">
-              <div className="p-2 bg-white/20 rounded-md">
-                <Activity className="w-5 h-5 text-amber-600" />
-              </div>
-              <span className="text-[10px] font-semibold bg-amber-200 text-amber-800 px-2 py-0.5 rounded">
-                ⚠️
-              </span>
-            </div>
-            <div>
-              <p className="text-[11px] text-gray-600 mb-1">Stock Tua</p>
-              <p className="text-lg font-bold text-amber-700">{stats.totalUnitStokTua}</p>
-            </div>
-            <p className="text-[10px] text-gray-500">&gt; 3 Bulan</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Modal Unit Ready dialog (controlled by top card) */}
-      <Dialog open={openDialogReadyTotal} onOpenChange={setOpenDialogReadyTotal}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Modal Unit Ready</DialogTitle>
-          </DialogHeader>
-          <div className="mt-4">
-            {readyUnits.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border p-2 text-left text-xs font-semibold">No</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Tanggal Beli</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Brand</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Jenis Motor</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Harga</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...readyUnits]
-                      .sort((a, b) => {
-                        const brandA = (a.brands?.name || "").toLowerCase();
-                        const brandB = (b.brands?.name || "").toLowerCase();
-                        const brandCompare = brandA.localeCompare(brandB);
-                        if (brandCompare !== 0) return brandCompare;
-                        const jenisA = (a.jenis_motor?.jenis_motor || "").toLowerCase();
-                        const jenisB = (b.jenis_motor?.jenis_motor || "").toLowerCase();
-                        const jenisCompare = jenisA.localeCompare(jenisB);
-                        if (jenisCompare !== 0) return jenisCompare;
-                        const dateA = new Date(a.tanggal_pembelian || 0).getTime();
-                        const dateB = new Date(b.tanggal_pembelian || 0).getTime();
-                        return dateB - dateA;
-                      })
-                      .map((unit, idx) => {
-                        const harga = unit.harga_final && unit.harga_final > 0 ? unit.harga_final : unit.harga_beli;
-                        return (
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Unit Pajak Mati</DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              {detailPajakMati.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          No
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Brand
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Jenis Motor
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Plat Nomor
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Tanggal Pajak
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Status
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...detailPajakMati]
+                        .sort(
+                          (a, b) =>
+                            new Date(a.tanggal_pajak).getTime() -
+                            new Date(b.tanggal_pajak).getTime()
+                        )
+                        .map((unit, idx) => (
                           <tr key={unit.id} className="hover:bg-gray-50">
                             <td className="border p-2 text-xs">{idx + 1}</td>
-                            <td className="border p-2 text-xs">{unit.tanggal_pembelian || "-"}</td>
-                            <td className="border p-2 text-xs">{unit.brands?.name || "-"}</td>
-                            <td className="border p-2 text-xs">{unit.jenis_motor?.jenis_motor || "-"}</td>
-                            <td className="border p-2 text-xs font-semibold">{formatCurrency(harga)}</td>
+                            <td className="border p-2 text-xs">
+                              {unit.brands?.name || "-"}
+                            </td>
+                            <td className="border p-2 text-xs">
+                              {unit.jenis_motor?.jenis_motor || "-"}
+                            </td>
+                            <td className="border p-2 text-xs font-semibold">
+                              {unit.plat_nomor || "-"}
+                            </td>
+                            <td className="border p-2 text-xs">
+                              {unit.tanggal_pajak || "-"}
+                            </td>
+                            <td className="border p-2">
+                              <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px]">
+                                Pajak Mati
+                              </span>
+                            </td>
                           </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-center py-4 text-gray-500">Tidak ada data</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-center py-4 text-gray-500">Tidak ada data</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
-      {/* Dialog: Unit Belum QC (table) */}
-      <Dialog open={openDialogBelumQC} onOpenChange={setOpenDialogBelumQC}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Unit Belum QC</DialogTitle>
-          </DialogHeader>
-          <div className="mt-4">
-            {detailBelumQC.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border p-2 text-left text-xs font-semibold">No</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Tanggal Report</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Pembelian ID</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Brand</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Jenis Motor</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Tanggal Pembelian</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Estimasi QC</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Real QC</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Keterangan</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...detailBelumQC]
-                      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                      .map((qc, idx) => (
-                        <tr key={`${qc.id}-${qc.pembelian_id}-${idx}`} className="hover:bg-gray-50">
-                          <td className="border p-2 text-xs">{idx + 1}</td>
-                          <td className="border p-2 text-xs">{qc.created_at ? new Date(qc.created_at).toLocaleString() : "-"}</td>
-                          <td className="border p-2 text-xs">{qc.pembelian_id || "-"}</td>
-                          <td className="border p-2 text-xs">{qc.pembelian?.brands?.name || "-"}</td>
-                          <td className="border p-2 text-xs">{qc.pembelian?.jenis_motor?.jenis_motor || "-"}</td>
-                          <td className="border p-2 text-xs">{qc.pembelian?.tanggal_pembelian || "-"}</td>
-                          <td className="border p-2 text-xs font-semibold">{formatCurrency(Number(qc.estimasi_nominal_qc || 0))}</td>
-                          <td className="border p-2 text-xs font-semibold">{qc.real_nominal_qc == null ? "-" : formatCurrency(Number(qc.real_nominal_qc || 0))}</td>
-                          <td className="border p-2 text-xs">{qc.keterangan || "-"}</td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
+        {/* Total DP Booked */}
+        <Dialog open={openDialogBookedDP} onOpenChange={setOpenDialogBookedDP}>
+          <Card
+            className="border border-yellow-200 bg-yellow-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
+            onClick={() => setOpenDialogBookedDP(true)}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <DollarSign className="w-6 h-6 text-yellow-600" />
+                <span className="text-[10px] font-semibold bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">
+                  BOOKED
+                </span>
               </div>
-            ) : (
-              <p className="text-center py-4 text-gray-500">Tidak ada data</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+              <p className="text-[11px] text-gray-600 mb-1">Total DP Booked</p>
+              <p className="text-lg font-bold text-yellow-700">
+                {formatCurrency(stats.totalBookedAll)}
+              </p>
+              <p className="text-[10px] text-gray-500">
+                {stats.totalUnitBookedAll} Unit
+              </p>
+            </CardContent>
+          </Card>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>DP Booked</DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              {bookedUnits.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          No
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Tanggal Beli
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Brand
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Jenis Motor
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          DP
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Harga Jual
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...bookedUnits]
+                        .sort(
+                          (a, b) =>
+                            new Date(
+                              b.pembelian?.tanggal_pembelian || b.tanggal
+                            ).getTime() -
+                            new Date(
+                              a.pembelian?.tanggal_pembelian || a.tanggal
+                            ).getTime()
+                        )
+                        .map((unit, idx) => (
+                          <tr key={unit.id} className="hover:bg-gray-50">
+                            <td className="border p-2 text-xs">{idx + 1}</td>
+                            <td className="border p-2 text-xs">
+                              {unit.pembelian?.tanggal_pembelian || "-"}
+                            </td>
+                            <td className="border p-2 text-xs">
+                              {unit.pembelian?.brands?.name || "-"}
+                            </td>
+                            <td className="border p-2 text-xs">
+                              {unit.pembelian?.jenis_motor?.jenis_motor || "-"}
+                            </td>
+                            <td className="border p-2 text-xs font-semibold">
+                              {formatCurrency(unit.dp || 0)}
+                            </td>
+                            <td className="border p-2 text-xs">
+                              {formatCurrency(unit.harga_jual || 0)}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-center py-4 text-gray-500">Tidak ada data</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
-      {/* Dialog: Unit Sudah QC (table) */}
-      <Dialog open={openDialogSudahQC} onOpenChange={setOpenDialogSudahQC}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Unit Sudah QC</DialogTitle>
-          </DialogHeader>
-          <div className="mt-4">
-            {detailSudahQC.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border p-2 text-left text-xs font-semibold">No</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Tanggal Report</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Pembelian ID</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Brand</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Jenis Motor</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Tanggal Pembelian</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Estimasi QC</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Real QC</th>
-                      <th className="border p-2 text-left text-xs font-semibold">Keterangan</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...detailSudahQC]
-                      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                      .map((qc, idx) => (
-                        <tr key={`${qc.id}-${qc.pembelian_id}-${idx}`} className="hover:bg-gray-50">
-                          <td className="border p-2 text-xs">{idx + 1}</td>
-                          <td className="border p-2 text-xs">{qc.created_at ? new Date(qc.created_at).toLocaleString() : "-"}</td>
-                          <td className="border p-2 text-xs">{qc.pembelian_id || "-"}</td>
-                          <td className="border p-2 text-xs">{qc.pembelian?.brands?.name || "-"}</td>
-                          <td className="border p-2 text-xs">{qc.pembelian?.jenis_motor?.jenis_motor || "-"}</td>
-                          <td className="border p-2 text-xs">{qc.pembelian?.tanggal_pembelian || "-"}</td>
-                          <td className="border p-2 text-xs font-semibold">{formatCurrency(Number(qc.estimasi_nominal_qc || 0))}</td>
-                          <td className="border p-2 text-xs font-semibold">{qc.real_nominal_qc == null ? "-" : formatCurrency(Number(qc.real_nominal_qc || 0))}</td>
-                          <td className="border p-2 text-xs">{qc.keterangan || "-"}</td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
+        {/* Unit Booked */}
+        <Dialog
+          open={openDialogBookedUnit}
+          onOpenChange={setOpenDialogBookedUnit}
+        >
+          <Card
+            className="border border-purple-200 bg-purple-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
+            onClick={() => setOpenDialogBookedUnit(true)}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <Briefcase className="w-6 h-6 text-purple-600" />
+                <span className="text-[10px] font-semibold bg-purple-200 text-purple-800 px-2 py-0.5 rounded">
+                  BOOKED
+                </span>
               </div>
-            ) : (
-              <p className="text-center py-4 text-gray-500">Tidak ada data</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+              <p className="text-[11px] text-gray-600 mb-1">Unit Booked</p>
+              <p className="text-lg font-bold text-purple-700">
+                {stats.totalUnitBookedAll}
+              </p>
+              <p className="text-[10px] text-gray-500">All Periode</p>
+            </CardContent>
+          </Card>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Unit Booked</DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              {bookedUnits.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          No
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Tanggal Beli
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Brand
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Jenis Motor
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          DP
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Harga Jual
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...bookedUnits]
+                        .sort(
+                          (a, b) =>
+                            new Date(
+                              b.pembelian?.tanggal_pembelian || b.tanggal
+                            ).getTime() -
+                            new Date(
+                              a.pembelian?.tanggal_pembelian || a.tanggal
+                            ).getTime()
+                        )
+                        .map((unit, idx) => (
+                          <tr key={unit.id} className="hover:bg-gray-50">
+                            <td className="border p-2 text-xs">{idx + 1}</td>
+                            <td className="border p-2 text-xs">
+                              {unit.pembelian?.tanggal_pembelian || "-"}
+                            </td>
+                            <td className="border p-2 text-xs">
+                              {unit.pembelian?.brands?.name || "-"}
+                            </td>
+                            <td className="border p-2 text-xs">
+                              {unit.pembelian?.jenis_motor?.jenis_motor || "-"}
+                            </td>
+                            <td className="border p-2 text-xs font-semibold">
+                              {formatCurrency(unit.dp || 0)}
+                            </td>
+                            <td className="border p-2 text-xs">
+                              {formatCurrency(unit.harga_jual || 0)}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-center py-4 text-gray-500">Tidak ada data</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Card Stock Tua dengan Popup */}
+        <Dialog open={openDialogStockTua} onOpenChange={setOpenDialogStockTua}>
+          <Card
+            className="border border-amber-200 bg-amber-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
+            onClick={() => setOpenDialogStockTua(true)}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <Activity className="w-6 h-6 text-amber-600" />
+                <span className="text-[10px] font-semibold bg-amber-200 text-amber-800 px-2 py-0.5 rounded">
+                  ⚠️
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-600 mb-1">Stock Tua</p>
+              <p className="text-lg font-bold text-amber-700">
+                {stats.totalUnitStokTua}
+              </p>
+              <p className="text-[10px] text-gray-500">&gt; 3 Bulan</p>
+            </CardContent>
+          </Card>
+
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Unit Stock Tua (&gt; 3 Bulan)</DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              {detailStockTua.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          No
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Brand
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Jenis Motor
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Plat Nomor
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Tanggal Pembelian
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
+                          Status
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...detailStockTua]
+                        .sort(
+                          (a, b) =>
+                            new Date(a.tanggal_pembelian).getTime() -
+                            new Date(b.tanggal_pembelian).getTime()
+                        )
+                        .map((unit, idx) => (
+                          <tr key={unit.id} className="hover:bg-gray-50">
+                            <td className="border p-2 text-xs">{idx + 1}</td>
+                            <td className="border p-2 text-xs">
+                              {unit.brands?.name || "-"}
+                            </td>
+                            <td className="border p-2 text-xs">
+                              {unit.jenis_motor?.jenis_motor || "-"}
+                            </td>
+                            <td className="border p-2 text-xs font-semibold">
+                              {unit.plat_nomor || "-"}
+                            </td>
+                            <td className="border p-2 text-xs">
+                              {unit.tanggal_pembelian || "-"}
+                            </td>
+                            <td className="border p-2">
+                              <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px]">
+                                Ready
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-center py-4 text-gray-500">Tidak ada data</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
