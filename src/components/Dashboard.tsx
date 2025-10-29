@@ -409,57 +409,6 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       setReadyUnits(pembelianReady);
       setBookedUnits(penjualanBooked);
 
-      // Fetch price_histories and qc_history for pembelian in pembelianReady as a reliable fallback
-      let latestPriceHistories: any[] = [];
-      let qcHistoryForPembelian: any[] = [];
-      try {
-        const pembelianIds = pembelianReady
-          .map((p: any) => p.id)
-          .filter(Boolean);
-        if (pembelianIds.length > 0) {
-          const [priceHistResult, qcHistResult] = await Promise.all([
-            supabase
-              .from("price_histories_pembelian")
-              .select("pembelian_id, biaya_qc, created_at")
-              .in("pembelian_id", pembelianIds),
-            supabase
-              .from("qc_history")
-              .select("pembelian_id, total_pengeluaran, tanggal_qc")
-              .in("pembelian_id", pembelianIds),
-          ]);
-
-          if (priceHistResult.error) throw priceHistResult.error;
-          if (qcHistResult.error) throw qcHistResult.error;
-
-          latestPriceHistories = priceHistResult.data || [];
-          qcHistoryForPembelian = qcHistResult.data || [];
-        }
-      } catch (err) {
-        console.error("Error fetching price/qc history fallback:", err);
-      }
-
-      // Build maps for quick lookup: latest biaya_qc per pembelian_id, and total qc_history per pembelian_id
-      const latestBiayaMap = new Map<number | string, any>();
-      latestPriceHistories.forEach((ph: any) => {
-        const existing = latestBiayaMap.get(ph.pembelian_id);
-        if (!existing) latestBiayaMap.set(ph.pembelian_id, ph);
-        else if (
-          new Date(ph.created_at).getTime() >
-          new Date(existing.created_at).getTime()
-        ) {
-          latestBiayaMap.set(ph.pembelian_id, ph);
-        }
-      });
-
-      const qcHistoryTotalsMap = new Map<number | string, number>();
-      qcHistoryForPembelian.forEach((qh: any) => {
-        const prev = qcHistoryTotalsMap.get(qh.pembelian_id) || 0;
-        qcHistoryTotalsMap.set(
-          qh.pembelian_id,
-          prev + (qh.total_pengeluaran || 0)
-        );
-      });
-
       // Calculate stats
       const activeCompanies = companies.filter(
         (c) => c.status === "active"
@@ -544,24 +493,13 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
 
       // 7. Total Unit Stock Tua (> 3 bulan tapi masih ready)
       const totalUnitStokTua = pembelianStokTua.length;
-      // 8. QC processing: split qc_report into 'belum' and 'sudah' client-side.
-      // qcReport may contain multiple rows per pembelian, so dedupe by pembelian_id when counting "unit" values.
-      // Use fallback: if qc_report.real_nominal_qc is empty/0, try to use latest price_histories_pembelian.biaya_qc
-      let qcAll = qcReport;
-      if (selectedDivision !== "all") {
-        qcAll = qcAll.filter(
-          (q: any) => q.pembelian?.divisi === selectedDivision
-        );
-      }
-      if (selectedCabang !== "all") {
-        qcAll = qcAll.filter(
-          (q: any) => q.pembelian?.cabang_id === parseInt(selectedCabang)
-        );
-      }
-
-      // Try to read pre-aggregated summary view in DB (preferred, deterministic)
-      let unitBelumQCView: number | null = null;
-      let unitSudahQCView: number | null = null;
+      // 8. QC processing: rely solely on DB view `qc_report_summary_per_pembelian`
+      //    to determine which pembelian are belum/sudah QC. Then fetch
+      //    detail rows from qc_report for the popups. This removes the
+      //    legacy fallback to price_histories/qc_history and makes the
+      //    frontend deterministic.
+      let unitBelumQC = 0;
+      let unitSudahQC = 0;
       try {
         const { data: summaryRows, error: summaryErr } = await supabase
           .from("qc_report_summary_per_pembelian")
@@ -569,101 +507,105 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
             "pembelian_id,is_belum_qc,is_sudah_qc,status,divisi,cabang_id"
           );
 
-        if (!summaryErr && Array.isArray(summaryRows)) {
-          let rows: any[] = summaryRows as any[];
-          if (selectedDivision !== "all")
-            rows = rows.filter((r) => r.divisi === selectedDivision);
-          if (selectedCabang !== "all")
-            rows = rows.filter(
-              (r) => Number(r.cabang_id) === parseInt(selectedCabang)
-            );
+        if (summaryErr) throw summaryErr;
 
-          unitBelumQCView = rows.filter((r) => r.is_belum_qc).length;
-          unitSudahQCView = rows.filter((r) => r.is_sudah_qc).length;
-          console.debug(
-            "[Dashboard] qc_report_summary rows:",
-            rows.length,
-            "belum:",
-            unitBelumQCView,
-            "sudah:",
-            unitSudahQCView
+        let rows: any[] = Array.isArray(summaryRows)
+          ? (summaryRows as any[])
+          : [];
+        if (selectedDivision !== "all") {
+          rows = rows.filter((r) => r.divisi === selectedDivision);
+        }
+        if (selectedCabang !== "all") {
+          rows = rows.filter(
+            (r) => Number(r.cabang_id) === parseInt(selectedCabang)
           );
-        } else if (summaryErr) {
-          console.debug("[Dashboard] qc_report_summary error:", summaryErr);
         }
-      } catch (e) {
-        console.debug("[Dashboard] qc_report_summary fetch failed:", e);
+
+        const belumIds = rows
+          .filter((r) => r.is_belum_qc)
+          .map((r) => r.pembelian_id);
+        const sudahIds = rows
+          .filter((r) => r.is_sudah_qc)
+          .map((r) => r.pembelian_id);
+
+        unitBelumQC = belumIds.length;
+        unitSudahQC = sudahIds.length;
+
+        // Fetch detail qc_report rows for popups (if any)
+        const [belumDetailRes, sudahDetailRes] = await Promise.all([
+          belumIds.length > 0
+            ? supabase
+                .from("qc_report")
+                .select(
+                  `*, pembelian:pembelian_id(*, brands:brand_id(name), jenis_motor:jenis_motor_id(jenis_motor))`
+                )
+                .in("pembelian_id", belumIds)
+            : Promise.resolve({ data: [], error: null }),
+          sudahIds.length > 0
+            ? supabase
+                .from("qc_report")
+                .select(
+                  `*, pembelian:pembelian_id(*, brands:brand_id(name), jenis_motor:jenis_motor_id(jenis_motor))`
+                )
+                .in("pembelian_id", sudahIds)
+            : Promise.resolve({ data: [], error: null }),
+        ] as any);
+
+        if (belumDetailRes.error) throw belumDetailRes.error;
+        if (sudahDetailRes.error) throw sudahDetailRes.error;
+
+        const belumRows = (belumDetailRes.data || []) as any[];
+        const sudahRows = (sudahDetailRes.data || []) as any[];
+
+        // For display, keep one row per pembelian_id (prefer the first). Then sort:
+        // Brand A->Z, Jenis A->Z, Tanggal Pembelian newest-first
+        const dedupeByPembelian = (rows: any[]) => {
+          const map = new Map<number | string, any>();
+          for (const r of rows) {
+            const pid = r.pembelian_id ?? r.pembelian?.id;
+            if (!map.has(pid)) map.set(pid, r);
+          }
+          return Array.from(map.values());
+        };
+
+        const sortDisplay = (rows: any[]) =>
+          rows.sort((a: any, b: any) => {
+            const brandA = (a.pembelian?.brands?.name || "").toLowerCase();
+            const brandB = (b.pembelian?.brands?.name || "").toLowerCase();
+            const brandCompare = brandA.localeCompare(brandB);
+            if (brandCompare !== 0) return brandCompare;
+
+            const jenisA = (
+              a.pembelian?.jenis_motor?.jenis_motor || ""
+            ).toLowerCase();
+            const jenisB = (
+              b.pembelian?.jenis_motor?.jenis_motor || ""
+            ).toLowerCase();
+            const jenisCompare = jenisA.localeCompare(jenisB);
+            if (jenisCompare !== 0) return jenisCompare;
+
+            const dateA = new Date(
+              a.pembelian?.tanggal_pembelian || a.created_at || 0
+            ).getTime();
+            const dateB = new Date(
+              b.pembelian?.tanggal_pembelian || b.created_at || 0
+            ).getTime();
+            return dateB - dateA; // newest first
+          });
+
+        const displayBelum = sortDisplay(dedupeByPembelian(belumRows));
+        const displaySudah = sortDisplay(dedupeByPembelian(sudahRows));
+
+        setDetailBelumQC(displayBelum);
+        setDetailSudahQC(displaySudah);
+      } catch (err) {
+        console.error("Error fetching qc summary/details:", err);
+        // Fallback to empty lists and zero counts if anything fails
+        unitBelumQC = unitBelumQC || 0;
+        unitSudahQC = unitSudahQC || 0;
+        setDetailBelumQC([]);
+        setDetailSudahQC([]);
       }
-
-      // Rule change (requested):
-      // - Unit Belum QC: estimasi_nominal_qc == 0 AND real_nominal_qc == 0
-      // - Unit Sudah QC: real_nominal_qc != 0
-      // We'll treat null as 0 for numeric checks (so null -> considered 0).
-      // Additionally, fallback to latest price_histories_pembelian.biaya_qc when qc_report.real_nominal_qc is empty.
-
-      const getLatestBiayaQc = (q: any) => {
-        const pembelianId = q?.pembelian_id ?? q?.pembelian?.id;
-        if (pembelianId != null) {
-          const ph = latestBiayaMap.get(pembelianId);
-          if (ph) return Number(ph.biaya_qc ?? 0);
-        }
-        // Fallback to nested relation if maps not available
-        const nested = q?.pembelian?.price_histories;
-        if (!Array.isArray(nested) || nested.length === 0) return 0;
-        let latest = nested.reduce((acc: any, cur: any) => {
-          if (!acc) return cur;
-          return new Date(cur.created_at).getTime() >
-            new Date(acc.created_at).getTime()
-            ? cur
-            : acc;
-        }, null as any);
-        return Number(latest?.biaya_qc ?? 0);
-      };
-
-      const qcBelum = qcAll.filter((q: any) => {
-        const estimasi = Number(q.estimasi_nominal_qc ?? 0);
-        const realFromReport = Number(q.real_nominal_qc ?? 0);
-        const pembelianId = q?.pembelian_id ?? q?.pembelian?.id;
-        const biaya = getLatestBiayaQc(q);
-        const qcHistTotal =
-          pembelianId != null
-            ? Number(qcHistoryTotalsMap.get(pembelianId) ?? 0)
-            : 0;
-        const realFallback = Number(biaya || 0) + Number(qcHistTotal || 0);
-        const real = realFromReport !== 0 ? realFromReport : realFallback;
-        return estimasi === 0 && real === 0;
-      });
-      const uniqueBelumIds = new Set(qcBelum.map((q: any) => q.pembelian_id));
-      const fallbackUnitBelum = uniqueBelumIds.size;
-      setDetailBelumQC(qcBelum);
-
-      // sudah QC: real_nominal_qc present and not zero (consider fallback)
-      const qcSudah = qcAll.filter((q: any) => {
-        const realFromReport = Number(q.real_nominal_qc ?? 0);
-        const pembelianId = q?.pembelian_id ?? q?.pembelian?.id;
-        const biaya = getLatestBiayaQc(q);
-        const qcHistTotal =
-          pembelianId != null
-            ? Number(qcHistoryTotalsMap.get(pembelianId) ?? 0)
-            : 0;
-        const realFallback = Number(biaya || 0) + Number(qcHistTotal || 0);
-        const real = realFromReport !== 0 ? realFromReport : realFallback;
-        return real !== 0;
-      });
-      // dedupe by pembelian_id and keep the first occurrence for display
-      const mapSudah = new Map<number | string, any>();
-      qcSudah.forEach((q: any) => {
-        if (!mapSudah.has(q.pembelian_id)) mapSudah.set(q.pembelian_id, q);
-      });
-      const uniqueSudahList = Array.from(mapSudah.values());
-      const fallbackUnitSudah = mapSudah.size;
-      setDetailSudahQC(uniqueSudahList);
-
-      // Finalize counts: prefer DB view if available, otherwise use client-side fallback
-      const unitBelumQC =
-        unitBelumQCView !== null ? unitBelumQCView : fallbackUnitBelum;
-      const unitSudahQC =
-        unitSudahQCView !== null ? unitSudahQCView : fallbackUnitSudah;
 
       // Set detail untuk popup
       setDetailPajakMati(detailUnitPajakMati);
