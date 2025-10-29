@@ -70,7 +70,6 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
   const [openDialogStockTua, setOpenDialogStockTua] = useState(false);
   const [openDialogBelumQC, setOpenDialogBelumQC] = useState(false);
   const [openDialogReadyTotal, setOpenDialogReadyTotal] = useState(false);
-  const [openDialogReadyUnit, setOpenDialogReadyUnit] = useState(false);
   const [openDialogBookedDP, setOpenDialogBookedDP] = useState(false);
   const [openDialogBookedUnit, setOpenDialogBookedUnit] = useState(false);
   const [readyUnits, setReadyUnits] = useState<any[]>([]);
@@ -894,106 +893,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
           </DialogContent>
         </Dialog>
 
-        {/* Total Unit Ready */}
-        <Dialog
-          open={openDialogReadyUnit}
-          onOpenChange={setOpenDialogReadyUnit}
-        >
-          <Card
-            className="border border-green-200 bg-green-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
-            onClick={() => setOpenDialogReadyUnit(true)}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-2">
-                <Package className="w-6 h-6 text-green-600" />
-                <span className="text-[10px] font-semibold bg-green-200 text-green-800 px-2 py-0.5 rounded">
-                  READY
-                </span>
-              </div>
-              <p className="text-[11px] text-gray-600 mb-1">Total Unit Ready</p>
-              <p className="text-lg font-bold text-green-700">
-                {stats.totalUnitReady}
-              </p>
-              <p className="text-[10px] text-gray-500">All Periode</p>
-            </CardContent>
-          </Card>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Unit Ready</DialogTitle>
-            </DialogHeader>
-            <div className="mt-4">
-              {readyUnits.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="border p-2 text-left text-xs font-semibold">
-                          No
-                        </th>
-                        <th className="border p-2 text-left text-xs font-semibold">
-                          Tanggal Beli
-                        </th>
-                        <th className="border p-2 text-left text-xs font-semibold">
-                          Brand
-                        </th>
-                        <th className="border p-2 text-left text-xs font-semibold">
-                          Jenis Motor
-                        </th>
-                        <th className="border p-2 text-left text-xs font-semibold">
-                          Harga
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[...readyUnits]
-                        .sort((a, b) => {
-                          // Primary sort: Brand name A -> Z
-                          const brandA = (a.brands?.name || "").toLowerCase();
-                          const brandB = (b.brands?.name || "").toLowerCase();
-                          const brandCompare = brandA.localeCompare(brandB);
-                          if (brandCompare !== 0) return brandCompare;
-
-                          // Tie-breaker: Tanggal pembelian (terbaru ke terlama)
-                          const dateA = new Date(
-                            a.tanggal_pembelian || 0
-                          ).getTime();
-                          const dateB = new Date(
-                            b.tanggal_pembelian || 0
-                          ).getTime();
-                          return dateB - dateA;
-                        })
-                        .map((unit, idx) => {
-                          const harga =
-                            unit.harga_final && unit.harga_final > 0
-                              ? unit.harga_final
-                              : unit.harga_beli;
-                          return (
-                            <tr key={unit.id} className="hover:bg-gray-50">
-                              <td className="border p-2 text-xs">{idx + 1}</td>
-                              <td className="border p-2 text-xs">
-                                {unit.tanggal_pembelian || "-"}
-                              </td>
-                              <td className="border p-2 text-xs">
-                                {unit.brands?.name || "-"}
-                              </td>
-                              <td className="border p-2 text-xs">
-                                {unit.jenis_motor?.jenis_motor || "-"}
-                              </td>
-                              <td className="border p-2 text-xs font-semibold">
-                                {formatCurrency(harga)}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-center py-4 text-gray-500">Tidak ada data</p>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* Total Unit Ready removed per user request */}
 
         {/* Unit Belum QC (popup) */}
         <Dialog open={openDialogBelumQC} onOpenChange={setOpenDialogBelumQC}>
