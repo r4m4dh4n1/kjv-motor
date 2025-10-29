@@ -485,18 +485,24 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         );
       }
 
-      // belum QC: real_nominal_qc is null or 0
-      const qcBelum = qcAll.filter(
-        (q: any) => q.real_nominal_qc == null || Number(q.real_nominal_qc) === 0
-      );
+      // Rule change (requested):
+      // - Unit Belum QC: estimasi_nominal_qc == 0 AND real_nominal_qc == 0
+      // - Unit Sudah QC: real_nominal_qc != 0
+      // We'll treat null as 0 for numeric checks (so null -> considered 0)
+      const qcBelum = qcAll.filter((q: any) => {
+        const estimasi = q.estimasi_nominal_qc ?? 0;
+        const real = q.real_nominal_qc ?? 0;
+        return Number(estimasi) === 0 && Number(real) === 0;
+      });
       const uniqueBelumIds = new Set(qcBelum.map((q: any) => q.pembelian_id));
       const unitBelumQC = uniqueBelumIds.size;
       setDetailBelumQC(qcBelum);
 
-      // sudah QC: real_nominal_qc present and not zero (also ensure estimasi exists if desired)
-      const qcSudah = qcAll.filter(
-        (q: any) => q.real_nominal_qc != null && Number(q.real_nominal_qc) !== 0
-      );
+      // sudah QC: real_nominal_qc present and not zero
+      const qcSudah = qcAll.filter((q: any) => {
+        const real = q.real_nominal_qc ?? 0;
+        return Number(real) !== 0;
+      });
       // dedupe by pembelian_id and keep the first occurrence for display
       const mapSudah = new Map<number | string, any>();
       qcSudah.forEach((q: any) => {
