@@ -759,6 +759,122 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
     }
   };
 
+  // Fetch popup details on demand to ensure fresh data when user opens dialogs.
+  const fetchPopupDetails = async (type: "belum" | "sudah") => {
+    try {
+      // Get pembelian ids from the summary view first (fast, small payload)
+      const { data: summaryRows, error: summaryErr } = await supabase
+        .from("qc_report_summary_per_pembelian")
+        .select("pembelian_id,is_belum_qc,is_sudah_qc,divisi,cabang_id");
+
+      if (summaryErr) throw summaryErr;
+
+      let rows: any[] = Array.isArray(summaryRows) ? summaryRows : [];
+      if (selectedDivision !== "all")
+        rows = rows.filter((r) => r.divisi === selectedDivision);
+      if (selectedCabang !== "all")
+        rows = rows.filter(
+          (r) => Number(r.cabang_id) === parseInt(selectedCabang)
+        );
+
+      const ids = rows
+        .filter((r) => (type === "belum" ? r.is_belum_qc : r.is_sudah_qc))
+        .map((r) => r.pembelian_id)
+        .filter(Boolean);
+
+      let detailRows: any[] = [];
+
+      if (ids.length > 0) {
+        // Try fetch by ids (cast to numbers to avoid type mismatch)
+        const castIds = ids.map((id) => Number(id));
+        const { data: detailRes, error: detailErr } = await supabase
+          .from("qc_report")
+          .select(
+            `*, pembelian:pembelian_id(*, brands:brand_id(name), jenis_motor:jenis_motor_id(jenis_motor))`
+          )
+          .in("pembelian_id", castIds);
+
+        if (detailErr) throw detailErr;
+
+        detailRows = detailRes || [];
+      }
+
+      // If no rows found (possible typing/permission issue), fallback to scanning qc_report and filtering client-side
+      if (!detailRows || detailRows.length === 0) {
+        const { data: allQc, error: allErr } = await supabase
+          .from("qc_report")
+          .select(
+            `*, pembelian:pembelian_id(*, brands:brand_id(name), jenis_motor:jenis_motor_id(jenis_motor))`
+          )
+          .limit(2000);
+
+        if (allErr) throw allErr;
+
+        const list = (allQc || []).filter((q: any) => {
+          const p = q.pembelian;
+          if (!p) return false;
+          if (selectedDivision !== "all" && p.divisi !== selectedDivision)
+            return false;
+          if (
+            selectedCabang !== "all" &&
+            Number(p.cabang_id) !== parseInt(selectedCabang)
+          )
+            return false;
+          const estimasi = Number(q.estimasi_nominal_qc ?? 0);
+          const real = Number(q.real_nominal_qc ?? 0);
+          if (type === "belum") return estimasi === 0 && real === 0;
+          return real !== 0;
+        });
+
+        detailRows = list;
+      }
+
+      // Dedupe and sort as in main flow
+      const dedupe = (rows: any[]) => {
+        const map = new Map<number | string, any>();
+        for (const r of rows) {
+          const pid = r.pembelian_id ?? r.pembelian?.id;
+          if (!map.has(pid)) map.set(pid, r);
+        }
+        return Array.from(map.values());
+      };
+
+      const sorted = (rows: any[]) =>
+        rows.sort((a: any, b: any) => {
+          const brandA = (a.pembelian?.brands?.name || "").toLowerCase();
+          const brandB = (b.pembelian?.brands?.name || "").toLowerCase();
+          const brandCompare = brandA.localeCompare(brandB);
+          if (brandCompare !== 0) return brandCompare;
+
+          const jenisA = (
+            a.pembelian?.jenis_motor?.jenis_motor || ""
+          ).toLowerCase();
+          const jenisB = (
+            b.pembelian?.jenis_motor?.jenis_motor || ""
+          ).toLowerCase();
+          const jenisCompare = jenisA.localeCompare(jenisB);
+          if (jenisCompare !== 0) return jenisCompare;
+
+          const dateA = new Date(
+            a.pembelian?.tanggal_pembelian || a.created_at || 0
+          ).getTime();
+          const dateB = new Date(
+            b.pembelian?.tanggal_pembelian || b.created_at || 0
+          ).getTime();
+          return dateB - dateA;
+        });
+
+      const display = sorted(dedupe(detailRows));
+
+      if (type === "belum") setDetailBelumQC(display);
+      else setDetailSudahQC(display);
+    } catch (err) {
+      console.error("Error fetching popup qc details:", err);
+      if (type === "belum") setDetailBelumQC([]);
+      else setDetailSudahQC([]);
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -1028,7 +1144,13 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         {/* Total Unit Ready card removed as requested */}
 
         {/* Unit Belum QC (popup) */}
-        <Dialog open={openDialogBelumQC} onOpenChange={setOpenDialogBelumQC}>
+        <Dialog
+          open={openDialogBelumQC}
+          onOpenChange={(open) => {
+            setOpenDialogBelumQC(open);
+            if (open) fetchPopupDetails("belum");
+          }}
+        >
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Unit Belum QC</DialogTitle>
@@ -1130,7 +1252,13 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         </Dialog>
 
         {/* Unit Sudah QC (popup + card) */}
-        <Dialog open={openDialogSudahQC} onOpenChange={setOpenDialogSudahQC}>
+        <Dialog
+          open={openDialogSudahQC}
+          onOpenChange={(open) => {
+            setOpenDialogSudahQC(open);
+            if (open) fetchPopupDetails("sudah");
+          }}
+        >
           <Card
             className="border border-green-200 bg-green-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
             onClick={() => setOpenDialogSudahQC(true)}
