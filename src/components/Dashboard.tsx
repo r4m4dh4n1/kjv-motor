@@ -827,17 +827,23 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
             className="border border-blue-200 bg-blue-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
             onClick={() => setOpenDialogReadyTotal(true)}
           >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-2">
-                <DollarSign className="w-6 h-6 text-blue-600" />
+            <CardContent className="p-4 flex flex-col justify-between min-h-[140px]">
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-2 bg-white/20 rounded-md">
+                  <DollarSign className="w-6 h-6 text-blue-700" />
+                </div>
                 <span className="text-[10px] font-semibold bg-blue-200 text-blue-800 px-2 py-0.5 rounded">
                   READY
                 </span>
               </div>
-              <p className="text-[11px] text-gray-600 mb-1">Modal Unit Ready</p>
-              <p className="text-lg font-bold text-blue-700">
-                {formatCurrency(stats.totalPembelianReady)}
-              </p>
+              <div>
+                <p className="text-[11px] text-gray-600 mb-1">
+                  Modal Unit Ready
+                </p>
+                <p className="text-lg font-bold text-blue-700">
+                  {formatCurrency(stats.totalPembelianReady)}
+                </p>
+              </div>
               <p className="text-[10px] text-gray-500">
                 {stats.totalUnitReady} Unit
               </p>
@@ -1136,17 +1142,21 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
             className="border border-red-200 bg-red-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
             onClick={() => setOpenDialogPajakMati(true)}
           >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-2">
-                <TrendingDown className="w-6 h-6 text-red-600" />
+            <CardContent className="p-4 flex flex-col justify-between min-h-[140px]">
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-2 bg-white/20 rounded-md">
+                  <TrendingDown className="w-6 h-6 text-red-600" />
+                </div>
                 <span className="text-[10px] font-semibold bg-red-200 text-red-800 px-2 py-0.5 rounded">
                   ⚠️
                 </span>
               </div>
-              <p className="text-[11px] text-gray-600 mb-1">Pajak Mati</p>
-              <p className="text-lg font-bold text-red-700">
-                {stats.totalUnitPajakMati}
-              </p>
+              <div>
+                <p className="text-[11px] text-gray-600 mb-1">Pajak Mati</p>
+                <p className="text-lg font-bold text-red-700">
+                  {stats.totalUnitPajakMati}
+                </p>
+              </div>
               <p className="text-[10px] text-gray-500">Unit</p>
             </CardContent>
           </Card>
@@ -1226,17 +1236,23 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
             className="border border-yellow-200 bg-yellow-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
             onClick={() => setOpenDialogBookedDP(true)}
           >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-2">
-                <DollarSign className="w-6 h-6 text-yellow-600" />
+            <CardContent className="p-4 flex flex-col justify-between min-h-[140px]">
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-2 bg-white/20 rounded-md">
+                  <DollarSign className="w-6 h-6 text-yellow-600" />
+                </div>
                 <span className="text-[10px] font-semibold bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded">
                   BOOKED
                 </span>
               </div>
-              <p className="text-[11px] text-gray-600 mb-1">Total DP Booked</p>
-              <p className="text-lg font-bold text-yellow-700">
-                {formatCurrency(stats.totalBookedAll)}
-              </p>
+              <div>
+                <p className="text-[11px] text-gray-600 mb-1">
+                  Total DP Booked
+                </p>
+                <p className="text-lg font-bold text-yellow-700">
+                  {formatCurrency(stats.totalBookedAll)}
+                </p>
+              </div>
               <p className="text-[10px] text-gray-500">
                 {stats.totalUnitBookedAll} Unit
               </p>
@@ -1322,17 +1338,21 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
             className="border border-purple-200 bg-purple-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
             onClick={() => setOpenDialogBookedUnit(true)}
           >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-2">
-                <Briefcase className="w-6 h-6 text-purple-600" />
+            <CardContent className="p-4 flex flex-col justify-between min-h-[140px]">
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-2 bg-white/20 rounded-md">
+                  <Briefcase className="w-6 h-6 text-purple-600" />
+                </div>
                 <span className="text-[10px] font-semibold bg-purple-200 text-purple-800 px-2 py-0.5 rounded">
                   BOOKED
                 </span>
               </div>
-              <p className="text-[11px] text-gray-600 mb-1">Unit Booked</p>
-              <p className="text-lg font-bold text-purple-700">
-                {stats.totalUnitBookedAll}
-              </p>
+              <div>
+                <p className="text-[11px] text-gray-600 mb-1">Unit Booked</p>
+                <p className="text-lg font-bold text-purple-700">
+                  {stats.totalUnitBookedAll}
+                </p>
+              </div>
               <p className="text-[10px] text-gray-500">All Periode</p>
             </CardContent>
           </Card>
@@ -1413,17 +1433,21 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
             className="border border-amber-200 bg-amber-50 shadow-md hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
             onClick={() => setOpenDialogStockTua(true)}
           >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-2">
-                <Activity className="w-6 h-6 text-amber-600" />
+            <CardContent className="p-4 flex flex-col justify-between min-h-[140px]">
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-2 bg-white/20 rounded-md">
+                  <Activity className="w-6 h-6 text-amber-600" />
+                </div>
                 <span className="text-[10px] font-semibold bg-amber-200 text-amber-800 px-2 py-0.5 rounded">
                   ⚠️
                 </span>
               </div>
-              <p className="text-[11px] text-gray-600 mb-1">Stock Tua</p>
-              <p className="text-lg font-bold text-amber-700">
-                {stats.totalUnitStokTua}
-              </p>
+              <div>
+                <p className="text-[11px] text-gray-600 mb-1">Stock Tua</p>
+                <p className="text-lg font-bold text-amber-700">
+                  {stats.totalUnitStokTua}
+                </p>
+              </div>
               <p className="text-[10px] text-gray-500">&gt; 3 Bulan</p>
             </CardContent>
           </Card>
