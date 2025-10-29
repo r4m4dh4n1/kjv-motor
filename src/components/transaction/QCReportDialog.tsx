@@ -24,6 +24,12 @@ interface QCReportData {
   estimasiNominalQC: number;
   realNominalQC: number;
   keterangan: string;
+  qcHistory: Array<{
+    id: number;
+    tanggal_qc: string;
+    total_pengeluaran: number;
+    keterangan: string;
+  }>;
 }
 
 const QCReportDialog: React.FC<QCReportDialogProps> = ({
@@ -39,7 +45,8 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
     plat_nomor: "",
     estimasiNominalQC: 0,
     realNominalQC: 0,
-    keterangan: ""
+    keterangan: "",
+    qcHistory: []
   });
   const [loading, setLoading] = useState(false);
 
@@ -54,18 +61,31 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
 
     setLoading(true);
     try {
+      // Get QC history from qc_history table
+      const { data: qcHistory, error: qcError } = await supabase
+        .from('qc_history')
+        .select('*')
+        .eq('pembelian_id', pembelian.id)
+        .order('tanggal_qc', { ascending: false });
+
+      if (qcError) {
+        console.error('Error fetching QC history:', qcError);
+      }
+
       // Get real nominal QC from price_histories_pembelian
-      const { data: priceHistory, error } = await supabase
+      const { data: priceHistory, error: priceError } = await supabase
         .from('price_histories_pembelian')
         .select('biaya_qc')
         .eq('pembelian_id', pembelian.id);
 
-      if (error) {
-        console.error('Error fetching price history:', error);
+      if (priceError) {
+        console.error('Error fetching price history:', priceError);
       }
 
-      // Calculate total real nominal QC
-      const realNominalQC = priceHistory?.reduce((sum, item) => sum + (item.biaya_qc || 0), 0) || 0;
+      // Calculate total real nominal QC from both sources
+      const priceHistoryQC = priceHistory?.reduce((sum, item) => sum + (item.biaya_qc || 0), 0) || 0;
+      const qcHistoryTotal = qcHistory?.reduce((sum, item) => sum + (item.total_pengeluaran || 0), 0) || 0;
+      const realNominalQC = priceHistoryQC + qcHistoryTotal;
 
       // Set QC data
       setQcData({
@@ -76,7 +96,8 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
         plat_nomor: pembelian.plat_nomor || "",
         estimasiNominalQC: 0, // User will input this
         realNominalQC: realNominalQC,
-        keterangan: ""
+        keterangan: "",
+        qcHistory: qcHistory || []
       });
     } catch (error) {
       console.error('Error loading QC data:', error);
@@ -97,6 +118,32 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
       estimasiNominalQC: numericAmount,
       keterangan: calculateKeterangan(numericAmount, prev.realNominalQC)
     }));
+  };
+
+  const saveQCReport = async () => {
+    if (!pembelian || qcData.estimasiNominalQC === 0) {
+      return;
+    }
+
+    try {
+      // Insert QC report data
+      const { error } = await supabase
+        .from('qc_report' as any)
+        .upsert({
+          pembelian_id: pembelian.id,
+          estimasi_nominal_qc: qcData.estimasiNominalQC,
+          real_nominal_qc: qcData.realNominalQC,
+          keterangan: qcData.keterangan
+        }, {
+          onConflict: 'pembelian_id'
+        });
+
+      if (error) throw error;
+      
+      console.log('QC Report saved successfully');
+    } catch (error) {
+      console.error('Error saving QC report:', error);
+    }
   };
 
   const calculateKeterangan = (estimasi: number, real: number): string => {
@@ -224,7 +271,7 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Diambil dari total biaya_qc di price_histories_pembelian
+                    Diambil dari qc_history.total_pengeluaran + price_histories_pembelian.biaya_qc
                   </p>
                 </div>
               </div>
@@ -243,6 +290,47 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
                   </Badge>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* QC History Detail */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileText className="w-5 h-5 text-purple-600" />
+                Detail QC History
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {qcData.qcHistory.length > 0 ? (
+                <div className="space-y-3">
+                  {qcData.qcHistory.map((qc, index) => (
+                    <div key={qc.id || index} className="p-4 bg-gray-50 rounded-lg border">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium text-gray-600">Tanggal QC</Label>
+                          <p className="text-sm">{new Date(qc.tanggal_qc).toLocaleDateString('id-ID')}</p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-600">Total Pengeluaran</Label>
+                          <p className="text-sm font-semibold text-red-600">
+                            {formatCurrencyDisplay(qc.total_pengeluaran)}
+                          </p>
+                        </div>
+                        <div className="col-span-2">
+                          <Label className="text-sm font-medium text-gray-600">Keterangan</Label>
+                          <p className="text-sm">{qc.keterangan || '-'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                  <p>Belum ada data QC History</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -283,6 +371,13 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose}>
               Tutup
+            </Button>
+            <Button 
+              onClick={saveQCReport}
+              disabled={qcData.estimasiNominalQC === 0}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Simpan Report QC
             </Button>
           </div>
         </div>

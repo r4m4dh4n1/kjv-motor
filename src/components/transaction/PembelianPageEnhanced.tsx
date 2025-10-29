@@ -10,7 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subWeeks, subMonths, subYears, addDays } from "date-fns";
-import { Search, Filter, ShoppingCart, CheckCircle, DollarSign, CalendarIcon } from "lucide-react";
+import { Search, Filter, ShoppingCart, CheckCircle, DollarSign, CalendarIcon, Download } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import HistoryTab from "./HistoryTab";
 import PembelianForm from "./PembelianForm";
@@ -679,11 +679,107 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     resetPage();
   };
 
+  // Download Report QC - bulan berjalan
+  const handleDownloadQcReport = async () => {
+    try {
+      const now = new Date();
+      const start = startOfMonth(now);
+      const end = endOfMonth(now);
+
+      // Ambil semua qc_report di bulan berjalan beserta info pembelian terkait
+      const { data, error } = await supabase
+        .from('qc_report' as any)
+        .select(`
+          pembelian_id,
+          estimasi_nominal_qc,
+          real_nominal_qc,
+          keterangan,
+          created_at,
+          pembelian:pembelian_id (
+            plat_nomor,
+            warna,
+            kilometer,
+            tanggal_pembelian,
+            brands(name),
+            jenis_motor(jenis_motor)
+          )
+        `)
+        .gte('created_at', start.toISOString())
+        .lte('created_at', end.toISOString());
+
+      if (error) throw error;
+
+      const rows = (data || []).map((row: any) => ({
+        tanggal_report: new Date(row.created_at).toLocaleDateString('id-ID'),
+        tanggal_pembelian: row.pembelian?.tanggal_pembelian ? new Date(row.pembelian.tanggal_pembelian).toLocaleDateString('id-ID') : '',
+        plat: row.pembelian?.plat_nomor || '',
+        brand: row.pembelian?.brands?.name || '',
+        jenis_motor: row.pembelian?.jenis_motor?.jenis_motor || '',
+        warna: row.pembelian?.warna || '',
+        kilometer: row.pembelian?.kilometer ?? '',
+        estimasi_nominal_qc: row.estimasi_nominal_qc ?? 0,
+        real_nominal_qc: row.real_nominal_qc ?? 0,
+        keterangan: row.keterangan || ''
+      }));
+
+      // Generate CSV
+      const headers = [
+        'Tanggal Report',
+        'Tanggal Pembelian',
+        'Plat',
+        'Brand',
+        'Jenis Motor',
+        'Warna',
+        'Kilometer',
+        'Estimasi Nominal QC',
+        'Real Nominal QC',
+        'Keterangan'
+      ];
+
+      const csv = [
+        headers.join(','),
+        ...rows.map(r => [
+          r.tanggal_report,
+          r.tanggal_pembelian,
+          r.plat,
+          r.brand,
+          r.jenis_motor,
+          r.warna,
+          r.kilometer,
+          r.estimasi_nominal_qc,
+          r.real_nominal_qc,
+          `"${(r.keterangan || '').replace(/"/g, '""')}"`
+        ].join(','))
+      ].join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const monthLabel = format(start, 'MMMM-yyyy');
+      a.download = `report_qc_${monthLabel}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({ title: 'Sukses', description: 'Report QC bulan berjalan berhasil diunduh' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Error', description: 'Gagal mengunduh Report QC', variant: 'destructive' });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Data Pembelian</h1>
-        <PembelianForm
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleDownloadQcReport} className="flex items-center gap-2">
+            <Download className="w-4 h-4" />
+            Download Report QC (Bulan Ini)
+          </Button>
+          <PembelianForm
           isDialogOpen={isDialogOpen}
           setIsDialogOpen={setIsDialogOpen}
           editingPembelian={editingPembelian}
@@ -695,7 +791,8 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
           companiesData={companiesData}
           handleSubmit={handleSubmit}
           selectedDivision={selectedDivision}
-        />
+          />
+        </div>
       </div>
 
       {/* Tabs untuk Data Aktif dan History */}
