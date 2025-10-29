@@ -751,7 +751,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       </div>
 
       {/* Main Stats Cards with Gradient */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
         {dashboardStats.map((stat, index) => {
           const Icon = stat.icon;
           const isClickable =
@@ -815,8 +815,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         })}
       </div>
 
-      {/* ✅ REDESIGN: Grid untuk 6 card baru - Lebih compact */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+      {/* ✅ REDESIGN: Second row - 4 compact cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Modal Unit Ready removed per user request */}
 
         {/* Total Unit Ready removed per user request */}
