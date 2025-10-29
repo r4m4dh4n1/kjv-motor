@@ -234,16 +234,14 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         .eq("status", "ready")
         .lt("tanggal_pembelian", threeMonthsAgoStr);
 
-      // ✅ TAMBAH: Query qc_report. Also include price_histories_pembelian (biaya_qc, created_at)
-      // so frontend can fallback to latest biaya_qc if qc_report.real_nominal_qc is empty.
+      // ✅ TAMBAH: Query qc_report with clean join (no price_histories to avoid ambiguity)
       let qcReportQuery = supabase.from("qc_report").select(
         `
           *,
           pembelian:pembelian_id(
             *,
             brands:brand_id(name),
-            jenis_motor:jenis_motor_id(jenis_motor),
-            price_histories:price_histories_pembelian(biaya_qc, created_at)
+            jenis_motor:jenis_motor_id(jenis_motor)
           )
         `
       );
@@ -393,25 +391,18 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       const qcReport = qcReportResult.data || [];
 
       // DEBUG: log qc_report summary to help diagnose why counts may be zero
-      try {
-        console.debug("[Dashboard] qcReport rows fetched:", qcReport.length);
-        if (qcReport.length > 0) {
-          const sample = qcReport.slice(0, 5).map((q: any) => ({
-            id: q.id,
-            pembelian_id: q.pembelian_id,
-            real_nominal_qc: q.real_nominal_qc,
-            estimasi_nominal_qc: q.estimasi_nominal_qc,
-            pembelian_exists: !!q.pembelian,
-            price_histories_len: (q.pembelian?.price_histories || []).length,
-            latest_biaya_qc:
-              (q.pembelian?.price_histories &&
-                q.pembelian.price_histories[0]?.biaya_qc) ||
-              0,
-          }));
-          console.debug("[Dashboard] qcReport sample:", sample);
-        }
-      } catch (e) {
-        console.debug("[Dashboard] qcReport debug failed", e);
+      console.debug("[Dashboard] qcReport rows fetched:", qcReport.length);
+      if (qcReport.length > 0) {
+        const sample = qcReport.slice(0, 3).map((q: any) => ({
+          id: q.id,
+          pembelian_id: q.pembelian_id,
+          real_nominal_qc: q.real_nominal_qc,
+          estimasi_nominal_qc: q.estimasi_nominal_qc,
+          pembelian_exists: !!q.pembelian,
+          pembelian_divisi: q.pembelian?.divisi,
+          pembelian_cabang: q.pembelian?.cabang_id,
+        }));
+        console.debug("[Dashboard] qcReport sample:", sample);
       }
 
       // Set cabang data for filter
