@@ -531,12 +531,11 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       }
 
       // Filter by QC rules:
-      // - Belum QC: estimasi_nominal_qc == 0 AND real_nominal_qc == 0
-      // - Sudah QC: real_nominal_qc != 0
+      // - Belum QC: real_nominal_qc == 0 (belum ada realisasi QC, tidak peduli estimasi)
+      // - Sudah QC: real_nominal_qc != 0 (sudah ada realisasi QC)
       const qcBelum = qcAll.filter((q: any) => {
-        const estimasi = Number(q.estimasi_nominal_qc ?? 0);
         const real = Number(q.real_nominal_qc ?? 0);
-        return estimasi === 0 && real === 0;
+        return real === 0;
       });
 
       const qcSudah = qcAll.filter((q: any) => {
@@ -1055,7 +1054,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                           const hasEstimasi =
                             estimasi != null && estimasi !== 0;
                           const hasReal = real != null && real !== 0;
-                          const isDone = hasEstimasi && hasReal;
+                          // Status berdasarkan real QC: jika real > 0 maka QC selesai, jika real = 0 maka belum selesai
+                          const isQCSelesai = hasReal;
                           return (
                             <tr
                               key={`${qc.id}-${qc.pembelian_id}-${idx}`}
@@ -1083,13 +1083,13 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                                 {hasReal ? formatCurrency(Number(real)) : "-"}
                               </td>
                               <td className="border p-2">
-                                {isDone ? (
+                                {isQCSelesai ? (
                                   <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px]">
-                                    Done
+                                    QC Selesai
                                   </span>
                                 ) : (
-                                  <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px]">
-                                    QC belum Selesai
+                                  <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px]">
+                                    Belum QC
                                   </span>
                                 )}
                               </td>
@@ -1181,9 +1181,10 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                           const estimasi = qc.estimasi_nominal_qc;
                           const real = qc.real_nominal_qc;
                           const hasEstimasi =
-                            estimasi != null && estimasi == 0;
+                            estimasi != null && estimasi !== 0;
                           const hasReal = real != null && real !== 0;
-                          const isDone = hasEstimasi && hasReal;
+                          // Status berdasarkan real QC: jika real > 0 maka QC selesai
+                          const isQCSelesai = hasReal;
                           return (
                             <tr
                               key={`${qc.id}-${qc.pembelian_id}-${idx}`}
@@ -1211,13 +1212,13 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                                 {hasReal ? formatCurrency(Number(real)) : "-"}
                               </td>
                               <td className="border p-2">
-                                {isDone ? (
+                                {isQCSelesai ? (
                                   <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px]">
-                                    Selesai
+                                    QC Selesai
                                   </span>
                                 ) : (
-                                  <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px]">
-                                    QC belum Selesai
+                                  <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px]">
+                                    Belum QC
                                   </span>
                                 )}
                               </td>
