@@ -121,6 +121,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   const [qcReportSortOrder, setQcReportSortOrder] = useState<"asc" | "desc">(
     "asc"
   );
+  const [isVerifyingQC, setIsVerifyingQC] = useState(false);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -942,6 +943,71 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       setSelectedQCReports((prev) => [...prev, id]);
     } else {
       setSelectedQCReports((prev) => prev.filter((itemId) => itemId !== id));
+    }
+  };
+
+  // Handle Verified QC
+  const handleVerifiedQC = async () => {
+    if (selectedQCReports.length === 0) {
+      toast({
+        title: "Peringatan",
+        description: "Pilih minimal satu data untuk diverifikasi",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsVerifyingQC(true);
+    try {
+      // Get current user
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error("User not authenticated");
+      }
+
+      // Get user profile untuk mendapatkan nama
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", user.id)
+        .single();
+
+      const verifiedBy =
+        profile?.full_name || profile?.email || user.email || "Unknown User";
+
+      // Update semua qc_report yang dipilih
+      const { error: updateError } = await supabase
+        .from("qc_report")
+        .update({
+          verified: true,
+          verified_by: verifiedBy,
+          verified_at: new Date().toISOString(),
+        })
+        .in("id", selectedQCReports);
+
+      if (updateError) throw updateError;
+
+      // Refresh data
+      await handleViewQcReport();
+
+      toast({
+        title: "Sukses",
+        description: `${selectedQCReports.length} data QC berhasil diverifikasi`,
+      });
+
+      setSelectedQCReports([]);
+    } catch (error: any) {
+      console.error("Error verifying QC:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Gagal memverifikasi data QC",
+        variant: "destructive",
+      });
+    } finally {
+      setIsVerifyingQC(false);
     }
   };
 
@@ -2018,6 +2084,9 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                         <th className="border border-gray-300 px-4 py-2 text-center text-sm font-medium">
                           Status
                         </th>
+                        <th className="border border-gray-300 px-4 py-2 text-center text-sm font-medium">
+                          Verified
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2030,6 +2099,8 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                             ? "text-green-600 font-semibold"
                             : "text-yellow-600 font-semibold";
                         const isSelected = selectedQCReports.includes(item.id);
+                        const isVerified = item.verified === true;
+                        const verifiedBy = item.verified_by || "";
 
                         return (
                           <tr
@@ -2079,6 +2150,20 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                             >
                               {status}
                             </td>
+                            <td className="border border-gray-300 px-4 py-2 text-center">
+                              {isVerified ? (
+                                <div className="flex flex-col items-center">
+                                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-semibold">
+                                    ✓ Verified
+                                  </span>
+                                  <span className="text-[9px] text-gray-500 mt-1">
+                                    {verifiedBy}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 text-xs">-</span>
+                              )}
+                            </td>
                           </tr>
                         );
                       })}
@@ -2121,8 +2206,29 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
               </p>
             )}
           </div>
-          <div className="flex justify-end mt-4">
-            <Button onClick={() => setIsViewQCReportDialogOpen(false)}>
+          <div className="flex justify-between items-center mt-4">
+            <Button
+              variant="default"
+              onClick={handleVerifiedQC}
+              disabled={selectedQCReports.length === 0 || isVerifyingQC}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isVerifyingQC ? (
+                <>
+                  <span className="mr-2">⏳</span>
+                  Memverifikasi...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Verified QC ({selectedQCReports.length})
+                </>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsViewQCReportDialogOpen(false)}
+            >
               Tutup
             </Button>
           </div>
