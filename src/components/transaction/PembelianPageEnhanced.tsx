@@ -1136,6 +1136,15 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
           const dateB = new Date(b.pembelian?.tanggal_pembelian || 0).getTime();
           compareValue = dateA - dateB;
           break;
+        case "estimasi_tanggal":
+          const estTanggalA = new Date(
+            a.estimasi_tanggal_selesai || 0
+          ).getTime();
+          const estTanggalB = new Date(
+            b.estimasi_tanggal_selesai || 0
+          ).getTime();
+          compareValue = estTanggalA - estTanggalB;
+          break;
         case "estimasi":
           compareValue =
             (a.estimasi_nominal_qc ?? 0) - (b.estimasi_nominal_qc ?? 0);
@@ -2064,6 +2073,9 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                           <SelectItem value="tanggal">
                             Tanggal Pembelian
                           </SelectItem>
+                          <SelectItem value="estimasi_tanggal">
+                            Perkiraan Tanggal QC Selesai
+                          </SelectItem>
                           <SelectItem value="estimasi">Estimasi QC</SelectItem>
                           <SelectItem value="real">Real QC</SelectItem>
                           <SelectItem value="status">Status</SelectItem>
@@ -2151,6 +2163,9 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                         <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium">
                           Tanggal Pembelian
                         </th>
+                        <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium">
+                          Perkiraan Tanggal QC Selesai
+                        </th>
                         <th className="border border-gray-300 px-4 py-2 text-right text-sm font-medium">
                           Estimasi QC
                         </th>
@@ -2212,6 +2227,13 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                               {item.pembelian?.tanggal_pembelian
                                 ? new Date(
                                     item.pembelian.tanggal_pembelian
+                                  ).toLocaleDateString("id-ID")
+                                : "-"}
+                            </td>
+                            <td className="border border-gray-300 px-4 py-2 text-sm">
+                              {item.estimasi_tanggal_selesai
+                                ? new Date(
+                                    item.estimasi_tanggal_selesai
                                   ).toLocaleDateString("id-ID")
                                 : "-"}
                             </td>

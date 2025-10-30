@@ -27,6 +27,7 @@ interface QCReportData {
   warna: string;
   kilometer: number;
   plat_nomor: string;
+  estimasiTanggalSelesai: string;
   estimasiNominalQC: number;
   realNominalQC: number;
   keterangan: string;
@@ -49,6 +50,7 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
     warna: "",
     kilometer: 0,
     plat_nomor: "",
+    estimasiTanggalSelesai: "",
     estimasiNominalQC: 0,
     realNominalQC: 0,
     keterangan: "",
@@ -129,6 +131,7 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
 
       // For estimasi, prefer qc_report.estimasi_nominal_qc if available
       const estimasiFromReport = Number(qcReport?.estimasi_nominal_qc ?? 0);
+      const estimasiTanggalSelesai = qcReport?.estimasi_tanggal_selesai || "";
 
       // Set QC data
       setQcData({
@@ -137,6 +140,7 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
         warna: pembelian.warna || "",
         kilometer: pembelian.kilometer || 0,
         plat_nomor: pembelian.plat_nomor || "",
+        estimasiTanggalSelesai: estimasiTanggalSelesai, // Prefill if present
         estimasiNominalQC: estimasiFromReport || 0, // Prefill if present
         realNominalQC: realNominalQC,
         keterangan: "",
@@ -177,6 +181,7 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
       const { data: updated, error: updateError } = await supabase
         .from("qc_report" as any)
         .update({
+          estimasi_tanggal_selesai: qcData.estimasiTanggalSelesai || null,
           estimasi_nominal_qc: qcData.estimasiNominalQC,
           real_nominal_qc: qcData.realNominalQC,
           keterangan: qcData.keterangan,
@@ -200,6 +205,7 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
         .from("qc_report" as any)
         .insert({
           pembelian_id: pembelian.id,
+          estimasi_tanggal_selesai: qcData.estimasiTanggalSelesai || null,
           estimasi_nominal_qc: qcData.estimasiNominalQC,
           real_nominal_qc: qcData.realNominalQC,
           keterangan: qcData.keterangan,
@@ -338,6 +344,28 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div>
+                <Label
+                  htmlFor="estimasi-tanggal"
+                  className="text-sm font-medium text-gray-600"
+                >
+                  Perkiraan Tanggal QC Selesai
+                </Label>
+                <div className="mt-1">
+                  <Input
+                    id="estimasi-tanggal"
+                    type="date"
+                    value={qcData.estimasiTanggalSelesai}
+                    onChange={(e) =>
+                      setQcData((prev) => ({
+                        ...prev,
+                        estimasiTanggalSelesai: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+
               <div>
                 <Label
                   htmlFor="estimasi-qc"
