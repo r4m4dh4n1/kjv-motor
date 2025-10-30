@@ -115,7 +115,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   const [viewQCReportData, setViewQCReportData] = useState<any[]>([]);
   const [selectedQCReports, setSelectedQCReports] = useState<string[]>([]);
   const [currentQCPage, setCurrentQCPage] = useState(1);
-  const qcReportPageSize = 10;
+  const qcReportPageSize = 5; // Ubah dari 10 menjadi 5 data per halaman
   const [qcReportSearchTerm, setQcReportSearchTerm] = useState("");
   const [qcReportSortBy, setQcReportSortBy] = useState("brand");
   const [qcReportSortOrder, setQcReportSortOrder] = useState<"asc" | "desc">(
@@ -835,14 +835,74 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     resetPage();
   };
 
-  // View Report QC - bulan berjalan (semua data: belum QC dan sudah QC)
+  // View Report QC - berdasarkan periode yang dipilih di filter pembelian
   const handleViewQcReport = async () => {
     try {
-      const now = new Date();
-      const start = startOfMonth(now);
-      const end = endOfMonth(now);
+      // Dapatkan date range berdasarkan filter yang dipilih
+      let start: Date;
+      let end: Date;
 
-      // Ambil semua qc_report di bulan berjalan (tanpa join untuk avoid PGRST201)
+      const now = new Date();
+
+      switch (dateFilter) {
+        case "today":
+          start = startOfDay(now);
+          end = endOfDay(now);
+          break;
+        case "tomorrow":
+          const tomorrow = addDays(now, 1);
+          start = startOfDay(tomorrow);
+          end = endOfDay(tomorrow);
+          break;
+        case "yesterday":
+          const yesterday = subDays(now, 1);
+          start = startOfDay(yesterday);
+          end = endOfDay(yesterday);
+          break;
+        case "this_week":
+          start = startOfWeek(now, { weekStartsOn: 1 });
+          end = endOfWeek(now, { weekStartsOn: 1 });
+          break;
+        case "last_week":
+          const lastWeek = subWeeks(now, 1);
+          start = startOfWeek(lastWeek, { weekStartsOn: 1 });
+          end = endOfWeek(lastWeek, { weekStartsOn: 1 });
+          break;
+        case "this_month":
+          start = startOfMonth(now);
+          end = endOfMonth(now);
+          break;
+        case "last_month":
+          const lastMonth = subMonths(now, 1);
+          start = startOfMonth(lastMonth);
+          end = endOfMonth(lastMonth);
+          break;
+        case "this_year":
+          start = startOfYear(now);
+          end = endOfYear(now);
+          break;
+        case "last_year":
+          const lastYear = subYears(now, 1);
+          start = startOfYear(lastYear);
+          end = endOfYear(lastYear);
+          break;
+        case "custom":
+          if (customStartDate && customEndDate) {
+            start = startOfDay(customStartDate);
+            end = endOfDay(customEndDate);
+          } else {
+            // Default ke bulan ini jika custom date belum dipilih
+            start = startOfMonth(now);
+            end = endOfMonth(now);
+          }
+          break;
+        default:
+          // Default ke semua tanggal
+          start = new Date(2000, 0, 1);
+          end = new Date(2099, 11, 31);
+      }
+
+      // Ambil qc_report berdasarkan range tanggal (tanpa join untuk avoid PGRST201)
       const { data: qcReportRaw, error } = await supabase
         .from("qc_report" as any)
         .select("*")
@@ -913,9 +973,26 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       setQcReportSortOrder("asc");
       setIsViewQCReportDialogOpen(true);
 
+      // Generate label periode untuk toast
+      let periodLabel = "periode yang dipilih";
+      if (dateFilter === "today") periodLabel = "hari ini";
+      else if (dateFilter === "yesterday") periodLabel = "kemarin";
+      else if (dateFilter === "this_week") periodLabel = "minggu ini";
+      else if (dateFilter === "last_week") periodLabel = "minggu lalu";
+      else if (dateFilter === "this_month") periodLabel = "bulan ini";
+      else if (dateFilter === "last_month") periodLabel = "bulan lalu";
+      else if (dateFilter === "this_year") periodLabel = "tahun ini";
+      else if (dateFilter === "last_year") periodLabel = "tahun lalu";
+      else if (dateFilter === "custom" && customStartDate && customEndDate) {
+        periodLabel = `${format(customStartDate, "dd/MM/yyyy")} - ${format(
+          customEndDate,
+          "dd/MM/yyyy"
+        )}`;
+      }
+
       toast({
         title: "Sukses",
-        description: `Menampilkan ${sortedData.length} data QC bulan ini`,
+        description: `Menampilkan ${sortedData.length} data QC ${periodLabel}`,
       });
     } catch (err) {
       console.error(err);
@@ -1009,6 +1086,26 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     } finally {
       setIsVerifyingQC(false);
     }
+  };
+
+  // Helper untuk generate label periode
+  const getQCReportPeriodLabel = () => {
+    if (dateFilter === "today") return "Hari Ini";
+    if (dateFilter === "yesterday") return "Kemarin";
+    if (dateFilter === "tomorrow") return "Besok";
+    if (dateFilter === "this_week") return "Minggu Ini";
+    if (dateFilter === "last_week") return "Minggu Lalu";
+    if (dateFilter === "this_month") return "Bulan Ini";
+    if (dateFilter === "last_month") return "Bulan Lalu";
+    if (dateFilter === "this_year") return "Tahun Ini";
+    if (dateFilter === "last_year") return "Tahun Lalu";
+    if (dateFilter === "custom" && customStartDate && customEndDate) {
+      return `${format(customStartDate, "dd/MM/yyyy")} - ${format(
+        customEndDate,
+        "dd/MM/yyyy"
+      )}`;
+    }
+    return "Semua Periode";
   };
 
   // Filter dan Sort untuk QC Report
@@ -1932,9 +2029,10 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       >
         <DialogContent className="max-w-6xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Report QC (Bulan Ini)</DialogTitle>
+            <DialogTitle>Report QC ({getQCReportPeriodLabel()})</DialogTitle>
             <DialogDescription>
-              Daftar semua unit yang sudah dan belum QC bulan ini
+              Daftar semua unit yang sudah dan belum QC untuk periode{" "}
+              {getQCReportPeriodLabel().toLowerCase()}
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 space-y-4">
