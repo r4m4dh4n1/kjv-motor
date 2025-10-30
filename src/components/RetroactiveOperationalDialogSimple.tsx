@@ -1,28 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { RetroactiveOperationalForm, AdjustmentImpact, RETROACTIVE_CATEGORIES } from '@/types/retroactive';
-import { ClosedMonthPicker } from '@/components/ui/closed-month-picker';
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, AlertTriangle, CheckCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import {
+  RetroactiveOperationalForm,
+  AdjustmentImpact,
+  RETROACTIVE_CATEGORIES,
+} from "@/types/retroactive";
+import { ClosedMonthPicker } from "@/components/ui/closed-month-picker";
 
 interface RetroactiveOperationalDialogSimpleProps {
   open: boolean;
@@ -38,11 +43,11 @@ export function RetroactiveOperationalDialogSimple({
   onSuccess,
 }: RetroactiveOperationalDialogSimpleProps) {
   const [formData, setFormData] = useState<RetroactiveOperationalForm>({
-    original_month: '',
-    category: '',
+    original_month: "",
+    category: "",
     nominal: 0,
-    description: '',
-    company_id: '',
+    description: "",
+    company_id: "",
     divisi: divisi,
   });
 
@@ -51,12 +56,12 @@ export function RetroactiveOperationalDialogSimple({
   const [closedMonths, setClosedMonths] = useState<string[]>([]);
   const [impact, setImpact] = useState<AdjustmentImpact | null>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [selectedTransaction, setSelectedTransaction] = useState<string>('');
+  const [selectedTransaction, setSelectedTransaction] = useState<string>("");
 
   // Utility function to extract month from full date (YYYY-MM-DD) to month format (YYYY-MM)
   const getMonthFromDate = (dateStr: string): string => {
-    if (!dateStr) return '';
-    const parts = dateStr.split('-');
+    if (!dateStr) return "";
+    const parts = dateStr.split("-");
     if (parts.length >= 2) {
       return `${parts[0]}-${parts[1]}`;
     }
@@ -67,74 +72,82 @@ export function RetroactiveOperationalDialogSimple({
     if (open) {
       fetchCompanies();
       fetchClosedMonths();
-      setFormData(prev => ({ ...prev, divisi }));
+      setFormData((prev) => ({ ...prev, divisi }));
     }
   }, [open, divisi]);
 
   const fetchCompanies = async () => {
     try {
       const { data, error } = await supabase
-        .from('companies')
-        .select('id, nama_perusahaan')
-        .eq('divisi', divisi)
-        .order('nama_perusahaan');
+        .from("companies")
+        .select("id, nama_perusahaan")
+        .eq("divisi", divisi)
+        .order("nama_perusahaan");
 
       if (error) throw error;
       setCompanies(data || []);
     } catch (error) {
-      console.error('Error fetching companies:', error);
-      toast.error('Gagal memuat data perusahaan');
+      console.error("Error fetching companies:", error);
+      toast.error("Gagal memuat data perusahaan");
     }
   };
 
   const fetchClosedMonths = async () => {
     try {
       const { data, error } = await supabase
-        .from('monthly_closures')
-        .select('closure_month, closure_year')
-        .order('closure_year', { ascending: false })
-        .order('closure_month', { ascending: false });
+        .from("monthly_closures")
+        .select("closure_month, closure_year")
+        .order("closure_year", { ascending: false })
+        .order("closure_month", { ascending: false });
 
       if (error) throw error;
-      
-      const months = data?.map(item => 
-        `${item.closure_year}-${item.closure_month.toString().padStart(2, '0')}`
-      ) || [];
-      
+
+      const months =
+        data?.map(
+          (item) =>
+            `${item.closure_year}-${item.closure_month
+              .toString()
+              .padStart(2, "0")}`
+        ) || [];
+
       setClosedMonths(months);
     } catch (error) {
-      console.error('Error fetching closed months:', error);
+      console.error("Error fetching closed months:", error);
     }
   };
 
   const fetchTransactions = async () => {
-    if (!formData.category || !formData.original_month || !formData.company_id) {
+    if (
+      !formData.category ||
+      !formData.original_month ||
+      !formData.company_id
+    ) {
       setImpact(null);
       return;
     }
 
     try {
       const monthStr = getMonthFromDate(formData.original_month);
-      const [year, month] = monthStr.split('-');
+      const [year, month] = monthStr.split("-");
       const startDate = `${year}-${month}-01`;
       const endDate = `${year}-${month}-31`;
 
       const { data, error } = await supabase
-        .from('operational')
-        .select('id, tanggal, kategori, nominal, keterangan')
-        .eq('kategori', formData.category)
-        .eq('company_id', formData.company_id)
-        .eq('divisi', divisi)
-        .gte('tanggal', startDate)
-        .lte('tanggal', endDate)
-        .eq('is_retroactive', false)
-        .order('tanggal', { ascending: false });
+        .from("operational")
+        .select("id, tanggal, kategori, nominal, keterangan")
+        .eq("kategori", formData.category)
+        .eq("company_id", formData.company_id)
+        .eq("divisi", divisi)
+        .gte("tanggal", startDate)
+        .lte("tanggal", endDate)
+        .eq("is_retroactive", false)
+        .order("tanggal", { ascending: false });
 
       if (error) throw error;
-      
+
       setTransactions(data || []);
     } catch (error) {
-      console.error('Error fetching transactions:', error);
+      console.error("Error fetching transactions:", error);
       setTransactions([]);
     }
   };
@@ -143,19 +156,20 @@ export function RetroactiveOperationalDialogSimple({
     if (!formData.nominal || !formData.category) return;
 
     // Pastikan nominal adalah number yang valid
-    const nominalValue = typeof formData.nominal === 'string' 
-      ? parseFloat(formData.nominal) || 0 
-      : formData.nominal || 0;
+    const nominalValue =
+      typeof formData.nominal === "string"
+        ? parseFloat(formData.nominal) || 0
+        : formData.nominal || 0;
 
-    const isDeduction = formData.category === 'Gaji Kurang Profit';
+    const isDeduction = formData.category === "Gaji Kurang Profit";
     const impactAmount = isDeduction ? -nominalValue : nominalValue;
 
     setImpact({
       profit_impact: isDeduction ? -nominalValue : 0,
       capital_impact: impactAmount,
-      description: isDeduction 
+      description: isDeduction
         ? `Pengurangan profit sebesar ${formatCurrency(nominalValue)}`
-        : `Penambahan modal sebesar ${formatCurrency(nominalValue)}`
+        : `Penambahan modal sebesar ${formatCurrency(nominalValue)}`,
     });
   };
 
@@ -169,82 +183,92 @@ export function RetroactiveOperationalDialogSimple({
 
   const handleTransactionSelect = (transactionId: string) => {
     setSelectedTransaction(transactionId);
-    
+
     if (transactionId) {
-      const transaction = transactions.find(t => t.id === transactionId);
+      const transaction = transactions.find((t) => t.id === transactionId);
       if (transaction) {
         // Pastikan nominal dari transaksi dikonversi dengan benar
-        const nominalValue = typeof transaction.nominal === 'string' 
-          ? parseFloat(transaction.nominal) || 0 
-          : transaction.nominal || 0;
-          
-        setFormData(prev => ({
+        const nominalValue =
+          typeof transaction.nominal === "string"
+            ? parseFloat(transaction.nominal) || 0
+            : transaction.nominal || 0;
+
+        setFormData((prev) => ({
           ...prev,
           nominal: nominalValue,
-          description: transaction.keterangan
+          description: transaction.keterangan,
         }));
       }
     } else {
       // Reset nominal and description if no transaction selected
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         nominal: 0,
-        description: ''
+        description: "",
       }));
     }
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
       minimumFractionDigits: 0,
     }).format(amount);
   };
 
   const handleSubmit = async () => {
-    if (!formData.original_month || !formData.category || !formData.nominal || 
-        !formData.description || !formData.company_id) {
-      toast.error('Mohon lengkapi semua field yang diperlukan');
+    if (
+      !formData.original_month ||
+      !formData.category ||
+      !formData.nominal ||
+      !formData.description ||
+      !formData.company_id
+    ) {
+      toast.error("Mohon lengkapi semua field yang diperlukan");
       return;
     }
 
     const monthStr = getMonthFromDate(formData.original_month);
     if (!closedMonths.includes(monthStr)) {
-      toast.error('Bulan yang dipilih belum di-close');
+      toast.error("Bulan yang dipilih belum di-close");
       return;
     }
 
     // Ensure original_month is in YYYY-MM-DD format for DATE columns
     let dateForDatabase = formData.original_month;
-    if (formData.original_month.length === 7) { // YYYY-MM format
+    if (formData.original_month.length === 7) {
+      // YYYY-MM format
       dateForDatabase = `${formData.original_month}-01`; // Convert to first day of month
     }
 
     // Debug logging
-    console.log('Debug - Form data:', {
+    console.log("Debug - Form data:", {
       original_month: formData.original_month,
       dateForDatabase,
-      monthStr
+      monthStr,
     });
 
     setLoading(true);
 
     try {
       // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
       if (userError || !user) {
-        throw new Error('User not authenticated');
+        throw new Error("User not authenticated");
       }
 
       // 1. Insert retroactive operational (auto-approved)
       const { data: retroactiveData, error: retroactiveError } = await supabase
-        .from('retroactive_operational')
+        .from("retroactive_operational")
         .insert({
           ...formData,
           original_month: monthStr, // Use month format (YYYY-MM) for database compatibility
-          original_year: parseInt(monthStr.split('-')[0]),
-          status: 'approved',
+          original_year: parseInt(monthStr.split("-")[0]),
+          status: "approved",
           auto_approved: true,
           requires_approval: false,
           created_by: user.id,
@@ -258,9 +282,9 @@ export function RetroactiveOperationalDialogSimple({
 
       // 2. Insert ke tabel operational
       const { error: operationalError } = await supabase
-        .from('operational')
+        .from("operational")
         .insert({
-          tanggal: new Date().toISOString().split('T')[0],
+          tanggal: new Date().toISOString().split("T")[0],
           kategori: formData.category,
           nominal: formData.nominal,
           keterangan: `[RETROAKTIF ${monthStr}] ${formData.description}`,
@@ -274,22 +298,28 @@ export function RetroactiveOperationalDialogSimple({
       if (operationalError) throw operationalError;
 
       // 3. Update company capital
-      const { error: companyError } = await supabase.rpc('update_company_capital', {
-        p_company_id: formData.company_id,
-        p_amount: formData.category === 'Gaji Kurang Profit' ? -formData.nominal : formData.nominal
-      });
+      const { error: companyError } = await supabase.rpc(
+        "update_company_capital",
+        {
+          p_company_id: formData.company_id,
+          p_amount:
+            formData.category === "Gaji Kurang Profit"
+              ? -formData.nominal
+              : formData.nominal,
+        }
+      );
 
       if (companyError) throw companyError;
 
       // 4. Call deduct_profit for "Gaji Kurang Profit"
-      if (formData.category === 'Gaji Kurang Profit') {
-        const { error: profitError } = await supabase.rpc('deduct_profit', {
+      if (formData.category === "Gaji Kurang Profit") {
+        const { error: profitError } = await supabase.rpc("deduct_profit", {
           p_operational_id: retroactiveData.id,
           p_tanggal: dateForDatabase, // Send properly formatted date for DATE column
           p_divisi: formData.divisi,
           p_kategori: formData.category,
           p_deskripsi: `Retroaktif ${monthStr}: ${formData.description}`,
-          p_nominal: formData.nominal
+          p_nominal: formData.nominal,
         });
 
         if (profitError) throw profitError;
@@ -297,12 +327,14 @@ export function RetroactiveOperationalDialogSimple({
 
       // 5. Insert pembukuan record
       const { error: pembukuanError } = await supabase
-        .from('pembukuan')
+        .from("pembukuan")
         .insert({
           tanggal: dateForDatabase, // Use properly formatted date for DATE column
           keterangan: `[RETROAKTIF ${monthStr}] ${formData.description}`,
-          debit: formData.category === 'Gaji Kurang Profit' ? formData.nominal : 0,
-          kredit: formData.category !== 'Gaji Kurang Profit' ? formData.nominal : 0,
+          debit:
+            formData.category === "Gaji Kurang Profit" ? formData.nominal : 0,
+          kredit:
+            formData.category !== "Gaji Kurang Profit" ? formData.nominal : 0,
           company_id: formData.company_id,
           divisi: formData.divisi,
         });
@@ -311,53 +343,72 @@ export function RetroactiveOperationalDialogSimple({
 
       // 6. Update monthly adjustments
       const monthKey = monthStr;
-      
+
       // First, get existing data
       const { data: existingAdjustment } = await supabase
-        .from('monthly_adjustments')
-        .select('*')
-        .eq('month', monthKey)
-        .eq('divisi', formData.divisi)
+        .from("monthly_adjustments")
+        .select("*")
+        .eq("month", monthKey)
+        .eq("divisi", formData.divisi)
         .single();
 
       const { error: adjustmentError } = await supabase
-        .from('monthly_adjustments')
-        .upsert({
-          month: monthKey,
-          year: parseInt(monthKey.split('-')[0]),
-          divisi: formData.divisi,
-          total_adjustments: (existingAdjustment?.total_adjustments || 0) + formData.nominal,
-          total_impact_profit: (existingAdjustment?.total_impact_profit || 0) + (impact?.profit_impact || 0),
-          total_impact_modal: (existingAdjustment?.total_impact_modal || 0) + (impact?.capital_impact || 0),
-          adjustment_count: (existingAdjustment?.adjustment_count || 0) + 1,
-          last_adjustment_date: new Date().toISOString().split('T')[0],
-        }, {
-          onConflict: 'month,divisi',
-          ignoreDuplicates: false
-        });
+        .from("monthly_adjustments")
+        .upsert(
+          {
+            month: monthKey,
+            year: parseInt(monthKey.split("-")[0]),
+            divisi: formData.divisi,
+            total_adjustments:
+              (existingAdjustment?.total_adjustments || 0) + formData.nominal,
+            total_impact_profit:
+              (existingAdjustment?.total_impact_profit || 0) +
+              (impact?.profit_impact || 0),
+            total_impact_modal:
+              (existingAdjustment?.total_impact_modal || 0) +
+              (impact?.capital_impact || 0),
+            adjustment_count: (existingAdjustment?.adjustment_count || 0) + 1,
+            last_adjustment_date: new Date().toISOString().split("T")[0],
+          },
+          {
+            onConflict: "month,divisi",
+            ignoreDuplicates: false,
+          }
+        );
 
       if (adjustmentError) throw adjustmentError;
 
-      toast.success('Adjustment retroaktif berhasil diproses!');
-      onSuccess?.();
-      onOpenChange(false);
-      
+      // Show success message with toast
+      toast.success("Adjustment retroaktif berhasil disimpan!", {
+        description: `Data operational retroaktif untuk bulan ${monthStr} telah berhasil ditambahkan.`,
+        duration: 3000,
+      });
+
       // Reset form
       setFormData({
-        original_month: '',
-        category: '',
+        original_month: "",
+        category: "",
         nominal: 0,
-        description: '',
-        company_id: '',
+        description: "",
+        company_id: "",
         divisi: divisi,
       });
       setImpact(null);
-      setSelectedTransaction('');
+      setSelectedTransaction("");
       setTransactions([]);
 
+      // Call onSuccess callback to refresh parent data
+      if (onSuccess) {
+        onSuccess();
+      }
+
+      // Close dialog after short delay so user sees the success message
+      setTimeout(() => {
+        onOpenChange(false);
+      }, 500);
     } catch (error: any) {
-      console.error('Error processing retroactive adjustment:', error);
-      toast.error(error.message || 'Gagal memproses adjustment retroaktif');
+      console.error("Error processing retroactive adjustment:", error);
+      toast.error(error.message || "Gagal memproses adjustment retroaktif");
     } finally {
       setLoading(false);
     }
@@ -367,7 +418,13 @@ export function RetroactiveOperationalDialogSimple({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Adjustment Operasional Retroaktif - {divisi}</DialogTitle>
+          <DialogTitle>
+            Adjustment Operasional Retroaktif - {divisi}
+          </DialogTitle>
+          <DialogDescription>
+            Form untuk menambahkan adjustment operasional retroaktif pada bulan
+            yang sudah di-close
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -376,7 +433,9 @@ export function RetroactiveOperationalDialogSimple({
             <Label htmlFor="original_month">Bulan Asli Transaksi</Label>
             <ClosedMonthPicker
               value={formData.original_month}
-              onChange={(value) => setFormData(prev => ({ ...prev, original_month: value }))}
+              onChange={(value) =>
+                setFormData((prev) => ({ ...prev, original_month: value }))
+              }
               closedMonths={closedMonths}
             />
           </div>
@@ -386,7 +445,9 @@ export function RetroactiveOperationalDialogSimple({
             <Label htmlFor="category">Kategori</Label>
             <Select
               value={formData.category}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, category: value }))
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Pilih kategori" />
@@ -406,7 +467,9 @@ export function RetroactiveOperationalDialogSimple({
             <Label htmlFor="company_id">Perusahaan</Label>
             <Select
               value={formData.company_id}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, company_id: value }))}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, company_id: value }))
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Pilih perusahaan" />
@@ -436,13 +499,20 @@ export function RetroactiveOperationalDialogSimple({
                   <SelectItem value="">-- Isi manual --</SelectItem>
                   {transactions.map((transaction) => (
                     <SelectItem key={transaction.id} value={transaction.id}>
-                      {new Date(transaction.tanggal).toLocaleDateString('id-ID')} - {formatCurrency(transaction.nominal)} - {transaction.keterangan.substring(0, 50)}{transaction.keterangan.length > 50 ? '...' : ''}
+                      {new Date(transaction.tanggal).toLocaleDateString(
+                        "id-ID"
+                      )}{" "}
+                      - {formatCurrency(transaction.nominal)} -{" "}
+                      {transaction.keterangan.substring(0, 50)}
+                      {transaction.keterangan.length > 50 ? "..." : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground mt-1">
-                Pilih transaksi dari bulan {getMonthFromDate(formData.original_month)} untuk mengisi nominal dan deskripsi secara otomatis
+                Pilih transaksi dari bulan{" "}
+                {getMonthFromDate(formData.original_month)} untuk mengisi
+                nominal dan deskripsi secara otomatis
               </p>
             </div>
           )}
@@ -453,14 +523,14 @@ export function RetroactiveOperationalDialogSimple({
             <Input
               id="nominal"
               type="number"
-              value={formData.nominal || ''}
+              value={formData.nominal || ""}
               onChange={(e) => {
                 const value = e.target.value;
                 // Pastikan nilai dikonversi dengan benar
-                const numericValue = value === '' ? 0 : parseFloat(value);
-                setFormData(prev => ({ 
-                  ...prev, 
-                  nominal: numericValue
+                const numericValue = value === "" ? 0 : parseFloat(value);
+                setFormData((prev) => ({
+                  ...prev,
+                  nominal: numericValue,
                 }));
               }}
               placeholder="Masukkan nominal"
@@ -473,7 +543,12 @@ export function RetroactiveOperationalDialogSimple({
             <Textarea
               id="description"
               value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
+              }
               placeholder="Jelaskan detail adjustment ini..."
               rows={3}
             />
@@ -486,11 +561,15 @@ export function RetroactiveOperationalDialogSimple({
               <AlertDescription>
                 <div className="space-y-1">
                   <p className="font-medium">Dampak Adjustment:</p>
-                  <p>• Modal Perusahaan: {formatCurrency(impact.capital_impact)}</p>
+                  <p>
+                    • Modal Perusahaan: {formatCurrency(impact.capital_impact)}
+                  </p>
                   {impact.profit_impact !== 0 && (
                     <p>• Profit: {formatCurrency(impact.profit_impact)}</p>
                   )}
-                  <p className="text-sm text-muted-foreground mt-2">{impact.description}</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {impact.description}
+                  </p>
                 </div>
               </AlertDescription>
             </Alert>
@@ -499,8 +578,9 @@ export function RetroactiveOperationalDialogSimple({
           <Alert>
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Mode Otomatis:</strong> Adjustment akan langsung diproses tanpa perlu approval.
-              Data akan segera ditambahkan ke sistem dan mempengaruhi modal perusahaan.
+              <strong>Mode Otomatis:</strong> Adjustment akan langsung diproses
+              tanpa perlu approval. Data akan segera ditambahkan ke sistem dan
+              mempengaruhi modal perusahaan.
             </AlertDescription>
           </Alert>
         </div>
@@ -515,8 +595,14 @@ export function RetroactiveOperationalDialogSimple({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={loading || !formData.original_month || !formData.category || 
-                     !formData.nominal || !formData.description || !formData.company_id}
+            disabled={
+              loading ||
+              !formData.original_month ||
+              !formData.category ||
+              !formData.nominal ||
+              !formData.description ||
+              !formData.company_id
+            }
           >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Proses Adjustment
