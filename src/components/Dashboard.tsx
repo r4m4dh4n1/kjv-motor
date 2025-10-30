@@ -1181,7 +1181,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                           const estimasi = qc.estimasi_nominal_qc;
                           const real = qc.real_nominal_qc;
                           const hasEstimasi =
-                            estimasi != null && estimasi !== 0;
+                            estimasi != null && estimasi == 0;
                           const hasReal = real != null && real !== 0;
                           const isDone = hasEstimasi && hasReal;
                           return (
