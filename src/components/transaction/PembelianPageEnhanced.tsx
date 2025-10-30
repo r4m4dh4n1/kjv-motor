@@ -972,28 +972,6 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       setQcReportSortBy("brand");
       setQcReportSortOrder("asc");
       setIsViewQCReportDialogOpen(true);
-
-      // Generate label periode untuk toast
-      let periodLabel = "periode yang dipilih";
-      if (dateFilter === "today") periodLabel = "hari ini";
-      else if (dateFilter === "yesterday") periodLabel = "kemarin";
-      else if (dateFilter === "this_week") periodLabel = "minggu ini";
-      else if (dateFilter === "last_week") periodLabel = "minggu lalu";
-      else if (dateFilter === "this_month") periodLabel = "bulan ini";
-      else if (dateFilter === "last_month") periodLabel = "bulan lalu";
-      else if (dateFilter === "this_year") periodLabel = "tahun ini";
-      else if (dateFilter === "last_year") periodLabel = "tahun lalu";
-      else if (dateFilter === "custom" && customStartDate && customEndDate) {
-        periodLabel = `${format(customStartDate, "dd/MM/yyyy")} - ${format(
-          customEndDate,
-          "dd/MM/yyyy"
-        )}`;
-      }
-
-      toast({
-        title: "Sukses",
-        description: `Menampilkan ${sortedData.length} data QC ${periodLabel}`,
-      });
     } catch (err) {
       console.error(err);
       toast({
