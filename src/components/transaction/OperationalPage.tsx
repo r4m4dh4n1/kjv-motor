@@ -411,6 +411,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         dateRange,
         division: selectedDivision,
         category: selectedCategory,
+        willFilterByDivision: selectedDivision !== "all",
+        willFilterByCategory: selectedCategory !== "all",
       });
 
       // ✅ PERBAIKAN: Gunakan tabel yang sesuai berdasarkan periode
@@ -433,6 +435,11 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
               id,
               nama_perusahaan,
               modal
+            ),
+            pencatatan_asset:asset_id (
+              id,
+              nama,
+              nominal
             )
           `
           )
@@ -475,17 +482,33 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       if (companiesError) throw companiesError;
 
+      // ✅ NEW: Fetch asset data for special categories
+      const { data: assetsDataForList, error: assetsError } = await supabase
+        .from("pencatatan_asset")
+        .select("id, nama, nominal");
+
+      if (assetsError) console.error("Error fetching assets:", assetsError);
+
       // Create a map for quick company lookup
       const companiesMap = new Map();
       companiesData?.forEach((company) => {
         companiesMap.set(company.id, company);
       });
 
-      // Combine operational data with company information and set data_source
+      // ✅ NEW: Create a map for quick asset lookup
+      const assetsMap = new Map();
+      assetsDataForList?.forEach((asset) => {
+        assetsMap.set(asset.id, asset);
+      });
+
+      // Combine operational data with company and asset information
       const combinedData =
         operationalData?.map((item) => ({
           ...item,
-          company_info: item.companies || null,
+          company_info:
+            item.companies || companiesMap.get(item.company_id) || null,
+          pencatatan_asset:
+            item.pencatatan_asset || assetsMap.get(item.asset_id) || null,
           data_source: shouldUseCombined ? "history" : "active",
         })) || [];
 
@@ -789,29 +812,33 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         });
       } else {
         // CATATAN: Untuk INSERT, tetap gunakan tabel operational asli
+        const dataToInsert = {
+          tanggal: formData.tanggal,
+          kategori: formData.kategori,
+          deskripsi: formData.deskripsi,
+          nominal: nominalAmount,
+          divisi: selectedDivision !== "all" ? selectedDivision : "sport",
+          cabang_id: 1, // Default cabang
+          // ✅ NEW: Set company_id or asset_id based on category type
+          company_id: isAssetBased
+            ? null
+            : isKurangProfit
+            ? null
+            : parseInt(formData.sumber_dana),
+          asset_id: isAssetBased ? parseInt(formData.asset_id) : null,
+        };
+
+        console.log("💾 Data to insert:", dataToInsert);
+
         const { data: insertedData, error: insertError } = await supabase
           .from("operational")
-          .insert([
-            {
-              tanggal: formData.tanggal,
-              kategori: formData.kategori,
-              deskripsi: formData.deskripsi,
-              nominal: nominalAmount,
-              divisi: selectedDivision !== "all" ? selectedDivision : "sport",
-              cabang_id: 1, // Default cabang
-              // ✅ NEW: Set company_id or asset_id based on category type
-              company_id: isAssetBased
-                ? null
-                : isKurangProfit
-                ? null
-                : parseInt(formData.sumber_dana),
-              asset_id: isAssetBased ? parseInt(formData.asset_id) : null,
-            },
-          ])
+          .insert([dataToInsert])
           .select()
           .single();
 
         if (insertError) throw insertError;
+
+        console.log("✅ Data inserted successfully:", insertedData);
 
         // ✅ NEW: Update asset nominal for asset-based categories
         if (isAssetBased && formData.asset_id) {
@@ -1641,7 +1668,14 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                     </TableCell>
                     <TableCell>{item.deskripsi}</TableCell>
                     <TableCell>
-                      {item.company_info?.nama_perusahaan || (
+                      {/* ✅ Show asset name for special categories, company name for others */}
+                      {item.pencatatan_asset?.nama ? (
+                        <span className="text-blue-600 font-medium">
+                          {item.pencatatan_asset.nama}
+                        </span>
+                      ) : item.company_info?.nama_perusahaan ? (
+                        item.company_info.nama_perusahaan
+                      ) : (
                         <span className="text-gray-500 italic">-</span>
                       )}
                     </TableCell>
