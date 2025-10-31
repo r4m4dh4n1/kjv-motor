@@ -638,12 +638,48 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           kategori: item.kategori,
           tanggal: item.tanggal,
           original_month: item.original_month,
+          is_retroactive: item.is_retroactive,
           nominal: item.nominal,
         }))
       );
 
-      // ✅ FIXED: Tidak perlu filter client-side lagi karena database query sudah benar
-      const filteredOperationalData = operationalData;
+      // ✅ NEW FIX: Untuk this_month, filter out transaksi retroaktif yang original_month nya bukan bulan ini
+      let filteredOperationalData = operationalData;
+
+      if (selectedPeriod === "this_month") {
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth() + 1; // 1-12
+        const currentMonthStr = `${currentYear}-${String(currentMonth).padStart(
+          2,
+          "0"
+        )}`;
+
+        filteredOperationalData = operationalData.filter((item) => {
+          // Jika bukan retroaktif, include
+          if (!item.is_retroactive) return true;
+
+          // Jika retroaktif, cek apakah original_month sama dengan bulan ini
+          if (item.original_month) {
+            const originalMonthStr = item.original_month
+              .toString()
+              .substring(0, 7); // YYYY-MM
+            return originalMonthStr === currentMonthStr;
+          }
+
+          // Default: exclude jika retroaktif tapi tidak ada original_month
+          return false;
+        });
+
+        console.log(
+          "?? Filtered out retroactive transactions from previous months:",
+          {
+            beforeFilter: operationalData.length,
+            afterFilter: filteredOperationalData.length,
+            removed: operationalData.length - filteredOperationalData.length,
+          }
+        );
+      }
 
       console.log(
         `?? Operational records after query: ${filteredOperationalData.length}`,
