@@ -849,7 +849,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       let query = supabase
         .from("biro_jasa")
         .select(
-          "id, keuntungan, total_bayar, biaya_modal, tanggal, plat_nomor, jenis_pengurusan, divisi, cabang_id"
+          "id, keuntungan, total_bayar, biaya_modal, tanggal, plat_nomor, jenis_pengurusan, divisi"
         )
         .in("status", ["Selesai", "selesai"])
         .gte("tanggal", startDate)
@@ -860,9 +860,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         query = query.eq("divisi", selectedDivision);
       }
 
-      if (selectedCabang !== "all") {
-        query = query.eq("cabang_id", parseInt(selectedCabang));
-      }
+      // Note: biro_jasa tidak memiliki cabang_id, filter hanya berdasarkan divisi
 
       const { data, error } = await query;
 
