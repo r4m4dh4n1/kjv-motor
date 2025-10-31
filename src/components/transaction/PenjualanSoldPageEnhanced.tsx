@@ -67,7 +67,7 @@ const PenjualanSoldPageEnhanced = ({
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCabang, setSelectedCabang] = useState("all");
-  const [dateFilter, setDateFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("this_month"); // ✅ DEFAULT: Bulan ini, auto-hide bulan lalu saat pergantian bulan
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(
     undefined
   );
