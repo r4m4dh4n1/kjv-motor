@@ -101,7 +101,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
     }
 
     if (selectedPeriod === "custom" && customStartDate && customEndDate) {
-      const currentDate = new Date(2025, 9, 30);
+      const currentDate = new Date(); // ✅ FIXED: Use actual current date
       const currentMonth = currentDate.getMonth();
       const currentYear = currentDate.getFullYear();
       const startDate = new Date(customStartDate);

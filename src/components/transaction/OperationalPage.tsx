@@ -325,7 +325,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     }
 
     if (selectedPeriod === "custom" && customStartDate && customEndDate) {
-      const currentDate = new Date(2025, 9, 30); // Oktober 2025 (month 9 = Oktober)
+      const currentDate = new Date(); // ✅ FIXED: Use actual current date
       const currentMonth = currentDate.getMonth();
       const currentYear = currentDate.getFullYear();
       const startDate = new Date(customStartDate);
