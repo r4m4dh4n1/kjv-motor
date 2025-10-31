@@ -164,6 +164,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       let penjualanQuery = supabase
         .from("penjualans")
         .select("*")
+        .eq("status", "selesai") // ✅ FIXED: Only count sold items for profit calculation
         .gte(
           "tanggal",
           `${currentYear}-${currentMonth.toString().padStart(2, "0")}-01`
