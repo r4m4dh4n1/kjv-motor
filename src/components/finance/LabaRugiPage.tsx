@@ -723,6 +723,21 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       const biayaPerKategori: { [key: string]: number } = {};
       filteredOperationalData.forEach((item) => {
         const kategori = item.kategori || "Lainnya";
+
+        // ✅ NEW: Skip kategori "Kurang Modal" untuk divisi START
+        const isKurangModal = kategori.includes("Kurang Modal");
+        const isDivisiStart =
+          item.divisi && item.divisi.toLowerCase() === "start";
+
+        if (isKurangModal && isDivisiStart) {
+          console.log("⏭️ Skipping Kurang Modal for START divisi:", {
+            kategori,
+            divisi: item.divisi,
+            nominal: item.nominal,
+          });
+          return; // Skip this item
+        }
+
         // ✅ OP GLOBAL: Untuk kategori OP Global di divisi START, gunakan nominal setengah untuk laporan laba rugi
         const isOpGlobalStart =
           kategori === "OP Global" &&

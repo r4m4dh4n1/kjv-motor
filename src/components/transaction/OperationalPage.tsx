@@ -509,7 +509,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
             item.companies || companiesMap.get(item.company_id) || null,
           pencatatan_asset:
             item.pencatatan_asset || assetsMap.get(item.asset_id) || null,
-          data_source: shouldUseCombined ? "history" : "active",
+          // ✅ FIXED: Preserve data_source from DB, or default based on shouldUseCombined
+          data_source:
+            item.data_source || (shouldUseCombined ? "history" : "active"),
         })) || [];
 
       setOperationalData(combinedData);
@@ -1171,7 +1173,10 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   };
 
   const getTotalOperational = () => {
-    return operationalData.reduce((total, item) => total + item.nominal, 0);
+    // ✅ Exclude kategori "Kurang Modal" dari total operasional
+    return operationalData
+      .filter((item) => !isKurangModalCategory(item.kategori))
+      .reduce((total, item) => total + item.nominal, 0);
   };
 
   const getCategoryStats = () => {
