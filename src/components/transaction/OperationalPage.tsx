@@ -635,7 +635,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           if (oldAssetId !== newAssetId || oldNominal !== newNominal) {
             // Restore old asset nominal (add back old amount)
             if (oldAssetId) {
-              const { error: restoreError } = await supabase.rpc(
+              const { error: restoreError } = await (supabase.rpc as any)(
                 "update_asset_nominal",
                 {
                   p_asset_id: oldAssetId,
@@ -653,7 +653,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
             // Deduct from new asset nominal
             if (newAssetId) {
-              const { error: deductError } = await supabase.rpc(
+              const { error: deductError } = await (supabase.rpc as any)(
                 "update_asset_nominal",
                 {
                   p_asset_id: newAssetId,
@@ -815,7 +815,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
         // ✅ NEW: Update asset nominal for asset-based categories
         if (isAssetBased && formData.asset_id) {
-          const { error: assetUpdateError } = await supabase.rpc(
+          const { error: assetUpdateError } = await (supabase.rpc as any)(
             "update_asset_nominal",
             {
               p_asset_id: parseInt(formData.asset_id),
@@ -995,7 +995,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       // ✅ NEW: Restore asset nominal for asset-based categories
       if (isAssetBased && operationalToDelete.asset_id) {
-        const { error: restoreAssetError } = await supabase.rpc(
+        const { error: restoreAssetError } = await (supabase.rpc as any)(
           "update_asset_nominal",
           {
             p_asset_id: operationalToDelete.asset_id,
@@ -1108,6 +1108,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       nominal: "",
       deskripsi: "",
       sumber_dana: "",
+      asset_id: "", // ✅ Fix: Include asset_id in reset
     });
     setEditingOperational(null);
   };
