@@ -2,13 +2,51 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subWeeks, subMonths, subYears, addDays } from "date-fns";
-import { Search, Filter, CheckCircle, DollarSign, Truck, CalendarIcon } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  format,
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear,
+  subDays,
+  subWeeks,
+  subMonths,
+  subYears,
+  addDays,
+} from "date-fns";
+import {
+  Search,
+  Filter,
+  CheckCircle,
+  DollarSign,
+  Truck,
+  CalendarIcon,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { usePenjualanData } from "./hooks/usePenjualanData";
@@ -17,21 +55,27 @@ import { useCompaniesData } from "@/hooks/useCompaniesData";
 import PenjualanSoldTable from "./PenjualanSoldTable";
 import { formatCurrency, parseFormattedNumber } from "@/utils/formatUtils";
 import { usePagination } from "@/hooks/usePagination";
-import { calculateStandardProfitTotals } from '@/utils/profitCalculationUtils';
+import { calculateStandardProfitTotals } from "@/utils/profitCalculationUtils";
 
 interface PenjualanSoldPageEnhancedProps {
   selectedDivision: string;
 }
 
-const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhancedProps) => {
+const PenjualanSoldPageEnhanced = ({
+  selectedDivision,
+}: PenjualanSoldPageEnhancedProps) => {
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCabang, setSelectedCabang] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
-  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
-  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(
+    undefined
+  );
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(
+    undefined
+  );
   const [dataSourceFilter, setDataSourceFilter] = useState("all");
-  
+
   // Pagination
   const [pageSize, setPageSize] = useState(10);
 
@@ -39,27 +83,31 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
   const [isOngkirDialogOpen, setIsOngkirDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [ongkirFormData, setOngkirFormData] = useState({
-    tanggal: new Date().toISOString().split('T')[0],
+    tanggal: new Date().toISOString().split("T")[0],
     penjualan_id: "",
     titip_ongkir: "",
     keterangan: "",
-    company_id: ""
+    company_id: "",
   });
 
   // Tentukan apakah menggunakan combined view berdasarkan filter
-  const shouldUseCombined = ['last_month', 'this_year', 'custom'].includes(dateFilter);
+  const shouldUseCombined = ["last_month", "this_year", "custom"].includes(
+    dateFilter
+  );
 
   // ✅ PERBAIKAN: Siapkan customDateRange untuk hook
-  const customDateRangeForHook = dateFilter === 'custom' && customStartDate && customEndDate 
-    ? { start: customStartDate, end: customEndDate }
-    : undefined;
+  const customDateRangeForHook =
+    dateFilter === "custom" && customStartDate && customEndDate
+      ? { start: customStartDate, end: customEndDate }
+      : undefined;
 
   // ✅ PERBAIKAN: Panggil hook dengan parameter yang lengkap
   const { penjualanData, refetch: refetchPenjualan } = usePenjualanData(
-    selectedDivision, 
+    selectedDivision,
     shouldUseCombined,
-    dateFilter as any,         // ✅ Fix type issue
-    customDateRangeForHook     // ✅ Tambahkan parameter customDateRange
+    dateFilter as any, // ✅ Fix type issue
+    customDateRangeForHook, // ✅ Tambahkan parameter customDateRange
+    "selesai" // ✅ NEW: Only fetch sold items (status = selesai)
   );
 
   const { data: cabangData = [] } = useCabangData();
@@ -69,7 +117,7 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
   // Date range calculation based on filter (untuk UI display saja, tidak untuk filtering data)
   const getDateRange = () => {
     const now = new Date();
-    
+
     switch (dateFilter) {
       case "today":
         return { start: startOfDay(now), end: endOfDay(now) };
@@ -96,7 +144,10 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
         return { start: startOfYear(lastYear), end: endOfYear(lastYear) };
       case "custom":
         if (customStartDate && customEndDate) {
-          return { start: startOfDay(customStartDate), end: endOfDay(customEndDate) };
+          return {
+            start: startOfDay(customStartDate),
+            end: endOfDay(customEndDate),
+          };
         }
         return null;
       default:
@@ -105,39 +156,46 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
   };
 
   // ✅ PERBAIKAN: Simplifikasi filter - filtering tanggal sudah dilakukan di hook
-  const filteredData = penjualanData.filter((item: any) => {
-    // Filter utama: hanya yang sudah selesai (Sold)
-    if (item.status !== 'selesai') {
-      return false;
-    }
-
-    // Filter data source (untuk combined view)
-    if (shouldUseCombined && dataSourceFilter !== "all") {
-      if (dataSourceFilter === "active" && item.data_source !== "active") {
+  const filteredData = penjualanData
+    .filter((item: any) => {
+      // Filter utama: hanya yang sudah selesai (Sold)
+      if (item.status !== "selesai") {
         return false;
       }
-      if (dataSourceFilter === "history" && item.data_source !== "history") {
-        return false;
-      }
-    }
 
-    // Filter search
-    const matchesSearch = !searchTerm || 
-      item.plat?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.brands?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.jenis_motor?.jenis_motor?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    // Filter cabang
-    const matchesCabang = selectedCabang === "all" || item.cabang_id.toString() === selectedCabang;
-    
-    // ✅ PERBAIKAN: Tidak perlu filter tanggal lagi karena sudah dihandle di hook
-    return matchesSearch && matchesCabang;
-  }).sort((a: any, b: any) => {
-    // Sort by tanggal_lunas (newest first), fallback to tanggal if tanggal_lunas is null
-    const dateA = new Date(a.tanggal_lunas || a.tanggal);
-    const dateB = new Date(b.tanggal_lunas || b.tanggal);
-    return dateB.getTime() - dateA.getTime(); // Newest first (descending)
-  });
+      // Filter data source (untuk combined view)
+      if (shouldUseCombined && dataSourceFilter !== "all") {
+        if (dataSourceFilter === "active" && item.data_source !== "active") {
+          return false;
+        }
+        if (dataSourceFilter === "history" && item.data_source !== "history") {
+          return false;
+        }
+      }
+
+      // Filter search
+      const matchesSearch =
+        !searchTerm ||
+        item.plat?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.brands?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.jenis_motor?.jenis_motor
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase());
+
+      // Filter cabang
+      const matchesCabang =
+        selectedCabang === "all" ||
+        item.cabang_id.toString() === selectedCabang;
+
+      // ✅ PERBAIKAN: Tidak perlu filter tanggal lagi karena sudah dihandle di hook
+      return matchesSearch && matchesCabang;
+    })
+    .sort((a: any, b: any) => {
+      // Sort by tanggal_lunas (newest first), fallback to tanggal if tanggal_lunas is null
+      const dateA = new Date(a.tanggal_lunas || a.tanggal);
+      const dateB = new Date(b.tanggal_lunas || b.tanggal);
+      return dateB.getTime() - dateA.getTime(); // Newest first (descending)
+    });
 
   // Use pagination hook
   const {
@@ -146,11 +204,12 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
     paginatedData,
     goToPage,
     resetPage,
-    totalItems
+    totalItems,
   } = usePagination(filteredData, pageSize);
 
   // Calculate totals using shared utility function
-  const { totalPenjualan, totalKeuntungan, totalUnit } = calculateStandardProfitTotals(filteredData);
+  const { totalPenjualan, totalKeuntungan, totalUnit } =
+    calculateStandardProfitTotals(filteredData);
 
   const resetFilters = () => {
     setSearchTerm("");
@@ -164,58 +223,68 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
 
   const resetOngkirForm = () => {
     setOngkirFormData({
-      tanggal: new Date().toISOString().split('T')[0],
+      tanggal: new Date().toISOString().split("T")[0],
       penjualan_id: "",
       titip_ongkir: "",
       keterangan: "",
-      company_id: ""
+      company_id: "",
     });
   };
 
   const handleOngkirSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (isSubmitting) return;
-    
+
     setIsSubmitting(true);
-    
+
     try {
       // Validasi input
-      if (!ongkirFormData.penjualan_id || !ongkirFormData.titip_ongkir || !ongkirFormData.company_id) {
+      if (
+        !ongkirFormData.penjualan_id ||
+        !ongkirFormData.titip_ongkir ||
+        !ongkirFormData.company_id
+      ) {
         toast({
           title: "Error",
           description: "Mohon lengkapi semua field yang wajib diisi",
-          variant: "destructive"
+          variant: "destructive",
         });
         return;
       }
 
-      const titipOngkirAmount = parseFormattedNumber(ongkirFormData.titip_ongkir);
+      const titipOngkirAmount = parseFormattedNumber(
+        ongkirFormData.titip_ongkir
+      );
       if (titipOngkirAmount <= 0) {
         toast({
           title: "Error",
           description: "Nominal titip ongkir harus lebih dari 0",
-          variant: "destructive"
+          variant: "destructive",
         });
         return;
       }
 
-      const selectedPenjualan = filteredData.find(p => p.id.toString() === ongkirFormData.penjualan_id);
+      const selectedPenjualan = filteredData.find(
+        (p) => p.id.toString() === ongkirFormData.penjualan_id
+      );
       if (!selectedPenjualan) {
         toast({
           title: "Error",
           description: "Data penjualan tidak ditemukan",
-          variant: "destructive"
+          variant: "destructive",
         });
         return;
       }
 
       // Generate keterangan dengan format: "pengeluaran dana titip ongkir brand-jenis_motor-plat"
-      const brand = selectedPenjualan.brands?.name || 'Unknown';
-      const jenisMotor = selectedPenjualan.jenis_motor?.jenis_motor || 'Unknown';
-      const plat = selectedPenjualan.plat || 'Unknown';
+      const brand = selectedPenjualan.brands?.name || "Unknown";
+      const jenisMotor =
+        selectedPenjualan.jenis_motor?.jenis_motor || "Unknown";
+      const plat = selectedPenjualan.plat || "Unknown";
       const generatedKeterangan = `pengeluaran dana titip ongkir ${brand}-${jenisMotor}-${plat}`;
-      const finalKeterangan = ongkirFormData.keterangan.trim() || generatedKeterangan;
+      const finalKeterangan =
+        ongkirFormData.keterangan.trim() || generatedKeterangan;
 
       // Insert ke tabel pembukuan
       const pembukuanData = {
@@ -226,49 +295,48 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
         debit: titipOngkirAmount,
         kredit: 0,
         company_id: parseInt(ongkirFormData.company_id),
-        pembelian_id: selectedPenjualan.pembelian_id
+        pembelian_id: selectedPenjualan.pembelian_id,
       };
 
       const { error: pembukuanError } = await supabase
-        .from('pembukuan')
+        .from("pembukuan")
         .insert([pembukuanData]);
 
       if (pembukuanError) {
-        console.error('Error inserting pembukuan:', pembukuanError);
+        console.error("Error inserting pembukuan:", pembukuanError);
         throw pembukuanError;
       }
 
       // Update modal perusahaan (mengurangi modal sebesar titip ongkir)
-      const { error: modalError } = await supabase.rpc('update_company_modal', {
+      const { error: modalError } = await supabase.rpc("update_company_modal", {
         company_id: parseInt(ongkirFormData.company_id),
-        amount: -titipOngkirAmount
+        amount: -titipOngkirAmount,
       });
 
       if (modalError) {
-        console.error('Error updating company modal:', modalError);
+        console.error("Error updating company modal:", modalError);
         toast({
           title: "Warning",
           description: "Data tersimpan tapi gagal mengurangi modal perusahaan",
-          variant: "destructive"
+          variant: "destructive",
         });
       }
 
       toast({
         title: "Berhasil",
-        description: "Data keluar ongkir berhasil disimpan"
+        description: "Data keluar ongkir berhasil disimpan",
       });
 
       // Reset form dan tutup dialog
       resetOngkirForm();
       setIsOngkirDialogOpen(false);
       refetchPenjualan();
-
     } catch (error: any) {
-      console.error('Error saving keluar ongkir:', error);
+      console.error("Error saving keluar ongkir:", error);
       toast({
         title: "Error",
         description: error.message || "Gagal menyimpan data keluar ongkir",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
@@ -276,12 +344,14 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
   };
 
   const handlePenjualanSelect = (penjualanId: string) => {
-    const selectedPenjualan = filteredData.find(p => p.id.toString() === penjualanId);
+    const selectedPenjualan = filteredData.find(
+      (p) => p.id.toString() === penjualanId
+    );
     if (selectedPenjualan) {
-      setOngkirFormData(prev => ({
+      setOngkirFormData((prev) => ({
         ...prev,
         penjualan_id: penjualanId,
-        company_id: selectedPenjualan.company_id?.toString() || ""
+        company_id: selectedPenjualan.company_id?.toString() || "",
       }));
     }
   };
@@ -292,7 +362,10 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
         <h1 className="text-3xl font-bold">Data Penjualan - Sold</h1>
         <Dialog open={isOngkirDialogOpen} onOpenChange={setIsOngkirDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={resetOngkirForm} className="bg-orange-600 hover:bg-orange-700">
+            <Button
+              onClick={resetOngkirForm}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
               <Truck className="mr-2 h-4 w-4" />
               Keluar Ongkir
             </Button>
@@ -308,7 +381,12 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
                   id="tanggal"
                   type="date"
                   value={ongkirFormData.tanggal}
-                  onChange={(e) => setOngkirFormData(prev => ({ ...prev, tanggal: e.target.value }))}
+                  onChange={(e) =>
+                    setOngkirFormData((prev) => ({
+                      ...prev,
+                      tanggal: e.target.value,
+                    }))
+                  }
                   required
                 />
               </div>
@@ -324,8 +402,12 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
                   </SelectTrigger>
                   <SelectContent>
                     {filteredData.map((penjualan) => (
-                      <SelectItem key={penjualan.id} value={penjualan.id.toString()}>
-                        {penjualan.brands?.name} {penjualan.jenis_motor?.jenis_motor} - {penjualan.plat}
+                      <SelectItem
+                        key={penjualan.id}
+                        value={penjualan.id.toString()}
+                      >
+                        {penjualan.brands?.name}{" "}
+                        {penjualan.jenis_motor?.jenis_motor} - {penjualan.plat}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -340,9 +422,14 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
                   placeholder="Masukkan nominal"
                   value={ongkirFormData.titip_ongkir}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, '');
-                    const formatted = value ? parseInt(value).toLocaleString('id-ID') : '';
-                    setOngkirFormData(prev => ({ ...prev, titip_ongkir: formatted }));
+                    const value = e.target.value.replace(/[^0-9]/g, "");
+                    const formatted = value
+                      ? parseInt(value).toLocaleString("id-ID")
+                      : "";
+                    setOngkirFormData((prev) => ({
+                      ...prev,
+                      titip_ongkir: formatted,
+                    }));
                   }}
                   required
                 />
@@ -352,14 +439,22 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
                 <Label htmlFor="company_id">No. Rekening (Company) *</Label>
                 <Select
                   value={ongkirFormData.company_id}
-                  onValueChange={(value) => setOngkirFormData(prev => ({ ...prev, company_id: value }))}
+                  onValueChange={(value) =>
+                    setOngkirFormData((prev) => ({
+                      ...prev,
+                      company_id: value,
+                    }))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih company" />
                   </SelectTrigger>
                   <SelectContent>
                     {companiesData.map((company) => (
-                      <SelectItem key={company.id} value={company.id.toString()}>
+                      <SelectItem
+                        key={company.id}
+                        value={company.id.toString()}
+                      >
                         {company.nama_perusahaan}
                       </SelectItem>
                     ))}
@@ -374,10 +469,16 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
                   type="text"
                   placeholder="Keterangan tambahan (opsional)"
                   value={ongkirFormData.keterangan}
-                  onChange={(e) => setOngkirFormData(prev => ({ ...prev, keterangan: e.target.value }))}
+                  onChange={(e) =>
+                    setOngkirFormData((prev) => ({
+                      ...prev,
+                      keterangan: e.target.value,
+                    }))
+                  }
                 />
                 <p className="text-sm text-gray-500 mt-1">
-                  Jika kosong, akan otomatis diisi: "pengeluaran dana titip ongkir brand-jenis_motor-plat"
+                  Jika kosong, akan otomatis diisi: "pengeluaran dana titip
+                  ongkir brand-jenis_motor-plat"
                 </p>
               </div>
 
@@ -431,7 +532,7 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
                 />
               </div>
             </div>
-            
+
             <div>
               <Label htmlFor="cabang">Cabang</Label>
               <Select value={selectedCabang} onValueChange={setSelectedCabang}>
@@ -453,7 +554,10 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
             {shouldUseCombined && (
               <div>
                 <Label htmlFor="dataSource">Sumber Data</Label>
-                <Select value={dataSourceFilter} onValueChange={setDataSourceFilter}>
+                <Select
+                  value={dataSourceFilter}
+                  onValueChange={setDataSourceFilter}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Sumber Data" />
                   </SelectTrigger>
@@ -490,7 +594,10 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
 
             <div>
               <Label htmlFor="pageSize">Items per page</Label>
-              <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(parseInt(value))}>
+              <Select
+                value={pageSize.toString()}
+                onValueChange={(value) => setPageSize(parseInt(value))}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -516,7 +623,9 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
                       className="w-full justify-start text-left font-normal"
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {customStartDate ? format(customStartDate, "PPP") : "Pilih tanggal mulai"}
+                      {customStartDate
+                        ? format(customStartDate, "PPP")
+                        : "Pilih tanggal mulai"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
@@ -538,7 +647,9 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
                       className="w-full justify-start text-left font-normal"
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {customEndDate ? format(customEndDate, "PPP") : "Pilih tanggal akhir"}
+                      {customEndDate
+                        ? format(customEndDate, "PPP")
+                        : "Pilih tanggal akhir"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
@@ -559,7 +670,8 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
               Reset Filter
             </Button>
             <div className="text-sm text-muted-foreground">
-              Menampilkan {paginatedData.length} dari {totalItems} data (Status: Sold)
+              Menampilkan {paginatedData.length} dari {totalItems} data (Status:
+              Sold)
               {shouldUseCombined && " - Data Combined"}
             </div>
           </div>
@@ -573,7 +685,10 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Total Penjualan Sold {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
+                  Total Penjualan Sold{" "}
+                  {dateFilter !== "all"
+                    ? `(${dateFilter.replace("_", " ")})`
+                    : ""}
                 </p>
                 <p className="text-2xl font-bold text-green-600">
                   {formatCurrency(totalPenjualan)}
@@ -583,13 +698,16 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Total Keuntungan {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
+                  Total Keuntungan{" "}
+                  {dateFilter !== "all"
+                    ? `(${dateFilter.replace("_", " ")})`
+                    : ""}
                 </p>
                 <p className="text-2xl font-bold text-purple-600">
                   {formatCurrency(totalKeuntungan)}
@@ -605,11 +723,12 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Total Unit Sold {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
+                  Total Unit Sold{" "}
+                  {dateFilter !== "all"
+                    ? `(${dateFilter.replace("_", " ")})`
+                    : ""}
                 </p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {totalUnit}
-                </p>
+                <p className="text-2xl font-bold text-blue-600">{totalUnit}</p>
               </div>
               <CheckCircle className="w-8 h-8 text-blue-600" />
             </div>
@@ -635,7 +754,7 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
           >
             Previous
           </Button>
-          
+
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
             <Button
               key={page}
@@ -646,7 +765,7 @@ const PenjualanSoldPageEnhanced = ({ selectedDivision }: PenjualanSoldPageEnhanc
               {page}
             </Button>
           ))}
-          
+
           <Button
             variant="outline"
             onClick={() => goToPage(currentPage + 1)}

@@ -3,11 +3,36 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subWeeks, subMonths, subYears, addDays } from "date-fns";
+import {
+  format,
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear,
+  subDays,
+  subWeeks,
+  subMonths,
+  subYears,
+  addDays,
+} from "date-fns";
 import { Search, Filter, BookOpen, DollarSign } from "lucide-react";
 import PenjualanForm from "./PenjualanForm";
 import PenjualanTable from "./PenjualanTable";
@@ -18,13 +43,16 @@ import TitipOngkirPayoutModal from "./TitipOngkirPayoutModal";
 import { Penjualan, PenjualanFormData } from "./penjualan-types";
 import { formatCurrency } from "@/utils/formatUtils";
 import { usePagination } from "@/hooks/usePagination";
-import { 
+import {
   usePembelianData,
   useCabangData,
-  useCompaniesData
+  useCompaniesData,
 } from "./hooks/usePembelianData";
 import { usePenjualanData } from "./hooks/usePenjualanData";
-import { usePenjualanCreate, usePenjualanDelete } from "./hooks/usePenjualanMutations";
+import {
+  usePenjualanCreate,
+  usePenjualanDelete,
+} from "./hooks/usePenjualanMutations";
 import { usePenjualanEdit } from "./hooks/usePenjualanEditMutation"; // ✅ Tambahkan ini
 import { usePenjualanActions } from "./hooks/usePenjualanActions";
 import { useDpCancellation } from "./hooks/useDpCancellation";
@@ -32,7 +60,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   createInitialPenjualanFormData,
   validatePenjualanFormData,
-  transformPenjualanToFormData
+  transformPenjualanToFormData,
 } from "./utils/penjualanFormUtils";
 import { useBookedUpdateHarga } from "./hooks/useBookedUpdateHarga";
 
@@ -40,30 +68,44 @@ interface PenjualanBookedPageEnhancedProps {
   selectedDivision: string;
 }
 
-const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEnhancedProps) => {
+const PenjualanBookedPageEnhanced = ({
+  selectedDivision,
+}: PenjualanBookedPageEnhancedProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingPenjualan, setEditingPenjualan] = useState<Penjualan | null>(null);
-  const [formData, setFormData] = useState<PenjualanFormData>(createInitialPenjualanFormData(selectedDivision));
-  
+  const [editingPenjualan, setEditingPenjualan] = useState<Penjualan | null>(
+    null
+  );
+  const [formData, setFormData] = useState<PenjualanFormData>(
+    createInitialPenjualanFormData(selectedDivision)
+  );
+
   // DP Cancellation states
   const [isDpCancelModalOpen, setIsDpCancelModalOpen] = useState(false);
-  const [selectedPenjualanForCancel, setSelectedPenjualanForCancel] = useState<any>(null);
-  
+  const [selectedPenjualanForCancel, setSelectedPenjualanForCancel] =
+    useState<any>(null);
+
   // Titip Ongkir Payout states
   const [isTitipOngkirModalOpen, setIsTitipOngkirModalOpen] = useState(false);
-  const [selectedPenjualanForOngkir, setSelectedPenjualanForOngkir] = useState<any>(null);
-  const [ongkirPaymentStatus, setOngkirPaymentStatus] = useState<Record<number, boolean>>({});
-  
+  const [selectedPenjualanForOngkir, setSelectedPenjualanForOngkir] =
+    useState<any>(null);
+  const [ongkirPaymentStatus, setOngkirPaymentStatus] = useState<
+    Record<number, boolean>
+  >({});
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCabang, setSelectedCabang] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
-  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
-  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
-  
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(
+    undefined
+  );
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(
+    undefined
+  );
+
   const { toast } = useToast();
-  
+
   // Pagination
   const [pageSize, setPageSize] = useState(10);
 
@@ -76,10 +118,19 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
 
   // Data queries
   const { data: cabangData = [] } = useCabangData();
-  const { data: pembelianData = [] } = usePembelianData(selectedDivision, "all");
+  const { data: pembelianData = [] } = usePembelianData(
+    selectedDivision,
+    "all"
+  );
   const { data: companiesData = [] } = useCompaniesData(selectedDivision);
-  const { penjualanData, refetch: refetchPenjualan } = usePenjualanData(selectedDivision);
-  
+  const { penjualanData, refetch: refetchPenjualan } = usePenjualanData(
+    selectedDivision,
+    false, // useCombined
+    "all", // dateFilter (all because we filter client-side)
+    undefined, // customDateRange
+    ["Booked", "booked"] // ✅ NEW: Only fetch booked items
+  );
+
   // Mutations
   const createPenjualanMutation = usePenjualanCreate();
   const deletePenjualanMutation = usePenjualanDelete();
@@ -91,9 +142,9 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
       if (penjualanIds.length === 0) return;
 
       const { data, error } = await supabase
-        .from('ongkir_payments')
-        .select('penjualan_id')
-        .in('penjualan_id', penjualanIds);
+        .from("ongkir_payments")
+        .select("penjualan_id")
+        .in("penjualan_id", penjualanIds);
 
       if (error) throw error;
 
@@ -103,14 +154,14 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
       });
       setOngkirPaymentStatus(paymentStatusMap);
     } catch (error) {
-      console.error('Error checking ongkir payment status:', error);
+      console.error("Error checking ongkir payment status:", error);
     }
   };
-  
+
   // Actions
   // Ganti usePenjualanActions dengan useBookedUpdateHarga untuk update harga
   const bookedUpdateHarga = useBookedUpdateHarga();
-  
+
   // Actions untuk modal dan state management
   const {
     isUpdateHargaOpen,
@@ -126,15 +177,19 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
     handleRiwayatHarga,
     // HAPUS handleSubmitUpdateHarga dari sini
   } = usePenjualanActions();
-  
+
   // Buat fungsi handleSubmitUpdateHarga baru yang menggunakan useBookedUpdateHarga
-  const handleSubmitUpdateHarga = async (updateData: any, onRefresh: () => void) => {
+  const handleSubmitUpdateHarga = async (
+    updateData: any,
+    onRefresh: () => void
+  ) => {
     if (!selectedPenjualanForUpdate) return;
-    
+
     try {
       await bookedUpdateHarga.mutateAsync({
-        penjualanId: selectedPenjualanForUpdate.id,  // ✅ PERBAIKAN
-        data: {  // ✅ PERBAIKAN: wrap dalam object 'data'
+        penjualanId: selectedPenjualanForUpdate.id, // ✅ PERBAIKAN
+        data: {
+          // ✅ PERBAIKAN: wrap dalam object 'data'
           harga_jual_baru: updateData.harga_jual_baru,
           biaya_pajak: updateData.biaya_pajak,
           biaya_qc: updateData.biaya_qc,
@@ -142,10 +197,10 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
           keterangan_biaya_lain: updateData.keterangan_biaya_lain,
           reason: updateData.reason,
           tanggal_update: updateData.tanggal_update,
-          sumber_dana_id: updateData.sumber_dana_id
-        }
+          sumber_dana_id: updateData.sumber_dana_id,
+        },
       });
-      
+
       setIsUpdateHargaOpen(false);
       setSelectedPenjualanForUpdate(null);
       onRefresh();
@@ -157,7 +212,7 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
   // Date range calculation based on filter
   const getDateRange = () => {
     const now = new Date();
-    
+
     switch (dateFilter) {
       case "today":
         return { start: startOfDay(now), end: endOfDay(now) };
@@ -184,7 +239,10 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
         return { start: startOfYear(lastYear), end: endOfYear(lastYear) };
       case "custom":
         if (customStartDate && customEndDate) {
-          return { start: startOfDay(customStartDate), end: endOfDay(customEndDate) };
+          return {
+            start: startOfDay(customStartDate),
+            end: endOfDay(customEndDate),
+          };
         }
         return null;
       default:
@@ -193,35 +251,51 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
   };
 
   // Filter and search logic - only for BOOKED status (not 'selesai' or 'cancelled_dp_hangus')
-  const filteredData = penjualanData.filter((item: any) => {
-    // Filter utama: hanya yang belum selesai (status: booked, proses, cancelled, etc but not 'selesai/sold' or 'cancelled_dp_hangus')
-    if (item.status === 'selesai' || item.status === 'sold' || item.status === 'cancelled_dp_hangus') {
-      return false;
-    }
-
-    const matchesSearch = !searchTerm || 
-      item.plat?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.brands?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.jenis_motor?.jenis_motor?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCabang = selectedCabang === "all" || item.cabang_id.toString() === selectedCabang;
-    
-    const matchesStatus = selectedStatus === "all" || item.status === selectedStatus;
-    
-    // Date filter logic
-    let matchesDate = true;
-    if (dateFilter !== "all") {
-      const dateRange = getDateRange();
-      if (dateRange) {
-        const itemDate = new Date(item.tanggal);
-        matchesDate = itemDate >= dateRange.start && itemDate <= dateRange.end;
-      } else if (dateFilter === "custom") {
-        matchesDate = false; // If custom is selected but no dates are set
+  const filteredData = penjualanData
+    .filter((item: any) => {
+      // Filter utama: hanya yang belum selesai (status: booked, proses, cancelled, etc but not 'selesai/sold' or 'cancelled_dp_hangus')
+      if (
+        item.status === "selesai" ||
+        item.status === "sold" ||
+        item.status === "cancelled_dp_hangus"
+      ) {
+        return false;
       }
-    }
-    
-    return matchesSearch && matchesCabang && matchesStatus && matchesDate;
-  }).sort((a: any, b: any) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
+
+      const matchesSearch =
+        !searchTerm ||
+        item.plat?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.brands?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.jenis_motor?.jenis_motor
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase());
+
+      const matchesCabang =
+        selectedCabang === "all" ||
+        item.cabang_id.toString() === selectedCabang;
+
+      const matchesStatus =
+        selectedStatus === "all" || item.status === selectedStatus;
+
+      // Date filter logic
+      let matchesDate = true;
+      if (dateFilter !== "all") {
+        const dateRange = getDateRange();
+        if (dateRange) {
+          const itemDate = new Date(item.tanggal);
+          matchesDate =
+            itemDate >= dateRange.start && itemDate <= dateRange.end;
+        } else if (dateFilter === "custom") {
+          matchesDate = false; // If custom is selected but no dates are set
+        }
+      }
+
+      return matchesSearch && matchesCabang && matchesStatus && matchesDate;
+    })
+    .sort(
+      (a: any, b: any) =>
+        new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
+    );
 
   // Use pagination hook
   const {
@@ -230,7 +304,7 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
     paginatedData,
     goToPage,
     resetPage,
-    totalItems
+    totalItems,
   } = usePagination(filteredData, pageSize);
 
   // Fetch ongkir payment status for filtered data
@@ -243,7 +317,10 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
 
   // Calculate totals
   const calculateTotals = () => {
-    const totalPenjualan = filteredData.reduce((sum, item) => sum + (item.harga_jual || 0), 0);
+    const totalPenjualan = filteredData.reduce(
+      (sum, item) => sum + (item.harga_jual || 0),
+      0
+    );
     const totalDP = filteredData.reduce((sum, item) => sum + (item.dp || 0), 0);
     const totalUnit = filteredData.length;
 
@@ -255,23 +332,23 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
   // Fungsi-fungsi yang sama dengan PenjualanPage
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validatePenjualanFormData(formData)) {
-      toast({ 
-        title: "Error", 
-        description: "Harap lengkapi semua field yang wajib diisi", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: "Harap lengkapi semua field yang wajib diisi",
+        variant: "destructive",
       });
       return;
     }
-  
+
     try {
       if (editingPenjualan) {
         // ✅ Use edit mutation for existing penjualan
-        await editPenjualanMutation.mutateAsync({ 
+        await editPenjualanMutation.mutateAsync({
           penjualanId: editingPenjualan.id,
-          formData, 
-          pembelianData 
+          formData,
+          pembelianData,
         });
       } else {
         // ✅ Use create mutation for new penjualan
@@ -326,7 +403,7 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
     try {
       await dpCancellationMutation.mutateAsync({
         penjualanId: selectedPenjualanForCancel.id,
-        cancellationData
+        cancellationData,
       });
       setIsDpCancelModalOpen(false);
       setSelectedPenjualanForCancel(null);
@@ -391,7 +468,7 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
                 />
               </div>
             </div>
-            
+
             <div>
               <Label htmlFor="cabang">Cabang</Label>
               <Select value={selectedCabang} onValueChange={setSelectedCabang}>
@@ -447,7 +524,10 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
 
             <div>
               <Label htmlFor="pageSize">Items per page</Label>
-              <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(parseInt(value))}>
+              <Select
+                value={pageSize.toString()}
+                onValueChange={(value) => setPageSize(parseInt(value))}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -472,7 +552,9 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
                       variant="outline"
                       className="w-full justify-start text-left font-normal"
                     >
-                      {customStartDate ? format(customStartDate, "dd/MM/yyyy") : "Pilih tanggal mulai"}
+                      {customStartDate
+                        ? format(customStartDate, "dd/MM/yyyy")
+                        : "Pilih tanggal mulai"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -486,7 +568,7 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
                   </PopoverContent>
                 </Popover>
               </div>
-              
+
               <div>
                 <Label>Tanggal Selesai</Label>
                 <Popover>
@@ -495,7 +577,9 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
                       variant="outline"
                       className="w-full justify-start text-left font-normal"
                     >
-                      {customEndDate ? format(customEndDate, "dd/MM/yyyy") : "Pilih tanggal selesai"}
+                      {customEndDate
+                        ? format(customEndDate, "dd/MM/yyyy")
+                        : "Pilih tanggal selesai"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -517,7 +601,8 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
               Reset Filter
             </Button>
             <div className="text-sm text-muted-foreground">
-              Menampilkan {paginatedData.length} dari {totalItems} data (Status: Booked)
+              Menampilkan {paginatedData.length} dari {totalItems} data (Status:
+              Booked)
             </div>
           </div>
         </CardContent>
@@ -530,7 +615,10 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Total DP Booked {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
+                  Total DP Booked{" "}
+                  {dateFilter !== "all"
+                    ? `(${dateFilter.replace("_", " ")})`
+                    : ""}
                 </p>
                 <p className="text-2xl font-bold text-orange-600">
                   {formatCurrency(totalDP)}
@@ -546,7 +634,10 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Total Penjualan Booked {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
+                  Total Penjualan Booked{" "}
+                  {dateFilter !== "all"
+                    ? `(${dateFilter.replace("_", " ")})`
+                    : ""}
                 </p>
                 <p className="text-2xl font-bold text-green-600">
                   {formatCurrency(totalPenjualan)}
@@ -556,17 +647,18 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Total Unit Booked {dateFilter !== "all" ? `(${dateFilter.replace('_', ' ')})` : ''}
+                  Total Unit Booked{" "}
+                  {dateFilter !== "all"
+                    ? `(${dateFilter.replace("_", " ")})`
+                    : ""}
                 </p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {totalUnit}
-                </p>
+                <p className="text-2xl font-bold text-blue-600">{totalUnit}</p>
               </div>
               <BookOpen className="w-8 h-8 text-blue-600" />
             </div>
@@ -597,7 +689,7 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
           >
             Previous
           </Button>
-          
+
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
             <Button
               key={page}
@@ -608,7 +700,7 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
               {page}
             </Button>
           ))}
-          
+
           <Button
             variant="outline"
             onClick={() => goToPage(currentPage + 1)}
@@ -626,7 +718,9 @@ const PenjualanBookedPageEnhanced = ({ selectedDivision }: PenjualanBookedPageEn
           setSelectedPenjualanForUpdate(null);
         }}
         penjualan={selectedPenjualanForUpdate}
-        onSubmit={(updateData) => handleSubmitUpdateHarga(updateData, refetchPenjualan)}
+        onSubmit={(updateData) =>
+          handleSubmitUpdateHarga(updateData, refetchPenjualan)
+        }
       />
 
       <PriceHistoryModal

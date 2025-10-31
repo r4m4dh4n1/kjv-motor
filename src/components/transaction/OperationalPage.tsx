@@ -54,6 +54,7 @@ interface DateRange {
 const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   const [operationalData, setOperationalData] = useState([]);
   const [companiesData, setCompaniesData] = useState([]);
+  const [assetsData, setAssetsData] = useState([]); // ✅ NEW: For asset dropdown
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOperational, setEditingOperational] = useState(null);
 
@@ -69,28 +70,94 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     nominal: "",
     deskripsi: "",
     sumber_dana: "",
+    asset_id: "", // ✅ NEW: For special categories
   });
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const categories = [
-    "Operasional Kantor",
-    "Transportasi",
-    "Komunikasi",
-    "Listrik & Air",
-    "Maintenance",
-    "Marketing",
-    "Gaji Kurang Profit",
-    "Gaji Kurang Modal",
-    "Bonus Kurang Profit",
-    "Bonus Kurang Modal",
-    "Ops Bulanan Kurang Profit",
-    "Ops Bulanan Kurang Modal",
-    "OP Global",
-    "Pajak & Retribusi",
-    "Asuransi",
-    "Lain-lain",
+  // ✅ NEW: Special categories for divisi START only
+  const specialCategories = [
+    "Kasbon",
+    "STARGAZER",
+    "ASET LAINNYA",
+    "Sewa Ruko",
   ];
+
+  // ✅ NEW: Check if current category is special
+  const isSpecialCategory = specialCategories.includes(formData.kategori);
+
+  // ✅ NEW: Filter assets based on selected category
+  const getFilteredAssets = () => {
+    if (!formData.kategori || !isSpecialCategory) return [];
+
+    switch (formData.kategori) {
+      case "Kasbon":
+        return assetsData.filter((asset) => asset.nama_aset === "Kasbon");
+      case "STARGAZER":
+        return assetsData.filter((asset) => asset.nama_aset === "STARGAZER");
+      case "ASET LAINNYA":
+        return assetsData.filter(
+          (asset) =>
+            asset.nama_aset &&
+            asset.nama_aset.toUpperCase().includes("ASET LAINNYA")
+        );
+      case "Sewa Ruko":
+        return assetsData.filter(
+          (asset) =>
+            asset.nama_aset &&
+            (asset.nama_aset.toLowerCase().includes("sewa ruko") ||
+              asset.nama_aset.includes("Sewa Ruko"))
+        );
+      default:
+        return [];
+    }
+  };
+
+  const filteredAssets = getFilteredAssets();
+
+  // ✅ UPDATED: Categories based on division
+  const categories =
+    selectedDivision === "start"
+      ? [
+          "Operasional Kantor",
+          "Transportasi",
+          "Komunikasi",
+          "Listrik & Air",
+          "Maintenance",
+          "Marketing",
+          "Gaji Kurang Profit",
+          "Gaji Kurang Modal",
+          "Bonus Kurang Profit",
+          "Bonus Kurang Modal",
+          "Ops Bulanan Kurang Profit",
+          "Ops Bulanan Kurang Modal",
+          "OP Global",
+          "Pajak & Retribusi",
+          "Asuransi",
+          "Kasbon", // ✅ NEW for START
+          "STARGAZER", // ✅ NEW for START
+          "ASET LAINNYA", // ✅ NEW for START
+          "Sewa Ruko", // ✅ NEW for START
+          "Lain-lain",
+        ]
+      : [
+          "Operasional Kantor",
+          "Transportasi",
+          "Komunikasi",
+          "Listrik & Air",
+          "Maintenance",
+          "Marketing",
+          "Gaji Kurang Profit",
+          "Gaji Kurang Modal",
+          "Bonus Kurang Profit",
+          "Bonus Kurang Modal",
+          "Ops Bulanan Kurang Profit",
+          "Ops Bulanan Kurang Modal",
+          "OP Global",
+          "Pajak & Retribusi",
+          "Asuransi",
+          "Lain-lain",
+        ];
 
   // ✅ PERBAIKAN: Fungsi untuk mendapatkan range tanggal berdasarkan periode
   const getDateRange = (period: string): DateRange => {
@@ -271,6 +338,15 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       if (companiesError) throw companiesError;
       setCompaniesData(companies || []);
+
+      // ✅ NEW: Fetch assets data for special categories
+      const { data: assets, error: assetsError } = await supabase
+        .from("assets")
+        .select("*")
+        .order("nama_aset");
+
+      if (assetsError) throw assetsError;
+      setAssetsData(assets || []);
     } catch (error) {
       console.error("Error fetching initial data:", error);
       toast({
@@ -398,6 +474,29 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       return;
     }
 
+    // ✅ NEW: Check if category is special (asset-based)
+    const isAssetBased = specialCategories.includes(formData.kategori);
+
+    // ✅ NEW: Validate asset_id for special categories
+    if (isAssetBased && !formData.asset_id) {
+      toast({
+        title: "Error",
+        description: "Nama Asset harus dipilih untuk kategori ini",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // ✅ NEW: Validate sumber_dana for non-special categories
+    if (!isAssetBased && !formData.sumber_dana) {
+      toast({
+        title: "Error",
+        description: "Sumber Dana harus dipilih",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // ✅ VALIDASI BULAN CLOSE: Cek apakah bulan transaksi sudah di-close
     const transactionDate = new Date(formData.tanggal);
     const monthClosed = await isMonthClosed(transactionDate);
@@ -419,8 +518,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     const isOPGlobal = isOPGlobalCategory(formData.kategori);
 
     try {
-      // ✅ LOGIKA BARU: Validasi modal untuk semua kategori kecuali "Kurang Profit"
-      if (!isKurangProfit) {
+      // ✅ NEW: For asset-based categories, skip company modal validation
+      // ✅ LOGIKA BARU: Validasi modal untuk semua kategori kecuali "Kurang Profit" dan asset-based
+      if (!isKurangProfit && !isAssetBased) {
         // Get company data to check modal
         const { data: company, error: companyError } = await supabase
           .from("companies")
@@ -468,16 +568,22 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
             kategori: formData.kategori,
             deskripsi: formData.deskripsi,
             nominal: nominalAmount,
-            // ✅ LOGIKA BARU: Set company_id berdasarkan kategori
-            company_id: isKurangProfit ? null : parseInt(formData.sumber_dana),
+            // ✅ NEW: Set company_id or asset_id based on category type
+            company_id: isAssetBased
+              ? null
+              : isKurangProfit
+              ? null
+              : parseInt(formData.sumber_dana),
+            asset_id: isAssetBased ? parseInt(formData.asset_id) : null,
             divisi: selectedDivision !== "all" ? selectedDivision : "sport",
           })
           .eq("id", editingOperational.id);
 
         if (updateError) throw updateError;
 
-        // ✅ LOGIKA BARU: Update modal perusahaan untuk semua kategori kecuali "Kurang Profit"
-        if (!isKurangProfit) {
+        // ✅ NEW: Skip company modal update for asset-based categories
+        // ✅ LOGIKA BARU: Update modal perusahaan untuk semua kategori kecuali "Kurang Profit" dan asset-based
+        if (!isKurangProfit && !isAssetBased) {
           // ✅ OP GLOBAL: Hitung modal difference dengan logika yang benar
           const oldModalAmount = isOPGlobalCategory(editingOperational.kategori)
             ? editingOperational.nominal
@@ -600,10 +706,13 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
               nominal: nominalAmount,
               divisi: selectedDivision !== "all" ? selectedDivision : "sport",
               cabang_id: 1, // Default cabang
-              // ✅ LOGIKA BARU: Set company_id berdasarkan kategori
-              company_id: isKurangProfit
+              // ✅ NEW: Set company_id or asset_id based on category type
+              company_id: isAssetBased
+                ? null
+                : isKurangProfit
                 ? null
                 : parseInt(formData.sumber_dana),
+              asset_id: isAssetBased ? parseInt(formData.asset_id) : null,
             },
           ])
           .select()
@@ -611,8 +720,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
         if (insertError) throw insertError;
 
-        // ✅ LOGIKA BARU: Update modal perusahaan untuk semua kategori kecuali "Kurang Profit"
-        if (!isKurangProfit) {
+        // ✅ NEW: Skip company modal update for asset-based categories
+        // ✅ LOGIKA BARU: Update modal perusahaan untuk semua kategori kecuali "Kurang Profit" dan asset-based
+        if (!isKurangProfit && !isAssetBased) {
           // ✅ OP GLOBAL: Modal dikurangi nominal penuh, pembukuan juga nominal penuh
           const modalAmount = isOPGlobal ? nominalAmount : nominalAmount;
 
@@ -712,6 +822,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       nominal: operational.nominal.toString(),
       deskripsi: operational.deskripsi,
       sumber_dana: operational.company_id?.toString() || "",
+      asset_id: operational.asset_id?.toString() || "", // ✅ NEW: Load asset_id if exists
     });
     setIsDialogOpen(true);
   };
@@ -1013,9 +1124,15 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
               <Label htmlFor="kategori">Kategori *</Label>
               <Select
                 value={formData.kategori}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, kategori: value })
-                }
+                onValueChange={(value) => {
+                  // ✅ NEW: Reset sumber_dana and asset_id when category changes
+                  setFormData({
+                    ...formData,
+                    kategori: value,
+                    sumber_dana: "",
+                    asset_id: "",
+                  });
+                }}
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Pilih kategori" />
@@ -1061,8 +1178,41 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
               />
             </div>
 
-            {/* ✅ LOGIKA BARU: Tampilkan field Sumber Dana berdasarkan kategori */}
-            {shouldShowSumberDana(formData.kategori) ? (
+            {/* ✅ NEW: Conditional rendering - Sumber Dana OR Nama Asset */}
+            {isSpecialCategory ? (
+              <div>
+                <Label htmlFor="asset_id">Nama Asset *</Label>
+                <Select
+                  value={formData.asset_id}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, asset_id: value });
+                  }}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Pilih Nama Asset" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredAssets.length > 0 ? (
+                      filteredAssets.map((asset) => (
+                        <SelectItem key={asset.id} value={asset.id.toString()}>
+                          {asset.nama_aset}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-asset" disabled>
+                        Tidak ada asset untuk kategori ini
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                  <p className="text-sm text-amber-700">
+                    <strong>Catatan:</strong> Kategori ini tidak tercatat ke
+                    pembukuan dan tidak mengurangi modal perusahaan.
+                  </p>
+                </div>
+              </div>
+            ) : shouldShowSumberDana(formData.kategori) ? (
               <div>
                 <Label htmlFor="sumber_dana">Sumber Dana *</Label>
                 <Select

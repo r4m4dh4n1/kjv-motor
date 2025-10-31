@@ -90,7 +90,8 @@ const fetchPenjualanWithRelations = async (
   tableName: string,
   selectedDivision: string,
   dateFilter: DateFilterType,
-  customDateRange?: DateRange
+  customDateRange?: DateRange,
+  statusFilter?: string | string[] // ✅ NEW: Pass status filter
 ) => {
   let selectFields: string;
 
@@ -109,10 +110,16 @@ const fetchPenjualanWithRelations = async (
     `;
   }
 
-  let query = supabase
-    .from(tableName as any)
-    .select(selectFields)
-    .eq("status", "selesai"); // ✅ FIXED: Only fetch sold items (status = selesai)
+  let query = supabase.from(tableName as any).select(selectFields);
+
+  // ✅ Apply status filter if provided
+  if (statusFilter) {
+    if (Array.isArray(statusFilter)) {
+      query = query.in("status", statusFilter);
+    } else {
+      query = query.eq("status", statusFilter);
+    }
+  }
 
   // Filter berdasarkan divisi
   if (selectedDivision !== "all") {
@@ -248,7 +255,8 @@ export const usePenjualanData = (
   selectedDivision: string,
   useCombined: boolean = false,
   dateFilter: DateFilterType = "all",
-  customDateRange?: DateRange
+  customDateRange?: DateRange,
+  statusFilter?: string | string[] // ✅ NEW: Optional status filter
 ) => {
   const [penjualanData, setPenjualanData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -266,13 +274,15 @@ export const usePenjualanData = (
             "penjualans",
             selectedDivision,
             dateFilter,
-            customDateRange
+            customDateRange,
+            statusFilter // ✅ Pass status filter
           ),
           fetchPenjualanWithRelations(
             "penjualans_history",
             selectedDivision,
             dateFilter,
-            customDateRange
+            customDateRange,
+            statusFilter // ✅ Pass status filter
           ),
         ]);
 
@@ -346,7 +356,8 @@ export const usePenjualanData = (
           "penjualans",
           selectedDivision,
           dateFilter,
-          customDateRange
+          customDateRange,
+          statusFilter // ✅ Pass status filter
         );
 
         if (result.error) {
@@ -374,7 +385,13 @@ export const usePenjualanData = (
 
   useEffect(() => {
     fetchPenjualanData();
-  }, [selectedDivision, useCombined, dateFilter, customDateRange]);
+  }, [
+    selectedDivision,
+    useCombined,
+    dateFilter,
+    customDateRange,
+    statusFilter,
+  ]); // ✅ Add statusFilter to dependencies
 
   return {
     penjualanData,

@@ -474,11 +474,10 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         : "operational";
 
       // ? PERBAIKAN UTAMA: This Month pakai tanggal, Last Month & This Year pakai original_month
-      const shouldQueryByOriginalMonth = [
-        "this_month",
-        "last_month",
-        "this_year",
-      ].includes(selectedPeriod);
+      // ✅ FIX: this_month TIDAK pakai original_month, hanya pakai tanggal biasa
+      const shouldQueryByOriginalMonth = ["last_month", "this_year"].includes(
+        selectedPeriod
+      );
 
       console.log("?? Query Configuration:", {
         operationalTable,
