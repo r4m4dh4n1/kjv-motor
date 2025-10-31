@@ -466,8 +466,17 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
   const fetchBiayaData = async (dateRange: { start: Date; end: Date }) => {
     console.log("💰 === FETCH BIAYA DATA START ===");
     try {
-      const startDate = dateRange.start.toISOString();
-      const endDate = dateRange.end.toISOString();
+      // ✅ FIXED: Use DATE format (YYYY-MM-DD) instead of ISO timestamp to avoid timezone issues
+      const startDate = dateRange.start.toISOString().split("T")[0]; // "2025-10-01"
+      const endDate = dateRange.end.toISOString().split("T")[0]; // "2025-10-31"
+
+      console.log("📅 Date Range for Query:", {
+        startLocal: dateRange.start.toLocaleDateString("id-ID"),
+        endLocal: dateRange.end.toLocaleDateString("id-ID"),
+        startDate,
+        endDate,
+        selectedPeriod,
+      });
 
       const operationalTable = shouldUseOperationalCombined
         ? "operational_combined"
