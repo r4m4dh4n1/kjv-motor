@@ -294,22 +294,19 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           `?? Fetched ${penjualanData.length} combined penjualan records`
         );
 
-        const filteredData = penjualanData.filter((item) => {
-          const itemDate = new Date(item.tanggal);
-          const itemDateWIB = new Date(itemDate.getTime() + 7 * 60 * 60 * 1000);
-          const currentDate = new Date();
-          const currentDateWIB = new Date(
-            currentDate.getTime() + 7 * 60 * 60 * 1000
-          );
+        console.log(
+          "?? Sample penjualan data (first 3):",
+          penjualanData.slice(0, 3).map((p) => ({
+            id: p.id,
+            tanggal: p.tanggal,
+            harga_jual: p.harga_jual,
+            divisi: p.divisi,
+          }))
+        );
 
-          if (selectedPeriod === "this_month") {
-            return (
-              itemDateWIB.getMonth() === currentDateWIB.getMonth() &&
-              itemDateWIB.getFullYear() === currentDateWIB.getFullYear()
-            );
-          }
-          return true;
-        });
+        // ✅ PERBAIKAN: Tidak perlu filter lagi karena query database sudah filter berdasarkan tanggal
+        // Query database sudah menggunakan .gte() dan .lte() dengan range yang benar
+        const filteredData = penjualanData;
 
         console.log(`?? After date filtering: ${filteredData.length} records`);
 
@@ -646,118 +643,16 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         }))
       );
 
-      const allCategories = [
-        ...new Set(operationalData.map((item) => item.kategori || "")),
-      ];
-
-      console.log("?? All categories found:", allCategories);
-
-      // ? PERBAIKAN UTAMA: Filter juga harus ikuti logika yang sama dengan query
-      const shouldUseOriginalMonthForFiltering = [
-        "this_month",
-        "last_month",
-        "this_year",
-      ].includes(selectedPeriod);
-
-      console.log(`??? Filtering Configuration:`, {
-        selectedPeriod,
-        shouldUseOriginalMonthForFiltering,
-        filterField: shouldUseOriginalMonthForFiltering
-          ? "original_month"
-          : "tanggal",
-      });
-
-      const filteredOperationalData = operationalData.filter((item) => {
-        const kategori = item.kategori || "";
-        const currentDate = new Date();
-        const currentDateWIB = new Date(
-          currentDate.getTime() + 7 * 60 * 60 * 1000
-        );
-
-        let dateToUse: Date;
-        let filteringMethod: string;
-
-        if (shouldUseOriginalMonthForFiltering) {
-          // ? Last Month & This Year: WAJIB pakai original_month
-          if (!item.original_month) {
-            console.log(`?? Skipping "${kategori}" (no original_month):`, {
-              tanggal: item.tanggal,
-              nominal: item.nominal,
-            });
-            return false;
-          }
-
-          let originalMonthStr = item.original_month;
-          if (originalMonthStr.length === 7) {
-            originalMonthStr += "-01";
-          }
-          dateToUse = new Date(originalMonthStr);
-          filteringMethod = "original_month";
-        } else {
-          // ? This Month: pakai tanggal
-          dateToUse = new Date(item.tanggal);
-          filteringMethod = "tanggal";
-        }
-
-        const itemDateWIB = new Date(dateToUse.getTime() + 7 * 60 * 60 * 1000);
-        let shouldInclude = false;
-
-        if (selectedPeriod === "this_month") {
-          shouldInclude =
-            itemDateWIB.getMonth() === currentDateWIB.getMonth() &&
-            itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
-        } else if (selectedPeriod === "last_month") {
-          const lastMonthDate = new Date(
-            currentDateWIB.getFullYear(),
-            currentDateWIB.getMonth() - 1,
-            1
-          );
-          shouldInclude =
-            itemDateWIB.getMonth() === lastMonthDate.getMonth() &&
-            itemDateWIB.getFullYear() === lastMonthDate.getFullYear();
-        } else if (selectedPeriod === "this_year") {
-          shouldInclude =
-            itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
-        } else if (selectedPeriod === "last_year") {
-          shouldInclude =
-            itemDateWIB.getFullYear() === currentDateWIB.getFullYear() - 1;
-        } else if (
-          selectedPeriod === "custom" &&
-          customStartDate &&
-          customEndDate
-        ) {
-          const startDate = new Date(customStartDate);
-          const endDate = new Date(customEndDate);
-          const startDateWIB = new Date(
-            startDate.getTime() + 7 * 60 * 60 * 1000
-          );
-          const endDateWIB = new Date(endDate.getTime() + 7 * 60 * 60 * 1000);
-          shouldInclude =
-            itemDateWIB >= startDateWIB && itemDateWIB <= endDateWIB;
-        } else {
-          shouldInclude = true;
-        }
-
-        // Log sample untuk debugging
-        if (
-          kategori.includes("Gaji Kurang Modal") &&
-          operationalData.indexOf(item) < 3
-        ) {
-          console.log(`?? "${kategori}" filtering (${filteringMethod}):`, {
-            tanggal: item.tanggal,
-            original_month: item.original_month,
-            dateUsed: dateToUse.toISOString().split("T")[0],
-            selectedPeriod,
-            shouldInclude,
-            nominal: item.nominal,
-          });
-        }
-
-        return shouldInclude;
-      });
+      // ✅ FIXED: Tidak perlu filter client-side lagi karena database query sudah benar
+      const filteredOperationalData = operationalData;
 
       console.log(
-        `?? After filtering: ${filteredOperationalData.length} records`
+        `?? Operational records after query: ${filteredOperationalData.length}`,
+        filteredOperationalData.slice(0, 3).map((item) => ({
+          kategori: item.kategori,
+          tanggal: item.tanggal,
+          nominal: item.nominal,
+        }))
       );
 
       const gajiKurangModal = filteredOperationalData.filter(
