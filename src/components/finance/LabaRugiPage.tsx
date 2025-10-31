@@ -869,9 +869,24 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
   };
 
   const getBiayaDetailByKategori = (kategori: string) => {
-    return detailData.operationalDetail.filter(
+    const filtered = detailData.operationalDetail.filter(
       (item) => (item.kategori || "Lainnya") === kategori
     );
+
+    // ✅ Apply OP Global START logic: adjust nominal to half for display consistency
+    return filtered.map((item) => {
+      const isOpGlobalStart =
+        kategori === "OP Global" &&
+        item.divisi &&
+        item.divisi.toLowerCase() === "start";
+
+      return {
+        ...item,
+        nominal: isOpGlobalStart ? (item.nominal || 0) / 2 : item.nominal,
+        // Keep original for reference if needed
+        originalNominal: item.nominal,
+      };
+    });
   };
 
   const toggleSection = (section: string) => {
