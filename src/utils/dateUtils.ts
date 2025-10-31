@@ -90,17 +90,15 @@ export function getDateRange(
       break;
   }
 
-  // Konversi ke UTC untuk query database
-  const startUTC = new Date(start.getTime() - 7 * 60 * 60 * 1000);
-  const endUTC = new Date(end.getTime() - 7 * 60 * 60 * 1000);
-
-  console.log("🕐 Date Range Conversion:", {
+  // ✅ FIXED: Tidak perlu konversi UTC, gunakan waktu lokal langsung
+  // Database sudah menyimpan tanggal dalam timezone lokal (WIB)
+  console.log("🕐 Date Range (Local Time):", {
     filter,
     localStart: start.toLocaleDateString("id-ID"),
     localEnd: end.toLocaleDateString("id-ID"),
-    utcStart: startUTC.toISOString(),
-    utcEnd: endUTC.toISOString(),
+    startISO: start.toISOString(),
+    endISO: end.toISOString(),
   });
 
-  return { start: startUTC, end: endUTC };
+  return { start, end };
 }
