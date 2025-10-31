@@ -1,15 +1,36 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { supabase } from '@/integrations/supabase/client';
-import { Printer, Download, TrendingUp, TrendingDown, DollarSign, BarChart3, ChevronDown } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import { formatCurrency } from '@/utils/formatUtils';
-import { getDateRange } from '@/utils/dateUtils';
+import React, { useState, useEffect, useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Printer,
+  Download,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  BarChart3,
+  ChevronDown,
+} from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/utils/formatUtils";
+import { getDateRange } from "@/utils/dateUtils";
 
 interface LabaRugiPageProps {
   selectedDivision: string;
@@ -41,44 +62,56 @@ interface LabaRugiData {
 const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
   const [labaRugiData, setLabaRugiData] = useState<LabaRugiData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState('this_month');
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
-  const [selectedCabang, setSelectedCabang] = useState('all');
+  const [selectedPeriod, setSelectedPeriod] = useState("this_month");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+  const [selectedCabang, setSelectedCabang] = useState("all");
   const [cabangList, setCabangList] = useState([]);
-  
-  const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({});
-  
+
+  const [expandedSections, setExpandedSections] = useState<{
+    [key: string]: boolean;
+  }>({});
+
   const [detailData, setDetailData] = useState<{
-    penjualanDetail: any[],
-    operationalDetail: any[],
-    pendapatanLainDetail: any[],
-    hargaBeliDetail: any[]
+    penjualanDetail: any[];
+    operationalDetail: any[];
+    pendapatanLainDetail: any[];
+    hargaBeliDetail: any[];
   }>({
     penjualanDetail: [],
     operationalDetail: [],
     pendapatanLainDetail: [],
-    hargaBeliDetail: []
+    hargaBeliDetail: [],
   });
 
-  const shouldUseCombined = ['this_month', 'last_month', 'this_year'].includes(selectedPeriod);
-  
+  const shouldUseCombined = ["this_month", "last_month", "this_year"].includes(
+    selectedPeriod
+  );
+
   const shouldUseOperationalCombined = useMemo(() => {
-    const periodsRequiringCombined = ['this_month','last_month', 'this_year', 'last_year'];
-    
+    const periodsRequiringCombined = [
+      "this_month",
+      "last_month",
+      "this_year",
+      "last_year",
+    ];
+
     if (periodsRequiringCombined.includes(selectedPeriod)) {
       return true;
     }
-    
-    if (selectedPeriod === 'custom' && customStartDate && customEndDate) {
+
+    if (selectedPeriod === "custom" && customStartDate && customEndDate) {
       const currentDate = new Date(2025, 9, 30);
       const currentMonth = currentDate.getMonth();
       const currentYear = currentDate.getFullYear();
       const startDate = new Date(customStartDate);
-      
-      return startDate.getMonth() < currentMonth || startDate.getFullYear() < currentYear;
+
+      return (
+        startDate.getMonth() < currentMonth ||
+        startDate.getFullYear() < currentYear
+      );
     }
-    
+
     return false;
   }, [selectedPeriod, customStartDate, customEndDate]);
 
@@ -88,78 +121,91 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
 
   useEffect(() => {
     fetchLabaRugiData();
-  }, [selectedPeriod, customStartDate, customEndDate, selectedDivision, selectedCabang]);
+  }, [
+    selectedPeriod,
+    customStartDate,
+    customEndDate,
+    selectedDivision,
+    selectedCabang,
+  ]);
 
   useEffect(() => {
     if (labaRugiData?.biayaPerKategori) {
-      const newExpandedSections: {[key: string]: boolean} = {
+      const newExpandedSections: { [key: string]: boolean } = {
         penjualan: false,
         pendapatanLain: false,
         biroJasa: false, // ✅ TAMBAH: Section untuk biro jasa
         hargaBeli: false,
         biayaPembelian: false,
       };
-      
-      Object.keys(labaRugiData.biayaPerKategori).forEach(kategori => {
+
+      Object.keys(labaRugiData.biayaPerKategori).forEach((kategori) => {
         newExpandedSections[`biaya_${kategori}`] = false;
       });
-      
-      setExpandedSections(prev => ({ ...prev, ...newExpandedSections }));
+
+      setExpandedSections((prev) => ({ ...prev, ...newExpandedSections }));
     }
   }, [labaRugiData]);
 
   const fetchInitialData = async () => {
     try {
       const { data: cabangData } = await supabase
-        .from('cabang')
-        .select('id, nama')
-        .order('nama');
-      
+        .from("cabang")
+        .select("id, nama")
+        .order("nama");
+
       setCabangList(cabangData || []);
     } catch (error) {
-      console.error('Error fetching initial data:', error);
+      console.error("Error fetching initial data:", error);
     }
   };
 
   const fetchLabaRugiData = async () => {
     setLoading(true);
     try {
-      const dateRange = getDateRange(selectedPeriod, customStartDate, customEndDate);
-      
-      console.log('?? LabaRugi Debug Info:', {
+      const dateRange = getDateRange(
+        selectedPeriod,
+        customStartDate,
+        customEndDate
+      );
+
+      console.log("?? LabaRugi Debug Info:", {
         selectedPeriod,
         dateRange: {
           start: dateRange.start.toISOString(),
           end: dateRange.end.toISOString(),
-          startLocal: dateRange.start.toLocaleDateString('id-ID'),
-          endLocal: dateRange.end.toLocaleDateString('id-ID')
+          startLocal: dateRange.start.toLocaleDateString("id-ID"),
+          endLocal: dateRange.end.toLocaleDateString("id-ID"),
         },
         shouldUseCombined,
-        currentDate: new Date().toLocaleDateString('id-ID')
+        currentDate: new Date().toLocaleDateString("id-ID"),
       });
-      
+
       const [pendapatanData, biayaData, biroJasaData] = await Promise.all([
         fetchPendapatanData(dateRange),
         fetchBiayaData(dateRange),
-        fetchBiroJasaKeuntungan(dateRange) // ✅ TAMBAH: Fetch keuntungan biro jasa
+        fetchBiroJasaKeuntungan(dateRange), // ✅ TAMBAH: Fetch keuntungan biro jasa
       ]);
-      
-      const calculatedData = calculateLabaRugi(pendapatanData, biayaData, biroJasaData);
+
+      const calculatedData = calculateLabaRugi(
+        pendapatanData,
+        biayaData,
+        biroJasaData
+      );
       setLabaRugiData(calculatedData);
-      
+
       setDetailData({
         penjualanDetail: pendapatanData.penjualanDetail || [],
         operationalDetail: biayaData.operationalDetail || [],
         pendapatanLainDetail: [],
-        hargaBeliDetail: pendapatanData.penjualanDetail || []
+        hargaBeliDetail: pendapatanData.penjualanDetail || [],
       });
-      
     } catch (error) {
-      console.error('Error fetching laba rugi data:', error);
+      console.error("Error fetching laba rugi data:", error);
       toast({
         title: "Error",
         description: "Gagal mengambil data laba rugi",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -169,21 +215,22 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
   const fetchPendapatanData = async (dateRange: { start: Date; end: Date }) => {
     const startDate = dateRange.start.toISOString();
     const endDate = dateRange.end.toISOString();
-    
-    console.log('?? Fetching pendapatan data:', { 
-      startDate, 
-      endDate, 
-      shouldUseCombined, 
+
+    console.log("?? Fetching pendapatan data:", {
+      startDate,
+      endDate,
+      shouldUseCombined,
       selectedPeriod,
-      startLocal: dateRange.start.toLocaleDateString('id-ID'),
-      endLocal: dateRange.end.toLocaleDateString('id-ID')
+      startLocal: dateRange.start.toLocaleDateString("id-ID"),
+      endLocal: dateRange.end.toLocaleDateString("id-ID"),
     });
-    
+
     try {
       if (shouldUseCombined) {
         let query = supabase
-          .from('penjualans_combined')
-          .select(`
+          .from("penjualans_combined")
+          .select(
+            `
             harga_jual, 
             harga_beli, 
             keuntungan, 
@@ -196,73 +243,108 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             plat,
             brand_id,
             jenis_id
-          `)
-          .eq('status', 'selesai')
-          .gte('tanggal', startDate)
-          .lte('tanggal', endDate);
+          `
+          )
+          .eq("status", "selesai")
+          .gte("tanggal", startDate)
+          .lte("tanggal", endDate);
 
-        if (selectedDivision !== 'all') {
-          query = query.eq('divisi', selectedDivision);
+        if (selectedDivision !== "all") {
+          query = query.eq("divisi", selectedDivision);
         }
 
-        if (selectedCabang !== 'all') {
-          query = query.eq('cabang_id', parseInt(selectedCabang));
+        if (selectedCabang !== "all") {
+          query = query.eq("cabang_id", parseInt(selectedCabang));
         }
 
         const { data, error } = await query;
-        
+
         if (error) {
-          console.error('Error fetching combined penjualan data:', error);
+          console.error("Error fetching combined penjualan data:", error);
           throw error;
         }
 
         const penjualanData = data || [];
-        console.log(`?? Fetched ${penjualanData.length} combined penjualan records`);
-        
-        const filteredData = penjualanData.filter(item => {
+        console.log(
+          `?? Fetched ${penjualanData.length} combined penjualan records`
+        );
+
+        const filteredData = penjualanData.filter((item) => {
           const itemDate = new Date(item.tanggal);
-          const itemDateWIB = new Date(itemDate.getTime() + (7 * 60 * 60 * 1000));
+          const itemDateWIB = new Date(itemDate.getTime() + 7 * 60 * 60 * 1000);
           const currentDate = new Date();
-          const currentDateWIB = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
-          
-          if (selectedPeriod === 'this_month') {
-            return itemDateWIB.getMonth() === currentDateWIB.getMonth() && 
-                   itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
+          const currentDateWIB = new Date(
+            currentDate.getTime() + 7 * 60 * 60 * 1000
+          );
+
+          if (selectedPeriod === "this_month") {
+            return (
+              itemDateWIB.getMonth() === currentDateWIB.getMonth() &&
+              itemDateWIB.getFullYear() === currentDateWIB.getFullYear()
+            );
           }
           return true;
         });
-        
+
         console.log(`?? After date filtering: ${filteredData.length} records`);
-        
-        const brandIds = [...new Set(filteredData.map(item => item.brand_id).filter(Boolean))];
-        const jenisIds = [...new Set(filteredData.map(item => item.jenis_id).filter(Boolean))];
-        
+
+        const brandIds = [
+          ...new Set(filteredData.map((item) => item.brand_id).filter(Boolean)),
+        ];
+        const jenisIds = [
+          ...new Set(filteredData.map((item) => item.jenis_id).filter(Boolean)),
+        ];
+
         const [brandsResult, jenisMotorResult] = await Promise.all([
-          brandIds.length > 0 ? supabase.from('brands').select('id, name').in('id', brandIds) : Promise.resolve({ data: [] }),
-          jenisIds.length > 0 ? supabase.from('jenis_motor').select('id, jenis_motor').in('id', jenisIds) : Promise.resolve({ data: [] })
+          brandIds.length > 0
+            ? supabase.from("brands").select("id, name").in("id", brandIds)
+            : Promise.resolve({ data: [] }),
+          jenisIds.length > 0
+            ? supabase
+                .from("jenis_motor")
+                .select("id, jenis_motor")
+                .in("id", jenisIds)
+            : Promise.resolve({ data: [] }),
         ]);
-        
-        const brandMap = new Map((brandsResult.data || []).map(brand => [brand.id, brand]));
-        const jenisMap = new Map((jenisMotorResult.data || []).map(jenis => [jenis.id, jenis]));
-        
-        const enrichedData = filteredData.map(item => ({
+
+        const brandMap = new Map(
+          (brandsResult.data || []).map((brand) => [brand.id, brand])
+        );
+        const jenisMap = new Map(
+          (jenisMotorResult.data || []).map((jenis) => [jenis.id, jenis])
+        );
+
+        const enrichedData = filteredData.map((item) => ({
           ...item,
-          brands: brandMap.get(item.brand_id) || { name: `Brand ID: ${item.brand_id}` },
-          jenis_motor: jenisMap.get(item.jenis_id) || { jenis_motor: `Jenis ID: ${item.jenis_id}` }
+          brands: brandMap.get(item.brand_id) || {
+            name: `Brand ID: ${item.brand_id}`,
+          },
+          jenis_motor: jenisMap.get(item.jenis_id) || {
+            jenis_motor: `Jenis ID: ${item.jenis_id}`,
+          },
         }));
-        
+
         return {
-          totalPenjualan: enrichedData.reduce((sum, item) => sum + (item.harga_jual || 0), 0),
-          totalHargaBeli: enrichedData.reduce((sum, item) => sum + (item.harga_beli || 0), 0),
-          totalKeuntungan: enrichedData.reduce((sum, item) => sum + (item.keuntungan || 0), 0),
+          totalPenjualan: enrichedData.reduce(
+            (sum, item) => sum + (item.harga_jual || 0),
+            0
+          ),
+          totalHargaBeli: enrichedData.reduce(
+            (sum, item) => sum + (item.harga_beli || 0),
+            0
+          ),
+          totalKeuntungan: enrichedData.reduce(
+            (sum, item) => sum + (item.keuntungan || 0),
+            0
+          ),
           jumlahTransaksi: enrichedData.length,
-          penjualanDetail: enrichedData
+          penjualanDetail: enrichedData,
         };
-        
       } else {
         let query = supabase
-          .from('penjualans')
-          .select(`
+          .from("penjualans")
+          .select(
+            `
             harga_jual, 
             harga_beli, 
             keuntungan, 
@@ -274,54 +356,87 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             plat,
             brand_id,
             jenis_id
-          `)
-          .eq('status', 'selesai')
-          .gte('tanggal', startDate)
-          .lte('tanggal', endDate);
-      
-        if (selectedDivision !== 'all') {
-          query = query.eq('divisi', selectedDivision);
+          `
+          )
+          .eq("status", "selesai")
+          .gte("tanggal", startDate)
+          .lte("tanggal", endDate);
+
+        if (selectedDivision !== "all") {
+          query = query.eq("divisi", selectedDivision);
         }
-      
-        if (selectedCabang !== 'all') {
-          query = query.eq('cabang_id', parseInt(selectedCabang));
+
+        if (selectedCabang !== "all") {
+          query = query.eq("cabang_id", parseInt(selectedCabang));
         }
-      
+
         const { data: penjualanData, error } = await query;
         if (error) {
-          console.error('Error fetching penjualan data:', error);
+          console.error("Error fetching penjualan data:", error);
           throw error;
         }
-      
+
         console.log(`Fetched ${penjualanData?.length || 0} penjualan records`);
-        
-        const brandIds = [...new Set((penjualanData || []).map(item => item.brand_id).filter(Boolean))];
-        const jenisIds = [...new Set((penjualanData || []).map(item => item.jenis_id).filter(Boolean))];
-        
+
+        const brandIds = [
+          ...new Set(
+            (penjualanData || []).map((item) => item.brand_id).filter(Boolean)
+          ),
+        ];
+        const jenisIds = [
+          ...new Set(
+            (penjualanData || []).map((item) => item.jenis_id).filter(Boolean)
+          ),
+        ];
+
         const [brandsResult, jenisMotorResult] = await Promise.all([
-          brandIds.length > 0 ? supabase.from('brands').select('id, name').in('id', brandIds) : Promise.resolve({ data: [] }),
-          jenisIds.length > 0 ? supabase.from('jenis_motor').select('id, jenis_motor').in('id', jenisIds) : Promise.resolve({ data: [] })
+          brandIds.length > 0
+            ? supabase.from("brands").select("id, name").in("id", brandIds)
+            : Promise.resolve({ data: [] }),
+          jenisIds.length > 0
+            ? supabase
+                .from("jenis_motor")
+                .select("id, jenis_motor")
+                .in("id", jenisIds)
+            : Promise.resolve({ data: [] }),
         ]);
-        
-        const brandMap = new Map((brandsResult.data || []).map(brand => [brand.id, brand]));
-        const jenisMap = new Map((jenisMotorResult.data || []).map(jenis => [jenis.id, jenis]));
-        
-        const enrichedData = (penjualanData || []).map(item => ({
+
+        const brandMap = new Map(
+          (brandsResult.data || []).map((brand) => [brand.id, brand])
+        );
+        const jenisMap = new Map(
+          (jenisMotorResult.data || []).map((jenis) => [jenis.id, jenis])
+        );
+
+        const enrichedData = (penjualanData || []).map((item) => ({
           ...item,
-          brands: brandMap.get(item.brand_id) || { name: `Brand ID: ${item.brand_id}` },
-          jenis_motor: jenisMap.get(item.jenis_id) || { jenis_motor: `Jenis ID: ${item.jenis_id}` }
+          brands: brandMap.get(item.brand_id) || {
+            name: `Brand ID: ${item.brand_id}`,
+          },
+          jenis_motor: jenisMap.get(item.jenis_id) || {
+            jenis_motor: `Jenis ID: ${item.jenis_id}`,
+          },
         }));
-        
+
         return {
-          totalPenjualan: enrichedData.reduce((sum, item) => sum + (item.harga_jual || 0), 0),
-          totalHargaBeli: enrichedData.reduce((sum, item) => sum + (item.harga_beli || 0), 0),
-          totalKeuntungan: enrichedData.reduce((sum, item) => sum + (item.keuntungan || 0), 0),
+          totalPenjualan: enrichedData.reduce(
+            (sum, item) => sum + (item.harga_jual || 0),
+            0
+          ),
+          totalHargaBeli: enrichedData.reduce(
+            (sum, item) => sum + (item.harga_beli || 0),
+            0
+          ),
+          totalKeuntungan: enrichedData.reduce(
+            (sum, item) => sum + (item.keuntungan || 0),
+            0
+          ),
           jumlahTransaksi: enrichedData.length,
-          penjualanDetail: enrichedData
+          penjualanDetail: enrichedData,
         };
       }
     } catch (error) {
-      console.error('Error in fetchPendapatanData:', error);
+      console.error("Error in fetchPendapatanData:", error);
       throw error;
     }
   };
@@ -330,86 +445,101 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
     try {
       const startDate = dateRange.start.toISOString();
       const endDate = dateRange.end.toISOString();
-  
-      const operationalTable = shouldUseOperationalCombined ? 'operational_combined' : 'operational';
-      
-      // ? PERBAIKAN UTAMA: This Month pakai tanggal, Last Month & This Year pakai original_month
-      const shouldQueryByOriginalMonth = ['this_month','last_month', 'this_year'].includes(selectedPeriod);
 
-      console.log('?? Query Configuration:', { 
-        operationalTable, 
+      const operationalTable = shouldUseOperationalCombined
+        ? "operational_combined"
+        : "operational";
+
+      // ? PERBAIKAN UTAMA: This Month pakai tanggal, Last Month & This Year pakai original_month
+      const shouldQueryByOriginalMonth = [
+        "this_month",
+        "last_month",
+        "this_year",
+      ].includes(selectedPeriod);
+
+      console.log("?? Query Configuration:", {
+        operationalTable,
         shouldUseOperationalCombined,
         shouldQueryByOriginalMonth,
         selectedPeriod,
-        queryField: shouldQueryByOriginalMonth ? 'original_month' : 'tanggal'
+        queryField: shouldQueryByOriginalMonth ? "original_month" : "tanggal",
       });
-  
+
       let operationalData: any[] = [];
-      
+
       try {
         let data: any[] = [];
         let error: any = null;
-        
-        if (operationalTable === 'operational') {
+
+        if (operationalTable === "operational") {
           let operationalQuery = supabase
-            .from('operational')
-            .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month');
+            .from("operational")
+            .select(
+              "kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month"
+            );
 
           // ? KUNCI: Query berdasarkan periode
           if (shouldQueryByOriginalMonth) {
             // Last Month & This Year ? Query pakai original_month
             operationalQuery = operationalQuery
-              .gte('original_month', startDate)
-              .lte('original_month', endDate);
-            console.log('?? Query using: original_month');
+              .gte("original_month", startDate)
+              .lte("original_month", endDate);
+            console.log("?? Query using: original_month");
           } else {
             // This Month ? Query pakai tanggal
             operationalQuery = operationalQuery
-              .gte('tanggal', startDate)
-              .lte('tanggal', endDate);
-            console.log('?? Query using: tanggal');
+              .gte("tanggal", startDate)
+              .lte("tanggal", endDate);
+            console.log("?? Query using: tanggal");
           }
 
-          if (selectedDivision !== 'all') {
-            operationalQuery = operationalQuery.eq('divisi', selectedDivision);
+          if (selectedDivision !== "all") {
+            operationalQuery = operationalQuery.eq("divisi", selectedDivision);
           }
-          
-          if (selectedCabang !== 'all') {
-            operationalQuery = operationalQuery.eq('cabang_id', parseInt(selectedCabang));
+
+          if (selectedCabang !== "all") {
+            operationalQuery = operationalQuery.eq(
+              "cabang_id",
+              parseInt(selectedCabang)
+            );
           }
 
           const result = await operationalQuery;
           data = result.data || [];
           error = result.error;
-          
         } else {
-          console.log('?? Using operational_combined');
-          
+          console.log("?? Using operational_combined");
+
           let operationalQuery = supabase
-            .from('operational_combined')
-            .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month, data_source');
+            .from("operational_combined")
+            .select(
+              "kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month, data_source"
+            );
 
           // ? KUNCI: Query berdasarkan periode
           if (shouldQueryByOriginalMonth) {
             // Last Month & This Year ? Query pakai original_month
             operationalQuery = operationalQuery
-              .gte('original_month', startDate)
-              .lte('original_month', endDate);
-            console.log('?? Query using: original_month');
+              .gte("original_month", startDate)
+              .lte("original_month", endDate);
+            console.log("?? Query using: original_month");
           } else {
             // This Month ? Query pakai tanggal
             operationalQuery = operationalQuery
-              .gte('tanggal', startDate)
-              .lte('tanggal', endDate);
-            console.log('?? Query using: tanggal');
+              .gte("tanggal", startDate)
+              .lte("tanggal", endDate);
+            console.log("?? Query using: tanggal");
           }
 
-          if (selectedDivision !== 'all') {
-            operationalQuery = operationalQuery.eq('divisi', selectedDivision);
+          if (selectedDivision !== "all") {
+            operationalQuery = operationalQuery.eq("divisi", selectedDivision);
           }
-          
-          if (selectedCabang !== 'all') {
-            operationalQuery = operationalQuery.eq('cabang_id', parseInt(selectedCabang));
+
+          if (selectedCabang !== "all") {
+            operationalQuery = operationalQuery.eq(
+              "cabang_id",
+              parseInt(selectedCabang)
+            );
           }
 
           const result = await operationalQuery;
@@ -417,246 +547,336 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           error = result.error;
         }
 
-        console.log('?? Query completed:', {
+        console.log("?? Query completed:", {
           recordsFetched: data?.length || 0,
-          hasError: !!error
+          hasError: !!error,
         });
-        
+
         if (error) {
           console.error(`Error fetching ${operationalTable} data:`, error);
-          if (operationalTable === 'operational_combined') {
-            console.log('?? Fallback to operational table');
-            
+          if (operationalTable === "operational_combined") {
+            console.log("?? Fallback to operational table");
+
             let fallbackQuery = supabase
-              .from('operational')
-              .select('kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month');
-            
+              .from("operational")
+              .select(
+                "kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month"
+              );
+
             // Fallback juga ikuti logika yang sama
             if (shouldQueryByOriginalMonth) {
               fallbackQuery = fallbackQuery
-                .gte('original_month', startDate)
-                .lte('original_month', endDate);
+                .gte("original_month", startDate)
+                .lte("original_month", endDate);
             } else {
               fallbackQuery = fallbackQuery
-                .gte('tanggal', startDate)
-                .lte('tanggal', endDate);
+                .gte("tanggal", startDate)
+                .lte("tanggal", endDate);
             }
-              
-            if (selectedDivision !== 'all') {
-              fallbackQuery = fallbackQuery.eq('divisi', selectedDivision);
+
+            if (selectedDivision !== "all") {
+              fallbackQuery = fallbackQuery.eq("divisi", selectedDivision);
             }
-            
-            if (selectedCabang !== 'all') {
-              fallbackQuery = fallbackQuery.eq('cabang_id', parseInt(selectedCabang));
+
+            if (selectedCabang !== "all") {
+              fallbackQuery = fallbackQuery.eq(
+                "cabang_id",
+                parseInt(selectedCabang)
+              );
             }
-            
-            const { data: fallbackData, error: fallbackError } = await fallbackQuery;
-            
+
+            const { data: fallbackData, error: fallbackError } =
+              await fallbackQuery;
+
             if (!fallbackError) {
               operationalData = fallbackData || [];
-              console.log('? Fallback successful:', operationalData.length, 'records');
+              console.log(
+                "? Fallback successful:",
+                operationalData.length,
+                "records"
+              );
             }
           }
         } else {
           operationalData = data || [];
-          console.log(`?? Operational data loaded: ${operationalData.length} records`);
+          console.log(
+            `?? Operational data loaded: ${operationalData.length} records`
+          );
         }
       } catch (err) {
-        console.error('? Error in operational query:', err);
+        console.error("? Error in operational query:", err);
         operationalData = [];
       }
-  
+
       console.log(`Fetched ${operationalData.length} operational records`);
-      
-      console.log('?? Raw operational data sample (first 5 records):', operationalData.slice(0, 5).map(item => ({
-        kategori: item.kategori,
-        tanggal: item.tanggal,
-        original_month: item.original_month,
-        nominal: item.nominal
-      })));
-      
-      const allCategories = [...new Set(operationalData.map(item => item.kategori || ''))];
-      
-      console.log('?? All categories found:', allCategories);
-      
+
+      console.log(
+        "?? Raw operational data sample (first 5 records):",
+        operationalData.slice(0, 5).map((item) => ({
+          kategori: item.kategori,
+          tanggal: item.tanggal,
+          original_month: item.original_month,
+          nominal: item.nominal,
+        }))
+      );
+
+      const allCategories = [
+        ...new Set(operationalData.map((item) => item.kategori || "")),
+      ];
+
+      console.log("?? All categories found:", allCategories);
+
       // ? PERBAIKAN UTAMA: Filter juga harus ikuti logika yang sama dengan query
-      const shouldUseOriginalMonthForFiltering = ['this_month','last_month', 'this_year'].includes(selectedPeriod);
-      
+      const shouldUseOriginalMonthForFiltering = [
+        "this_month",
+        "last_month",
+        "this_year",
+      ].includes(selectedPeriod);
+
       console.log(`??? Filtering Configuration:`, {
         selectedPeriod,
         shouldUseOriginalMonthForFiltering,
-        filterField: shouldUseOriginalMonthForFiltering ? 'original_month' : 'tanggal'
+        filterField: shouldUseOriginalMonthForFiltering
+          ? "original_month"
+          : "tanggal",
       });
-      
-      const filteredOperationalData = operationalData.filter(item => {
-        const kategori = item.kategori || '';
+
+      const filteredOperationalData = operationalData.filter((item) => {
+        const kategori = item.kategori || "";
         const currentDate = new Date();
-        const currentDateWIB = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
-        
+        const currentDateWIB = new Date(
+          currentDate.getTime() + 7 * 60 * 60 * 1000
+        );
+
         let dateToUse: Date;
         let filteringMethod: string;
-        
+
         if (shouldUseOriginalMonthForFiltering) {
           // ? Last Month & This Year: WAJIB pakai original_month
           if (!item.original_month) {
             console.log(`?? Skipping "${kategori}" (no original_month):`, {
               tanggal: item.tanggal,
-              nominal: item.nominal
+              nominal: item.nominal,
             });
             return false;
           }
-          
+
           let originalMonthStr = item.original_month;
           if (originalMonthStr.length === 7) {
-            originalMonthStr += '-01';
+            originalMonthStr += "-01";
           }
           dateToUse = new Date(originalMonthStr);
-          filteringMethod = 'original_month';
+          filteringMethod = "original_month";
         } else {
           // ? This Month: pakai tanggal
           dateToUse = new Date(item.tanggal);
-          filteringMethod = 'tanggal';
+          filteringMethod = "tanggal";
         }
-        
-        const itemDateWIB = new Date(dateToUse.getTime() + (7 * 60 * 60 * 1000));
+
+        const itemDateWIB = new Date(dateToUse.getTime() + 7 * 60 * 60 * 1000);
         let shouldInclude = false;
-        
-        if (selectedPeriod === 'this_month') {
-          shouldInclude = itemDateWIB.getMonth() === currentDateWIB.getMonth() && 
-                         itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
-        } else if (selectedPeriod === 'last_month') {
-          const lastMonthDate = new Date(currentDateWIB.getFullYear(), currentDateWIB.getMonth() - 1, 1);
-          shouldInclude = itemDateWIB.getMonth() === lastMonthDate.getMonth() && 
-                         itemDateWIB.getFullYear() === lastMonthDate.getFullYear();
-        } else if (selectedPeriod === 'this_year') {
-          shouldInclude = itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
-        } else if (selectedPeriod === 'last_year') {
-          shouldInclude = itemDateWIB.getFullYear() === (currentDateWIB.getFullYear() - 1);
-        } else if (selectedPeriod === 'custom' && customStartDate && customEndDate) {
+
+        if (selectedPeriod === "this_month") {
+          shouldInclude =
+            itemDateWIB.getMonth() === currentDateWIB.getMonth() &&
+            itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
+        } else if (selectedPeriod === "last_month") {
+          const lastMonthDate = new Date(
+            currentDateWIB.getFullYear(),
+            currentDateWIB.getMonth() - 1,
+            1
+          );
+          shouldInclude =
+            itemDateWIB.getMonth() === lastMonthDate.getMonth() &&
+            itemDateWIB.getFullYear() === lastMonthDate.getFullYear();
+        } else if (selectedPeriod === "this_year") {
+          shouldInclude =
+            itemDateWIB.getFullYear() === currentDateWIB.getFullYear();
+        } else if (selectedPeriod === "last_year") {
+          shouldInclude =
+            itemDateWIB.getFullYear() === currentDateWIB.getFullYear() - 1;
+        } else if (
+          selectedPeriod === "custom" &&
+          customStartDate &&
+          customEndDate
+        ) {
           const startDate = new Date(customStartDate);
           const endDate = new Date(customEndDate);
-          const startDateWIB = new Date(startDate.getTime() + (7 * 60 * 60 * 1000));
-          const endDateWIB = new Date(endDate.getTime() + (7 * 60 * 60 * 1000));
-          shouldInclude = itemDateWIB >= startDateWIB && itemDateWIB <= endDateWIB;
+          const startDateWIB = new Date(
+            startDate.getTime() + 7 * 60 * 60 * 1000
+          );
+          const endDateWIB = new Date(endDate.getTime() + 7 * 60 * 60 * 1000);
+          shouldInclude =
+            itemDateWIB >= startDateWIB && itemDateWIB <= endDateWIB;
         } else {
           shouldInclude = true;
         }
-        
+
         // Log sample untuk debugging
-        if (kategori.includes('Gaji Kurang Modal') && operationalData.indexOf(item) < 3) {
+        if (
+          kategori.includes("Gaji Kurang Modal") &&
+          operationalData.indexOf(item) < 3
+        ) {
           console.log(`?? "${kategori}" filtering (${filteringMethod}):`, {
             tanggal: item.tanggal,
             original_month: item.original_month,
-            dateUsed: dateToUse.toISOString().split('T')[0],
+            dateUsed: dateToUse.toISOString().split("T")[0],
             selectedPeriod,
             shouldInclude,
-            nominal: item.nominal
+            nominal: item.nominal,
           });
         }
-        
+
         return shouldInclude;
       });
 
-      console.log(`?? After filtering: ${filteredOperationalData.length} records`);
-      
-      const gajiKurangModal = filteredOperationalData.filter(item => 
-        item.kategori && item.kategori.includes('Gaji Kurang Modal')
+      console.log(
+        `?? After filtering: ${filteredOperationalData.length} records`
       );
-      console.log('? Gaji Kurang Modal included:', gajiKurangModal.length, 'records');
+
+      const gajiKurangModal = filteredOperationalData.filter(
+        (item) => item.kategori && item.kategori.includes("Gaji Kurang Modal")
+      );
+      console.log(
+        "? Gaji Kurang Modal included:",
+        gajiKurangModal.length,
+        "records"
+      );
       if (gajiKurangModal.length > 0) {
-        console.log('   Sample:', gajiKurangModal.slice(0, 3).map(item => ({
-          tanggal: item.tanggal,
-          original_month: item.original_month,
-          nominal: item.nominal
-        })));
+        console.log(
+          "   Sample:",
+          gajiKurangModal.slice(0, 3).map((item) => ({
+            tanggal: item.tanggal,
+            original_month: item.original_month,
+            nominal: item.nominal,
+          }))
+        );
       }
 
       const biayaPerKategori: { [key: string]: number } = {};
-      filteredOperationalData.forEach(item => {
-        const kategori = item.kategori || 'Lainnya';
+      filteredOperationalData.forEach((item) => {
+        const kategori = item.kategori || "Lainnya";
         // ✅ OP GLOBAL: Untuk kategori OP Global, gunakan nominal setengah untuk laporan laba rugi
-        const nominalToUse = kategori === 'OP Global' ? (item.nominal || 0) / 2 : (item.nominal || 0);
-        biayaPerKategori[kategori] = (biayaPerKategori[kategori] || 0) + nominalToUse;
+        const nominalToUse =
+          kategori === "OP Global"
+            ? (item.nominal || 0) / 2
+            : item.nominal || 0;
+        biayaPerKategori[kategori] =
+          (biayaPerKategori[kategori] || 0) + nominalToUse;
       });
-      
-      console.log('?? Biaya per kategori:', biayaPerKategori);
 
-      const totalOperasional = Object.values(biayaPerKategori).reduce((sum, value) => sum + value, 0);
+      console.log("?? Biaya per kategori:", biayaPerKategori);
+      console.log("?? Biaya per kategori keys:", Object.keys(biayaPerKategori));
+      console.log(
+        "?? Biaya per kategori entries:",
+        Object.entries(biayaPerKategori)
+      );
+
+      const totalOperasional = Object.values(biayaPerKategori).reduce(
+        (sum, value) => sum + value,
+        0
+      );
 
       return {
         biayaPerKategori,
         totalBiayaOperasional: totalOperasional,
-        operationalDetail: filteredOperationalData
+        operationalDetail: filteredOperationalData,
       };
     } catch (error) {
-      console.error('? Error in fetchBiayaData:', error);
+      console.error("? Error in fetchBiayaData:", error);
       return {
         biayaPerKategori: {},
         totalBiayaOperasional: 0,
-        operationalDetail: []
+        operationalDetail: [],
       };
     }
   };
 
   // ✅ TAMBAH: Fungsi untuk mengambil keuntungan biro jasa
-  const fetchBiroJasaKeuntungan = async (dateRange: { start: Date; end: Date }) => {
+  const fetchBiroJasaKeuntungan = async (dateRange: {
+    start: Date;
+    end: Date;
+  }) => {
     try {
       const startDate = dateRange.start.toISOString();
       const endDate = dateRange.end.toISOString();
-      
+
       let query = supabase
-        .from('biro_jasa')
-        .select('id, keuntungan, total_bayar, biaya_modal, tanggal, plat_nomor, jenis_pengurusan, divisi')
-        .in('status', ['Selesai', 'selesai'])
-        .gte('tanggal', startDate)
-        .lte('tanggal', endDate)
-        .order('tanggal', { ascending: false });
-      
-      if (selectedDivision !== 'all') {
+        .from("biro_jasa")
+        .select(
+          "id, keuntungan, total_bayar, biaya_modal, tanggal, plat_nomor, jenis_pengurusan, divisi"
+        )
+        .in("status", ["Selesai", "selesai"])
+        .gte("tanggal", startDate)
+        .lte("tanggal", endDate)
+        .order("tanggal", { ascending: false });
+
+      if (selectedDivision !== "all") {
         // Sertakan data tanpa divisi agar tidak terfilter habis
         // Supabase or() syntax: comma-separated conditions
         query = query.or(`divisi.eq.${selectedDivision},divisi.is.null`);
       }
-      
+
       const { data, error } = await query;
-      
+
       if (error) {
-        console.error('Error fetching biro jasa data:', error);
+        console.error("Error fetching biro jasa data:", error);
         return {
           totalKeuntunganBiroJasa: 0,
-          biroJasaDetail: []
+          biroJasaDetail: [],
         };
       }
-      
+
       const biroJasaDetail = (data || []).map((item: any) => {
-        const calculated = (item.keuntungan ?? ((item.total_bayar || 0) - (item.biaya_modal || 0))) || 0;
+        const calculated =
+          (item.keuntungan ??
+            (item.total_bayar || 0) - (item.biaya_modal || 0)) ||
+          0;
         return { ...item, keuntungan: calculated };
       });
-      const totalKeuntunganBiroJasa = biroJasaDetail.reduce((sum: number, item: any) => sum + (item.keuntungan || 0), 0);
-      
+      const totalKeuntunganBiroJasa = biroJasaDetail.reduce(
+        (sum: number, item: any) => sum + (item.keuntungan || 0),
+        0
+      );
+
       return {
         totalKeuntunganBiroJasa,
-        biroJasaDetail
+        biroJasaDetail,
       };
     } catch (error) {
-      console.error('Error in fetchBiroJasaKeuntungan:', error);
+      console.error("Error in fetchBiroJasaKeuntungan:", error);
       return {
         totalKeuntunganBiroJasa: 0,
-        biroJasaDetail: []
+        biroJasaDetail: [],
       };
     }
   };
 
-  const calculateLabaRugi = (pendapatanData: any, biayaData: any, biroJasaData: any): LabaRugiData => {
+  const calculateLabaRugi = (
+    pendapatanData: any,
+    biayaData: any,
+    biroJasaData: any
+  ): LabaRugiData => {
     const totalBiayaOperasional = biayaData.totalBiayaOperasional || 0;
     const totalKeuntunganBiroJasa = biroJasaData.totalKeuntunganBiroJasa || 0;
-    
+
+    console.log("?? calculateLabaRugi Input:", {
+      biayaPerKategori: biayaData.biayaPerKategori,
+      biayaPerKategoriKeys: Object.keys(biayaData.biayaPerKategori || {}),
+      totalBiayaOperasional,
+      operationalDetailCount: biayaData.operationalDetail?.length || 0,
+    });
+
     // ✅ PERBAIKAN: Tambahkan keuntungan biro jasa ke pendapatan
-    const totalPendapatan = (pendapatanData.totalPenjualan || 0) + totalKeuntunganBiroJasa;
-    
+    const totalPendapatan =
+      (pendapatanData.totalPenjualan || 0) + totalKeuntunganBiroJasa;
+
     // Laba bersih = (keuntungan penjualan + keuntungan biro jasa) - biaya operasional
-    const labaBersih = ((pendapatanData.totalKeuntungan || 0) + totalKeuntunganBiroJasa) - totalBiayaOperasional;
-    
+    const labaBersih =
+      (pendapatanData.totalKeuntungan || 0) +
+      totalKeuntunganBiroJasa -
+      totalBiayaOperasional;
+
     return {
       totalPenjualan: pendapatanData.totalPenjualan || 0,
       totalPendapatanLain: 0,
@@ -665,32 +885,37 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       totalHargaBeli: pendapatanData.totalHargaBeli || 0,
       totalBiayaPembelian: 0,
       totalHPP: pendapatanData.totalHargaBeli || 0,
-      labaKotor: (pendapatanData.totalKeuntungan || 0) + totalKeuntunganBiroJasa, // ✅ PERBAIKAN: Include biro jasa
+      labaKotor:
+        (pendapatanData.totalKeuntungan || 0) + totalKeuntunganBiroJasa, // ✅ PERBAIKAN: Include biro jasa
       totalBiayaOperasional,
       totalBiayaAdministrasi: 0,
       totalBiayaPenjualan: 0,
       biayaPerKategori: biayaData.biayaPerKategori || {},
       labaBersih,
-      marginKotor: totalPendapatan > 0 ? 
-        (((pendapatanData.totalKeuntungan || 0) + totalKeuntunganBiroJasa) / totalPendapatan) * 100 : 0,
-      marginBersih: totalPendapatan > 0 ? 
-        (labaBersih / totalPendapatan) * 100 : 0,
+      marginKotor:
+        totalPendapatan > 0
+          ? (((pendapatanData.totalKeuntungan || 0) + totalKeuntunganBiroJasa) /
+              totalPendapatan) *
+            100
+          : 0,
+      marginBersih:
+        totalPendapatan > 0 ? (labaBersih / totalPendapatan) * 100 : 0,
       penjualanDetail: pendapatanData.penjualanDetail || [],
       operationalDetail: biayaData.operationalDetail || [],
-      biroJasaDetail: biroJasaData.biroJasaDetail || [] // ✅ TAMBAH: Detail biro jasa
+      biroJasaDetail: biroJasaData.biroJasaDetail || [], // ✅ TAMBAH: Detail biro jasa
     };
   };
 
   const getBiayaDetailByKategori = (kategori: string) => {
-    return detailData.operationalDetail.filter(item => 
-      (item.kategori || 'Lainnya') === kategori
+    return detailData.operationalDetail.filter(
+      (item) => (item.kategori || "Lainnya") === kategori
     );
   };
 
   const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({
+    setExpandedSections((prev) => ({
       ...prev,
-      [section]: !prev[section]
+      [section]: !prev[section],
     }));
   };
 
@@ -717,7 +942,9 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Laporan Laba Rugi</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Laporan Laba Rugi
+          </h1>
           <p className="text-muted-foreground">
             Analisis profitabilitas untuk divisi {selectedDivision}
           </p>
@@ -753,7 +980,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
               </Select>
             </div>
 
-            {selectedPeriod === 'custom' && (
+            {selectedPeriod === "custom" && (
               <>
                 <div className="space-y-2">
                   <Label htmlFor="start-date">Tanggal Mulai</Label>
@@ -805,62 +1032,80 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             <Table>
               <TableBody>
                 <TableRow className="font-semibold bg-blue-50">
-                  <TableCell colSpan={2} className="text-blue-700">PENDAPATAN</TableCell>
+                  <TableCell colSpan={2} className="text-blue-700">
+                    PENDAPATAN
+                  </TableCell>
                 </TableRow>
-                <TableRow 
+                <TableRow
                   className="cursor-pointer hover:bg-gray-50"
-                  onClick={() => toggleSection('penjualan')}
+                  onClick={() => toggleSection("penjualan")}
                 >
                   <TableCell className="pl-4 flex items-center">
-                    <ChevronDown className={`h-4 w-4 mr-2 transition-transform ${
-                      expandedSections.penjualan ? 'rotate-180' : ''
-                    }`} />
+                    <ChevronDown
+                      className={`h-4 w-4 mr-2 transition-transform ${
+                        expandedSections.penjualan ? "rotate-180" : ""
+                      }`}
+                    />
                     Penjualan
                   </TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(labaRugiData.totalPenjualan)}
                   </TableCell>
                 </TableRow>
-                
-                {expandedSections.penjualan && detailData.penjualanDetail.length > 0 && (
-                  <TableRow>
-                    <TableCell colSpan={2} className="pl-8">
-                      <div className="max-h-40 overflow-y-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="text-xs">Tanggal</TableHead>
-                              <TableHead className="text-xs">ID</TableHead>
-                              <TableHead className="text-xs">Harga Jual</TableHead>
-                              <TableHead className="text-xs">Motor</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {detailData.penjualanDetail.slice(0, 5).map((item, index) => (
-                              <TableRow key={index}>
-                                <TableCell className="text-xs">
-                                  {new Date(item.tanggal).toLocaleDateString('id-ID')}
-                                </TableCell>
-                                <TableCell className="text-xs">{item.id}</TableCell>
-                                <TableCell className="text-xs">
-                                  {formatCurrency(item.harga_jual || 0)}
-                                </TableCell>
-                                <TableCell className="text-xs">
-                                  {item.brands?.name || '-'} {item.jenis_motor?.jenis_motor || '-'} {item.plat || '-'}
-                                </TableCell>
+
+                {expandedSections.penjualan &&
+                  detailData.penjualanDetail.length > 0 && (
+                    <TableRow>
+                      <TableCell colSpan={2} className="pl-8">
+                        <div className="max-h-40 overflow-y-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-xs">
+                                  Tanggal
+                                </TableHead>
+                                <TableHead className="text-xs">ID</TableHead>
+                                <TableHead className="text-xs">
+                                  Harga Jual
+                                </TableHead>
+                                <TableHead className="text-xs">Motor</TableHead>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                        {detailData.penjualanDetail.length > 5 && (
-                          <div className="text-xs text-gray-500 mt-2">
-                            ... dan {detailData.penjualanDetail.length - 5} data lainnya
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
+                            </TableHeader>
+                            <TableBody>
+                              {detailData.penjualanDetail
+                                .slice(0, 5)
+                                .map((item, index) => (
+                                  <TableRow key={index}>
+                                    <TableCell className="text-xs">
+                                      {new Date(
+                                        item.tanggal
+                                      ).toLocaleDateString("id-ID")}
+                                    </TableCell>
+                                    <TableCell className="text-xs">
+                                      {item.id}
+                                    </TableCell>
+                                    <TableCell className="text-xs">
+                                      {formatCurrency(item.harga_jual || 0)}
+                                    </TableCell>
+                                    <TableCell className="text-xs">
+                                      {item.brands?.name || "-"}{" "}
+                                      {item.jenis_motor?.jenis_motor || "-"}{" "}
+                                      {item.plat || "-"}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                            </TableBody>
+                          </Table>
+                          {detailData.penjualanDetail.length > 5 && (
+                            <div className="text-xs text-gray-500 mt-2">
+                              ... dan {detailData.penjualanDetail.length - 5}{" "}
+                              data lainnya
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
 
                 <TableRow>
                   <TableCell className="pl-4">Pendapatan Lain-lain</TableCell>
@@ -868,62 +1113,79 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                     {formatCurrency(labaRugiData.totalPendapatanLain)}
                   </TableCell>
                 </TableRow>
-                
+
                 {/* ✅ TAMBAH: Keuntungan Biro Jasa */}
-                <TableRow 
+                <TableRow
                   className="cursor-pointer hover:bg-gray-50"
-                  onClick={() => toggleSection('biroJasa')}
+                  onClick={() => toggleSection("biroJasa")}
                 >
                   <TableCell className="pl-4 flex items-center">
-                    <ChevronDown className={`h-4 w-4 mr-2 transition-transform ${
-                      expandedSections.biroJasa ? 'rotate-180' : ''
-                    }`} />
+                    <ChevronDown
+                      className={`h-4 w-4 mr-2 transition-transform ${
+                        expandedSections.biroJasa ? "rotate-180" : ""
+                      }`}
+                    />
                     Keuntungan Biro Jasa
                   </TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(labaRugiData.totalKeuntunganBiroJasa)}
                   </TableCell>
                 </TableRow>
-                
+
                 {/* ✅ TAMBAH: Detail Biro Jasa (expanded) */}
-                {expandedSections.biroJasa && labaRugiData.biroJasaDetail && labaRugiData.biroJasaDetail.length > 0 && (
-                  <TableRow>
-                    <TableCell colSpan={2} className="pl-8">
-                      <div className="max-h-40 overflow-y-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="text-xs">Tanggal</TableHead>
-                              <TableHead className="text-xs">Plat</TableHead>
-                              <TableHead className="text-xs">Jenis</TableHead>
-                              <TableHead className="text-xs">Keuntungan</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {labaRugiData.biroJasaDetail.slice(0, 5).map((item: any) => (
-                              <TableRow key={item.id}>
-                                <TableCell className="text-xs">
-                                  {new Date(item.tanggal).toLocaleDateString('id-ID')}
-                                </TableCell>
-                                <TableCell className="text-xs">{item.plat_nomor || '-'}</TableCell>
-                                <TableCell className="text-xs">{item.jenis_pengurusan || '-'}</TableCell>
-                                <TableCell className="text-xs font-semibold">
-                                  {formatCurrency(item.keuntungan || 0)}
-                                </TableCell>
+                {expandedSections.biroJasa &&
+                  labaRugiData.biroJasaDetail &&
+                  labaRugiData.biroJasaDetail.length > 0 && (
+                    <TableRow>
+                      <TableCell colSpan={2} className="pl-8">
+                        <div className="max-h-40 overflow-y-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-xs">
+                                  Tanggal
+                                </TableHead>
+                                <TableHead className="text-xs">Plat</TableHead>
+                                <TableHead className="text-xs">Jenis</TableHead>
+                                <TableHead className="text-xs">
+                                  Keuntungan
+                                </TableHead>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                        {labaRugiData.biroJasaDetail.length > 5 && (
-                          <div className="text-xs text-gray-500 mt-2">
-                            ... dan {labaRugiData.biroJasaDetail.length - 5} data lainnya
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-                
+                            </TableHeader>
+                            <TableBody>
+                              {labaRugiData.biroJasaDetail
+                                .slice(0, 5)
+                                .map((item: any) => (
+                                  <TableRow key={item.id}>
+                                    <TableCell className="text-xs">
+                                      {new Date(
+                                        item.tanggal
+                                      ).toLocaleDateString("id-ID")}
+                                    </TableCell>
+                                    <TableCell className="text-xs">
+                                      {item.plat_nomor || "-"}
+                                    </TableCell>
+                                    <TableCell className="text-xs">
+                                      {item.jenis_pengurusan || "-"}
+                                    </TableCell>
+                                    <TableCell className="text-xs font-semibold">
+                                      {formatCurrency(item.keuntungan || 0)}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                            </TableBody>
+                          </Table>
+                          {labaRugiData.biroJasaDetail.length > 5 && (
+                            <div className="text-xs text-gray-500 mt-2">
+                              ... dan {labaRugiData.biroJasaDetail.length - 5}{" "}
+                              data lainnya
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+
                 <TableRow className="font-semibold border-t">
                   <TableCell className="pl-4">Total Penjualan</TableCell>
                   <TableCell className="text-right">
@@ -932,78 +1194,98 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                 </TableRow>
 
                 <TableRow className="font-semibold bg-red-50">
-                  <TableCell colSpan={2} className="text-red-700">HARGA POKOK PENJUALAN</TableCell>
+                  <TableCell colSpan={2} className="text-red-700">
+                    HARGA POKOK PENJUALAN
+                  </TableCell>
                 </TableRow>
-                <TableRow 
+                <TableRow
                   className="cursor-pointer hover:bg-gray-50"
-                  onClick={() => toggleSection('hargaBeli')}
+                  onClick={() => toggleSection("hargaBeli")}
                 >
                   <TableCell className="pl-4 flex items-center">
-                    <ChevronDown className={`h-4 w-4 mr-2 transition-transform ${
-                      expandedSections.hargaBeli ? 'rotate-180' : ''
-                    }`} />
+                    <ChevronDown
+                      className={`h-4 w-4 mr-2 transition-transform ${
+                        expandedSections.hargaBeli ? "rotate-180" : ""
+                      }`}
+                    />
                     Harga Beli
                   </TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(labaRugiData.totalHargaBeli)}
                   </TableCell>
                 </TableRow>
-                
-                {expandedSections.hargaBeli && detailData.penjualanDetail.length > 0 && (
-                  <TableRow>
-                    <TableCell colSpan={2} className="pl-8">
-                      <div className="max-h-40 overflow-y-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="text-xs">Tanggal</TableHead>
-                              <TableHead className="text-xs">ID</TableHead>
-                              <TableHead className="text-xs">Harga Beli</TableHead>
-                              <TableHead className="text-xs">Motor</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {detailData.penjualanDetail.slice(0, 5).map((item, index) => (
-                              <TableRow key={index}>
-                                <TableCell className="text-xs">
-                                  {new Date(item.tanggal).toLocaleDateString('id-ID')}
-                                </TableCell>
-                                <TableCell className="text-xs">{item.id}</TableCell>
-                                <TableCell className="text-xs">
-                                  {formatCurrency(item.harga_beli || 0)}
-                                </TableCell>
-                                <TableCell className="text-xs">
-                                  {item.brands?.name || '-'} {item.jenis_motor?.jenis_motor || '-'} {item.plat || '-'}
-                                </TableCell>
+
+                {expandedSections.hargaBeli &&
+                  detailData.penjualanDetail.length > 0 && (
+                    <TableRow>
+                      <TableCell colSpan={2} className="pl-8">
+                        <div className="max-h-40 overflow-y-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-xs">
+                                  Tanggal
+                                </TableHead>
+                                <TableHead className="text-xs">ID</TableHead>
+                                <TableHead className="text-xs">
+                                  Harga Beli
+                                </TableHead>
+                                <TableHead className="text-xs">Motor</TableHead>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                        {detailData.penjualanDetail.length > 5 && (
-                          <div className="text-xs text-gray-500 mt-2">
-                            ... dan {detailData.penjualanDetail.length - 5} data lainnya
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-                
-                <TableRow 
+                            </TableHeader>
+                            <TableBody>
+                              {detailData.penjualanDetail
+                                .slice(0, 5)
+                                .map((item, index) => (
+                                  <TableRow key={index}>
+                                    <TableCell className="text-xs">
+                                      {new Date(
+                                        item.tanggal
+                                      ).toLocaleDateString("id-ID")}
+                                    </TableCell>
+                                    <TableCell className="text-xs">
+                                      {item.id}
+                                    </TableCell>
+                                    <TableCell className="text-xs">
+                                      {formatCurrency(item.harga_beli || 0)}
+                                    </TableCell>
+                                    <TableCell className="text-xs">
+                                      {item.brands?.name || "-"}{" "}
+                                      {item.jenis_motor?.jenis_motor || "-"}{" "}
+                                      {item.plat || "-"}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                            </TableBody>
+                          </Table>
+                          {detailData.penjualanDetail.length > 5 && (
+                            <div className="text-xs text-gray-500 mt-2">
+                              ... dan {detailData.penjualanDetail.length - 5}{" "}
+                              data lainnya
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                <TableRow
                   className="cursor-pointer hover:bg-gray-50"
-                  onClick={() => toggleSection('biayaPembelian')}
+                  onClick={() => toggleSection("biayaPembelian")}
                 >
                   <TableCell className="pl-4 flex items-center">
-                    <ChevronDown className={`h-4 w-4 mr-2 transition-transform ${
-                      expandedSections.biayaPembelian ? 'rotate-180' : ''
-                    }`} />
+                    <ChevronDown
+                      className={`h-4 w-4 mr-2 transition-transform ${
+                        expandedSections.biayaPembelian ? "rotate-180" : ""
+                      }`}
+                    />
                     Biaya Pembelian
                   </TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(labaRugiData.totalBiayaPembelian)}
                   </TableCell>
                 </TableRow>
-                
+
                 {expandedSections.biayaPembelian && (
                   <TableRow>
                     <TableCell colSpan={2} className="pl-8">
@@ -1013,7 +1295,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                     </TableCell>
                   </TableRow>
                 )}
-                
+
                 <TableRow className="font-semibold border-t">
                   <TableCell className="pl-4">Total HPP</TableCell>
                   <TableCell className="text-right">
@@ -1029,102 +1311,138 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                 </TableRow>
 
                 <TableRow className="font-semibold bg-orange-50">
-                  <TableCell colSpan={2} className="text-orange-700">BIAYA OPERASIONAL</TableCell>
+                  <TableCell colSpan={2} className="text-orange-700">
+                    BIAYA OPERASIONAL
+                  </TableCell>
                 </TableRow>
-                
-                {Object.entries(labaRugiData.biayaPerKategori).map(([kategori, nominal]) => {
-                  const detailBiaya = getBiayaDetailByKategori(kategori);
-                  const sectionKey = `biaya_${kategori}`;
-                  
-                  return (
-                    <React.Fragment key={kategori}>
-                      <TableRow 
-                        className="cursor-pointer hover:bg-gray-50"
-                        onClick={() => toggleSection(sectionKey)}
-                      >
-                        <TableCell className="pl-4 flex items-center">
-                          <ChevronDown className={`h-4 w-4 mr-2 transition-transform ${
-                            expandedSections[sectionKey] ? 'rotate-180' : ''
-                          }`} />
-                          <span className="capitalize">
-                            {kategori}
-                            {kategori === 'OP Global' && (
-                              <span className="ml-2 text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">
-                                (Setengah Nominal)
-                              </span>
-                            )}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(nominal)}
-                        </TableCell>
-                      </TableRow>
-                      
-                      {expandedSections[sectionKey] && (
-                        <TableRow>
-                          <TableCell colSpan={2} className="pl-8">
-                            {detailBiaya.length > 0 ? (
-                              <div className="space-y-2">
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead className="text-xs">Tanggal</TableHead>
-                                      <TableHead className="text-xs">Deskripsi</TableHead>
-                                      <TableHead className="text-xs">Nominal</TableHead>
-                                      <TableHead className="text-xs">Divisi</TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {detailBiaya.slice(0, 5).map((item, index) => (
-                                      <TableRow key={index}>
-                                        <TableCell className="text-xs">
-                                          {new Date(item.tanggal).toLocaleDateString('id-ID')}
-                                        </TableCell>
-                                        <TableCell className="text-xs">
-                                          {item.deskripsi || '-'}
-                                        </TableCell>
-                                        <TableCell className="text-xs">
-                                          {formatCurrency(
-                                            item.kategori === 'OP Global' 
-                                              ? (item.nominal || 0) / 2 
-                                              : (item.nominal || 0)
-                                          )}
-                                        </TableCell>
-                                        <TableCell className="text-xs">
-                                          {item.divisi || '-'}
-                                        </TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                                {detailBiaya.length > 5 && (
-                                  <div className="text-xs text-gray-500 mt-2">
-                                    ... dan {detailBiaya.length - 5} transaksi lainnya
-                                  </div>
-                                )}
-                                <div className="text-xs font-medium text-gray-700 mt-2">
-                                  Total {detailBiaya.length} transaksi: {formatCurrency(nominal)}
-                                  {kategori === 'OP Global' && (
-                                    <div className="text-xs text-orange-600 mt-1">
-                                      ℹ️ Menampilkan setengah nominal untuk laporan laba rugi
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="text-xs text-gray-500">
-                                Tidak ada detail transaksi untuk kategori {kategori}
-                              </div>
-                            )}
+
+                {/* Debug: Tampilkan info jika biayaPerKategori kosong */}
+                {Object.keys(labaRugiData.biayaPerKategori).length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={2}
+                      className="text-center text-gray-500 italic py-4"
+                    >
+                      Tidak ada data biaya operasional untuk periode ini
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {Object.entries(labaRugiData.biayaPerKategori).map(
+                  ([kategori, nominal]) => {
+                    const detailBiaya = getBiayaDetailByKategori(kategori);
+                    const sectionKey = `biaya_${kategori}`;
+
+                    return (
+                      <React.Fragment key={kategori}>
+                        <TableRow
+                          className="cursor-pointer hover:bg-gray-50"
+                          onClick={() => toggleSection(sectionKey)}
+                        >
+                          <TableCell className="pl-4 flex items-center">
+                            <ChevronDown
+                              className={`h-4 w-4 mr-2 transition-transform ${
+                                expandedSections[sectionKey] ? "rotate-180" : ""
+                              }`}
+                            />
+                            <span className="capitalize">
+                              {kategori}
+                              {kategori === "OP Global" && (
+                                <span className="ml-2 text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">
+                                  (Setengah Nominal)
+                                </span>
+                              )}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(nominal)}
                           </TableCell>
                         </TableRow>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-                
+
+                        {expandedSections[sectionKey] && (
+                          <TableRow>
+                            <TableCell colSpan={2} className="pl-8">
+                              {detailBiaya.length > 0 ? (
+                                <div className="space-y-2">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead className="text-xs">
+                                          Tanggal
+                                        </TableHead>
+                                        <TableHead className="text-xs">
+                                          Deskripsi
+                                        </TableHead>
+                                        <TableHead className="text-xs">
+                                          Nominal
+                                        </TableHead>
+                                        <TableHead className="text-xs">
+                                          Divisi
+                                        </TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {detailBiaya
+                                        .slice(0, 5)
+                                        .map((item, index) => (
+                                          <TableRow key={index}>
+                                            <TableCell className="text-xs">
+                                              {new Date(
+                                                item.tanggal
+                                              ).toLocaleDateString("id-ID")}
+                                            </TableCell>
+                                            <TableCell className="text-xs">
+                                              {item.deskripsi || "-"}
+                                            </TableCell>
+                                            <TableCell className="text-xs">
+                                              {formatCurrency(
+                                                item.kategori === "OP Global"
+                                                  ? (item.nominal || 0) / 2
+                                                  : item.nominal || 0
+                                              )}
+                                            </TableCell>
+                                            <TableCell className="text-xs">
+                                              {item.divisi || "-"}
+                                            </TableCell>
+                                          </TableRow>
+                                        ))}
+                                    </TableBody>
+                                  </Table>
+                                  {detailBiaya.length > 5 && (
+                                    <div className="text-xs text-gray-500 mt-2">
+                                      ... dan {detailBiaya.length - 5} transaksi
+                                      lainnya
+                                    </div>
+                                  )}
+                                  <div className="text-xs font-medium text-gray-700 mt-2">
+                                    Total {detailBiaya.length} transaksi:{" "}
+                                    {formatCurrency(nominal)}
+                                    {kategori === "OP Global" && (
+                                      <div className="text-xs text-orange-600 mt-1">
+                                        ℹ️ Menampilkan setengah nominal untuk
+                                        laporan laba rugi
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-xs text-gray-500">
+                                  Tidak ada detail transaksi untuk kategori{" "}
+                                  {kategori}
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
+                    );
+                  }
+                )}
+
                 <TableRow className="font-semibold border-t">
-                  <TableCell className="pl-4">Total Biaya Operasional</TableCell>
+                  <TableCell className="pl-4">
+                    Total Biaya Operasional
+                  </TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(labaRugiData.totalBiayaOperasional)}
                   </TableCell>
@@ -1132,9 +1450,13 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
 
                 <TableRow className="font-bold bg-gray-100 text-lg">
                   <TableCell className="text-gray-800">LABA BERSIH</TableCell>
-                  <TableCell className={`text-right ${
-                    labaRugiData.labaBersih >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
+                  <TableCell
+                    className={`text-right ${
+                      labaRugiData.labaBersih >= 0
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
                     {formatCurrency(labaRugiData.labaBersih)}
                   </TableCell>
                 </TableRow>
@@ -1151,7 +1473,9 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
               <div className="flex items-center">
                 <DollarSign className="h-8 w-8 text-blue-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Pendapatan</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Total Pendapatan
+                  </p>
                   <p className="text-2xl font-bold text-blue-600">
                     {formatCurrency(labaRugiData.totalPendapatan)}
                   </p>
@@ -1165,7 +1489,9 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
               <div className="flex items-center">
                 <TrendingUp className="h-8 w-8 text-green-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Laba Kotor</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Laba Kotor
+                  </p>
                   <p className="text-2xl font-bold text-green-600">
                     {formatCurrency(labaRugiData.labaKotor)}
                   </p>
@@ -1179,7 +1505,9 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
               <div className="flex items-center">
                 <BarChart3 className="h-8 w-8 text-orange-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Biaya Operasional</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Total Biaya Operasional
+                  </p>
                   <p className="text-2xl font-bold text-orange-600">
                     {formatCurrency(labaRugiData.totalBiayaOperasional)}
                   </p>
@@ -1197,10 +1525,16 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                   <TrendingDown className="h-8 w-8 text-red-600" />
                 )}
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Laba Bersih</p>
-                  <p className={`text-2xl font-bold ${
-                    labaRugiData.labaBersih >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
+                  <p className="text-sm font-medium text-gray-600">
+                    Laba Bersih
+                  </p>
+                  <p
+                    className={`text-2xl font-bold ${
+                      labaRugiData.labaBersih >= 0
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
                     {formatCurrency(labaRugiData.labaBersih)}
                   </p>
                 </div>
