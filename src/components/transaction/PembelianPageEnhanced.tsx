@@ -127,8 +127,8 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCabang, setSelectedCabang] = useState("all");
   const [selectedJenisPembelian, setSelectedJenisPembelian] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("ready");
-  const [dateFilter, setDateFilter] = useState("this_month");
+  const [selectedStatus, setSelectedStatus] = useState("ready"); // ✅ DEFAULT: ready (tampil semua unit ready)
+  const [dateFilter, setDateFilter] = useState("all"); // ✅ Date filter (akan di-override otomatis untuk status booked/sold)
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(
     undefined
   );
@@ -239,9 +239,13 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     const matchesStatus =
       selectedStatus === "all" || item.status === selectedStatus;
 
-    // Date filter logic
+    // ✅ NEW LOGIC: Date filter hanya untuk status "Booked"/"Sold"
+    // Jika status = "ready", tampilkan SEMUA unit ready tanpa filter tanggal
+    const shouldApplyDateFilter = selectedStatus !== "ready";
+
+    // Date filter logic (hanya jika bukan ready)
     let matchesDate = true;
-    if (dateFilter !== "all") {
+    if (shouldApplyDateFilter && dateFilter !== "all") {
       const dateRange = getDateRange();
       if (dateRange) {
         const itemDate = new Date(item.tanggal_pembelian);
@@ -1291,7 +1295,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                     <SelectContent>
                       <SelectItem value="all">Semua Status</SelectItem>
                       <SelectItem value="ready">Ready</SelectItem>
-                      <SelectItem value="sold">Sold</SelectItem>
+                      {/* ✅ REMOVED: Sold tidak ditampilkan di pembelian (sudah pindah ke penjualan) */}
                     </SelectContent>
                   </Select>
                 </div>

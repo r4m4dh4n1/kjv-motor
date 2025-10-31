@@ -1,36 +1,50 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export const usePembelianData = (selectedDivision: string, selectedJenisPembelian: string = "all", selectedStatus: string = "all") => {
+export const usePembelianData = (
+  selectedDivision: string,
+  selectedJenisPembelian: string = "all",
+  selectedStatus: string = "all"
+) => {
   return useQuery({
-    queryKey: ['pembelian', selectedDivision, selectedJenisPembelian, selectedStatus],
+    queryKey: [
+      "pembelian",
+      selectedDivision,
+      selectedJenisPembelian,
+      selectedStatus,
+    ],
     queryFn: async () => {
       let query = supabase
-        .from('pembelian')
-        .select(`
+        .from("pembelian")
+        .select(
+          `
           *,
           cabang:cabang_id(nama),
           brands:brand_id(name),
           jenis_motor:jenis_motor_id(jenis_motor),
           companies_1:sumber_dana_1_id(nama_perusahaan),
           companies_2:sumber_dana_2_id(nama_perusahaan)
-        `);
+        `
+        )
+        .neq("status", "sold"); // ✅ Exclude status "sold" dari menu pembelian
 
       if (selectedDivision !== "all") {
-        query = query.eq('divisi', selectedDivision);
+        query = query.eq("divisi", selectedDivision);
       }
 
       if (selectedJenisPembelian !== "all") {
-        query = query.eq('jenis_pembelian', selectedJenisPembelian);
+        query = query.eq("jenis_pembelian", selectedJenisPembelian);
       }
 
-      // Filter berdasarkan status
+      // Filter berdasarkan status (hanya ready/booked)
       if (selectedStatus !== "all") {
-        query = query.eq('status', selectedStatus);
+        query = query.eq("status", selectedStatus);
       }
 
-      const { data, error } = await query.order('tanggal_pembelian', { ascending: true });
-      
+      const { data, error } = await query.order("tanggal_pembelian", {
+        ascending: true,
+      });
+
       if (error) throw error;
       return data;
     },
@@ -75,11 +89,11 @@ export const useCompaniesData = (selectedDivision?: string) => {
     queryKey: ["companies", selectedDivision],
     queryFn: async () => {
       let query = supabase.from("companies").select("*");
-      
-      if (selectedDivision !== 'all') {
-        query = query.eq('divisi', selectedDivision);
+
+      if (selectedDivision !== "all") {
+        query = query.eq("divisi", selectedDivision);
       }
-      
+
       const { data, error } = await query;
       if (error) throw error;
       return data;
