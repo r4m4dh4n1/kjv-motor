@@ -3,11 +3,38 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Settings, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, Clock } from "lucide-react";
+import {
+  Plus,
+  Settings,
+  Edit,
+  Trash2,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Clock,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ProfitAdjustmentSummary from "@/components/finance/ProfitAdjustmentSummary";
@@ -29,19 +56,19 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   const [companiesData, setCompaniesData] = useState([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOperational, setEditingOperational] = useState(null);
-  
+
   // ✅ PERBAIKAN: Ganti dateFrom/dateTo dengan filter periode
   const [selectedPeriod, setSelectedPeriod] = useState("this_month");
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  
+
   const [formData, setFormData] = useState({
-    tanggal: new Date().toISOString().split('T')[0],
+    tanggal: new Date().toISOString().split("T")[0],
     kategori: "",
     nominal: "",
     deskripsi: "",
-    sumber_dana: ""
+    sumber_dana: "",
   });
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -62,131 +89,146 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     "OP Global",
     "Pajak & Retribusi",
     "Asuransi",
-    "Lain-lain"
+    "Lain-lain",
   ];
 
   // ✅ PERBAIKAN: Fungsi untuk mendapatkan range tanggal berdasarkan periode
   const getDateRange = (period: string): DateRange => {
     // Gunakan timezone lokal Indonesia (WIB/WITA/WIT)
     const now = new Date();
-    
-    // FORCE CURRENT DATE FOR TESTING - Pastikan kita di Oktober 2025
-    const currentDate = new Date(2025, 9, 30); // Oktober 2025 (month 9 = Oktober)
-    
+
+    // ✅ FIXED: Use actual current date instead of hardcoded test date
+    const currentDate = now; // Use real current date
+
     // ✅ PERBAIKAN: Gunakan format YYYY-MM-DD langsung tanpa ISO conversion
     const formatDate = (date: Date): string => {
       const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
       return `${year}-${month}-${day}`;
     };
-    
+
     const todayFormatted = formatDate(currentDate);
-    
-    console.log('🕐 Current date calculation (FIXED):', {
+
+    console.log("🕐 Current date calculation (FIXED):", {
       originalNow: now.toISOString(),
       currentDate: currentDate.toString(),
       todayFormatted,
-      localDate: currentDate.toLocaleDateString('id-ID'),
+      localDate: currentDate.toLocaleDateString("id-ID"),
       currentMonth: currentDate.getMonth() + 1, // +1 karena getMonth() dimulai dari 0
-      currentYear: currentDate.getFullYear()
+      currentYear: currentDate.getFullYear(),
     });
-    
+
     switch (period) {
-      case 'today':
+      case "today":
         return {
           start: todayFormatted,
-          end: todayFormatted
+          end: todayFormatted,
         };
-      case 'yesterday':
+      case "yesterday":
         const yesterday = new Date(currentDate);
         yesterday.setDate(yesterday.getDate() - 1);
         return {
           start: formatDate(yesterday),
-          end: formatDate(yesterday)
+          end: formatDate(yesterday),
         };
-      case 'this_week':
+      case "this_week":
         const startOfWeek = new Date(currentDate);
         startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
         return {
           start: formatDate(startOfWeek),
-          end: todayFormatted
+          end: todayFormatted,
         };
-      case 'last_week':
+      case "last_week":
         const lastWeekEnd = new Date(currentDate);
         lastWeekEnd.setDate(currentDate.getDate() - currentDate.getDay() - 1);
         const lastWeekStart = new Date(lastWeekEnd);
         lastWeekStart.setDate(lastWeekEnd.getDate() - 6);
         return {
           start: formatDate(lastWeekStart),
-          end: formatDate(lastWeekEnd)
+          end: formatDate(lastWeekEnd),
         };
-      case 'this_month':
-        const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      case "this_month":
+        const startOfMonth = new Date(
+          currentDate.getFullYear(),
+          currentDate.getMonth(),
+          1
+        );
         const result = {
           start: formatDate(startOfMonth),
-          end: todayFormatted
+          end: todayFormatted,
         };
-        console.log('📅 THIS_MONTH date range:', {
-          period: 'this_month',
+        console.log("📅 THIS_MONTH date range:", {
+          period: "this_month",
           startOfMonth: startOfMonth.toString(),
           today: currentDate.toString(),
           result,
           currentMonth: currentDate.getMonth() + 1,
-          currentYear: currentDate.getFullYear()
+          currentYear: currentDate.getFullYear(),
         });
         return result;
-      case 'last_month':
-        const lastMonthStart = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-        const lastMonthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth(), 0);
+      case "last_month":
+        const lastMonthStart = new Date(
+          currentDate.getFullYear(),
+          currentDate.getMonth() - 1,
+          1
+        );
+        const lastMonthEnd = new Date(
+          currentDate.getFullYear(),
+          currentDate.getMonth(),
+          0
+        );
         return {
           start: formatDate(lastMonthStart),
-          end: formatDate(lastMonthEnd)
+          end: formatDate(lastMonthEnd),
         };
-      case 'this_year':
+      case "this_year":
         const startOfYear = new Date(currentDate.getFullYear(), 0, 1);
         return {
           start: formatDate(startOfYear),
-          end: todayFormatted
+          end: todayFormatted,
         };
-      case 'last_year':
+      case "last_year":
         const lastYearStart = new Date(currentDate.getFullYear() - 1, 0, 1);
         const lastYearEnd = new Date(currentDate.getFullYear() - 1, 11, 31);
         return {
           start: formatDate(lastYearStart),
-          end: formatDate(lastYearEnd)
+          end: formatDate(lastYearEnd),
         };
-      case 'custom':
+      case "custom":
         return {
           start: customStartDate || todayFormatted,
-          end: customEndDate || todayFormatted
+          end: customEndDate || todayFormatted,
         };
       default:
         return {
           start: todayFormatted,
-          end: todayFormatted
+          end: todayFormatted,
         };
     }
   };
 
   // ✅ PERBAIKAN: Update logika shouldUseCombined berdasarkan periode
   const shouldUseCombined = useMemo(() => {
-    const periodsRequiringCombined = ['last_month', 'this_year', 'last_year'];
-    
+    const periodsRequiringCombined = ["last_month", "this_year", "last_year"];
+
     if (periodsRequiringCombined.includes(selectedPeriod)) {
       return true;
     }
-    
-    if (selectedPeriod === 'custom' && customStartDate && customEndDate) {
+
+    if (selectedPeriod === "custom" && customStartDate && customEndDate) {
       const currentDate = new Date(2025, 9, 30); // Oktober 2025 (month 9 = Oktober)
       const currentMonth = currentDate.getMonth();
       const currentYear = currentDate.getFullYear();
       const startDate = new Date(customStartDate);
-      
+
       // Gunakan combined jika tanggal mulai dari bulan/tahun sebelumnya
-      return startDate.getMonth() < currentMonth || startDate.getFullYear() < currentYear;
+      return (
+        startDate.getMonth() < currentMonth ||
+        startDate.getFullYear() < currentYear
+      );
     }
-    
+
     return false;
   }, [selectedPeriod, customStartDate, customEndDate]);
 
@@ -211,20 +253,26 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
   useEffect(() => {
     fetchOperationalData();
-  }, [selectedPeriod, customStartDate, customEndDate, selectedDivision, selectedCategory]);
+  }, [
+    selectedPeriod,
+    customStartDate,
+    customEndDate,
+    selectedDivision,
+    selectedCategory,
+  ]);
 
   const fetchInitialData = async () => {
     try {
       // Fetch companies data
       const { data: companies, error: companiesError } = await supabase
-        .from('companies')
-        .select('*')
-        .order('nama_perusahaan');
+        .from("companies")
+        .select("*")
+        .order("nama_perusahaan");
 
       if (companiesError) throw companiesError;
       setCompaniesData(companies || []);
     } catch (error) {
-      console.error('Error fetching initial data:', error);
+      console.error("Error fetching initial data:", error);
       toast({
         title: "Error",
         description: "Gagal memuat data awal",
@@ -233,99 +281,100 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     }
   };
 
-
-
   const fetchOperationalData = async () => {
     try {
       setLoading(true);
-      
+
       // ✅ PERBAIKAN: Dapatkan range tanggal berdasarkan periode
       const dateRange = getDateRange(selectedPeriod);
-      
-      console.log('🔍 Fetching operational data:', {
-        table: shouldUseCombined ? 'operational_combined' : 'operational',
+
+      console.log("🔍 Fetching operational data:", {
+        table: shouldUseCombined ? "operational_combined" : "operational",
         period: selectedPeriod,
         dateRange,
         division: selectedDivision,
-        category: selectedCategory
+        category: selectedCategory,
       });
-      
+
       // ✅ PERBAIKAN: Gunakan tabel yang sesuai berdasarkan periode
       let operationalQuery: any;
-      
+
       if (shouldUseCombined) {
         operationalQuery = supabase
-          .from('operational_combined' as any)
-          .select('*')
-          .gte('tanggal', dateRange.start)
-          .lte('tanggal', dateRange.end)
-          .order('tanggal', { ascending: false });
+          .from("operational_combined" as any)
+          .select("*")
+          .gte("tanggal", dateRange.start)
+          .lte("tanggal", dateRange.end)
+          .order("tanggal", { ascending: false });
       } else {
         operationalQuery = supabase
-         .from('operational')
-          .select(`
+          .from("operational")
+          .select(
+            `
             *,
             companies:company_id (
               id,
               nama_perusahaan,
               modal
             )
-          `)
-          .gte('tanggal', dateRange.start)
-          .lte('tanggal', dateRange.end)
-          .order('tanggal', { ascending: false });
+          `
+          )
+          .gte("tanggal", dateRange.start)
+          .lte("tanggal", dateRange.end)
+          .order("tanggal", { ascending: false });
       }
 
       // Filter by division if not 'all'
-      if (selectedDivision !== 'all') {
-        operationalQuery = operationalQuery.eq('divisi', selectedDivision);
+      if (selectedDivision !== "all") {
+        operationalQuery = operationalQuery.eq("divisi", selectedDivision);
       }
 
       // Filter by category if not 'all'
-      if (selectedCategory !== 'all') {
-        operationalQuery = operationalQuery.eq('kategori', selectedCategory);
+      if (selectedCategory !== "all") {
+        operationalQuery = operationalQuery.eq("kategori", selectedCategory);
       }
 
-      const { data: operationalData, error: operationalError } = await operationalQuery;
+      const { data: operationalData, error: operationalError } =
+        await operationalQuery;
 
       if (operationalError) throw operationalError;
 
       // ✅ DEBUGGING: Log data yang dikembalikan
-      console.log('📊 Query results:', {
+      console.log("📊 Query results:", {
         totalRecords: operationalData?.length || 0,
         dateRange,
-        sampleData: operationalData?.slice(0, 3).map(item => ({
+        sampleData: operationalData?.slice(0, 3).map((item) => ({
           tanggal: item.tanggal,
           kategori: item.kategori,
-          nominal: item.nominal
+          nominal: item.nominal,
         })),
-        allDates: operationalData?.map(item => item.tanggal).sort()
+        allDates: operationalData?.map((item) => item.tanggal).sort(),
       });
 
       // Then, fetch companies data separately
       const { data: companiesData, error: companiesError } = await supabase
-        .from('companies')
-        .select('id, nama_perusahaan, modal');
+        .from("companies")
+        .select("id, nama_perusahaan, modal");
 
       if (companiesError) throw companiesError;
 
       // Create a map for quick company lookup
       const companiesMap = new Map();
-      companiesData?.forEach(company => {
+      companiesData?.forEach((company) => {
         companiesMap.set(company.id, company);
       });
 
       // Combine operational data with company information and set data_source
-      const combinedData = operationalData?.map(item => ({
-        ...item,
-        company_info: item.companies || null,
-        data_source: shouldUseCombined ? 'history' : 'active'
-      })) || [];
+      const combinedData =
+        operationalData?.map((item) => ({
+          ...item,
+          company_info: item.companies || null,
+          data_source: shouldUseCombined ? "history" : "active",
+        })) || [];
 
       setOperationalData(combinedData);
-      
     } catch (error) {
-      console.error('Error fetching operational data:', error);
+      console.error("Error fetching operational data:", error);
       toast({
         title: "Error",
         description: "Gagal memuat data operasional",
@@ -338,8 +387,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const nominalAmount = parseFloat(formData.nominal.replace(/\./g, ''));
+
+    const nominalAmount = parseFloat(formData.nominal.replace(/\./g, ""));
     if (isNaN(nominalAmount) || nominalAmount <= 0) {
       toast({
         title: "Error",
@@ -352,29 +401,31 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     // ✅ VALIDASI BULAN CLOSE: Cek apakah bulan transaksi sudah di-close
     const transactionDate = new Date(formData.tanggal);
     const monthClosed = await isMonthClosed(transactionDate);
-    
+
     if (monthClosed) {
       toast({
         title: "Bulan Sudah Di-Close",
-        description: `Bulan ${formatMonthYear(transactionDate)} sudah di-close. Gunakan fitur "Transaksi Retroaktif" untuk mencatat transaksi di bulan yang sudah di-close.`,
+        description: `Bulan ${formatMonthYear(
+          transactionDate
+        )} sudah di-close. Gunakan fitur "Transaksi Retroaktif" untuk mencatat transaksi di bulan yang sudah di-close.`,
         variant: "destructive",
       });
       return;
     }
 
-        // ✅ LOGIKA BARU: Cek kategori berdasarkan aturan baru
-        const isKurangProfit = isKurangProfitCategory(formData.kategori);
-        const isKurangModal = isKurangModalCategory(formData.kategori);
-        const isOPGlobal = isOPGlobalCategory(formData.kategori);
+    // ✅ LOGIKA BARU: Cek kategori berdasarkan aturan baru
+    const isKurangProfit = isKurangProfitCategory(formData.kategori);
+    const isKurangModal = isKurangModalCategory(formData.kategori);
+    const isOPGlobal = isOPGlobalCategory(formData.kategori);
 
     try {
       // ✅ LOGIKA BARU: Validasi modal untuk semua kategori kecuali "Kurang Profit"
       if (!isKurangProfit) {
         // Get company data to check modal
         const { data: company, error: companyError } = await supabase
-          .from('companies')
-          .select('modal, nama_perusahaan')
-          .eq('id', parseInt(formData.sumber_dana))
+          .from("companies")
+          .select("modal, nama_perusahaan")
+          .eq("id", parseInt(formData.sumber_dana))
           .single();
 
         if (companyError) throw companyError;
@@ -382,7 +433,11 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         if (company.modal < nominalAmount) {
           toast({
             title: "Error",
-            description: `Modal ${company.nama_perusahaan} tidak mencukupi. Modal tersedia: ${formatCurrency(company.modal)}`,
+            description: `Modal ${
+              company.nama_perusahaan
+            } tidak mencukupi. Modal tersedia: ${formatCurrency(
+              company.modal
+            )}`,
             variant: "destructive",
           });
           return;
@@ -393,11 +448,13 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         // ✅ VALIDASI BULAN CLOSE UNTUK EDIT: Cek apakah bulan transaksi yang akan diedit sudah di-close
         const editTransactionDate = new Date(formData.tanggal);
         const editMonthClosed = await isMonthClosed(editTransactionDate);
-        
+
         if (editMonthClosed) {
           toast({
             title: "Bulan Sudah Di-Close",
-            description: `Tidak dapat mengedit transaksi untuk bulan ${formatMonthYear(editTransactionDate)} karena sudah di-close. Gunakan "Transaksi Retroaktif" untuk koreksi.`,
+            description: `Tidak dapat mengedit transaksi untuk bulan ${formatMonthYear(
+              editTransactionDate
+            )} karena sudah di-close. Gunakan "Transaksi Retroaktif" untuk koreksi.`,
             variant: "destructive",
           });
           return;
@@ -405,7 +462,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
         // CATATAN: Untuk UPDATE, tetap gunakan tabel operational asli
         const { error: updateError } = await supabase
-          .from('operational')
+          .from("operational")
           .update({
             tanggal: formData.tanggal,
             kategori: formData.kategori,
@@ -413,23 +470,28 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
             nominal: nominalAmount,
             // ✅ LOGIKA BARU: Set company_id berdasarkan kategori
             company_id: isKurangProfit ? null : parseInt(formData.sumber_dana),
-            divisi: selectedDivision !== 'all' ? selectedDivision : 'sport'
+            divisi: selectedDivision !== "all" ? selectedDivision : "sport",
           })
-          .eq('id', editingOperational.id);
+          .eq("id", editingOperational.id);
 
         if (updateError) throw updateError;
 
         // ✅ LOGIKA BARU: Update modal perusahaan untuk semua kategori kecuali "Kurang Profit"
         if (!isKurangProfit) {
           // ✅ OP GLOBAL: Hitung modal difference dengan logika yang benar
-          const oldModalAmount = isOPGlobalCategory(editingOperational.kategori) ? editingOperational.nominal : editingOperational.nominal;
+          const oldModalAmount = isOPGlobalCategory(editingOperational.kategori)
+            ? editingOperational.nominal
+            : editingOperational.nominal;
           const newModalAmount = isOPGlobal ? nominalAmount : nominalAmount;
           const modalDifference = oldModalAmount - newModalAmount;
-          
-          const { error: modalUpdateError } = await supabase.rpc('update_company_modal', {
-            company_id: parseInt(formData.sumber_dana),
-            amount: modalDifference
-          });
+
+          const { error: modalUpdateError } = await supabase.rpc(
+            "update_company_modal",
+            {
+              company_id: parseInt(formData.sumber_dana),
+              amount: modalDifference,
+            }
+          );
 
           if (modalUpdateError) throw modalUpdateError;
         }
@@ -438,39 +500,45 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         if (!isKurangProfit) {
           // ✅ OP GLOBAL: Gunakan nominal penuh untuk pembukuan
           const pembukuanAmount = isOPGlobal ? nominalAmount : nominalAmount;
-          
+
           // Update pembukuan entry - delete old and create new
           const oldKeterangan = `${editingOperational.kategori} - ${editingOperational.deskripsi}`;
-          
+
           const { error: deletePembukuanError } = await supabase
-            .from('pembukuan')
+            .from("pembukuan")
             .delete()
-            .eq('keterangan', oldKeterangan)
-            .eq('debit', editingOperational.nominal)
-            .eq('company_id', editingOperational.company_id);
+            .eq("keterangan", oldKeterangan)
+            .eq("debit", editingOperational.nominal)
+            .eq("company_id", editingOperational.company_id);
 
           if (deletePembukuanError) {
-            console.error('Error deleting old pembukuan entry:', deletePembukuanError);
+            console.error(
+              "Error deleting old pembukuan entry:",
+              deletePembukuanError
+            );
           }
 
           const { error: pembukuanError } = await supabase
-            .from('pembukuan')
+            .from("pembukuan")
             .insert({
               tanggal: formData.tanggal,
-              divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
-              keterangan: `${formData.kategori} - ${formData.deskripsi}${isOPGlobal ? ' (OP Global - Nominal Penuh)' : ''}`,
+              divisi: selectedDivision !== "all" ? selectedDivision : "sport",
+              keterangan: `${formData.kategori} - ${formData.deskripsi}${
+                isOPGlobal ? " (OP Global - Nominal Penuh)" : ""
+              }`,
               debit: pembukuanAmount,
               kredit: 0,
               cabang_id: 1,
-              company_id: parseInt(formData.sumber_dana)
+              company_id: parseInt(formData.sumber_dana),
             });
 
           if (pembukuanError) {
-            console.error('Error updating pembukuan entry:', pembukuanError);
+            console.error("Error updating pembukuan entry:", pembukuanError);
             toast({
               title: "Warning",
-              description: "Data operasional berhasil diubah tapi gagal mengupdate pembukuan",
-              variant: "destructive"
+              description:
+                "Data operasional berhasil diubah tapi gagal mengupdate pembukuan",
+              variant: "destructive",
             });
           }
         }
@@ -478,30 +546,40 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         // ✅ IMPLEMENTASI BARU: Update profit adjustment untuk kategori "Kurang Profit"
         if (isKurangProfit) {
           // First restore the old profit adjustment
-          const { error: restoreError } = await supabase.rpc('restore_profit' as any, {
-            p_operational_id: editingOperational.id
-          });
+          const { error: restoreError } = await supabase.rpc(
+            "restore_profit" as any,
+            {
+              p_operational_id: editingOperational.id,
+            }
+          );
 
           if (restoreError) {
-            console.error('Error restoring old profit adjustment:', restoreError);
+            console.error(
+              "Error restoring old profit adjustment:",
+              restoreError
+            );
           }
 
           // Then create new profit deduction
-          const { error: deductError } = await supabase.rpc('deduct_profit' as any, {
-            p_operational_id: editingOperational.id,
-            p_tanggal: formData.tanggal,
-            p_divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
-            p_kategori: formData.kategori,
-            p_deskripsi: formData.deskripsi,
-            p_nominal: nominalAmount
-          });
+          const { error: deductError } = await supabase.rpc(
+            "deduct_profit" as any,
+            {
+              p_operational_id: editingOperational.id,
+              p_tanggal: formData.tanggal,
+              p_divisi: selectedDivision !== "all" ? selectedDivision : "sport",
+              p_kategori: formData.kategori,
+              p_deskripsi: formData.deskripsi,
+              p_nominal: nominalAmount,
+            }
+          );
 
           if (deductError) {
-            console.error('Error creating new profit deduction:', deductError);
+            console.error("Error creating new profit deduction:", deductError);
             toast({
               title: "Warning",
-              description: "Data operasional berhasil diubah tapi gagal mengupdate pengurangan keuntungan",
-              variant: "destructive"
+              description:
+                "Data operasional berhasil diubah tapi gagal mengupdate pengurangan keuntungan",
+              variant: "destructive",
             });
           }
         }
@@ -513,17 +591,21 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       } else {
         // CATATAN: Untuk INSERT, tetap gunakan tabel operational asli
         const { data: insertedData, error: insertError } = await supabase
-          .from('operational')
-          .insert([{
-            tanggal: formData.tanggal,
-            kategori: formData.kategori,
-            deskripsi: formData.deskripsi,
-            nominal: nominalAmount,
-            divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
-            cabang_id: 1, // Default cabang
-            // ✅ LOGIKA BARU: Set company_id berdasarkan kategori
-            company_id: isKurangProfit ? null : parseInt(formData.sumber_dana)
-          }])
+          .from("operational")
+          .insert([
+            {
+              tanggal: formData.tanggal,
+              kategori: formData.kategori,
+              deskripsi: formData.deskripsi,
+              nominal: nominalAmount,
+              divisi: selectedDivision !== "all" ? selectedDivision : "sport",
+              cabang_id: 1, // Default cabang
+              // ✅ LOGIKA BARU: Set company_id berdasarkan kategori
+              company_id: isKurangProfit
+                ? null
+                : parseInt(formData.sumber_dana),
+            },
+          ])
           .select()
           .single();
 
@@ -533,12 +615,15 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         if (!isKurangProfit) {
           // ✅ OP GLOBAL: Modal dikurangi nominal penuh, pembukuan juga nominal penuh
           const modalAmount = isOPGlobal ? nominalAmount : nominalAmount;
-          
+
           // Update company modal using the database function
-          const { error: modalUpdateError } = await supabase.rpc('update_company_modal', {
-            company_id: parseInt(formData.sumber_dana),
-            amount: -modalAmount // Negative to deduct from modal
-          });
+          const { error: modalUpdateError } = await supabase.rpc(
+            "update_company_modal",
+            {
+              company_id: parseInt(formData.sumber_dana),
+              amount: -modalAmount, // Negative to deduct from modal
+            }
+          );
 
           if (modalUpdateError) throw modalUpdateError;
         }
@@ -547,47 +632,54 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         if (!isKurangProfit) {
           // ✅ OP GLOBAL: Gunakan nominal penuh untuk pembukuan
           const pembukuanAmount = isOPGlobal ? nominalAmount : nominalAmount;
-          
+
           // Create pembukuan entry for operational expense
           const { error: pembukuanError } = await supabase
-            .from('pembukuan')
+            .from("pembukuan")
             .insert({
               tanggal: formData.tanggal,
-              divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
-              keterangan: `${formData.kategori} - ${formData.deskripsi}${isOPGlobal ? ' (OP Global - Nominal Penuh)' : ''}`,
+              divisi: selectedDivision !== "all" ? selectedDivision : "sport",
+              keterangan: `${formData.kategori} - ${formData.deskripsi}${
+                isOPGlobal ? " (OP Global - Nominal Penuh)" : ""
+              }`,
               debit: pembukuanAmount,
               kredit: 0,
               cabang_id: 1,
-              company_id: parseInt(formData.sumber_dana)
+              company_id: parseInt(formData.sumber_dana),
             });
 
           if (pembukuanError) {
-            console.error('Error creating pembukuan entry:', pembukuanError);
+            console.error("Error creating pembukuan entry:", pembukuanError);
             toast({
               title: "Warning",
-              description: "Data operasional berhasil ditambah tapi gagal mencatat pembukuan",
-              variant: "destructive"
+              description:
+                "Data operasional berhasil ditambah tapi gagal mencatat pembukuan",
+              variant: "destructive",
             });
           }
         }
 
         // ✅ IMPLEMENTASI BARU: Untuk kategori "Kurang Profit", kurangi keuntungan
         if (isKurangProfit) {
-          const { error: deductError } = await supabase.rpc('deduct_profit' as any, {
-            p_operational_id: insertedData.id,
-            p_tanggal: formData.tanggal,
-            p_divisi: selectedDivision !== 'all' ? selectedDivision : 'sport',
-            p_kategori: formData.kategori,
-            p_deskripsi: formData.deskripsi,
-            p_nominal: nominalAmount
-          });
+          const { error: deductError } = await supabase.rpc(
+            "deduct_profit" as any,
+            {
+              p_operational_id: insertedData.id,
+              p_tanggal: formData.tanggal,
+              p_divisi: selectedDivision !== "all" ? selectedDivision : "sport",
+              p_kategori: formData.kategori,
+              p_deskripsi: formData.deskripsi,
+              p_nominal: nominalAmount,
+            }
+          );
 
           if (deductError) {
-            console.error('Error deducting profit:', deductError);
+            console.error("Error deducting profit:", deductError);
             toast({
               title: "Warning",
-              description: "Data operasional berhasil ditambah tapi gagal mengurangi keuntungan",
-              variant: "destructive"
+              description:
+                "Data operasional berhasil ditambah tapi gagal mengurangi keuntungan",
+              variant: "destructive",
             });
           }
         }
@@ -603,7 +695,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       fetchOperationalData();
       fetchInitialData(); // Refresh companies data to show updated modal
     } catch (error) {
-      console.error('Error saving operational data:', error);
+      console.error("Error saving operational data:", error);
       toast({
         title: "Error",
         description: "Gagal menyimpan data operasional",
@@ -619,11 +711,10 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       kategori: operational.kategori,
       nominal: operational.nominal.toString(),
       deskripsi: operational.deskripsi,
-      sumber_dana: operational.company_id?.toString() || ""
+      sumber_dana: operational.company_id?.toString() || "",
     });
     setIsDialogOpen(true);
   };
-
 
   const handleDelete = async (id: number) => {
     if (!confirm("Apakah Anda yakin ingin menghapus data operasional ini?")) {
@@ -631,64 +722,76 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     }
 
     try {
-      const operationalToDelete = operationalData.find(item => item.id === id);
+      const operationalToDelete = operationalData.find(
+        (item) => item.id === id
+      );
       if (!operationalToDelete) return;
 
       // ✅ VALIDASI BULAN CLOSE UNTUK DELETE: Cek apakah bulan transaksi yang akan dihapus sudah di-close
       const deleteTransactionDate = new Date(operationalToDelete.tanggal);
       const deleteMonthClosed = await isMonthClosed(deleteTransactionDate);
-      
+
       if (deleteMonthClosed) {
         toast({
           title: "Bulan Sudah Di-Close",
-          description: `Tidak dapat menghapus transaksi untuk bulan ${formatMonthYear(deleteTransactionDate)} karena sudah di-close. Gunakan "Transaksi Retroaktif" untuk koreksi.`,
+          description: `Tidak dapat menghapus transaksi untuk bulan ${formatMonthYear(
+            deleteTransactionDate
+          )} karena sudah di-close. Gunakan "Transaksi Retroaktif" untuk koreksi.`,
           variant: "destructive",
         });
         return;
       }
 
       // CATATAN: Untuk DELETE, tetap gunakan tabel operational asli
-      if (operationalToDelete.data_source === 'history') {
+      if (operationalToDelete.data_source === "history") {
         toast({
           title: "Error",
           description: "Data riwayat tidak dapat dihapus",
-          variant: "destructive"
+          variant: "destructive",
         });
         return;
       }
 
       // ✅ LOGIKA BARU: Cek kategori berdasarkan aturan baru
-      const isKurangProfit = isKurangProfitCategory(operationalToDelete.kategori);
+      const isKurangProfit = isKurangProfitCategory(
+        operationalToDelete.kategori
+      );
       const isOPGlobal = isOPGlobalCategory(operationalToDelete.kategori);
 
       const { error: deleteError } = await supabase
-        .from('operational')
+        .from("operational")
         .delete()
-        .eq('id', id.toString());
+        .eq("id", id.toString());
 
       if (deleteError) throw deleteError;
 
       // ✅ LOGIKA BARU: Penghapusan pembukuan untuk semua kategori kecuali "Kurang Profit"
       if (!isKurangProfit) {
         // ✅ OP GLOBAL: Hitung nominal pembukuan yang benar untuk delete
-        const pembukuanAmount = isOPGlobal ? operationalToDelete.nominal : operationalToDelete.nominal;
-        
+        const pembukuanAmount = isOPGlobal
+          ? operationalToDelete.nominal
+          : operationalToDelete.nominal;
+
         // Delete pembukuan entry dengan query yang lebih akurat
         const keteranganToDelete = `${operationalToDelete.kategori} - ${operationalToDelete.deskripsi}`;
-        
+
         const { error: pembukuanDeleteError } = await supabase
-          .from('pembukuan')
+          .from("pembukuan")
           .delete()
-          .eq('keterangan', keteranganToDelete)
-          .eq('debit', pembukuanAmount)
-          .eq('company_id', operationalToDelete.company_id);
+          .eq("keterangan", keteranganToDelete)
+          .eq("debit", pembukuanAmount)
+          .eq("company_id", operationalToDelete.company_id);
 
         if (pembukuanDeleteError) {
-          console.error('Error deleting pembukuan entry:', pembukuanDeleteError);
+          console.error(
+            "Error deleting pembukuan entry:",
+            pembukuanDeleteError
+          );
           toast({
             title: "Warning",
-            description: "Data operasional berhasil dihapus tapi gagal menghapus pembukuan",
-            variant: "destructive"
+            description:
+              "Data operasional berhasil dihapus tapi gagal menghapus pembukuan",
+            variant: "destructive",
           });
         }
       }
@@ -696,29 +799,38 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       // ✅ LOGIKA BARU: Restore modal perusahaan untuk semua kategori kecuali "Kurang Profit"
       if (!isKurangProfit && operationalToDelete.company_id) {
         // ✅ OP GLOBAL: Restore modal dengan logika yang benar
-        const restoreModalAmount = isOPGlobal ? operationalToDelete.nominal : operationalToDelete.nominal;
-        
+        const restoreModalAmount = isOPGlobal
+          ? operationalToDelete.nominal
+          : operationalToDelete.nominal;
+
         // Restore company modal using the database function
-        const { error: modalRestoreError } = await supabase.rpc('update_company_modal', {
-          company_id: operationalToDelete.company_id,
-          amount: restoreModalAmount // Positive to restore modal
-        });
+        const { error: modalRestoreError } = await supabase.rpc(
+          "update_company_modal",
+          {
+            company_id: operationalToDelete.company_id,
+            amount: restoreModalAmount, // Positive to restore modal
+          }
+        );
 
         if (modalRestoreError) throw modalRestoreError;
       }
 
       // ✅ IMPLEMENTASI BARU: Untuk kategori "Kurang Profit", kembalikan keuntungan
       if (isKurangProfit) {
-        const { error: restoreError } = await supabase.rpc('restore_profit' as any, {
-          p_operational_id: id
-        });
+        const { error: restoreError } = await supabase.rpc(
+          "restore_profit" as any,
+          {
+            p_operational_id: id,
+          }
+        );
 
         if (restoreError) {
-          console.error('Error restoring profit:', restoreError);
+          console.error("Error restoring profit:", restoreError);
           toast({
             title: "Warning",
-            description: "Data operasional berhasil dihapus tapi gagal mengembalikan keuntungan",
-            variant: "destructive"
+            description:
+              "Data operasional berhasil dihapus tapi gagal mengembalikan keuntungan",
+            variant: "destructive",
           });
         }
       }
@@ -731,7 +843,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       fetchOperationalData();
       fetchInitialData(); // Refresh companies data
     } catch (error) {
-      console.error('Error deleting operational data:', error);
+      console.error("Error deleting operational data:", error);
       toast({
         title: "Error",
         description: "Gagal menghapus data operasional",
@@ -742,11 +854,11 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
   const resetForm = () => {
     setFormData({
-      tanggal: new Date().toISOString().split('T')[0],
+      tanggal: new Date().toISOString().split("T")[0],
       kategori: "",
       nominal: "",
       deskripsi: "",
-      sumber_dana: ""
+      sumber_dana: "",
     });
     setEditingOperational(null);
   };
@@ -761,24 +873,24 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   };
 
   const parseNumericInput = (value: string): string => {
-    return value.replace(/\./g, '');
+    return value.replace(/\./g, "");
   };
 
   const handleNumericChange = (value: string) => {
     const numericValue = parseNumericInput(value);
-    setFormData({...formData, nominal: numericValue});
+    setFormData({ ...formData, nominal: numericValue });
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
     }).format(amount);
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID');
+    return new Date(dateString).toLocaleDateString("id-ID");
   };
 
   const getTotalOperational = () => {
@@ -792,8 +904,10 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     }, {});
   };
 
-  const filteredCompanies = companiesData.filter(company => 
-    selectedDivision === 'all' || company.divisi.toLowerCase() === selectedDivision.toLowerCase()
+  const filteredCompanies = companiesData.filter(
+    (company) =>
+      selectedDivision === "all" ||
+      company.divisi.toLowerCase() === selectedDivision.toLowerCase()
   );
 
   // ✅ LOGIKA BARU: Fungsi untuk menentukan apakah field Sumber Dana harus ditampilkan
@@ -827,21 +941,21 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         </div>
 
         <div className="flex gap-2">
-          <Button 
+          <Button
             onClick={handleOpenNewDialog}
             className="bg-purple-600 hover:bg-purple-700"
           >
             <Plus className="w-4 h-4 mr-2" />
             Tambah Operasional
           </Button>
-          
+
           <RetroactiveOperationalDialog
             selectedDivision={selectedDivision}
             onSuccess={() => {
               fetchOperationalData();
             }}
             trigger={
-              <Button 
+              <Button
                 variant="outline"
                 className="border-orange-500 text-orange-600 hover:bg-orange-50"
               >
@@ -857,7 +971,6 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
               fetchOperationalData();
             }}
           />
-
         </div>
       </div>
 
@@ -866,7 +979,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         <h3 className="text-lg font-semibold text-blue-800 mb-4">
           Dampak Terhadap Keuntungan
         </h3>
-        <ProfitAdjustmentSummary 
+        <ProfitAdjustmentSummary
           selectedDivision={selectedDivision}
           dateRange={getDateRange(selectedPeriod)}
         />
@@ -876,7 +989,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {editingOperational ? "Edit Operasional" : "Tambah Operasional Baru"}
+              {editingOperational
+                ? "Edit Operasional"
+                : "Tambah Operasional Baru"}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -886,7 +1001,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                 id="tanggal"
                 type="date"
                 value={formData.tanggal}
-                onChange={(e) => setFormData({...formData, tanggal: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, tanggal: e.target.value })
+                }
                 className="mt-1"
                 required
               />
@@ -894,7 +1011,12 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
             <div>
               <Label htmlFor="kategori">Kategori *</Label>
-              <Select value={formData.kategori} onValueChange={(value) => setFormData({...formData, kategori: value})}>
+              <Select
+                value={formData.kategori}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, kategori: value })
+                }
+              >
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Pilih kategori" />
                 </SelectTrigger>
@@ -911,7 +1033,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
             <div>
               <Label htmlFor="nominal">Nominal *</Label>
               <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">Rp</span>
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                  Rp
+                </span>
                 <Input
                   id="nominal"
                   type="text"
@@ -928,7 +1052,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
               <Textarea
                 id="deskripsi"
                 value={formData.deskripsi}
-                onChange={(e) => setFormData({...formData, deskripsi: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, deskripsi: e.target.value })
+                }
                 placeholder="Masukkan deskripsi pengeluaran operasional"
                 className="mt-1"
                 rows={3}
@@ -939,13 +1065,21 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
             {shouldShowSumberDana(formData.kategori) ? (
               <div>
                 <Label htmlFor="sumber_dana">Sumber Dana *</Label>
-                <Select value={formData.sumber_dana} onValueChange={(value) => setFormData({...formData, sumber_dana: value})}>
+                <Select
+                  value={formData.sumber_dana}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, sumber_dana: value })
+                  }
+                >
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Pilih sumber dana" />
                   </SelectTrigger>
                   <SelectContent>
                     {filteredCompanies.map((company) => (
-                      <SelectItem key={company.id} value={company.id.toString()}>
+                      <SelectItem
+                        key={company.id}
+                        value={company.id.toString()}
+                      >
                         {company.nama_perusahaan}
                         <br />
                         <small className="text-gray-500">
@@ -957,28 +1091,36 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                 </Select>
               </div>
             ) : (
-              <div className={`p-3 border rounded-md ${
-                isKurangProfitCategory(formData.kategori) 
-                  ? 'bg-blue-50 border-blue-200' 
-                  : 'bg-green-50 border-green-200'
-              }`}>
-                <p className={`text-sm ${
-                  isKurangProfitCategory(formData.kategori) 
-                    ? 'text-blue-700' 
-                    : 'text-green-700'
-                }`}>
-                  <strong>Catatan:</strong> {getCategoryInfoMessage(formData.kategori)}
+              <div
+                className={`p-3 border rounded-md ${
+                  isKurangProfitCategory(formData.kategori)
+                    ? "bg-blue-50 border-blue-200"
+                    : "bg-green-50 border-green-200"
+                }`}
+              >
+                <p
+                  className={`text-sm ${
+                    isKurangProfitCategory(formData.kategori)
+                      ? "text-blue-700"
+                      : "text-green-700"
+                  }`}
+                >
+                  <strong>Catatan:</strong>{" "}
+                  {getCategoryInfoMessage(formData.kategori)}
                 </p>
               </div>
             )}
 
             <div className="flex gap-2 pt-4">
-              <Button type="submit" className="bg-purple-600 hover:bg-purple-700">
+              <Button
+                type="submit"
+                className="bg-purple-600 hover:bg-purple-700"
+              >
                 {editingOperational ? "Update" : "Simpan"}
               </Button>
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => setIsDialogOpen(false)}
               >
                 Batal
@@ -993,12 +1135,14 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           <CardTitle className="flex items-center gap-2">
             Filter Data
             {/* ✅ TAMBAHAN: Indikator tabel yang digunakan */}
-            <span className={`text-xs px-2 py-1 rounded-full ${
-              shouldUseCombined 
-                ? 'bg-blue-100 text-blue-800' 
-                : 'bg-green-100 text-green-800'
-            }`}>
-              {shouldUseCombined ? '📊 operational_combined' : '🔄 operational'}
+            <span
+              className={`text-xs px-2 py-1 rounded-full ${
+                shouldUseCombined
+                  ? "bg-blue-100 text-blue-800"
+                  : "bg-green-100 text-green-800"
+              }`}
+            >
+              {shouldUseCombined ? "📊 operational_combined" : "🔄 operational"}
             </span>
           </CardTitle>
         </CardHeader>
@@ -1034,7 +1178,10 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
             {/* Filter Kategori */}
             <div>
               <Label htmlFor="selectedCategory">Kategori</Label>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <Select
+                value={selectedCategory}
+                onValueChange={setSelectedCategory}
+              >
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Pilih kategori" />
                 </SelectTrigger>
@@ -1051,14 +1198,18 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
             {/* Tombol Filter */}
             <div className="flex items-end">
-              <Button onClick={fetchOperationalData} disabled={loading} className="w-full">
+              <Button
+                onClick={fetchOperationalData}
+                disabled={loading}
+                className="w-full"
+              >
                 {loading ? "Loading..." : "Filter"}
               </Button>
             </div>
           </div>
 
           {/* ✅ TAMBAHAN: Custom Date Range untuk periode custom */}
-          {selectedPeriod === 'custom' && (
+          {selectedPeriod === "custom" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t">
               <div>
                 <Label htmlFor="startDate">Tanggal Mulai</Label>
@@ -1088,7 +1239,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Operasional</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Total Operasional
+                </p>
                 <p className="text-2xl font-bold text-red-600">
                   {formatCurrency(getTotalOperational())}
                 </p>
@@ -1102,7 +1255,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Transaksi</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Total Transaksi
+                </p>
                 <p className="text-2xl font-bold text-purple-600">
                   {operationalData.length}
                 </p>
@@ -1116,9 +1271,15 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Rata-rata per Transaksi</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Rata-rata per Transaksi
+                </p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {formatCurrency(operationalData.length > 0 ? getTotalOperational() / operationalData.length : 0)}
+                  {formatCurrency(
+                    operationalData.length > 0
+                      ? getTotalOperational() / operationalData.length
+                      : 0
+                  )}
                 </p>
               </div>
               <DollarSign className="w-8 h-8 text-blue-600" />
@@ -1130,9 +1291,13 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Kategori Terbanyak</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Kategori Terbanyak
+                </p>
                 <p className="text-lg font-bold text-green-600">
-                  {Object.entries(getCategoryStats()).sort(([,a], [,b]) => (b as number) - (a as number))[0]?.[0] || '-'}
+                  {Object.entries(getCategoryStats()).sort(
+                    ([, a], [, b]) => (b as number) - (a as number)
+                  )[0]?.[0] || "-"}
                 </p>
               </div>
               <TrendingUp className="w-8 h-8 text-green-600" />
@@ -1168,15 +1333,17 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>{formatDate(item.tanggal)}</TableCell>
                     <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        isKurangProfitCategory(item.kategori) 
-                          ? 'bg-blue-100 text-blue-800'
-                          : isKurangModalCategory(item.kategori)
-                          ? 'bg-green-100 text-green-800'
-                          : isOPGlobalCategory(item.kategori)
-                          ? 'bg-orange-100 text-orange-800'
-                          : 'bg-purple-100 text-purple-800'
-                      }`}>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs ${
+                          isKurangProfitCategory(item.kategori)
+                            ? "bg-blue-100 text-blue-800"
+                            : isKurangModalCategory(item.kategori)
+                            ? "bg-green-100 text-green-800"
+                            : isOPGlobalCategory(item.kategori)
+                            ? "bg-orange-100 text-orange-800"
+                            : "bg-purple-100 text-purple-800"
+                        }`}
+                      >
                         {item.kategori}
                       </span>
                     </TableCell>
@@ -1185,20 +1352,24 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                     </TableCell>
                     <TableCell>{item.deskripsi}</TableCell>
                     <TableCell>
-                      {item.company_info?.nama_perusahaan || <span className="text-gray-500 italic">-</span>}
+                      {item.company_info?.nama_perusahaan || (
+                        <span className="text-gray-500 italic">-</span>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        item.data_source === 'active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {item.data_source === 'active' ? 'Aktif' : 'Riwayat'}
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs ${
+                          item.data_source === "active"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {item.data_source === "active" ? "Aktif" : "Riwayat"}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end">
-                        {item.data_source === 'active' && (
+                        {item.data_source === "active" && (
                           <>
                             <Button
                               size="sm"
@@ -1216,7 +1387,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                             </Button>
                           </>
                         )}
-                        {item.data_source === 'history' && (
+                        {item.data_source === "history" && (
                           <span className="text-sm text-gray-500">
                             Tidak dapat diedit
                           </span>
@@ -1227,7 +1398,10 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                 ))}
                 {operationalData.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                    <TableCell
+                      colSpan={8}
+                      className="text-center py-8 text-gray-500"
+                    >
                       Tidak ada data operasional
                     </TableCell>
                   </TableRow>
@@ -1237,7 +1411,6 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           )}
         </CardContent>
       </Card>
-
     </div>
   );
 };
