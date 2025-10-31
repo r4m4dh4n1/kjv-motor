@@ -3,7 +3,7 @@
 
 -- 1. Add asset_id to operational table (main active data)
 ALTER TABLE public.operational 
-ADD COLUMN IF NOT EXISTS asset_id INTEGER REFERENCES public.assets(id);
+ADD COLUMN IF NOT EXISTS asset_id INTEGER REFERENCES public.pencatatan_asset(id);
 
 -- 2. Add asset_id to operational_history table (closed month data)
 ALTER TABLE public.operational_history
@@ -11,7 +11,7 @@ ADD COLUMN IF NOT EXISTS asset_id INTEGER;
 
 -- 3. Add asset_id to retroactive_operational table (retroactive adjustment data)
 ALTER TABLE public.retroactive_operational
-ADD COLUMN IF NOT EXISTS asset_id INTEGER REFERENCES public.assets(id);
+ADD COLUMN IF NOT EXISTS asset_id INTEGER REFERENCES public.pencatatan_asset(id);
 
 -- Add comments to explain the field
 COMMENT ON COLUMN public.operational.asset_id IS 'Used for special categories: Kasbon, STARGAZER, ASET LAINNYA, Sewa Ruko. Replaces company_id for these categories.';
@@ -75,3 +75,20 @@ GRANT SELECT ON public.operational_combined TO anon;
 
 -- Add comment to document the change
 COMMENT ON VIEW public.operational_combined IS 'Combined view of operational and operational_history tables with asset_id support for special categories (Kasbon, STARGAZER, ASET LAINNYA, Sewa Ruko)';
+
+-- Create function to update asset nominal
+CREATE OR REPLACE FUNCTION public.update_asset_nominal(
+  p_asset_id INTEGER,
+  p_amount NUMERIC
+)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE public.pencatatan_asset
+  SET nominal = nominal + p_amount,
+      updated_at = NOW()
+  WHERE id = p_asset_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execute permission
+GRANT EXECUTE ON FUNCTION public.update_asset_nominal(INTEGER, NUMERIC) TO authenticated;

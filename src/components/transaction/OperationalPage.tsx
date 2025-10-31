@@ -93,7 +93,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     console.log("🔍 Filtering assets for category:", formData.kategori);
     console.log(
       "🔍 Available assets:",
-      assetsData.map((a) => ({ id: a.id, jenis_asset: a.jenis_asset }))
+      assetsData.map((a) => ({ id: a.id, nama: a.nama }))
     );
 
     let filtered = [];
@@ -101,30 +101,25 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     switch (formData.kategori) {
       case "Kasbon":
         filtered = assetsData.filter(
-          (asset) =>
-            asset.jenis_asset &&
-            asset.jenis_asset.toLowerCase().includes("kasbon")
+          (asset) => asset.nama && asset.nama.toLowerCase().includes("kasbon")
         );
         break;
       case "STARGAZER":
         filtered = assetsData.filter(
           (asset) =>
-            asset.jenis_asset &&
-            asset.jenis_asset.toLowerCase().includes("stargazer")
+            asset.nama && asset.nama.toLowerCase().includes("stargazer")
         );
         break;
       case "ASET LAINNYA":
         filtered = assetsData.filter(
           (asset) =>
-            asset.jenis_asset &&
-            asset.jenis_asset.toLowerCase().includes("aset lainnya")
+            asset.nama && asset.nama.toLowerCase().includes("aset lainnya")
         );
         break;
       case "Sewa Ruko":
         filtered = assetsData.filter(
           (asset) =>
-            asset.jenis_asset &&
-            asset.jenis_asset.toLowerCase().includes("sewa ruko")
+            asset.nama && asset.nama.toLowerCase().includes("sewa ruko")
         );
         break;
       default:
@@ -133,7 +128,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
     console.log(
       "🔍 Filtered result:",
-      filtered.map((a) => ({ id: a.id, jenis_asset: a.jenis_asset }))
+      filtered.map((a) => ({ id: a.id, nama: a.nama }))
     );
 
     // ✅ FALLBACK: Jika tidak ada yang match, tampilkan semua assets sebagai opsi
@@ -157,7 +152,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     filteredAssetsLength: filteredAssets.length,
     filteredAssets: filteredAssets.map((a) => ({
       id: a.id,
-      jenis_asset: a.jenis_asset,
+      nama: a.nama,
     })),
   });
 
@@ -387,9 +382,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       // ✅ NEW: Fetch assets data for special categories
       const { data: assets, error: assetsError } = await supabase
-        .from("assets")
+        .from("pencatatan_asset")
         .select("*")
-        .order("jenis_asset");
+        .order("nama");
 
       if (assetsError) throw assetsError;
       setAssetsData(assets || []);
@@ -627,6 +622,58 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
         if (updateError) throw updateError;
 
+        // ✅ NEW: Handle asset nominal update for asset-based categories
+        if (isAssetBased) {
+          const oldAssetId = editingOperational.asset_id;
+          const newAssetId = formData.asset_id
+            ? parseInt(formData.asset_id)
+            : null;
+          const oldNominal = editingOperational.nominal;
+          const newNominal = nominalAmount;
+
+          // If asset changed OR nominal changed
+          if (oldAssetId !== newAssetId || oldNominal !== newNominal) {
+            // Restore old asset nominal (add back old amount)
+            if (oldAssetId) {
+              const { error: restoreError } = await supabase.rpc(
+                "update_asset_nominal",
+                {
+                  p_asset_id: oldAssetId,
+                  p_amount: oldNominal, // Positive to add back
+                }
+              );
+
+              if (restoreError) {
+                console.error(
+                  "Error restoring old asset nominal:",
+                  restoreError
+                );
+              }
+            }
+
+            // Deduct from new asset nominal
+            if (newAssetId) {
+              const { error: deductError } = await supabase.rpc(
+                "update_asset_nominal",
+                {
+                  p_asset_id: newAssetId,
+                  p_amount: -newNominal, // Negative to deduct
+                }
+              );
+
+              if (deductError) {
+                console.error("Error updating new asset nominal:", deductError);
+                toast({
+                  title: "Warning",
+                  description:
+                    "Data operasional berhasil diubah tapi gagal mengupdate nominal asset",
+                  variant: "destructive",
+                });
+              }
+            }
+          }
+        }
+
         // ✅ NEW: Skip company modal update for asset-based categories
         // ✅ LOGIKA BARU: Update modal perusahaan untuk semua kategori kecuali "Kurang Profit" dan asset-based
         if (!isKurangProfit && !isAssetBased) {
@@ -765,6 +812,27 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           .single();
 
         if (insertError) throw insertError;
+
+        // ✅ NEW: Update asset nominal for asset-based categories
+        if (isAssetBased && formData.asset_id) {
+          const { error: assetUpdateError } = await supabase.rpc(
+            "update_asset_nominal",
+            {
+              p_asset_id: parseInt(formData.asset_id),
+              p_amount: -nominalAmount, // Negative to deduct from asset nominal
+            }
+          );
+
+          if (assetUpdateError) {
+            console.error("Error updating asset nominal:", assetUpdateError);
+            toast({
+              title: "Warning",
+              description:
+                "Data operasional berhasil ditambah tapi gagal mengupdate nominal asset",
+              variant: "destructive",
+            });
+          }
+        }
 
         // ✅ NEW: Skip company modal update for asset-based categories
         // ✅ LOGIKA BARU: Update modal perusahaan untuk semua kategori kecuali "Kurang Profit" dan asset-based
@@ -914,6 +982,9 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         operationalToDelete.kategori
       );
       const isOPGlobal = isOPGlobalCategory(operationalToDelete.kategori);
+      const isAssetBased = specialCategories.includes(
+        operationalToDelete.kategori
+      );
 
       const { error: deleteError } = await supabase
         .from("operational")
@@ -922,8 +993,29 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
       if (deleteError) throw deleteError;
 
-      // ✅ LOGIKA BARU: Penghapusan pembukuan untuk semua kategori kecuali "Kurang Profit"
-      if (!isKurangProfit) {
+      // ✅ NEW: Restore asset nominal for asset-based categories
+      if (isAssetBased && operationalToDelete.asset_id) {
+        const { error: restoreAssetError } = await supabase.rpc(
+          "update_asset_nominal",
+          {
+            p_asset_id: operationalToDelete.asset_id,
+            p_amount: operationalToDelete.nominal, // Positive to restore
+          }
+        );
+
+        if (restoreAssetError) {
+          console.error("Error restoring asset nominal:", restoreAssetError);
+          toast({
+            title: "Warning",
+            description:
+              "Data operasional berhasil dihapus tapi gagal mengembalikan nominal asset",
+            variant: "destructive",
+          });
+        }
+      }
+
+      // ✅ LOGIKA BARU: Penghapusan pembukuan untuk semua kategori kecuali "Kurang Profit" dan asset-based
+      if (!isKurangProfit && !isAssetBased) {
         // ✅ OP GLOBAL: Hitung nominal pembukuan yang benar untuk delete
         const pembukuanAmount = isOPGlobal
           ? operationalToDelete.nominal
@@ -953,8 +1045,8 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         }
       }
 
-      // ✅ LOGIKA BARU: Restore modal perusahaan untuk semua kategori kecuali "Kurang Profit"
-      if (!isKurangProfit && operationalToDelete.company_id) {
+      // ✅ LOGIKA BARU: Restore modal perusahaan untuk semua kategori kecuali "Kurang Profit" dan asset-based
+      if (!isKurangProfit && !isAssetBased && operationalToDelete.company_id) {
         // ✅ OP GLOBAL: Restore modal dengan logika yang benar
         const restoreModalAmount = isOPGlobal
           ? operationalToDelete.nominal
@@ -1241,7 +1333,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                     {filteredAssets.length > 0 ? (
                       filteredAssets.map((asset) => (
                         <SelectItem key={asset.id} value={asset.id.toString()}>
-                          {asset.jenis_asset}
+                          {asset.nama}
                         </SelectItem>
                       ))
                     ) : (
