@@ -656,19 +656,29 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         )}`;
 
         filteredOperationalData = operationalData.filter((item) => {
-          // Jika bukan retroaktif, include
-          if (!item.is_retroactive) return true;
+          const itemDate = new Date(item.tanggal);
+          const itemYear = itemDate.getFullYear();
+          const itemMonth = itemDate.getMonth() + 1;
 
-          // Jika retroaktif, cek apakah original_month sama dengan bulan ini
-          if (item.original_month) {
-            const originalMonthStr = item.original_month
-              .toString()
-              .substring(0, 7); // YYYY-MM
-            return originalMonthStr === currentMonthStr;
+          // ✅ UTAMA: Cek tanggal transaksi apakah bulan ini
+          const isCurrentMonth =
+            itemYear === currentYear && itemMonth === currentMonth;
+
+          // ✅ Jika is_retroactive = true, harus cek original_month
+          if (item.is_retroactive === true) {
+            // Jika ada original_month, cek apakah sama dengan bulan ini
+            if (item.original_month) {
+              const originalMonthStr = item.original_month
+                .toString()
+                .substring(0, 7); // YYYY-MM
+              return originalMonthStr === currentMonthStr;
+            }
+            // Jika retroaktif tapi tidak ada original_month, exclude
+            return false;
           }
 
-          // Default: exclude jika retroaktif tapi tidak ada original_month
-          return false;
+          // ✅ Jika is_retroactive = false atau NULL, filter berdasarkan tanggal
+          return isCurrentMonth;
         });
 
         console.log(
@@ -677,6 +687,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             beforeFilter: operationalData.length,
             afterFilter: filteredOperationalData.length,
             removed: operationalData.length - filteredOperationalData.length,
+            currentMonthStr,
           }
         );
       }

@@ -92,21 +92,21 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
     switch (formData.kategori) {
       case "Kasbon":
-        return assetsData.filter((asset) => asset.nama_aset === "Kasbon");
+        return assetsData.filter((asset) => asset.jenis_asset === "Kasbon");
       case "STARGAZER":
-        return assetsData.filter((asset) => asset.nama_aset === "STARGAZER");
+        return assetsData.filter((asset) => asset.jenis_asset === "STARGAZER");
       case "ASET LAINNYA":
         return assetsData.filter(
           (asset) =>
-            asset.nama_aset &&
-            asset.nama_aset.toUpperCase().includes("ASET LAINNYA")
+            asset.jenis_asset &&
+            asset.jenis_asset.toUpperCase().includes("ASET LAINNYA")
         );
       case "Sewa Ruko":
         return assetsData.filter(
           (asset) =>
-            asset.nama_aset &&
-            (asset.nama_aset.toLowerCase().includes("sewa ruko") ||
-              asset.nama_aset.includes("Sewa Ruko"))
+            asset.jenis_asset &&
+            (asset.jenis_asset.toLowerCase().includes("sewa ruko") ||
+              asset.jenis_asset.includes("Sewa Ruko"))
         );
       default:
         return [];
@@ -343,7 +343,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
       const { data: assets, error: assetsError } = await supabase
         .from("assets")
         .select("*")
-        .order("nama_aset");
+        .order("jenis_asset");
 
       if (assetsError) throw assetsError;
       setAssetsData(assets || []);
@@ -1195,7 +1195,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
                     {filteredAssets.length > 0 ? (
                       filteredAssets.map((asset) => (
                         <SelectItem key={asset.id} value={asset.id.toString()}>
-                          {asset.nama_aset}
+                          {asset.jenis_asset}
                         </SelectItem>
                       ))
                     ) : (
