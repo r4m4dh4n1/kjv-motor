@@ -115,6 +115,18 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
 
   const filteredAssets = getFilteredAssets();
 
+  // ✅ Debug logs
+  console.log("🔍 Special Category Debug:", {
+    selectedCategory: formData.kategori,
+    isSpecialCategory,
+    assetsDataLength: assetsData.length,
+    filteredAssetsLength: filteredAssets.length,
+    filteredAssets: filteredAssets.map((a) => ({
+      id: a.id,
+      jenis_asset: a.jenis_asset,
+    })),
+  });
+
   // ✅ UPDATED: Categories based on division
   const categories =
     selectedDivision === "start"
