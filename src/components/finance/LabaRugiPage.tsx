@@ -238,8 +238,13 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
   };
 
   const fetchPendapatanData = async (dateRange: { start: Date; end: Date }) => {
-    const startDate = dateRange.start.toISOString();
-    const endDate = dateRange.end.toISOString();
+    // ✅ FIXED: Format date as YYYY-MM-DD using LOCAL timezone (not UTC)
+    const startDate = `${dateRange.start.getFullYear()}-${String(
+      dateRange.start.getMonth() + 1
+    ).padStart(2, "0")}-${String(dateRange.start.getDate()).padStart(2, "0")}`;
+    const endDate = `${dateRange.end.getFullYear()}-${String(
+      dateRange.end.getMonth() + 1
+    ).padStart(2, "0")}-${String(dateRange.end.getDate()).padStart(2, "0")}`;
 
     console.log("?? Fetching pendapatan data:", {
       startDate,
@@ -466,9 +471,16 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
   const fetchBiayaData = async (dateRange: { start: Date; end: Date }) => {
     console.log("💰 === FETCH BIAYA DATA START ===");
     try {
-      // ✅ FIXED: Use DATE format (YYYY-MM-DD) instead of ISO timestamp to avoid timezone issues
-      const startDate = dateRange.start.toISOString().split("T")[0]; // "2025-10-01"
-      const endDate = dateRange.end.toISOString().split("T")[0]; // "2025-10-31"
+      // ✅ FIXED: Format date as YYYY-MM-DD using LOCAL timezone (not UTC)
+      const startDate = `${dateRange.start.getFullYear()}-${String(
+        dateRange.start.getMonth() + 1
+      ).padStart(2, "0")}-${String(dateRange.start.getDate()).padStart(
+        2,
+        "0"
+      )}`;
+      const endDate = `${dateRange.end.getFullYear()}-${String(
+        dateRange.end.getMonth() + 1
+      ).padStart(2, "0")}-${String(dateRange.end.getDate()).padStart(2, "0")}`;
 
       console.log("📅 Date Range for Query:", {
         startLocal: dateRange.start.toLocaleDateString("id-ID"),
@@ -807,8 +819,16 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
   }) => {
     console.log("🏢 === FETCH BIRO JASA START ===");
     try {
-      const startDate = dateRange.start.toISOString();
-      const endDate = dateRange.end.toISOString();
+      // ✅ FIXED: Format date as YYYY-MM-DD using LOCAL timezone (not UTC)
+      const startDate = `${dateRange.start.getFullYear()}-${String(
+        dateRange.start.getMonth() + 1
+      ).padStart(2, "0")}-${String(dateRange.start.getDate()).padStart(
+        2,
+        "0"
+      )}`;
+      const endDate = `${dateRange.end.getFullYear()}-${String(
+        dateRange.end.getMonth() + 1
+      ).padStart(2, "0")}-${String(dateRange.end.getDate()).padStart(2, "0")}`;
 
       let query = supabase
         .from("biro_jasa")
