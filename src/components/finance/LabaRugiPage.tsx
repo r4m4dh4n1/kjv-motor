@@ -473,11 +473,10 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         ? "operational_combined"
         : "operational";
 
-      // ? PERBAIKAN UTAMA: This Month pakai tanggal, Last Month & This Year pakai original_month
-      // ✅ FIX: this_month TIDAK pakai original_month, hanya pakai tanggal biasa
-      const shouldQueryByOriginalMonth = ["last_month", "this_year"].includes(
-        selectedPeriod
-      );
+      // ? PERBAIKAN UTAMA: This Month pakai tanggal, Last Month & This Year pakai tanggal juga
+      // ✅ FIX: Semua periode pakai tanggal, karena operational_history tidak punya original_month
+      // original_month hanya untuk retroactive transactions di operational table
+      const shouldQueryByOriginalMonth = false; // Always use tanggal for combined view
 
       console.log("?? Query Configuration:", {
         operationalTable,
