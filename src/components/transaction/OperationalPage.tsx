@@ -90,27 +90,61 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   const getFilteredAssets = () => {
     if (!formData.kategori || !isSpecialCategory) return [];
 
+    console.log("🔍 Filtering assets for category:", formData.kategori);
+    console.log(
+      "🔍 Available assets:",
+      assetsData.map((a) => ({ id: a.id, jenis_asset: a.jenis_asset }))
+    );
+
+    let filtered = [];
+
     switch (formData.kategori) {
       case "Kasbon":
-        return assetsData.filter((asset) => asset.jenis_asset === "Kasbon");
+        filtered = assetsData.filter(
+          (asset) =>
+            asset.jenis_asset &&
+            asset.jenis_asset.toLowerCase().includes("kasbon")
+        );
+        break;
       case "STARGAZER":
-        return assetsData.filter((asset) => asset.jenis_asset === "STARGAZER");
+        filtered = assetsData.filter(
+          (asset) =>
+            asset.jenis_asset &&
+            asset.jenis_asset.toLowerCase().includes("stargazer")
+        );
+        break;
       case "ASET LAINNYA":
-        return assetsData.filter(
+        filtered = assetsData.filter(
           (asset) =>
             asset.jenis_asset &&
-            asset.jenis_asset.toUpperCase().includes("ASET LAINNYA")
+            asset.jenis_asset.toLowerCase().includes("aset lainnya")
         );
+        break;
       case "Sewa Ruko":
-        return assetsData.filter(
+        filtered = assetsData.filter(
           (asset) =>
             asset.jenis_asset &&
-            (asset.jenis_asset.toLowerCase().includes("sewa ruko") ||
-              asset.jenis_asset.includes("Sewa Ruko"))
+            asset.jenis_asset.toLowerCase().includes("sewa ruko")
         );
+        break;
       default:
-        return [];
+        filtered = [];
     }
+
+    console.log(
+      "🔍 Filtered result:",
+      filtered.map((a) => ({ id: a.id, jenis_asset: a.jenis_asset }))
+    );
+
+    // ✅ FALLBACK: Jika tidak ada yang match, tampilkan semua assets sebagai opsi
+    if (filtered.length === 0 && assetsData.length > 0) {
+      console.warn(
+        "⚠️ No matching assets found, showing all assets as fallback"
+      );
+      return assetsData;
+    }
+
+    return filtered;
   };
 
   const filteredAssets = getFilteredAssets();
