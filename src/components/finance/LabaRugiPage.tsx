@@ -663,54 +663,52 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         }))
       );
 
-      // ✅ NEW FIX: Untuk this_month, filter out transaksi retroaktif yang original_month nya bukan bulan ini
-      let filteredOperationalData = operationalData;
+      // ✅ FILTER: Untuk kategori Kurang Modal/Profit, gunakan original_month; yang lain gunakan tanggal
+      let filteredOperationalData = operationalData.filter((item) => {
+        // Cek apakah kategori mengandung "Kurang Modal" atau "Kurang Profit"
+        const kategori = (item.kategori || "").toLowerCase();
+        const isKurangModalOrProfit = kategori.includes("kurang modal") || kategori.includes("kurang profit");
+        
+        // Tentukan tanggal yang digunakan untuk filtering
+        let dateToCheck: Date;
+        
+        if (isKurangModalOrProfit && item.original_month) {
+          // Untuk Kurang Modal/Profit, gunakan original_month
+          dateToCheck = new Date(item.original_month);
+        } else {
+          // Untuk kategori lainnya, gunakan tanggal
+          dateToCheck = new Date(item.tanggal);
+        }
+        
+        const itemYear = dateToCheck.getFullYear();
+        const itemMonth = dateToCheck.getMonth() + 1; // 1-12
+        
+        // Filter berdasarkan periode yang dipilih
+        if (selectedPeriod === "this_month") {
+          const currentDate = new Date();
+          return itemYear === currentDate.getFullYear() && itemMonth === (currentDate.getMonth() + 1);
+        } else if (selectedPeriod === "last_month") {
+          const lastMonthDate = new Date();
+          lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
+          return itemYear === lastMonthDate.getFullYear() && itemMonth === (lastMonthDate.getMonth() + 1);
+        } else if (selectedPeriod === "this_year") {
+          const currentYear = new Date().getFullYear();
+          return itemYear === currentYear;
+        }
+        
+        // Untuk periode lain (custom, dll), gunakan date range dari query
+        return true;
+      });
 
-      if (selectedPeriod === "this_month") {
-        const currentDate = new Date();
-        const currentYear = currentDate.getFullYear();
-        const currentMonth = currentDate.getMonth() + 1; // 1-12
-        const currentMonthStr = `${currentYear}-${String(currentMonth).padStart(
-          2,
-          "0"
-        )}`;
-
-        filteredOperationalData = operationalData.filter((item) => {
-          const itemDate = new Date(item.tanggal);
-          const itemYear = itemDate.getFullYear();
-          const itemMonth = itemDate.getMonth() + 1;
-
-          // ✅ UTAMA: Cek tanggal transaksi apakah bulan ini
-          const isCurrentMonth =
-            itemYear === currentYear && itemMonth === currentMonth;
-
-          // ✅ Jika is_retroactive = true, harus cek original_month
-          if (item.is_retroactive === true) {
-            // Jika ada original_month, cek apakah sama dengan bulan ini
-            if (item.original_month) {
-              const originalMonthStr = item.original_month
-                .toString()
-                .substring(0, 7); // YYYY-MM
-              return originalMonthStr === currentMonthStr;
-            }
-            // Jika retroaktif tapi tidak ada original_month, exclude
-            return false;
-          }
-
-          // ✅ Jika is_retroactive = false atau NULL, filter berdasarkan tanggal
-          return isCurrentMonth;
-        });
-
-        console.log(
-          "?? Filtered out retroactive transactions from previous months:",
-          {
-            beforeFilter: operationalData.length,
-            afterFilter: filteredOperationalData.length,
-            removed: operationalData.length - filteredOperationalData.length,
-            currentMonthStr,
-          }
-        );
-      }
+      console.log(
+        "?? Filtered operational data based on category:",
+        {
+          totalRecords: operationalData.length,
+          afterFilter: filteredOperationalData.length,
+          selectedPeriod,
+          filterLogic: "Kurang Modal/Profit = original_month, Others = tanggal"
+        }
+      );
 
       console.log(
         `?? Operational records after query: ${filteredOperationalData.length}`,
