@@ -482,11 +482,20 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         dateRange.end.getMonth() + 1
       ).padStart(2, "0")}-${String(dateRange.end.getDate()).padStart(2, "0")}`;
 
+      // ✅ FIX: Extend query range untuk menangkap transaksi retroaktif
+      // Query dari 2 bulan sebelumnya untuk menangkap semua kemungkinan retroaktif
+      const extendedStart = new Date(dateRange.start);
+      extendedStart.setMonth(extendedStart.getMonth() - 2);
+      const extendedStartDate = `${extendedStart.getFullYear()}-${String(
+        extendedStart.getMonth() + 1
+      ).padStart(2, "0")}-01`;
+
       console.log("📅 Date Range for Query:", {
         startLocal: dateRange.start.toLocaleDateString("id-ID"),
         endLocal: dateRange.end.toLocaleDateString("id-ID"),
         startDate,
         endDate,
+        extendedStartDate,
         selectedPeriod,
       });
 
@@ -518,22 +527,14 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             .from("operational")
             .select(
               "kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month"
-            );
+            )
+            // ✅ FIX: Query dengan extended range untuk menangkap retroaktif
+            .gte("tanggal", extendedStartDate)
+            .lte("tanggal", endDate);
 
-          // ? KUNCI: Query berdasarkan periode
-          if (shouldQueryByOriginalMonth) {
-            // Last Month & This Year ? Query pakai original_month
-            operationalQuery = operationalQuery
-              .gte("original_month", startDate)
-              .lte("original_month", endDate);
-            console.log("?? Query using: original_month");
-          } else {
-            // This Month ? Query pakai tanggal
-            operationalQuery = operationalQuery
-              .gte("tanggal", startDate)
-              .lte("tanggal", endDate);
-            console.log("?? Query using: tanggal");
-          }
+          console.log(
+            "?? Query using: extended tanggal range (will filter by category later)"
+          );
 
           if (selectedDivision !== "all") {
             operationalQuery = operationalQuery.eq("divisi", selectedDivision);
@@ -556,22 +557,14 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             .from("operational_combined")
             .select(
               "kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month, data_source"
-            );
+            )
+            // ✅ FIX: Query dengan extended range untuk menangkap retroaktif
+            .gte("tanggal", extendedStartDate)
+            .lte("tanggal", endDate);
 
-          // ? KUNCI: Query berdasarkan periode
-          if (shouldQueryByOriginalMonth) {
-            // Last Month & This Year ? Query pakai original_month
-            operationalQuery = operationalQuery
-              .gte("original_month", startDate)
-              .lte("original_month", endDate);
-            console.log("?? Query using: original_month");
-          } else {
-            // This Month ? Query pakai tanggal
-            operationalQuery = operationalQuery
-              .gte("tanggal", startDate)
-              .lte("tanggal", endDate);
-            console.log("?? Query using: tanggal");
-          }
+          console.log(
+            "?? Query using: extended tanggal range (will filter by category later)"
+          );
 
           if (selectedDivision !== "all") {
             operationalQuery = operationalQuery.eq("divisi", selectedDivision);
