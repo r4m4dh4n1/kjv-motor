@@ -610,15 +610,21 @@ const RetroactiveOperationalDialog = ({
               <Label htmlFor="nominal">Nominal</Label>
               <Input
                 id="nominal"
-                type="number"
-                value={formData.nominal || ""}
-                onChange={(e) =>
+                type="text"
+                value={
+                  formData.nominal > 0
+                    ? formData.nominal.toLocaleString("id-ID")
+                    : ""
+                }
+                onChange={(e) => {
+                  // Remove non-numeric characters except decimal separator
+                  const value = e.target.value.replace(/[^\d]/g, "");
                   setFormData((prev) => ({
                     ...prev,
-                    nominal: parseFloat(e.target.value) || 0,
-                  }))
-                }
-                placeholder="Masukkan nominal"
+                    nominal: parseInt(value) || 0,
+                  }));
+                }}
+                placeholder="Masukkan nominal (contoh: 1.000.000)"
               />
             </div>
           </div>
