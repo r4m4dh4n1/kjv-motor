@@ -672,7 +672,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         }))
       );
 
-      // ✅ FILTER: Untuk kategori Kurang Modal/Profit, gunakan original_month; yang lain gunakan tanggal
+      // ✅ FILTER: Hanya transaksi RETROAKTIF yang pakai original_month
       let filteredOperationalData = operationalData.filter((item) => {
         // Cek apakah kategori mengandung "Kurang Modal" atau "Kurang Profit"
         const kategori = (item.kategori || "").toLowerCase();
@@ -680,22 +680,29 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           kategori.includes("kurang modal") ||
           kategori.includes("kurang profit");
 
-        // LOGIKA BARU:
-        // - Untuk "this_month": Selalu pakai tanggal (termasuk Kurang Modal/Profit)
-        // - Untuk "last_month" / periode lama: Kurang Modal/Profit pakai original_month, yang lain pakai tanggal
+        // ✅ LOGIKA FINAL:
+        // - Untuk "this_month": Selalu pakai tanggal (termasuk semua retroaktif yang dibuat bulan ini)
+        // - Untuk periode lama: 
+        //   * Jika is_retroactive=TRUE dan Kurang Modal/Profit → pakai original_month
+        //   * Yang lainnya → pakai tanggal
 
         let dateToCheck: Date;
 
         if (selectedPeriod === "this_month") {
-          // This month: semua pakai tanggal (termasuk retroaktif)
+          // This month: semua pakai tanggal (kapan dibuat)
           dateToCheck = new Date(item.tanggal);
         } else {
           // Bulan lalu / periode lama
-          if (isKurangModalOrProfit && item.original_month) {
-            // Untuk Kurang Modal/Profit, gunakan original_month
+          // ✅ PERBAIKAN: Cek is_retroactive=TRUE untuk pakai original_month
+          if (
+            item.is_retroactive === true &&
+            isKurangModalOrProfit &&
+            item.original_month
+          ) {
+            // Transaksi RETROAKTIF dengan kategori Kurang Modal/Profit → pakai original_month
             dateToCheck = new Date(item.original_month);
           } else {
-            // Untuk kategori lainnya, gunakan tanggal
+            // Transaksi NORMAL atau kategori lainnya → pakai tanggal
             dateToCheck = new Date(item.tanggal);
           }
         }
@@ -730,7 +737,8 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         totalRecords: operationalData.length,
         afterFilter: filteredOperationalData.length,
         selectedPeriod,
-        filterLogic: "Kurang Modal/Profit = original_month, Others = tanggal",
+        filterLogic:
+          "is_retroactive=TRUE + Kurang Modal/Profit = original_month, Others = tanggal",
       });
 
       console.log(
