@@ -672,7 +672,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         }))
       );
 
-      // ✅ FILTER: Hanya transaksi RETROAKTIF yang pakai original_month
+      // ✅ FILTER: Transaksi RETROAKTIF pakai original_month untuk SEMUA periode
       let filteredOperationalData = operationalData.filter((item) => {
         // Cek apakah kategori mengandung "Kurang Modal" atau "Kurang Profit"
         const kategori = (item.kategori || "").toLowerCase();
@@ -680,66 +680,74 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           kategori.includes("kurang modal") ||
           kategori.includes("kurang profit");
 
-        // ✅ LOGIKA FINAL:
-        // - Untuk "this_month": Selalu pakai tanggal (termasuk semua retroaktif yang dibuat bulan ini)
-        // - Untuk periode lama:
+        // ✅ LOGIKA DIPERBAIKI:
+        // Untuk SEMUA periode (termasuk this_month):
         //   * Jika is_retroactive=TRUE dan Kurang Modal/Profit → pakai original_month
         //   * Yang lainnya → pakai tanggal
 
         let dateToCheck: Date;
         let filterReason = ""; // Untuk debugging
 
-        if (selectedPeriod === "this_month") {
-          // This month: semua pakai tanggal (kapan dibuat)
-          dateToCheck = new Date(item.tanggal);
-          filterReason = "this_month - use tanggal";
+        // ✅ PERBAIKAN: Cek is_retroactive untuk SEMUA periode (tidak ada exception untuk this_month)
+        if (
+          item.is_retroactive === true &&
+          isKurangModalOrProfit &&
+          item.original_month
+        ) {
+          // Transaksi RETROAKTIF dengan kategori Kurang Modal/Profit → pakai original_month
+          dateToCheck = new Date(item.original_month);
+          filterReason = "retroactive - use original_month";
         } else {
-          // Bulan lalu / periode lama
-          // ✅ PERBAIKAN: Cek is_retroactive=TRUE untuk pakai original_month
-          if (
-            item.is_retroactive === true &&
-            isKurangModalOrProfit &&
-            item.original_month
-          ) {
-            // Transaksi RETROAKTIF dengan kategori Kurang Modal/Profit → pakai original_month
-            dateToCheck = new Date(item.original_month);
-            filterReason = "retroactive - use original_month";
-          } else {
-            // Transaksi NORMAL atau kategori lainnya → pakai tanggal
-            dateToCheck = new Date(item.tanggal);
-            filterReason = "normal - use tanggal";
-          }
+          // Transaksi NORMAL atau kategori lainnya → pakai tanggal
+          dateToCheck = new Date(item.tanggal);
+          filterReason = "normal - use tanggal";
         }
 
         const itemYear = dateToCheck.getFullYear();
         const itemMonth = dateToCheck.getMonth() + 1; // 1-12
 
         // ✅ DEBUGGING: Log keputusan filtering untuk Kurang Modal/Profit
-        if (isKurangModalOrProfit && selectedPeriod === "last_month") {
-          const lastMonthDate = new Date();
-          lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
-          const targetYear = lastMonthDate.getFullYear();
-          const targetMonth = lastMonthDate.getMonth() + 1;
-          const willInclude =
-            itemYear === targetYear && itemMonth === targetMonth;
+        if (isKurangModalOrProfit) {
+          let targetYear: number;
+          let targetMonth: number;
 
-          console.log("🔍 Filtering decision:", {
-            kategori: item.kategori,
-            tanggal: item.tanggal,
-            original_month: item.original_month,
-            is_retroactive: item.is_retroactive,
-            dateToCheck: dateToCheck.toISOString().split("T")[0],
-            itemYear,
-            itemMonth,
-            targetYear,
-            targetMonth,
-            filterReason,
-            willInclude,
-            verdict: willInclude ? "✅ INCLUDED" : "❌ EXCLUDED",
-            explanation: willInclude
-              ? `Month ${itemMonth} matches target ${targetMonth}`
-              : `Month ${itemMonth} does NOT match target ${targetMonth}`,
-          });
+          if (selectedPeriod === "this_month") {
+            const currentDate = new Date();
+            targetYear = currentDate.getFullYear();
+            targetMonth = currentDate.getMonth() + 1;
+          } else if (selectedPeriod === "last_month") {
+            const lastMonthDate = new Date();
+            lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
+            targetYear = lastMonthDate.getFullYear();
+            targetMonth = lastMonthDate.getMonth() + 1;
+          } else {
+            targetYear = 0;
+            targetMonth = 0;
+          }
+
+          if (targetMonth > 0) {
+            const willInclude =
+              itemYear === targetYear && itemMonth === targetMonth;
+
+            console.log("🔍 Filtering decision:", {
+              kategori: item.kategori,
+              tanggal: item.tanggal,
+              original_month: item.original_month,
+              is_retroactive: item.is_retroactive,
+              dateToCheck: dateToCheck.toISOString().split("T")[0],
+              itemYear,
+              itemMonth,
+              targetYear,
+              targetMonth,
+              selectedPeriod,
+              filterReason,
+              willInclude,
+              verdict: willInclude ? "✅ INCLUDED" : "❌ EXCLUDED",
+              explanation: willInclude
+                ? `Month ${itemMonth} matches target ${targetMonth}`
+                : `Month ${itemMonth} does NOT match target ${targetMonth}`,
+            });
+          }
         }
 
         // Filter berdasarkan periode yang dipilih
