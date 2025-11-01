@@ -656,6 +656,22 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         }))
       );
 
+      // Log semua transaksi Kurang Modal/Profit untuk debugging
+      const kurangModalProfitRaw = operationalData.filter((item) => {
+        const kat = item.kategori?.toLowerCase() || "";
+        return kat.includes("kurang modal") || kat.includes("kurang profit");
+      });
+      console.log(
+        "?? ALL Kurang Modal/Profit BEFORE filtering:",
+        kurangModalProfitRaw.map((item) => ({
+          kategori: item.kategori,
+          tanggal: item.tanggal,
+          original_month: item.original_month,
+          is_retroactive: item.is_retroactive,
+          nominal: item.nominal,
+        }))
+      );
+
       // ✅ FILTER: Untuk kategori Kurang Modal/Profit, gunakan original_month; yang lain gunakan tanggal
       let filteredOperationalData = operationalData.filter((item) => {
         // Cek apakah kategori mengandung "Kurang Modal" atau "Kurang Profit"
