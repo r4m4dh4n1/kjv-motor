@@ -720,6 +720,8 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
           const targetYear = lastMonthDate.getFullYear();
           const targetMonth = lastMonthDate.getMonth() + 1;
+          const willInclude =
+            itemYear === targetYear && itemMonth === targetMonth;
 
           console.log("🔍 Filtering decision:", {
             kategori: item.kategori,
@@ -732,8 +734,11 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             targetYear,
             targetMonth,
             filterReason,
-            willInclude: itemYear === targetYear && itemMonth === targetMonth,
-            matchesOctober: itemMonth === 10 && itemYear === 2025,
+            willInclude,
+            verdict: willInclude ? "✅ INCLUDED" : "❌ EXCLUDED",
+            explanation: willInclude
+              ? `Month ${itemMonth} matches target ${targetMonth}`
+              : `Month ${itemMonth} does NOT match target ${targetMonth}`,
           });
         }
 
