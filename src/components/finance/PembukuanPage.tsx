@@ -750,10 +750,6 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("id-ID");
-  };
-
-  const formatDate = (dateString: string) => {
     if (!dateString) return "-";
     return new Date(dateString).toLocaleDateString("id-ID");
   };
