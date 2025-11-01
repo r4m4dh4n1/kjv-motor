@@ -682,7 +682,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
 
         // ✅ LOGIKA FINAL:
         // - Untuk "this_month": Selalu pakai tanggal (termasuk semua retroaktif yang dibuat bulan ini)
-        // - Untuk periode lama: 
+        // - Untuk periode lama:
         //   * Jika is_retroactive=TRUE dan Kurang Modal/Profit → pakai original_month
         //   * Yang lainnya → pakai tanggal
 
