@@ -680,15 +680,24 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           kategori.includes("kurang modal") ||
           kategori.includes("kurang profit");
 
-        // Tentukan tanggal yang digunakan untuk filtering
+        // LOGIKA BARU:
+        // - Untuk "this_month": Selalu pakai tanggal (termasuk Kurang Modal/Profit)
+        // - Untuk "last_month" / periode lama: Kurang Modal/Profit pakai original_month, yang lain pakai tanggal
+
         let dateToCheck: Date;
 
-        if (isKurangModalOrProfit && item.original_month) {
-          // Untuk Kurang Modal/Profit, gunakan original_month
-          dateToCheck = new Date(item.original_month);
-        } else {
-          // Untuk kategori lainnya, gunakan tanggal
+        if (selectedPeriod === "this_month") {
+          // This month: semua pakai tanggal (termasuk retroaktif)
           dateToCheck = new Date(item.tanggal);
+        } else {
+          // Bulan lalu / periode lama
+          if (isKurangModalOrProfit && item.original_month) {
+            // Untuk Kurang Modal/Profit, gunakan original_month
+            dateToCheck = new Date(item.original_month);
+          } else {
+            // Untuk kategori lainnya, gunakan tanggal
+            dateToCheck = new Date(item.tanggal);
+          }
         }
 
         const itemYear = dateToCheck.getFullYear();
