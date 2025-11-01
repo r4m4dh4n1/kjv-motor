@@ -490,12 +490,20 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         extendedStart.getMonth() + 1
       ).padStart(2, "0")}-01`;
 
+      // ✅ NEW: Extend end date untuk include bulan berikutnya (untuk retroaktif yang dicatat di awal bulan depan)
+      const extendedEnd = new Date(dateRange.end);
+      extendedEnd.setDate(extendedEnd.getDate() + 7); // Tambah 7 hari untuk capture transaksi retroaktif di awal bulan depan
+      const extendedEndDate = `${extendedEnd.getFullYear()}-${String(
+        extendedEnd.getMonth() + 1
+      ).padStart(2, "0")}-${String(extendedEnd.getDate()).padStart(2, "0")}`;
+
       console.log("📅 Date Range for Query:", {
         startLocal: dateRange.start.toLocaleDateString("id-ID"),
         endLocal: dateRange.end.toLocaleDateString("id-ID"),
         startDate,
         endDate,
         extendedStartDate,
+        extendedEndDate,
         selectedPeriod,
       });
 
@@ -528,9 +536,9 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             .select(
               "kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month"
             )
-            // ✅ FIX: Query dengan extended range untuk menangkap retroaktif
+            // ✅ FIX: Query dengan extended range untuk menangkap retroaktif (termasuk yang dicatat di awal bulan depan)
             .gte("tanggal", extendedStartDate)
-            .lte("tanggal", endDate);
+            .lte("tanggal", extendedEndDate);
 
           console.log(
             "?? Query using: extended tanggal range (will filter by category later)"
@@ -558,9 +566,9 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             .select(
               "kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month, data_source"
             )
-            // ✅ FIX: Query dengan extended range untuk menangkap retroaktif
+            // ✅ FIX: Query dengan extended range untuk menangkap retroaktif (termasuk yang dicatat di awal bulan depan)
             .gte("tanggal", extendedStartDate)
-            .lte("tanggal", endDate);
+            .lte("tanggal", extendedEndDate);
 
           console.log(
             "?? Query using: extended tanggal range (will filter by category later)"
