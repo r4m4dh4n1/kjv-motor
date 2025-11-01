@@ -687,10 +687,12 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         //   * Yang lainnya → pakai tanggal
 
         let dateToCheck: Date;
+        let filterReason = ""; // Untuk debugging
 
         if (selectedPeriod === "this_month") {
           // This month: semua pakai tanggal (kapan dibuat)
           dateToCheck = new Date(item.tanggal);
+          filterReason = "this_month - use tanggal";
         } else {
           // Bulan lalu / periode lama
           // ✅ PERBAIKAN: Cek is_retroactive=TRUE untuk pakai original_month
@@ -701,14 +703,39 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           ) {
             // Transaksi RETROAKTIF dengan kategori Kurang Modal/Profit → pakai original_month
             dateToCheck = new Date(item.original_month);
+            filterReason = "retroactive - use original_month";
           } else {
             // Transaksi NORMAL atau kategori lainnya → pakai tanggal
             dateToCheck = new Date(item.tanggal);
+            filterReason = "normal - use tanggal";
           }
         }
 
         const itemYear = dateToCheck.getFullYear();
         const itemMonth = dateToCheck.getMonth() + 1; // 1-12
+
+        // ✅ DEBUGGING: Log keputusan filtering untuk Kurang Modal/Profit
+        if (isKurangModalOrProfit && selectedPeriod === "last_month") {
+          const lastMonthDate = new Date();
+          lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
+          const targetYear = lastMonthDate.getFullYear();
+          const targetMonth = lastMonthDate.getMonth() + 1;
+
+          console.log("🔍 Filtering decision:", {
+            kategori: item.kategori,
+            tanggal: item.tanggal,
+            original_month: item.original_month,
+            is_retroactive: item.is_retroactive,
+            dateToCheck: dateToCheck.toISOString().split("T")[0],
+            itemYear,
+            itemMonth,
+            targetYear,
+            targetMonth,
+            filterReason,
+            willInclude: itemYear === targetYear && itemMonth === targetMonth,
+            matchesOctober: itemMonth === 10 && itemYear === 2025,
+          });
+        }
 
         // Filter berdasarkan periode yang dipilih
         if (selectedPeriod === "this_month") {
