@@ -667,11 +667,13 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       let filteredOperationalData = operationalData.filter((item) => {
         // Cek apakah kategori mengandung "Kurang Modal" atau "Kurang Profit"
         const kategori = (item.kategori || "").toLowerCase();
-        const isKurangModalOrProfit = kategori.includes("kurang modal") || kategori.includes("kurang profit");
-        
+        const isKurangModalOrProfit =
+          kategori.includes("kurang modal") ||
+          kategori.includes("kurang profit");
+
         // Tentukan tanggal yang digunakan untuk filtering
         let dateToCheck: Date;
-        
+
         if (isKurangModalOrProfit && item.original_month) {
           // Untuk Kurang Modal/Profit, gunakan original_month
           dateToCheck = new Date(item.original_month);
@@ -679,36 +681,39 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           // Untuk kategori lainnya, gunakan tanggal
           dateToCheck = new Date(item.tanggal);
         }
-        
+
         const itemYear = dateToCheck.getFullYear();
         const itemMonth = dateToCheck.getMonth() + 1; // 1-12
-        
+
         // Filter berdasarkan periode yang dipilih
         if (selectedPeriod === "this_month") {
           const currentDate = new Date();
-          return itemYear === currentDate.getFullYear() && itemMonth === (currentDate.getMonth() + 1);
+          return (
+            itemYear === currentDate.getFullYear() &&
+            itemMonth === currentDate.getMonth() + 1
+          );
         } else if (selectedPeriod === "last_month") {
           const lastMonthDate = new Date();
           lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
-          return itemYear === lastMonthDate.getFullYear() && itemMonth === (lastMonthDate.getMonth() + 1);
+          return (
+            itemYear === lastMonthDate.getFullYear() &&
+            itemMonth === lastMonthDate.getMonth() + 1
+          );
         } else if (selectedPeriod === "this_year") {
           const currentYear = new Date().getFullYear();
           return itemYear === currentYear;
         }
-        
+
         // Untuk periode lain (custom, dll), gunakan date range dari query
         return true;
       });
 
-      console.log(
-        "?? Filtered operational data based on category:",
-        {
-          totalRecords: operationalData.length,
-          afterFilter: filteredOperationalData.length,
-          selectedPeriod,
-          filterLogic: "Kurang Modal/Profit = original_month, Others = tanggal"
-        }
-      );
+      console.log("?? Filtered operational data based on category:", {
+        totalRecords: operationalData.length,
+        afterFilter: filteredOperationalData.length,
+        selectedPeriod,
+        filterLogic: "Kurang Modal/Profit = original_month, Others = tanggal",
+      });
 
       console.log(
         `?? Operational records after query: ${filteredOperationalData.length}`,
