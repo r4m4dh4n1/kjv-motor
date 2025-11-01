@@ -161,15 +161,20 @@ export function RetroactiveOperationalDialogSimple({
         ? parseFloat(formData.nominal) || 0
         : formData.nominal || 0;
 
-    const isDeduction = formData.category === "Gaji Kurang Profit";
-    const impactAmount = isDeduction ? -nominalValue : nominalValue;
+    // ✅ FIX: Deteksi kategori berdasarkan kata kunci
+    const isKurangProfit = formData.category
+      .toLowerCase()
+      .includes("kurang profit");
+    const isKurangModal = formData.category
+      .toLowerCase()
+      .includes("kurang modal");
 
     setImpact({
-      profit_impact: isDeduction ? -nominalValue : 0,
-      capital_impact: impactAmount,
-      description: isDeduction
-        ? `Pengurangan profit sebesar ${formatCurrency(nominalValue)}`
-        : `Penambahan modal sebesar ${formatCurrency(nominalValue)}`,
+      profit_impact: isKurangProfit ? -nominalValue : 0,
+      modal_impact: isKurangModal ? -nominalValue : 0,
+      company_name: "",
+      current_modal: 0,
+      new_modal: 0,
     });
   };
 
@@ -297,22 +302,30 @@ export function RetroactiveOperationalDialogSimple({
 
       if (operationalError) throw operationalError;
 
-      // 3. Update company capital
-      const { error: companyError } = await supabase.rpc(
-        "update_company_capital",
-        {
-          p_company_id: formData.company_id,
-          p_amount:
-            formData.category === "Gaji Kurang Profit"
-              ? -formData.nominal
-              : formData.nominal,
-        }
-      );
+      // 3. ✅ FIX: Hanya update modal jika kategori "Kurang Modal"
+      // Kategori "Kurang Profit" TIDAK mengurangi modal, hanya profit
+      const isKurangModalCategory = formData.category
+        .toLowerCase()
+        .includes("kurang modal");
 
-      if (companyError) throw companyError;
+      if (isKurangModalCategory) {
+        const { error: companyError } = await supabase.rpc(
+          "update_company_capital",
+          {
+            p_company_id: formData.company_id,
+            p_amount: -formData.nominal, // Kurangi modal
+          }
+        );
 
-      // 4. Call deduct_profit for "Gaji Kurang Profit"
-      if (formData.category === "Gaji Kurang Profit") {
+        if (companyError) throw companyError;
+      }
+
+      // 4. Call deduct_profit for kategori "Kurang Profit"
+      const isKurangProfitCategory = formData.category
+        .toLowerCase()
+        .includes("kurang profit");
+
+      if (isKurangProfitCategory) {
         const { error: profitError } = await supabase.rpc("deduct_profit", {
           p_operational_id: retroactiveData.id,
           p_tanggal: dateForDatabase, // Send properly formatted date for DATE column
@@ -326,15 +339,14 @@ export function RetroactiveOperationalDialogSimple({
       }
 
       // 5. Insert pembukuan record
+      // Semua transaksi retroaktif dicatat sebagai pengeluaran (DEBIT)
       const { error: pembukuanError } = await supabase
         .from("pembukuan")
         .insert({
           tanggal: dateForDatabase, // Use properly formatted date for DATE column
           keterangan: `[RETROAKTIF ${monthStr}] ${formData.description}`,
-          debit:
-            formData.category === "Gaji Kurang Profit" ? formData.nominal : 0,
-          kredit:
-            formData.category !== "Gaji Kurang Profit" ? formData.nominal : 0,
+          debit: formData.nominal, // Semua retroaktif = pengeluaran
+          kredit: 0,
           company_id: formData.company_id,
           divisi: formData.divisi,
         });
@@ -366,7 +378,7 @@ export function RetroactiveOperationalDialogSimple({
               (impact?.profit_impact || 0),
             total_impact_modal:
               (existingAdjustment?.total_impact_modal || 0) +
-              (impact?.capital_impact || 0),
+              (impact?.modal_impact || 0), // ✅ FIX: Gunakan modal_impact
             adjustment_count: (existingAdjustment?.adjustment_count || 0) + 1,
             last_adjustment_date: new Date().toISOString().split("T")[0],
           },
@@ -561,15 +573,19 @@ export function RetroactiveOperationalDialogSimple({
               <AlertDescription>
                 <div className="space-y-1">
                   <p className="font-medium">Dampak Adjustment:</p>
-                  <p>
-                    • Modal Perusahaan: {formatCurrency(impact.capital_impact)}
-                  </p>
-                  {impact.profit_impact !== 0 && (
-                    <p>• Profit: {formatCurrency(impact.profit_impact)}</p>
+                  {impact.modal_impact !== 0 && (
+                    <p>
+                      • Modal Perusahaan:{" "}
+                      {formatCurrency(Math.abs(impact.modal_impact))}{" "}
+                      {impact.modal_impact < 0 ? "(Dikurangi)" : "(Ditambah)"}
+                    </p>
                   )}
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {impact.description}
-                  </p>
+                  {impact.profit_impact !== 0 && (
+                    <p>
+                      • Profit: {formatCurrency(Math.abs(impact.profit_impact))}{" "}
+                      {impact.profit_impact < 0 ? "(Dikurangi)" : "(Ditambah)"}
+                    </p>
+                  )}
                 </div>
               </AlertDescription>
             </Alert>
