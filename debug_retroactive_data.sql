@@ -49,6 +49,7 @@ WHERE (
   AND is_retroactive = TRUE
 ORDER BY original_month DESC, tanggal DESC;
 
+
 -- 4. Cek transaksi tanggal 1 November
 SELECT 
     '📅 NOVEMBER 1, 2025 TRANSACTIONS' as info,
