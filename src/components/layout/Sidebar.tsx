@@ -1,8 +1,44 @@
 import React, { useState } from "react";
-import { ChevronDown, ChevronRight, Home, Settings, Building, Building2, Car, Briefcase, Package, MapPin, ShoppingCart, CreditCard, FileText, BookOpen, Calculator, Cog, Users, UserCog, Shield, DollarSign, Pin, PinOff, TrendingUp, TrendingDown, CheckCircle, Calendar, XCircle, Upload } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  ChevronDown,
+  ChevronRight,
+  Home,
+  Settings,
+  Building,
+  Building2,
+  Car,
+  Briefcase,
+  Package,
+  MapPin,
+  ShoppingCart,
+  CreditCard,
+  FileText,
+  BookOpen,
+  Calculator,
+  Cog,
+  Users,
+  UserCog,
+  Shield,
+  DollarSign,
+  Pin,
+  PinOff,
+  TrendingUp,
+  TrendingDown,
+  CheckCircle,
+  Calendar,
+  XCircle,
+  Upload,
+} from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { BarChart3 } from "lucide-react";
+import { useRBAC } from "@/hooks/useRBAC";
 
 interface SidebarProps {
   activeMenu: string;
@@ -14,94 +50,246 @@ interface SidebarProps {
   isMobile?: boolean;
 }
 
-const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange, collapsed, onToggleCollapse, isMobile = false }: SidebarProps) => {
+const Sidebar = ({
+  activeMenu,
+  setActiveMenu,
+  selectedDivision,
+  onDivisionChange,
+  collapsed,
+  onToggleCollapse,
+  isMobile = false,
+}: SidebarProps) => {
   // State untuk tracking nested sub-menu
   const [openNestedMenus, setOpenNestedMenus] = useState<string[]>([]);
+  const { hasPermission } = useRBAC();
 
   const toggleNestedMenu = (menuId: string) => {
-    setOpenNestedMenus(prev => 
-      prev.includes(menuId) 
-        ? prev.filter(id => id !== menuId)
+    setOpenNestedMenus((prev) =>
+      prev.includes(menuId)
+        ? prev.filter((id) => id !== menuId)
         : [...prev, menuId]
     );
   };
 
+  // Filter menu items based on user permissions
   const masterMenuItems = [
-    { id: "brands", label: "Brands", icon: Building },
-    { id: "jenis-motor", label: "Jenis Motor", icon: Car },
-    { id: "company", label: "Company", icon: Briefcase },
-    { id: "asset", label: "Asset", icon: Package },
-    { id: "cabang", label: "Cabang", icon: MapPin },
-  ];
+    {
+      id: "brands",
+      label: "Brands",
+      icon: Building,
+      permission: "view_brands",
+    },
+    {
+      id: "jenis-motor",
+      label: "Jenis Motor",
+      icon: Car,
+      permission: "view_jenis_motor",
+    },
+    {
+      id: "company",
+      label: "Company",
+      icon: Briefcase,
+      permission: "view_companies",
+    },
+    { id: "asset", label: "Asset", icon: Package, permission: "view_assets" },
+    { id: "cabang", label: "Cabang", icon: MapPin, permission: "view_cabang" },
+  ].filter((item) => !item.permission || hasPermission(item.permission as any));
 
   const rbacMenuItems = [
-    { id: "employees", label: "Pegawai", icon: Users },
-    { id: "users", label: "User", icon: UserCog },
-    { id: "roles", label: "Roles", icon: Shield },
-    { id: "permissions", label: "Permissions", icon: Settings },
-    { id: "role-permissions", label: "Role Permissions", icon: Cog },
-    { id: "user-roles", label: "User Roles", icon: Users },
-  ];
+    { id: "employees", label: "Pegawai", icon: Users, permission: "view_rbac" },
+    { id: "users", label: "User", icon: UserCog, permission: "view_rbac" },
+    { id: "roles", label: "Roles", icon: Shield, permission: "view_rbac" },
+    {
+      id: "permissions",
+      label: "Permissions",
+      icon: Settings,
+      permission: "view_rbac",
+    },
+    {
+      id: "role-permissions",
+      label: "Role Permissions",
+      icon: Cog,
+      permission: "view_rbac",
+    },
+    {
+      id: "user-roles",
+      label: "User Roles",
+      icon: Users,
+      permission: "view_rbac",
+    },
+  ].filter((item) => !item.permission || hasPermission(item.permission as any));
 
   const transactionMenuItems = [
-    { id: "pembelian", label: "Pembelian", icon: CreditCard },
-    { 
-      id: "penjualan", 
-      label: "Penjualan", 
-      icon: ShoppingCart,
-      subItems: [
-        { id: "penjualan-booked", label: "Booked", icon: BookOpen },
-        { id: "penjualan-sold", label: "Sold", icon: CheckCircle },
-        { id: "penjualan-canceled-booked", label: "Canceled Booked", icon: XCircle }
-      ]
+    {
+      id: "pembelian",
+      label: "Pembelian",
+      icon: CreditCard,
+      permission: "view_pembelian",
     },
-    { id: "cicilan", label: "Cash Bertahap", icon: Calculator },
-    { id: "operational", label: "Operational", icon: Cog },
-    { id: "biro-jasa", label: "Biro Jasa", icon: FileText },
-    { id: "pencatatan-asset", label: "Pencatatan Asset", icon: Package },
-    { id: "price-history-upload", label: "Upload Price History", icon: Upload },
-  ];
+    {
+      id: "penjualan",
+      label: "Penjualan",
+      icon: ShoppingCart,
+      permission: "view_penjualan",
+      subItems: [
+        {
+          id: "penjualan-booked",
+          label: "Booked",
+          icon: BookOpen,
+          permission: "view_penjualan_booked",
+        },
+        {
+          id: "penjualan-sold",
+          label: "Sold",
+          icon: CheckCircle,
+          permission: "view_penjualan_sold",
+        },
+        {
+          id: "penjualan-canceled-booked",
+          label: "Canceled Booked",
+          icon: XCircle,
+          permission: "view_penjualan_sold",
+        },
+      ],
+    },
+    {
+      id: "cicilan",
+      label: "Cash Bertahap",
+      icon: Calculator,
+      permission: "view_cicilan",
+    },
+    {
+      id: "operational",
+      label: "Operational",
+      icon: Cog,
+      permission: "view_operational",
+    },
+    {
+      id: "biro-jasa",
+      label: "Biro Jasa",
+      icon: FileText,
+      permission: "view_biro_jasa",
+    },
+    {
+      id: "pencatatan-asset",
+      label: "Pencatatan Asset",
+      icon: Package,
+      permission: "view_assets",
+    },
+    {
+      id: "price-history-upload",
+      label: "Upload Price History",
+      icon: Upload,
+      permission: "view_upload_price_history",
+    },
+  ]
+    .map((item) => {
+      if (item.subItems) {
+        return {
+          ...item,
+          subItems: item.subItems.filter(
+            (sub: any) =>
+              !sub.permission || hasPermission(sub.permission as any)
+          ),
+        };
+      }
+      return item;
+    })
+    .filter(
+      (item) => !item.permission || hasPermission(item.permission as any)
+    );
 
   const financeMenuItems = [
-    { id: "pembukuan", label: "Mutasi Transaksi", icon: BookOpen },
-    { id: "breakdown-percabang", label: "Breakdown Percabang", icon: TrendingUp },
-    { id: "keuntungan-motor", label: "Pembukuan", icon: DollarSign },
-    { id: "reports", label: "Analisis Motor", icon: FileText },
-    { id: "laba-rugi", label: "Laba Rugi", icon: BarChart3 },
-    { id: "profit-distribution", label: "Distribusi Profit", icon: DollarSign },
-    { id: "profit-adjustment-summary", label: "Ringkasan Penyesuaian Profit", icon: TrendingDown },
-    { id: "close-month", label: "Close Month", icon: Calendar },
-  ];
+    {
+      id: "pembukuan",
+      label: "Mutasi Transaksi",
+      icon: BookOpen,
+      permission: "view_pembukuan",
+    },
+    {
+      id: "breakdown-percabang",
+      label: "Breakdown Percabang",
+      icon: TrendingUp,
+      permission: "view_breakdown_percabang",
+    },
+    {
+      id: "keuntungan-motor",
+      label: "Pembukuan",
+      icon: DollarSign,
+      permission: "view_pembukuan",
+    },
+    {
+      id: "reports",
+      label: "Analisis Motor",
+      icon: FileText,
+      permission: "view_pembukuan",
+    },
+    {
+      id: "laba-rugi",
+      label: "Laba Rugi",
+      icon: BarChart3,
+      permission: "view_laba_rugi",
+    },
+    {
+      id: "profit-distribution",
+      label: "Distribusi Profit",
+      icon: DollarSign,
+      permission: "view_breakdown_perpemilik",
+    },
+    {
+      id: "profit-adjustment-summary",
+      label: "Ringkasan Penyesuaian Profit",
+      icon: TrendingDown,
+      permission: "view_laba_rugi",
+    },
+    {
+      id: "close-month",
+      label: "Close Month",
+      icon: Calendar,
+      permission: "view_laba_rugi",
+    },
+  ].filter((item) => !item.permission || hasPermission(item.permission as any));
 
   // Update logika untuk mendeteksi menu yang aktif
-  const masterMenuOpen = masterMenuItems.some(item => item.id === activeMenu);
-  
-  const transactionMenuOpen = transactionMenuItems.some(item => {
+  const masterMenuOpen = masterMenuItems.some((item) => item.id === activeMenu);
+
+  const transactionMenuOpen = transactionMenuItems.some((item) => {
     if (item.subItems) {
-      return item.subItems.some(subItem => subItem.id === activeMenu) || item.id === activeMenu;
+      return (
+        item.subItems.some((subItem) => subItem.id === activeMenu) ||
+        item.id === activeMenu
+      );
     }
     return item.id === activeMenu;
   });
-  
-  const financeMenuOpen = financeMenuItems.some(item => item.id === activeMenu);
-  const rbacMenuOpen = rbacMenuItems.some(item => item.id === activeMenu);
+
+  const financeMenuOpen = financeMenuItems.some(
+    (item) => item.id === activeMenu
+  );
+  const rbacMenuOpen = rbacMenuItems.some((item) => item.id === activeMenu);
 
   return (
-    <div className={cn(
-      "bg-sidebar-background text-sidebar-foreground shadow-lg flex flex-col h-screen transition-all duration-300",
-      isMobile ? "w-64" : (collapsed ? "w-16" : "w-64"),
-      isMobile && "border-r border-sidebar-border"
-    )}>
+    <div
+      className={cn(
+        "bg-sidebar-background text-sidebar-foreground shadow-lg flex flex-col h-screen transition-all duration-300",
+        isMobile ? "w-64" : collapsed ? "w-16" : "w-64",
+        isMobile && "border-r border-sidebar-border"
+      )}
+    >
       {/* Header - Fixed */}
       <div className="p-3 sm:p-4 border-b border-sidebar-border flex-shrink-0">
         <div className="flex items-center justify-between">
           {(!collapsed || isMobile) && (
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-sidebar-primary rounded flex items-center justify-center">
-                <span className="text-sm font-bold text-sidebar-primary-foreground">KJV</span>
+                <span className="text-sm font-bold text-sidebar-primary-foreground">
+                  KJV
+                </span>
               </div>
               <div>
-                <h1 className="text-sm sm:text-base font-bold text-sidebar-primary-foreground">KJV Motor</h1>
+                <h1 className="text-sm sm:text-base font-bold text-sidebar-primary-foreground">
+                  KJV Motor
+                </h1>
                 <p className="text-sidebar-foreground/70 text-xs">POS System</p>
               </div>
             </div>
@@ -109,9 +297,19 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
           <button
             onClick={onToggleCollapse}
             className="p-1.5 rounded-lg hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-            title={isMobile ? "Close Menu" : (collapsed ? "Expand Sidebar" : "Collapse Sidebar")}
+            title={
+              isMobile
+                ? "Close Menu"
+                : collapsed
+                ? "Expand Sidebar"
+                : "Collapse Sidebar"
+            }
           >
-            {collapsed && !isMobile ? <Pin className="w-4 h-4" /> : <PinOff className="w-4 h-4" />}
+            {collapsed && !isMobile ? (
+              <Pin className="w-4 h-4" />
+            ) : (
+              <PinOff className="w-4 h-4" />
+            )}
           </button>
         </div>
       </div>
@@ -119,7 +317,9 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
       {/* Dropdown Divisi - Fixed */}
       {(!collapsed || isMobile) && (
         <div className="p-3 sm:p-4 border-b border-sidebar-border flex-shrink-0">
-          <label className="block text-xs font-medium text-sidebar-foreground/70 mb-2">Divisi:</label>
+          <label className="block text-xs font-medium text-sidebar-foreground/70 mb-2">
+            Divisi:
+          </label>
           <Select value={selectedDivision} onValueChange={onDivisionChange}>
             <SelectTrigger className="w-full h-8 bg-sidebar-accent border-sidebar-border text-sidebar-foreground text-sm">
               <SelectValue />
@@ -131,7 +331,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
           </Select>
         </div>
       )}
-      
+
       {/* Navigation - Scrollable */}
       <nav className="flex-1 overflow-y-auto px-2 sm:px-3 py-3 sm:py-4">
         {/* Menu Dashboard */}
@@ -140,8 +340,8 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
             onClick={() => setActiveMenu("dashboard")}
             className={cn(
               "w-full flex items-center gap-2 sm:gap-3 px-3 py-2.5 rounded-lg text-left transition-colors text-sm",
-              activeMenu === "dashboard" 
-                ? "bg-sidebar-primary text-sidebar-primary-foreground" 
+              activeMenu === "dashboard"
+                ? "bg-sidebar-primary text-sidebar-primary-foreground"
                 : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             )}
             title="Dashboard"
@@ -162,8 +362,8 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
             }}
             className={cn(
               "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sidebar-foreground transition-colors text-sm",
-              masterMenuOpen 
-                ? "bg-sidebar-accent text-sidebar-accent-foreground" 
+              masterMenuOpen
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
                 : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             )}
           >
@@ -171,11 +371,12 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
               <Settings className="w-4 h-4" />
               {(!collapsed || isMobile) && "Master Data"}
             </div>
-            {(!collapsed || isMobile) && (masterMenuOpen ? (
-              <ChevronDown className="w-3 h-3" />
-            ) : (
-              <ChevronRight className="w-3 h-3" />
-            ))}
+            {(!collapsed || isMobile) &&
+              (masterMenuOpen ? (
+                <ChevronDown className="w-3 h-3" />
+              ) : (
+                <ChevronRight className="w-3 h-3" />
+              ))}
           </button>
 
           {masterMenuOpen && (!collapsed || isMobile) && (
@@ -192,10 +393,10 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
                         ? "bg-sidebar-primary text-sidebar-primary-foreground"
                         : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     )}
-                     >
-                     <Icon className="w-4 h-4" />
-                     {(!collapsed || isMobile) && item.label}
-                   </button>
+                  >
+                    <Icon className="w-4 h-4" />
+                    {(!collapsed || isMobile) && item.label}
+                  </button>
                 );
               })}
             </div>
@@ -213,8 +414,8 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
             }}
             className={cn(
               "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sidebar-foreground transition-colors text-sm",
-              transactionMenuOpen 
-                ? "bg-sidebar-accent text-sidebar-accent-foreground" 
+              transactionMenuOpen
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
                 : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             )}
           >
@@ -222,11 +423,12 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
               <ShoppingCart className="w-4 h-4" />
               {(!collapsed || isMobile) && "Transaction"}
             </div>
-            {(!collapsed || isMobile) && (transactionMenuOpen ? (
-              <ChevronDown className="w-3 h-3" />
-            ) : (
-              <ChevronRight className="w-3 h-3" />
-            ))}
+            {(!collapsed || isMobile) &&
+              (transactionMenuOpen ? (
+                <ChevronDown className="w-3 h-3" />
+              ) : (
+                <ChevronRight className="w-3 h-3" />
+              ))}
           </button>
 
           {transactionMenuOpen && (!collapsed || isMobile) && (
@@ -235,7 +437,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
                 const Icon = item.icon;
                 const hasSubItems = item.subItems && item.subItems.length > 0;
                 const isNestedMenuOpen = openNestedMenus.includes(item.id);
-                
+
                 return (
                   <div key={item.id}>
                     <button
@@ -243,7 +445,11 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
                         if (hasSubItems) {
                           toggleNestedMenu(item.id);
                           // Set ke sub-menu pertama jika belum ada yang aktif
-                          if (!item.subItems.some(subItem => subItem.id === activeMenu)) {
+                          if (
+                            !item.subItems.some(
+                              (subItem) => subItem.id === activeMenu
+                            )
+                          ) {
                             setActiveMenu(item.subItems[0].id);
                           }
                         } else {
@@ -252,7 +458,11 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
                       }}
                       className={cn(
                         "w-full flex items-center justify-between px-4 py-2 rounded-lg text-left transition-colors text-sm",
-                        (activeMenu === item.id || (hasSubItems && item.subItems.some(subItem => subItem.id === activeMenu)))
+                        activeMenu === item.id ||
+                          (hasSubItems &&
+                            item.subItems.some(
+                              (subItem) => subItem.id === activeMenu
+                            ))
                           ? "bg-sidebar-primary text-sidebar-primary-foreground"
                           : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       )}
@@ -261,11 +471,14 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
                         <Icon className="w-4 h-4" />
                         {item.label}
                       </div>
-                      {hasSubItems && (
-                        isNestedMenuOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />
-                      )}
+                      {hasSubItems &&
+                        (isNestedMenuOpen ? (
+                          <ChevronDown className="w-3 h-3" />
+                        ) : (
+                          <ChevronRight className="w-3 h-3" />
+                        ))}
                     </button>
-                    
+
                     {/* Level 3 Nested Sub-menu */}
                     {hasSubItems && isNestedMenuOpen && (
                       <div className="mt-1 ml-6 border-l border-sidebar-border pl-4 space-y-1">
@@ -307,8 +520,8 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
             }}
             className={cn(
               "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sidebar-foreground transition-colors text-sm",
-              financeMenuOpen 
-                ? "bg-sidebar-accent text-sidebar-accent-foreground" 
+              financeMenuOpen
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
                 : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             )}
           >
@@ -316,11 +529,12 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
               <BookOpen className="w-4 h-4" />
               {(!collapsed || isMobile) && "Finance"}
             </div>
-            {(!collapsed || isMobile) && (financeMenuOpen ? (
-              <ChevronDown className="w-3 h-3" />
-            ) : (
-              <ChevronRight className="w-3 h-3" />
-            ))}
+            {(!collapsed || isMobile) &&
+              (financeMenuOpen ? (
+                <ChevronDown className="w-3 h-3" />
+              ) : (
+                <ChevronRight className="w-3 h-3" />
+              ))}
           </button>
 
           {financeMenuOpen && (!collapsed || isMobile) && (
@@ -337,10 +551,10 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
                         ? "bg-sidebar-primary text-sidebar-primary-foreground"
                         : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     )}
-                   >
-                     <Icon className="w-4 h-4" />
-                     {(!collapsed || isMobile) && item.label}
-                   </button>
+                  >
+                    <Icon className="w-4 h-4" />
+                    {(!collapsed || isMobile) && item.label}
+                  </button>
                 );
               })}
             </div>
@@ -358,8 +572,8 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
             }}
             className={cn(
               "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sidebar-foreground transition-colors text-sm",
-              rbacMenuOpen 
-                ? "bg-sidebar-accent text-sidebar-accent-foreground" 
+              rbacMenuOpen
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
                 : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             )}
           >
@@ -367,11 +581,12 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
               <Shield className="w-4 h-4" />
               {(!collapsed || isMobile) && "User Management"}
             </div>
-            {(!collapsed || isMobile) && (rbacMenuOpen ? (
-              <ChevronDown className="w-3 h-3" />
-            ) : (
-              <ChevronRight className="w-3 h-3" />
-            ))}
+            {(!collapsed || isMobile) &&
+              (rbacMenuOpen ? (
+                <ChevronDown className="w-3 h-3" />
+              ) : (
+                <ChevronRight className="w-3 h-3" />
+              ))}
           </button>
 
           {rbacMenuOpen && (!collapsed || isMobile) && (
@@ -388,10 +603,10 @@ const Sidebar = ({ activeMenu, setActiveMenu, selectedDivision, onDivisionChange
                         ? "bg-sidebar-primary text-sidebar-primary-foreground"
                         : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     )}
-                   >
-                     <Icon className="w-4 h-4" />
-                     {(!collapsed || isMobile) && item.label}
-                   </button>
+                  >
+                    <Icon className="w-4 h-4" />
+                    {(!collapsed || isMobile) && item.label}
+                  </button>
                 );
               })}
             </div>
