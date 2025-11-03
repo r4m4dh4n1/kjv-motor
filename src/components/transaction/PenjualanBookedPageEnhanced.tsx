@@ -72,6 +72,7 @@ interface PenjualanBookedPageEnhancedProps {
 const PenjualanBookedPageEnhanced = ({
   selectedDivision,
 }: PenjualanBookedPageEnhancedProps) => {
+  const { hasPermission } = useRBAC();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPenjualan, setEditingPenjualan] = useState<Penjualan | null>(
     null

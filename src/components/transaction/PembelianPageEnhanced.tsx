@@ -61,6 +61,7 @@ import QCReportDialog from "./QCReportDialog";
 import { Pembelian, PembelianPageProps } from "./types";
 import { formatCurrency } from "@/utils/formatUtils";
 import { usePagination } from "@/hooks/usePagination";
+import { useRBAC } from "@/hooks/useRBAC";
 
 import {
   usePembelianData,
@@ -84,6 +85,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 
 const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
+  const { hasPermission } = useRBAC();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isUpdateHargaDialogOpen, setIsUpdateHargaDialogOpen] = useState(false);
@@ -1192,19 +1194,22 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
             <Eye className="w-4 h-4" />
             View Report QC
           </Button>
-          <PembelianForm
-            isDialogOpen={isDialogOpen}
-            setIsDialogOpen={setIsDialogOpen}
-            editingPembelian={editingPembelian}
-            formData={formData}
-            setFormData={setFormData}
-            cabangData={cabangData}
-            brandsData={brandsData}
-            jenisMotorData={jenisMotorData}
-            companiesData={companiesData}
-            handleSubmit={handleSubmit}
-            selectedDivision={selectedDivision}
-          />
+          {/* Button Tambah - Hanya untuk yang punya permission create_data */}
+          {hasPermission("create_data") && (
+            <PembelianForm
+              isDialogOpen={isDialogOpen}
+              setIsDialogOpen={setIsDialogOpen}
+              editingPembelian={editingPembelian}
+              formData={formData}
+              setFormData={setFormData}
+              cabangData={cabangData}
+              brandsData={brandsData}
+              jenisMotorData={jenisMotorData}
+              companiesData={companiesData}
+              handleSubmit={handleSubmit}
+              selectedDivision={selectedDivision}
+            />
+          )}
         </div>
       </div>
 

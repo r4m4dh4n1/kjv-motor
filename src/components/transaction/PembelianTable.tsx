@@ -19,6 +19,7 @@ import {
   DateCell,
   StatusBadge,
 } from "./EnhancedTable";
+import { useRBAC } from "@/hooks/useRBAC";
 
 interface PembelianTableProps {
   pembelianData: any[];
@@ -43,6 +44,8 @@ const PembelianTable = ({
   handleQCReport,
   deleteMutation,
 }: PembelianTableProps) => {
+  const { hasPermission } = useRBAC();
+
   const columns = [
     {
       key: "tanggal_pembelian",
@@ -196,6 +199,7 @@ const PembelianTable = ({
       onClick: handleEdit,
       variant: "outline" as const,
       className: "hover:bg-green-50 hover:text-green-600",
+      hidden: !hasPermission("update_data"), // Hide jika tidak punya permission
     },
     {
       label: "Update Harga",
@@ -203,6 +207,7 @@ const PembelianTable = ({
       onClick: handleUpdateHarga,
       variant: "outline" as const,
       className: "hover:bg-orange-50 hover:text-orange-600",
+      hidden: !hasPermission("update_data"), // Hide jika tidak punya permission
     },
     {
       label: "Quality Control",
@@ -210,6 +215,7 @@ const PembelianTable = ({
       onClick: handleQC,
       variant: "outline" as const,
       className: "hover:bg-purple-50 hover:text-purple-600",
+      hidden: !hasPermission("update_data"), // Hide jika tidak punya permission
     },
     {
       label: "Report QC",
@@ -224,8 +230,9 @@ const PembelianTable = ({
       onClick: (row: any) => deleteMutation.mutate(row.id),
       variant: "destructive" as const,
       className: "hover:bg-red-50",
+      hidden: !hasPermission("delete_data"), // Hide jika tidak punya permission
     },
-  ];
+  ].filter((action) => !action.hidden); // Filter out hidden actions
 
   return (
     <EnhancedTable
