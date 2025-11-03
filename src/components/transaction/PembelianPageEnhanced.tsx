@@ -1181,19 +1181,25 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   const endQCIndex = startQCIndex + qcReportPageSize;
   const currentQCData = filteredAndSortedQCData.slice(startQCIndex, endQCIndex);
 
+  // Debug: Check permission untuk View Report QC
+  console.log("🔍 PembelianPage Debug: Checking view_report_qc permission...");
+  const canViewReportQC = hasPermission("view_report_qc");
+  console.log("🔍 PembelianPage Debug: canViewReportQC =", canViewReportQC);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Data Pembelian</h1>
         <div className="flex items-center gap-2">
           {/* Button View Report QC - Hanya untuk QC role atau yang punya permission view_report_qc */}
-          {hasPermission("view_report_qc") && (
+          {canViewReportQC && (
             <Button
               variant="outline"
               onClick={handleViewQcReport}
-              className="flex items-center gap-2"
-            >
-              <Eye className="w-4 h-4" />
+          )}
+          {/* Button Tambah - Hanya untuk yang punya permission create_data */}
+          {console.log("🔍 PembelianPage Debug: Checking create_data permission...")}
+          {hasPermission("create_data") && (
               View Report QC
             </Button>
           )}
