@@ -1186,14 +1186,17 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Data Pembelian</h1>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={handleViewQcReport}
-            className="flex items-center gap-2"
-          >
-            <Eye className="w-4 h-4" />
-            View Report QC
-          </Button>
+          {/* Button View Report QC - Hanya untuk QC role atau yang punya permission view_report_qc */}
+          {hasPermission("view_report_qc") && (
+            <Button
+              variant="outline"
+              onClick={handleViewQcReport}
+              className="flex items-center gap-2"
+            >
+              <Eye className="w-4 h-4" />
+              View Report QC
+            </Button>
+          )}
           {/* Button Tambah - Hanya untuk yang punya permission create_data */}
           {hasPermission("create_data") && (
             <PembelianForm
@@ -1480,7 +1483,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
             handleQC={handleQC}
             handleViewQcHistory={handleViewQcHistory}
             handleViewPriceHistory={handleViewPriceHistory}
-            handleQCReport={handleQCReport}
+            handleViewQcReport={handleViewQcReport}
             deleteMutation={deleteMutation}
           />
 

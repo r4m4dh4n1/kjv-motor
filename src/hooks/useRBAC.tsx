@@ -26,7 +26,11 @@ export type Permission =
   | "delete_data"
   | "search_data"
   | "view_settings"
-  | "view_rbac";
+  | "view_rbac"
+  | "update_qc_pembelian"
+  | "view_detail_pembelian"
+  | "view_history_harga"
+  | "view_report_qc";
 
 // Role definitions with their permissions
 export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
@@ -57,6 +61,10 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "search_data",
     "view_settings",
     "view_rbac",
+    "update_qc_pembelian",
+    "view_detail_pembelian",
+    "view_history_harga",
+    "view_report_qc",
   ],
 
   // Owner - Can access all modules EXCEPT:
@@ -90,6 +98,10 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "view_dashboard",
     "view_pembelian",
     "search_data",
+    "update_qc_pembelian",
+    "view_detail_pembelian",
+    "view_history_harga",
+    "view_report_qc",
   ],
 
   // Admin - Full access except RBAC management
@@ -118,6 +130,10 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "delete_data",
     "search_data",
     "view_settings",
+    "update_qc_pembelian",
+    "view_detail_pembelian",
+    "view_history_harga",
+    "view_report_qc",
   ],
 
   // Administrator - Same as Super Admin (full access)
@@ -147,6 +163,10 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "search_data",
     "view_settings",
     "view_rbac",
+    "update_qc_pembelian",
+    "view_detail_pembelian",
+    "view_history_harga",
+    "view_report_qc",
   ],
 };
 
