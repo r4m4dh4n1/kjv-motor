@@ -48,14 +48,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .select(
           `
           role_id,
-          roles(role_name, description)
+          roles!fk_user_roles_role_id(role_name, description)
         `
         )
         .eq("user_id", userId);
 
       console.log("👥 User roles check:", userRolesCheck, rolesError);
 
-      // Now fetch with join
+      // Now fetch with join - specify the foreign key constraint name
       const { data: profile, error } = await supabase
         .from("profiles")
         .select(
@@ -63,7 +63,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           *,
           user_roles(
             role_id,
-            roles(role_name, description)
+            roles!fk_user_roles_role_id(role_name, description)
           )
         `
         )
