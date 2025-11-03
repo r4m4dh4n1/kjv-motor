@@ -351,57 +351,59 @@ const Sidebar = ({
           </button>
         </div>
 
-        {/* Menu Master Data */}
-        <div className="mb-3">
-          <button
-            onClick={() => {
-              // If no master submenu is active, set to first master menu item
-              if (!masterMenuOpen) {
-                setActiveMenu("brands");
-              }
-            }}
-            className={cn(
-              "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sidebar-foreground transition-colors text-sm",
-              masterMenuOpen
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            )}
-          >
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Settings className="w-4 h-4" />
-              {(!collapsed || isMobile) && "Master Data"}
-            </div>
-            {(!collapsed || isMobile) &&
-              (masterMenuOpen ? (
-                <ChevronDown className="w-3 h-3" />
-              ) : (
-                <ChevronRight className="w-3 h-3" />
-              ))}
-          </button>
+        {/* Menu Master Data - Only show if user has at least one master permission */}
+        {masterMenuItems.length > 0 && (
+          <div className="mb-3">
+            <button
+              onClick={() => {
+                // If no master submenu is active, set to first master menu item
+                if (!masterMenuOpen) {
+                  setActiveMenu(masterMenuItems[0].id);
+                }
+              }}
+              className={cn(
+                "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sidebar-foreground transition-colors text-sm",
+                masterMenuOpen
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )}
+            >
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Settings className="w-4 h-4" />
+                {(!collapsed || isMobile) && "Master Data"}
+              </div>
+              {(!collapsed || isMobile) &&
+                (masterMenuOpen ? (
+                  <ChevronDown className="w-3 h-3" />
+                ) : (
+                  <ChevronRight className="w-3 h-3" />
+                ))}
+            </button>
 
-          {masterMenuOpen && (!collapsed || isMobile) && (
-            <div className="mt-2 ml-4 border-l border-sidebar-border pl-4 space-y-1">
-              {masterMenuItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveMenu(item.id)}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left transition-colors text-sm",
-                      activeMenu === item.id
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                    )}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {(!collapsed || isMobile) && item.label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+            {masterMenuOpen && (!collapsed || isMobile) && (
+              <div className="mt-2 ml-4 border-l border-sidebar-border pl-4 space-y-1">
+                {masterMenuItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveMenu(item.id)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left transition-colors text-sm",
+                        activeMenu === item.id
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      )}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {(!collapsed || isMobile) && item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Menu Transaction */}
         <div className="mb-3">
@@ -509,109 +511,113 @@ const Sidebar = ({
           )}
         </div>
 
-        {/* Menu Finance */}
-        <div className="mb-3">
-          <button
-            onClick={() => {
-              // If no finance submenu is active, set to first finance menu item
-              if (!financeMenuOpen) {
-                setActiveMenu("keuntungan-motor");
-              }
-            }}
-            className={cn(
-              "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sidebar-foreground transition-colors text-sm",
-              financeMenuOpen
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        {/* Menu Finance - Only show if user has at least one finance permission */}
+        {financeMenuItems.length > 0 && (
+          <div className="mb-3">
+            <button
+              onClick={() => {
+                // If no finance submenu is active, set to first finance menu item
+                if (!financeMenuOpen) {
+                  setActiveMenu(financeMenuItems[0].id);
+                }
+              }}
+              className={cn(
+                "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sidebar-foreground transition-colors text-sm",
+                financeMenuOpen
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )}
+            >
+              <div className="flex items-center gap-2 sm:gap-3">
+                <BookOpen className="w-4 h-4" />
+                {(!collapsed || isMobile) && "Finance"}
+              </div>
+              {(!collapsed || isMobile) &&
+                (financeMenuOpen ? (
+                  <ChevronDown className="w-3 h-3" />
+                ) : (
+                  <ChevronRight className="w-3 h-3" />
+                ))}
+            </button>
+
+            {financeMenuOpen && (!collapsed || isMobile) && (
+              <div className="mt-2 ml-4 border-l border-sidebar-border pl-4 space-y-1">
+                {financeMenuItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveMenu(item.id)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left transition-colors text-sm",
+                        activeMenu === item.id
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      )}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {(!collapsed || isMobile) && item.label}
+                    </button>
+                  );
+                })}
+              </div>
             )}
-          >
-            <div className="flex items-center gap-2 sm:gap-3">
-              <BookOpen className="w-4 h-4" />
-              {(!collapsed || isMobile) && "Finance"}
-            </div>
-            {(!collapsed || isMobile) &&
-              (financeMenuOpen ? (
-                <ChevronDown className="w-3 h-3" />
-              ) : (
-                <ChevronRight className="w-3 h-3" />
-              ))}
-          </button>
+          </div>
+        )}
 
-          {financeMenuOpen && (!collapsed || isMobile) && (
-            <div className="mt-2 ml-4 border-l border-sidebar-border pl-4 space-y-1">
-              {financeMenuItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveMenu(item.id)}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left transition-colors text-sm",
-                      activeMenu === item.id
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                    )}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {(!collapsed || isMobile) && item.label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        {/* Menu User Management & RBAC - Only show if user has view_rbac permission */}
+        {rbacMenuItems.length > 0 && (
+          <div className="mb-3">
+            <button
+              onClick={() => {
+                // If no rbac submenu is active, set to first rbac menu item
+                if (!rbacMenuOpen) {
+                  setActiveMenu(rbacMenuItems[0].id);
+                }
+              }}
+              className={cn(
+                "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sidebar-foreground transition-colors text-sm",
+                rbacMenuOpen
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )}
+            >
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Shield className="w-4 h-4" />
+                {(!collapsed || isMobile) && "User Management"}
+              </div>
+              {(!collapsed || isMobile) &&
+                (rbacMenuOpen ? (
+                  <ChevronDown className="w-3 h-3" />
+                ) : (
+                  <ChevronRight className="w-3 h-3" />
+                ))}
+            </button>
 
-        {/* Menu User Management & RBAC */}
-        <div className="mb-3">
-          <button
-            onClick={() => {
-              // If no rbac submenu is active, set to first rbac menu item
-              if (!rbacMenuOpen) {
-                setActiveMenu("roles");
-              }
-            }}
-            className={cn(
-              "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sidebar-foreground transition-colors text-sm",
-              rbacMenuOpen
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            {rbacMenuOpen && (!collapsed || isMobile) && (
+              <div className="mt-2 ml-4 border-l border-sidebar-border pl-4 space-y-1">
+                {rbacMenuItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveMenu(item.id)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left transition-colors text-sm",
+                        activeMenu === item.id
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      )}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {(!collapsed || isMobile) && item.label}
+                    </button>
+                  );
+                })}
+              </div>
             )}
-          >
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Shield className="w-4 h-4" />
-              {(!collapsed || isMobile) && "User Management"}
-            </div>
-            {(!collapsed || isMobile) &&
-              (rbacMenuOpen ? (
-                <ChevronDown className="w-3 h-3" />
-              ) : (
-                <ChevronRight className="w-3 h-3" />
-              ))}
-          </button>
-
-          {rbacMenuOpen && (!collapsed || isMobile) && (
-            <div className="mt-2 ml-4 border-l border-sidebar-border pl-4 space-y-1">
-              {rbacMenuItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveMenu(item.id)}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left transition-colors text-sm",
-                      activeMenu === item.id
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                    )}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {(!collapsed || isMobile) && item.label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </nav>
     </div>
   );
