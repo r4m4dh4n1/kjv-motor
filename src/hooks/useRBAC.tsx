@@ -160,27 +160,37 @@ export const useRBAC = () => {
   // Get user's role name
   const getUserRole = (): string | null => {
     if (!userProfile?.user_roles?.[0]?.roles?.role_name) {
+      console.log("🔍 RBAC Debug: No role found in userProfile", userProfile);
       return null;
     }
-    return userProfile.user_roles[0].roles.role_name.toLowerCase();
+    const roleName = userProfile.user_roles[0].roles.role_name.toLowerCase();
+    console.log("🔍 RBAC Debug: User role =", roleName);
+    return roleName;
   };
 
   // Check if user has a specific permission
   const hasPermission = (permission: Permission): boolean => {
     const role = getUserRole();
-    if (!role) return false;
+    if (!role) {
+      console.log("🔍 RBAC Debug: No role, permission denied for", permission);
+      return false;
+    }
 
     const permissions = ROLE_PERMISSIONS[role];
 
     // If role not defined in ROLE_PERMISSIONS, default to full access (for backward compatibility)
     if (!permissions) {
       console.warn(
-        `Role "${role}" not defined in ROLE_PERMISSIONS, defaulting to full access`
+        `🔍 RBAC Debug: Role "${role}" not defined in ROLE_PERMISSIONS, defaulting to full access`
       );
       return true;
     }
 
-    return permissions.includes(permission);
+    const hasAccess = permissions.includes(permission);
+    console.log(
+      `🔍 RBAC Debug: Role "${role}" checking "${permission}" = ${hasAccess}`
+    );
+    return hasAccess;
   };
 
   // Check if user has ANY of the given permissions
