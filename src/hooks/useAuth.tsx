@@ -31,24 +31,55 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      const { data: profile } = await supabase
+      console.log("🔍 Fetching user profile for userId:", userId);
+
+      // First check if profile exists
+      const { data: profileCheck, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
+
+      console.log("📋 Profile check:", profileCheck, profileError);
+
+      // Then check user_roles
+      const { data: userRolesCheck, error: rolesError } = await supabase
+        .from("user_roles")
+        .select(
+          `
+          role_id,
+          roles(role_name, description)
+        `
+        )
+        .eq("user_id", userId);
+
+      console.log("👥 User roles check:", userRolesCheck, rolesError);
+
+      // Now fetch with join
+      const { data: profile, error } = await supabase
         .from("profiles")
         .select(
           `
           *,
-          user_roles!inner(
+          user_roles(
             role_id,
-            roles!inner(role_name, description)
+            roles(role_name, description)
           )
         `
         )
         .eq("id", userId)
         .single();
 
+      if (error) {
+        console.error("❌ Error fetching user profile:", error);
+        return null;
+      }
+
+      console.log("✅ User profile loaded:", JSON.stringify(profile, null, 2));
       setUserProfile(profile);
       return profile;
     } catch (error) {
-      console.error("Error fetching user profile:", error);
+      console.error("❌ Exception fetching user profile:", error);
       return null;
     }
   };

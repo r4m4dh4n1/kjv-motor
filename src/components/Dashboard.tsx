@@ -235,9 +235,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         .eq("status", "ready")
         .lt("tanggal_pembelian", threeMonthsAgoStr);
 
-      // ✅ TAMBAH: Query qc_report WITHOUT join to avoid PGRST201 error
-      // We'll join manually in client-side with pembelianReady data
-      let qcReportQuery = supabase.from("qc_report").select("*");
+      // QC Report - fetch separately if needed (table might not exist yet)
+      // let qcReportQuery = supabase.from("qc_report").select("*");
 
       // ✅ TAMBAH: Query penjualan status booked (tanpa filter periode)
       let penjualanBookedQuery = supabase
@@ -329,7 +328,6 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         penjualanBookedResult, // ✅ TAMBAH
         pembelianReadyBulanIniResult, // ✅ FIX
         pembelianStokTuaResult, // ✅ TAMBAH: Stock tua
-        qcReportResult, // ✅ TAMBAH: QC report
       ] = await Promise.all([
         supabase.from("brands").select("*"),
         jenisMotorQuery,
@@ -344,7 +342,6 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         penjualanBookedQuery, // ✅ TAMBAH
         pembelianReadyBulanIniQuery, // ✅ FIX
         pembelianStokTuaQuery, // ✅ TAMBAH: Stock tua
-        qcReportQuery, // ✅ TAMBAH: QC report (belum)
       ]);
 
       if (brandsResult.error) throw brandsResult.error;
@@ -359,15 +356,6 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         throw pembelianReadyBulanIniResult.error; // ✅ FIX
       if (pembelianStokTuaResult.error) throw pembelianStokTuaResult.error; // ✅ TAMBAH
 
-      // Check qcReportResult error
-      if (qcReportResult.error) {
-        console.error(
-          "[Dashboard] qcReportResult error:",
-          qcReportResult.error
-        );
-        // Don't throw, just log and continue with empty array
-      }
-
       const brands: Brand[] = brandsResult.data || [];
       const jenisMotor: JenisMotor[] = jenisMotorResult.data || [];
       const companies: Company[] = companiesResult.data || [];
@@ -381,22 +369,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       const penjualanBooked = penjualanBookedResult.data || []; // ✅ TAMBAH
       const pembelianReadyBulanIni = pembelianReadyBulanIniResult.data || []; // ✅ FIX
       const pembelianStokTua = pembelianStokTuaResult.data || []; // ✅ TAMBAH
-      const qcReport = qcReportResult.data || [];
 
-      // DEBUG: log qc_report summary to help diagnose why counts may be zero
-      console.debug("[Dashboard] qcReport rows fetched:", qcReport.length);
-      if (qcReport.length > 0) {
-        const sample = qcReport.slice(0, 3).map((q: any) => ({
-          id: q.id,
-          pembelian_id: q.pembelian_id,
-          real_nominal_qc: q.real_nominal_qc,
-          estimasi_nominal_qc: q.estimasi_nominal_qc,
-          pembelian_exists: !!q.pembelian,
-          pembelian_divisi: q.pembelian?.divisi,
-          pembelian_cabang: q.pembelian?.cabang_id,
-        }));
-        console.debug("[Dashboard] qcReport sample:", sample);
-      }
+      // Count stock statistics
 
       // Set cabang data for filter
       setCabangData(cabang);
@@ -487,113 +461,12 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
 
       // 7. Total Unit Stock Tua (> 3 bulan tapi masih ready)
       const totalUnitStokTua = pembelianStokTua.length;
-      // 8. QC processing: use qc_report directly and filter client-side
-      //    Manual join with pembelianReady to avoid PGRST201 error
-      console.debug("[Dashboard] Starting QC processing", {
-        totalQcReport: qcReport.length,
-        totalPembelianReady: pembelianReady.length,
-        selectedDivision,
-        selectedCabang,
-      });
-
-      // Create a map of pembelian by ID for quick lookup
-      const pembelianMap = new Map();
-      pembelianReady.forEach((p: any) => {
-        pembelianMap.set(p.id, p);
-      });
-
-      // Enrich qc_report with pembelian data manually
-      const qcReportEnriched = qcReport
-        .map((q: any) => {
-          const pembelian = pembelianMap.get(q.pembelian_id);
-          if (!pembelian) return null; // Skip if pembelian not found
-          return {
-            ...q,
-            pembelian: pembelian,
-          };
-        })
-        .filter(Boolean); // Remove nulls
-
-      console.debug("[Dashboard] QC enriched:", qcReportEnriched.length);
-
-      // Now filter by division and cabang
-      let qcAll = qcReportEnriched;
-      if (selectedDivision !== "all") {
-        qcAll = qcAll.filter(
-          (q: any) => q.pembelian?.divisi === selectedDivision
-        );
-        console.debug("[Dashboard] After division filter:", qcAll.length);
-      }
-      if (selectedCabang !== "all") {
-        qcAll = qcAll.filter(
-          (q: any) => q.pembelian?.cabang_id === parseInt(selectedCabang)
-        );
-        console.debug("[Dashboard] After cabang filter:", qcAll.length);
-      }
-
-      // Filter by QC rules:
-      // - Belum QC: real_nominal_qc == 0 (belum ada realisasi QC, tidak peduli estimasi)
-      // - Sudah QC: real_nominal_qc != 0 (sudah ada realisasi QC)
-      const qcBelum = qcAll.filter((q: any) => {
-        const real = Number(q.real_nominal_qc ?? 0);
-        return real === 0;
-      });
-
-      const qcSudah = qcAll.filter((q: any) => {
-        const real = Number(q.real_nominal_qc ?? 0);
-        return real !== 0;
-      });
-
-      // Dedupe by pembelian_id and keep the first occurrence for display
-      const dedupeByPembelian = (rows: any[]) => {
-        const map = new Map<number | string, any>();
-        for (const r of rows) {
-          const pid = r.pembelian_id ?? r.pembelian?.id;
-          if (!map.has(pid)) map.set(pid, r);
-        }
-        return Array.from(map.values());
-      };
-
-      const sortDisplay = (rows: any[]) =>
-        rows.sort((a: any, b: any) => {
-          const brandA = (a.pembelian?.brands?.name || "").toLowerCase();
-          const brandB = (b.pembelian?.brands?.name || "").toLowerCase();
-          const brandCompare = brandA.localeCompare(brandB);
-          if (brandCompare !== 0) return brandCompare;
-
-          const jenisA = (
-            a.pembelian?.jenis_motor?.jenis_motor || ""
-          ).toLowerCase();
-          const jenisB = (
-            b.pembelian?.jenis_motor?.jenis_motor || ""
-          ).toLowerCase();
-          const jenisCompare = jenisA.localeCompare(jenisB);
-          if (jenisCompare !== 0) return jenisCompare;
-
-          const dateA = new Date(
-            a.pembelian?.tanggal_pembelian || a.created_at || 0
-          ).getTime();
-          const dateB = new Date(
-            b.pembelian?.tanggal_pembelian || b.created_at || 0
-          ).getTime();
-          return dateB - dateA; // newest first
-        });
-
-      const uniqueBelum = dedupeByPembelian(qcBelum);
-      const uniqueSudah = dedupeByPembelian(qcSudah);
-
-      const unitBelumQC = uniqueBelum.length;
-      const unitSudahQC = uniqueSudah.length;
-
-      setDetailBelumQC(sortDisplay(uniqueBelum));
-      setDetailSudahQC(sortDisplay(uniqueSudah));
-
-      console.debug("[Dashboard] QC processed:", {
-        totalQC: qcReport.length,
-        filteredQC: qcAll.length,
-        belumQC: unitBelumQC,
-        sudahQC: unitSudahQC,
-      });
+      
+      // 8. QC processing - removed for now (table might not exist)
+      const unitBelumQC = 0;
+      const unitSudahQC = 0;
+      setDetailBelumQC([]);
+      setDetailSudahQC([]);
 
       // Set detail untuk popup
       setDetailPajakMati(detailUnitPajakMati);

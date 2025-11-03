@@ -18,14 +18,18 @@ interface DeleteOperationalHistoryDialogProps {
 
 interface OperationalHistoryRecord {
   id: string;
-  divisi: string;
-  closed_month: number;
-  closed_year: number;
+  tanggal: string;
   kategori: string;
   deskripsi: string;
-  company_name: string;
   nominal: number;
+  divisi: string;
+  cabang_id: number;
+  company_id: number;
+  closed_month: number;
+  closed_year: number;
+  closed_at: string;
   created_at: string;
+  updated_at: string;
 }
 
 const DeleteOperationalHistoryDialog = ({ 
@@ -366,7 +370,7 @@ const DeleteOperationalHistoryDialog = ({
                           <TableCell className="max-w-xs truncate" title={record.deskripsi}>
                             {record.deskripsi}
                           </TableCell>
-                          <TableCell>{record.company_name}</TableCell>
+                          <TableCell>{record.company_id}</TableCell>
                           <TableCell>{formatCurrency(record.nominal)}</TableCell>
                           <TableCell>{formatDate(record.created_at)}</TableCell>
                           <TableCell className="text-center">

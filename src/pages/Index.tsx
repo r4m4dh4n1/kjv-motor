@@ -10,7 +10,7 @@ import AssetPage from "@/components/master/AssetPage";
 import CabangPage from "@/components/master/CabangPage";
 import EmployeesPage from "@/components/master/EmployeesPage";
 import UserApprovalPage from "@/components/master/UserApprovalPage";
-import PembelianPageEnhanced from "../components/transaction/PembelianPageEnhanced";
+import PembelianPage from "@/components/transaction/PembelianPage";
 import PenjualanPage from "@/components/transaction/PenjualanPage";
 import CicilanPageEnhanced from "../components/transaction/CicilanPageEnhanced";
 import OperationalPage from "@/components/transaction/OperationalPage";
@@ -29,7 +29,7 @@ import PenjualanSoldPageEnhanced from "@/components/transaction/PenjualanSoldPag
 import PenjualanCanceledBookedPage from "@/components/transaction/PenjualanCanceledBookedPage";
 import CloseMonthPage from "@/components/finance/CloseMonthPage";
 import { ProfitDistributionPage } from "@/components/finance/ProfitDistributionPage";
-import { PencatatanAssetPage } from "@/components/transaction/PencatatanAssetPage";
+// Remove PencatatanAssetPage import (not used anymore)
 import PriceHistoryUploadPage from "@/components/transaction/PriceHistoryUploadPage";
 // Tambahkan import di bagian atas
 import LabaRugiPage from "@/components/finance/LabaRugiPage";
@@ -76,7 +76,7 @@ const Index = () => {
       case "users":
         return <UserApprovalPage />;
       case "pembelian":
-        return <PembelianPageEnhanced selectedDivision={selectedDivision} />;
+        return <PembelianPage selectedDivision={selectedDivision} />;
       case "penjualan-booked":
         return (
           <PenjualanBookedPageEnhanced selectedDivision={selectedDivision} />
@@ -118,7 +118,8 @@ const Index = () => {
       case "close-month":
         return <CloseMonthPage selectedDivision={selectedDivision} />;
       case "pencatatan-asset":
-        return <PencatatanAssetPage selectedDivision={selectedDivision} />;
+        // Temporarily disabled - component needs to be recreated
+        return <div className="p-4">Pencatatan Asset page sedang dalam perbaikan</div>;
       case "price-history-upload":
         return <PriceHistoryUploadPage />;
       case "laba-rugi":

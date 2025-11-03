@@ -29,7 +29,6 @@ interface PembelianTableProps {
   handleQC: (pembelian: any) => void;
   handleViewQcHistory: (pembelian: any) => void;
   handleViewPriceHistory: (pembelian: any) => void;
-  handleQCReport: (pembelian: any) => void;
   deleteMutation: any;
 }
 
@@ -41,7 +40,6 @@ const PembelianTable = ({
   handleQC,
   handleViewQcHistory,
   handleViewPriceHistory,
-  handleQCReport,
   deleteMutation,
 }: PembelianTableProps) => {
   const { hasPermission } = useRBAC();
@@ -164,6 +162,9 @@ const PembelianTable = ({
     },
   ];
 
+  // QC role hanya bisa akses: Update QC (Quality Control button), Lihat Detail, History Harga
+  const isQC = hasPermission("view_pembelian") && !hasPermission("update_data");
+  
   const actions = [
     {
       label: "Lihat Detail",
@@ -173,20 +174,6 @@ const PembelianTable = ({
       className: "hover:bg-blue-50 hover:text-blue-600",
     },
     {
-      label: "View Report QC",
-      icon: FileText,
-      onClick: handleQCReport,
-      variant: "outline" as const,
-      className: "hover:bg-cyan-50 hover:text-cyan-600",
-    },
-    {
-      label: "History QC",
-      icon: History,
-      onClick: handleViewQcHistory,
-      variant: "outline" as const,
-      className: "hover:bg-indigo-50 hover:text-indigo-600",
-    },
-    {
       label: "History Harga",
       icon: TrendingUp,
       onClick: handleViewPriceHistory,
@@ -194,12 +181,28 @@ const PembelianTable = ({
       className: "hover:bg-amber-50 hover:text-amber-600",
     },
     {
+      label: "Update QC",
+      icon: CheckCircle,
+      onClick: handleQC,
+      variant: "outline" as const,
+      className: "hover:bg-purple-50 hover:text-purple-600",
+      hidden: isQC ? false : !hasPermission("update_data"), // QC bisa akses, role lain butuh permission
+    },
+    {
+      label: "History QC",
+      icon: History,
+      onClick: handleViewQcHistory,
+      variant: "outline" as const,
+      className: "hover:bg-indigo-50 hover:text-indigo-600",
+      hidden: isQC, // Hide untuk QC role
+    },
+    {
       label: "Edit",
       icon: Pencil,
       onClick: handleEdit,
       variant: "outline" as const,
       className: "hover:bg-green-50 hover:text-green-600",
-      hidden: !hasPermission("update_data"), // Hide jika tidak punya permission
+      hidden: isQC || !hasPermission("update_data"), // Hide untuk QC role
     },
     {
       label: "Update Harga",
@@ -207,22 +210,7 @@ const PembelianTable = ({
       onClick: handleUpdateHarga,
       variant: "outline" as const,
       className: "hover:bg-orange-50 hover:text-orange-600",
-      hidden: !hasPermission("update_data"), // Hide jika tidak punya permission
-    },
-    {
-      label: "Quality Control",
-      icon: CheckCircle,
-      onClick: handleQC,
-      variant: "outline" as const,
-      className: "hover:bg-purple-50 hover:text-purple-600",
-      hidden: !hasPermission("update_data"), // Hide jika tidak punya permission
-    },
-    {
-      label: "Report QC",
-      icon: FileText,
-      onClick: handleQCReport,
-      variant: "outline" as const,
-      className: "hover:bg-cyan-50 hover:text-cyan-600",
+      hidden: isQC || !hasPermission("update_data"), // Hide untuk QC role
     },
     {
       label: "Hapus",
@@ -230,7 +218,7 @@ const PembelianTable = ({
       onClick: (row: any) => deleteMutation.mutate(row.id),
       variant: "destructive" as const,
       className: "hover:bg-red-50",
-      hidden: !hasPermission("delete_data"), // Hide jika tidak punya permission
+      hidden: isQC || !hasPermission("delete_data"), // Hide untuk QC role
     },
   ].filter((action) => !action.hidden); // Filter out hidden actions
 

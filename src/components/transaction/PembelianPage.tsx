@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import PembelianForm from "./PembelianForm";
 import PembelianTable from "./PembelianTable";
 import PriceHistoryModal from "./PriceHistoryModal";
-import QCReportDialog from "./QCReportDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pembelian, PembelianPageProps } from "./types";
 import { ShoppingCart, CheckCircle, DollarSign } from "lucide-react";
@@ -41,13 +40,11 @@ const PembelianPage = ({ selectedDivision }: PembelianPageProps) => {
   const [isQCDialogOpen, setIsQCDialogOpen] = useState(false);
   const [isQcHistoryDialogOpen, setIsQcHistoryDialogOpen] = useState(false);
   const [isPriceHistoryDialogOpen, setIsPriceHistoryDialogOpen] = useState(false);
-  const [isQCReportDialogOpen, setIsQCReportDialogOpen] = useState(false);
   const [selectedJenisPembelian, setSelectedJenisPembelian] = useState("all");
   const [editingPembelian, setEditingPembelian] = useState<Pembelian | null>(null);
   const [viewingPembelian, setViewingPembelian] = useState<Pembelian | null>(null);
   const [updatingHargaPembelian, setUpdatingHargaPembelian] = useState<Pembelian | null>(null);
   const [qcPembelian, setQCPembelian] = useState<Pembelian | null>(null);
-  const [qcReportPembelian, setQCReportPembelian] = useState<Pembelian | null>(null);
   const [formData, setFormData] = useState(createInitialFormData(selectedDivision));
   const [qcHistory, setQcHistory] = useState([]);
 
@@ -237,11 +234,6 @@ const PembelianPage = ({ selectedDivision }: PembelianPageProps) => {
   const handleViewPriceHistory = (pembelian: any) => {
     setViewingPembelian(pembelian);
     setIsPriceHistoryDialogOpen(true);
-  };
-
-  const handleQCReport = (pembelian: any) => {
-    setQCReportPembelian(pembelian);
-    setIsQCReportDialogOpen(true);
   };
 
   const closeAllDialogs = () => {
@@ -588,7 +580,6 @@ const PembelianPage = ({ selectedDivision }: PembelianPageProps) => {
         handleQC={handleQC}
         handleViewQcHistory={handleViewQcHistory}
         handleViewPriceHistory={handleViewPriceHistory}
-        handleQCReport={handleQCReport}
         deleteMutation={deleteMutation}
       />
 
@@ -862,13 +853,6 @@ const PembelianPage = ({ selectedDivision }: PembelianPageProps) => {
         isOpen={isPriceHistoryDialogOpen}
         onClose={() => setIsPriceHistoryDialogOpen(false)}
         pembelian={viewingPembelian}
-      />
-
-      {/* QC Report Dialog */}
-      <QCReportDialog
-        isOpen={isQCReportDialogOpen}
-        onClose={() => setIsQCReportDialogOpen(false)}
-        pembelian={qcReportPembelian}
       />
     </div>
   );

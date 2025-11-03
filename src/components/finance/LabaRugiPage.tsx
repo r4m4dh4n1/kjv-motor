@@ -1460,17 +1460,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                   </TableCell>
                 </TableRow>
 
-                {/* Debug Info */}
-                {console.log("🔍 DEBUG RENDER - labaRugiData:", labaRugiData)}
-                {console.log(
-                  "🔍 DEBUG RENDER - biayaPerKategori:",
-                  labaRugiData?.biayaPerKategori
-                )}
-                {console.log(
-                  "🔍 DEBUG RENDER - biayaPerKategori entries:",
-                  Object.entries(labaRugiData?.biayaPerKategori || {})
-                )}
-
+                {/* Biaya Operasional per Kategori */}
                 {!labaRugiData?.biayaPerKategori ||
                 Object.keys(labaRugiData.biayaPerKategori).length === 0 ? (
                   <TableRow>

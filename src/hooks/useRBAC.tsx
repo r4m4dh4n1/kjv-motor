@@ -84,14 +84,11 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
 
   // QC - Can only access:
   // - Dashboard
-  // - Transaction -> Penjualan (only Update Harga button)
+  // - Transaction -> Pembelian (limited buttons: Update QC, Lihat Detail, History Harga, View Report QC)
   // - Can search data
   qc: [
     "view_dashboard",
-    "view_penjualan",
-    "view_penjualan_booked",
-    "view_penjualan_sold",
-    "update_harga_penjualan",
+    "view_pembelian",
     "search_data",
   ],
 
