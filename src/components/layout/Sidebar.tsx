@@ -61,7 +61,26 @@ const Sidebar = ({
 }: SidebarProps) => {
   // State untuk tracking nested sub-menu
   const [openNestedMenus, setOpenNestedMenus] = useState<string[]>([]);
-  const { hasPermission } = useRBAC();
+  const { hasPermission, loading } = useRBAC();
+
+  // Show loading skeleton while user profile loads
+  if (loading) {
+    return (
+      <div className="h-full border-r border-sidebar-border bg-sidebar flex flex-col">
+        <div className="p-4">
+          <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+        <div className="flex-1 p-4 space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className="h-10 bg-gray-200 rounded animate-pulse"
+            ></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const toggleNestedMenu = (menuId: string) => {
     setOpenNestedMenus((prev) =>

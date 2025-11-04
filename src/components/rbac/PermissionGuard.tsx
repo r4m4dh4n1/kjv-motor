@@ -28,7 +28,17 @@ export const PermissionGuard = ({
   requireAll = false,
   fallback = null,
 }: PermissionGuardProps) => {
-  const { hasPermission, hasAnyPermission, hasAllPermissions } = useRBAC();
+  const { hasPermission, hasAnyPermission, hasAllPermissions, loading } =
+    useRBAC();
+
+  // Show loading state while user profile is loading
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   let hasAccess = false;
 

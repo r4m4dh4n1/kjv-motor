@@ -140,15 +140,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
+    try {
+      // Clear states first to prevent race conditions
+      setUser(null);
+      setSession(null);
+      setUserProfile(null);
+
+      // Then attempt logout from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("Error signing out:", error);
+        // Don't throw error, just log it since user is already cleared locally
+      }
+    } catch (error) {
       console.error("Error signing out:", error);
-      throw error;
+      // Don't throw error, user should still be logged out locally
     }
-    // Clear all states immediately
-    setUser(null);
-    setSession(null);
-    setUserProfile(null);
   };
 
   // Auto logout after 5 minutes of inactivity

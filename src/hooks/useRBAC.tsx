@@ -30,7 +30,8 @@ export type Permission =
   | "update_qc_pembelian"
   | "view_detail_pembelian"
   | "view_history_harga"
-  | "view_report_qc";
+  | "view_report_qc"
+  | "report_qc";
 
 // Role definitions with their permissions
 export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
@@ -65,6 +66,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "view_detail_pembelian",
     "view_history_harga",
     "view_report_qc",
+    "report_qc",
   ],
 
   // Owner - Can access all modules EXCEPT:
@@ -98,10 +100,10 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "view_dashboard",
     "view_pembelian",
     "search_data",
-    "update_qc_pembelian",
     "view_detail_pembelian",
     "view_history_harga",
     "view_report_qc",
+    "report_qc",
   ],
 
   // Admin - Full access except RBAC management
@@ -134,6 +136,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "view_detail_pembelian",
     "view_history_harga",
     "view_report_qc",
+    "report_qc",
   ],
 
   // Administrator - Same as Super Admin (full access)
@@ -167,15 +170,21 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "view_detail_pembelian",
     "view_history_harga",
     "view_report_qc",
+    "report_qc",
   ],
 };
 
 // Hook to check permissions
 export const useRBAC = () => {
-  const { userProfile } = useAuth();
+  const { userProfile, loading } = useAuth();
 
   // Get user's role name
   const getUserRole = (): string | null => {
+    // If still loading, return null temporarily
+    if (loading) {
+      return null;
+    }
+
     if (!userProfile?.user_roles?.[0]?.roles?.role_name) {
       console.log("🔍 RBAC Debug: No role found in userProfile", userProfile);
       return null;
@@ -187,6 +196,11 @@ export const useRBAC = () => {
 
   // Check if user has a specific permission
   const hasPermission = (permission: Permission): boolean => {
+    // If still loading, default to false (will show loading state)
+    if (loading) {
+      return false;
+    }
+
     const role = getUserRole();
     if (!role) {
       console.log("🔍 RBAC Debug: No role, permission denied for", permission);
@@ -240,5 +254,6 @@ export const useRBAC = () => {
     getUserPermissions,
     hasRole,
     userRole: getUserRole(),
+    loading, // Add loading state
   };
 };

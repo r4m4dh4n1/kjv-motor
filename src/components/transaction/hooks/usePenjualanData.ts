@@ -56,9 +56,10 @@ const getDateRange = (
       };
     case "this_month":
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
       return {
         start: startOfMonth.toISOString().split("T")[0],
-        end: today.toISOString().split("T")[0],
+        end: endOfMonth.toISOString().split("T")[0],
       };
     case "last_month":
       const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -69,9 +70,10 @@ const getDateRange = (
       };
     case "this_year":
       const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const endOfYear = new Date(now.getFullYear(), 11, 31);
       return {
         start: startOfYear.toISOString().split("T")[0],
-        end: today.toISOString().split("T")[0],
+        end: endOfYear.toISOString().split("T")[0],
       };
     case "last_year":
       const lastYearStart = new Date(now.getFullYear() - 1, 0, 1);

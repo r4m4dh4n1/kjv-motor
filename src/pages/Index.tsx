@@ -23,7 +23,6 @@ import PermissionsPage from "@/components/rbac/PermissionsPage";
 import RolePermissionsPage from "@/components/rbac/RolePermissionsPage";
 import UserRolesPage from "@/components/rbac/UserRolesPage";
 import BreakdownPercabangPage from "@/components/finance/BreakdownPercabangPage";
-import KeuntunganMotorPage from "@/components/finance/KeuntunganMotorPage";
 import PenjualanBookedPageEnhanced from "@/components/transaction/PenjualanBookedPageEnhanced";
 import PenjualanSoldPageEnhanced from "@/components/transaction/PenjualanSoldPageEnhanced";
 import PenjualanCanceledBookedPage from "@/components/transaction/PenjualanCanceledBookedPage";
@@ -32,7 +31,6 @@ import { ProfitDistributionPage } from "@/components/finance/ProfitDistributionP
 // Remove PencatatanAssetPage import (not used anymore)
 import PriceHistoryUploadPage from "@/components/transaction/PriceHistoryUploadPage";
 // Tambahkan import di bagian atas
-import LabaRugiPage from "@/components/finance/LabaRugiPage";
 import ModalReductionPage from "@/components/finance/ModalReductionPage"; // ✅ Tambahkan ini
 import ModalHistoryPage from "@/components/finance/ModalHistoryPage"; // ✅ Tambahkan ini juga
 import ProfitAdjustmentSummary from "@/components/finance/ProfitAdjustmentSummary";
@@ -112,7 +110,7 @@ const Index = () => {
       case "breakdown-percabang":
         return <BreakdownPercabangPage selectedDivision={selectedDivision} />;
       case "keuntungan-motor":
-        return <KeuntunganMotorPage selectedDivision={selectedDivision} />;
+        return <div className="p-4">Laporan Keuntungan Motor sedang dalam perbaikan</div>;
       case "profit-distribution":
         return <ProfitDistributionPage selectedDivision={selectedDivision} />;
       case "close-month":
@@ -123,7 +121,7 @@ const Index = () => {
       case "price-history-upload":
         return <PriceHistoryUploadPage />;
       case "laba-rugi":
-        return <LabaRugiPage selectedDivision={selectedDivision} />;
+        return <div className="p-4">Laporan Laba Rugi sedang dalam perbaikan</div>;
       case "modal-reduction": // ✅ Tambahkan case ini
         return <ModalReductionPage />;
       case "modal-history": // ✅ Tambahkan case ini juga
