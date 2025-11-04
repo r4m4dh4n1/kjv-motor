@@ -127,12 +127,8 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedBrand, setSelectedBrand] = useState("all");
-  const [selectedJenisMotor, setSelectedJenisMotor] = useState("all");
-  const [selectedCabang, setSelectedCabang] = useState("all");
   const [selectedJenisPembelian, setSelectedJenisPembelian] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("ready"); // ✅ DEFAULT: ready (tampil semua unit ready)
-  const [dateFilter, setDateFilter] = useState("all"); // ✅ Date filter (akan di-override otomatis untuk status booked/sold)
+  const [dateFilter, setDateFilter] = useState("all");
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(
     undefined
   );
@@ -227,8 +223,11 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     }
   };
 
-  // Filter and search logic
+  // Filter and search logic - Only show ready items by default
   const filteredData = pembelianDataRaw.filter((item: any) => {
+    // Only show ready status items
+    const matchesStatus = item.status === "ready";
+
     const matchesSearch =
       !searchTerm ||
       item.plat_nomor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -238,30 +237,13 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
         .includes(searchTerm.toLowerCase()) ||
       item.cabangs?.nama?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesBrand =
-      selectedBrand === "all" || item.brand_id?.toString() === selectedBrand;
-
-    const matchesJenisMotor =
-      selectedJenisMotor === "all" ||
-      item.jenis_motor_id?.toString() === selectedJenisMotor;
-
-    const matchesCabang =
-      selectedCabang === "all" || item.cabang_id.toString() === selectedCabang;
-
     const matchesJenisPembelian =
       selectedJenisPembelian === "all" ||
       item.jenis_pembelian === selectedJenisPembelian;
 
-    const matchesStatus =
-      selectedStatus === "all" || item.status === selectedStatus;
-
-    // ✅ NEW LOGIC: Date filter hanya untuk status "Booked"/"Sold"
-    // Jika status = "ready", tampilkan SEMUA unit ready tanpa filter tanggal
-    const shouldApplyDateFilter = selectedStatus !== "ready";
-
-    // Date filter logic (hanya jika bukan ready)
+    // Date filter logic
     let matchesDate = true;
-    if (shouldApplyDateFilter && dateFilter !== "all") {
+    if (dateFilter !== "all") {
       const dateRange = getDateRange();
       if (dateRange) {
         const itemDate = new Date(item.tanggal_pembelian);
@@ -272,13 +254,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     }
 
     return (
-      matchesSearch &&
-      matchesBrand &&
-      matchesJenisMotor &&
-      matchesCabang &&
-      matchesJenisPembelian &&
-      matchesStatus &&
-      matchesDate
+      matchesStatus && matchesSearch && matchesJenisPembelian && matchesDate
     );
   });
 
@@ -353,11 +329,8 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
         item.brands?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.jenis_motor?.jenis_motor
           ?.toLowerCase()
-          .includes(searchTerm.toLowerCase());
-
-      const matchesCabang =
-        selectedCabang === "all" ||
-        item.cabang_id.toString() === selectedCabang;
+          .includes(searchTerm.toLowerCase()) ||
+        item.cabangs?.nama?.toLowerCase().includes(searchTerm.toLowerCase());
 
       // Untuk penjualan, tidak ada jenis_pembelian, jadi skip filter ini
       const matchesJenisPembelian =
@@ -383,11 +356,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       }
 
       return (
-        matchesSearch &&
-        matchesCabang &&
-        matchesJenisPembelian &&
-        matchesDate &&
-        matchesDivisi
+        matchesSearch && matchesJenisPembelian && matchesDate && matchesDivisi
       );
     });
 
@@ -424,7 +393,6 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     penjualanDataRaw,
     filteredData,
     searchTerm,
-    selectedCabang,
     selectedJenisPembelian,
     dateFilter,
     customStartDate,
@@ -886,9 +854,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
 
   const resetFilters = () => {
     setSearchTerm("");
-    setSelectedCabang("all");
     setSelectedJenisPembelian("all");
-    setSelectedStatus("ready");
     setDateFilter("all");
     setCustomStartDate(undefined);
     setCustomEndDate(undefined);
@@ -1291,7 +1257,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* Search */}
                 <div className="lg:col-span-2">
                   <Label htmlFor="search">Search</Label>
@@ -1305,72 +1271,6 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                       className="pl-9"
                     />
                   </div>
-                </div>
-
-                {/* Brand Filter */}
-                <div>
-                  <Label htmlFor="brand">Brand</Label>
-                  <Select
-                    value={selectedBrand}
-                    onValueChange={setSelectedBrand}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih Brand" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Brand</SelectItem>
-                      {brandsData.map((brand) => (
-                        <SelectItem key={brand.id} value={brand.id.toString()}>
-                          {brand.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Jenis Motor Filter */}
-                <div>
-                  <Label htmlFor="jenisMotor">Jenis Motor</Label>
-                  <Select
-                    value={selectedJenisMotor}
-                    onValueChange={setSelectedJenisMotor}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih Jenis Motor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Jenis</SelectItem>
-                      {jenisMotorData.map((jenis) => (
-                        <SelectItem key={jenis.id} value={jenis.id.toString()}>
-                          {jenis.jenis_motor}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Cabang Filter */}
-                <div>
-                  <Label htmlFor="cabang">Cabang</Label>
-                  <Select
-                    value={selectedCabang}
-                    onValueChange={setSelectedCabang}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih Cabang" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Cabang</SelectItem>
-                      {cabangData.map((cabang) => (
-                        <SelectItem
-                          key={cabang.id}
-                          value={cabang.id.toString()}
-                        >
-                          {cabang.nama}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 {/* Jenis Pembelian */}
@@ -1389,25 +1289,6 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                       <SelectItem value="Bukan Tukar Tambah">
                         Bukan Tukar Tambah
                       </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Status Filter */}
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={selectedStatus}
-                    onValueChange={setSelectedStatus}
-                    disabled
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Status</SelectItem>
-                      <SelectItem value="ready">Ready</SelectItem>
-                      {/* ✅ REMOVED: Sold tidak ditampilkan di pembelian (sudah pindah ke penjualan) */}
                     </SelectContent>
                   </Select>
                 </div>
