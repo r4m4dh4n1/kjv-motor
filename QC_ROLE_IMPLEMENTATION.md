@@ -16,13 +16,13 @@
 1. ✅ **Search** - Mencari data pembelian
 2. ✅ **Lihat Detail** - Melihat detail pembelian
 3. ✅ **History Harga** - Melihat riwayat perubahan harga
-4. ✅ **Update QC** - Update quality control data
-5. ✅ **View Report QC** - Melihat laporan QC (button di header)
+4. ✅ **Update Harga** - Update harga pembelian
 
 ### Yang TIDAK Bisa Diakses oleh QC:
 
 - ❌ **Edit** - Tidak bisa edit data pembelian
-- ❌ **Update Harga** - Tidak bisa update harga
+- ❌ **Update QC** - Tidak bisa update QC data
+- ❌ **Report QC** - Tidak bisa lihat report QC
 - ❌ **History QC** - Tidak bisa lihat history QC
 - ❌ **Hapus** - Tidak bisa delete data
 - ❌ **Tambah** - Tidak bisa create data baru
@@ -34,10 +34,9 @@
 
 ```typescript
 export type Permission =
-  | "update_qc_pembelian" // Update QC data
+  | "update_harga_pembelian" // Update harga pembelian
   | "view_detail_pembelian" // View detail
-  | "view_history_harga" // View price history
-  | "view_report_qc"; // View QC report
+  | "view_history_harga"; // View price history
 // ... other permissions
 ```
 
@@ -48,10 +47,9 @@ qc: [
   "view_dashboard",
   "view_pembelian",
   "search_data",
-  "update_qc_pembelian",
   "view_detail_pembelian",
   "view_history_harga",
-  "view_report_qc",
+  "update_harga_pembelian",
 ];
 ```
 
@@ -80,19 +78,21 @@ Run `assign_qc_role.sql` in Supabase SQL Editor to:
 3. In Pembelian page, verify you can only see these buttons:
    - Lihat Detail
    - History Harga
-   - Update QC
-   - View Report QC (top right button)
+   - Update Harga
 4. Verify you CANNOT see:
    - Button Tambah (top right)
+   - Button View Report QC (top right)
    - Button Edit (in action menu)
-   - Button Update Harga (in action menu)
+   - Button Update QC (in action menu)
+   - Button Report QC (in action menu)
    - Button History QC (in action menu)
    - Button Hapus (in action menu)
 
 ## Notes:
 
-- QC role is focused on quality control tasks only
-- Cannot modify or delete data
+- QC role is focused on price management and viewing details only
+- Cannot modify or delete pembelian data
 - Cannot create new records
-- Limited to Dashboard viewing and Pembelian QC operations
+- Cannot update QC data or view QC reports
+- Limited to Dashboard viewing and Pembelian price operations
 - All permissions are enforced at the UI level through the RBAC system

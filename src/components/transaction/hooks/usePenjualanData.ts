@@ -131,19 +131,41 @@ const fetchPenjualanWithRelations = async (
   // Filter tanggal
   if (dateFilter && dateFilter !== "all") {
     if (dateFilter === "custom" && customDateRange) {
-      query = query.gte(
-        "tanggal",
-        customDateRange.start.toISOString().split("T")[0]
-      );
-      query = query.lte(
-        "tanggal",
-        customDateRange.end.toISOString().split("T")[0]
-      );
+      // ✅ NEW: Untuk filter this_month, prioritaskan tanggal_lunas jika ada
+      if (dateFilter === "this_month") {
+        // Filter berdasarkan tanggal_lunas jika ada, fallback ke tanggal
+        query = query.or(
+          `and(tanggal_lunas.gte.${
+            customDateRange.start.toISOString().split("T")[0]
+          },tanggal_lunas.lte.${
+            customDateRange.end.toISOString().split("T")[0]
+          }),and(tanggal_lunas.is.null,tanggal.gte.${
+            customDateRange.start.toISOString().split("T")[0]
+          },tanggal.lte.${customDateRange.end.toISOString().split("T")[0]})`
+        );
+      } else {
+        query = query.gte(
+          "tanggal",
+          customDateRange.start.toISOString().split("T")[0]
+        );
+        query = query.lte(
+          "tanggal",
+          customDateRange.end.toISOString().split("T")[0]
+        );
+      }
     } else {
       const dateRange = getDateRange(dateFilter);
       if (dateRange) {
-        query = query.gte("tanggal", dateRange.start);
-        query = query.lte("tanggal", dateRange.end);
+        // ✅ NEW: Untuk filter this_month, prioritaskan tanggal_lunas jika ada
+        if (dateFilter === "this_month") {
+          // Filter berdasarkan tanggal_lunas jika ada, fallback ke tanggal
+          query = query.or(
+            `and(tanggal_lunas.gte.${dateRange.start},tanggal_lunas.lte.${dateRange.end}),and(tanggal_lunas.is.null,tanggal.gte.${dateRange.start},tanggal.lte.${dateRange.end})`
+          );
+        } else {
+          query = query.gte("tanggal", dateRange.start);
+          query = query.lte("tanggal", dateRange.end);
+        }
       }
     }
   }
