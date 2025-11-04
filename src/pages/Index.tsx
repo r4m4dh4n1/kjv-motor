@@ -10,7 +10,7 @@ import AssetPage from "@/components/master/AssetPage";
 import CabangPage from "@/components/master/CabangPage";
 import EmployeesPage from "@/components/master/EmployeesPage";
 import UserApprovalPage from "@/components/master/UserApprovalPage";
-import PembelianPage from "@/components/transaction/PembelianPage";
+import PembelianPageEnhanced from "@/components/transaction/PembelianPageEnhanced";
 import PenjualanPage from "@/components/transaction/PenjualanPage";
 import CicilanPageEnhanced from "../components/transaction/CicilanPageEnhanced";
 import OperationalPage from "@/components/transaction/OperationalPage";
@@ -74,7 +74,7 @@ const Index = () => {
       case "users":
         return <UserApprovalPage />;
       case "pembelian":
-        return <PembelianPage selectedDivision={selectedDivision} />;
+        return <PembelianPageEnhanced selectedDivision={selectedDivision} />;
       case "penjualan-booked":
         return (
           <PenjualanBookedPageEnhanced selectedDivision={selectedDivision} />
@@ -110,18 +110,28 @@ const Index = () => {
       case "breakdown-percabang":
         return <BreakdownPercabangPage selectedDivision={selectedDivision} />;
       case "keuntungan-motor":
-        return <div className="p-4">Laporan Keuntungan Motor sedang dalam perbaikan</div>;
+        return (
+          <div className="p-4">
+            Laporan Keuntungan Motor sedang dalam perbaikan
+          </div>
+        );
       case "profit-distribution":
         return <ProfitDistributionPage selectedDivision={selectedDivision} />;
       case "close-month":
         return <CloseMonthPage selectedDivision={selectedDivision} />;
       case "pencatatan-asset":
         // Temporarily disabled - component needs to be recreated
-        return <div className="p-4">Pencatatan Asset page sedang dalam perbaikan</div>;
+        return (
+          <div className="p-4">
+            Pencatatan Asset page sedang dalam perbaikan
+          </div>
+        );
       case "price-history-upload":
         return <PriceHistoryUploadPage />;
       case "laba-rugi":
-        return <div className="p-4">Laporan Laba Rugi sedang dalam perbaikan</div>;
+        return (
+          <div className="p-4">Laporan Laba Rugi sedang dalam perbaikan</div>
+        );
       case "modal-reduction": // ✅ Tambahkan case ini
         return <ModalReductionPage />;
       case "modal-history": // ✅ Tambahkan case ini juga

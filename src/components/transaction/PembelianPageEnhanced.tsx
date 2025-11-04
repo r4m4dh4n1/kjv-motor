@@ -139,7 +139,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(
     undefined
   );
-  
+
   // Sort states
   const [sortBy, setSortBy] = useState("tanggal_pembelian");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -242,7 +242,8 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       selectedBrand === "all" || item.brand_id?.toString() === selectedBrand;
 
     const matchesJenisMotor =
-      selectedJenisMotor === "all" || item.jenis_motor_id?.toString() === selectedJenisMotor;
+      selectedJenisMotor === "all" ||
+      item.jenis_motor_id?.toString() === selectedJenisMotor;
 
     const matchesCabang =
       selectedCabang === "all" || item.cabang_id.toString() === selectedCabang;
@@ -1246,17 +1247,15 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
         <div className="flex items-center gap-2">
           {/* Button View Report QC - Hanya untuk QC role atau yang punya permission view_report_qc */}
           {canViewReportQC && (
-            <Button
-              variant="outline"
-              onClick={handleViewQcReport}
-          )}
-          {/* Button Tambah - Hanya untuk yang punya permission create_data */}
-          {console.log("🔍 PembelianPage Debug: Checking create_data permission...")}
-          {hasPermission("create_data") && (
+            <Button variant="outline" onClick={handleViewQcReport}>
+              <Eye className="w-4 h-4 mr-2" />
               View Report QC
             </Button>
           )}
           {/* Button Tambah - Hanya untuk yang punya permission create_data */}
+          {console.log(
+            "🔍 PembelianPage Debug: Checking create_data permission..."
+          )}
           {hasPermission("create_data") && (
             <PembelianForm
               isDialogOpen={isDialogOpen}
@@ -1321,10 +1320,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                     <SelectContent>
                       <SelectItem value="all">Semua Brand</SelectItem>
                       {brandsData.map((brand) => (
-                        <SelectItem
-                          key={brand.id}
-                          value={brand.id.toString()}
-                        >
+                        <SelectItem key={brand.id} value={brand.id.toString()}>
                           {brand.name}
                         </SelectItem>
                       ))}
@@ -1345,10 +1341,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                     <SelectContent>
                       <SelectItem value="all">Semua Jenis</SelectItem>
                       {jenisMotorData.map((jenis) => (
-                        <SelectItem
-                          key={jenis.id}
-                          value={jenis.id.toString()}
-                        >
+                        <SelectItem key={jenis.id} value={jenis.id.toString()}>
                           {jenis.jenis_motor}
                         </SelectItem>
                       ))}
@@ -1510,7 +1503,9 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                       <SelectValue placeholder="Pilih Sorting" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="tanggal_pembelian">Tanggal Pembelian</SelectItem>
+                      <SelectItem value="tanggal_pembelian">
+                        Tanggal Pembelian
+                      </SelectItem>
                       <SelectItem value="brand">Brand</SelectItem>
                       <SelectItem value="jenis_motor">Jenis Motor</SelectItem>
                       <SelectItem value="plat_nomor">Plat Nomor</SelectItem>
@@ -1525,19 +1520,23 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                   <Label htmlFor="sortOrder">Urutan</Label>
                   <Select
                     value={sortOrder}
-                    onValueChange={(value) => setSortOrder(value as "asc" | "desc")}
+                    onValueChange={(value) =>
+                      setSortOrder(value as "asc" | "desc")
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih Urutan" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="asc">
-                        {sortBy === "tanggal_pembelian" || sortBy === "harga_beli"
+                        {sortBy === "tanggal_pembelian" ||
+                        sortBy === "harga_beli"
                           ? "Terlama / Terendah"
                           : "A - Z"}
                       </SelectItem>
                       <SelectItem value="desc">
-                        {sortBy === "tanggal_pembelian" || sortBy === "harga_beli"
+                        {sortBy === "tanggal_pembelian" ||
+                        sortBy === "harga_beli"
                           ? "Terbaru / Tertinggi"
                           : "Z - A"}
                       </SelectItem>
@@ -1567,20 +1566,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                   </Select>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-                          mode="single"
-                          selected={customEndDate}
-                          onSelect={(date) => date && setCustomEndDate(date)}
-                          initialFocus
-                          className="p-3 pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-              )}
-
+              {/* Data Summary and Reset */}
               <div className="flex justify-between items-center mt-4">
                 <Button variant="outline" onClick={resetFilters}>
                   Reset Filter
