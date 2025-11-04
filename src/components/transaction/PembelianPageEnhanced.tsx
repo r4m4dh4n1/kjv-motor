@@ -127,6 +127,8 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedBrand, setSelectedBrand] = useState("all");
+  const [selectedJenisMotor, setSelectedJenisMotor] = useState("all");
   const [selectedCabang, setSelectedCabang] = useState("all");
   const [selectedJenisPembelian, setSelectedJenisPembelian] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("ready"); // ✅ DEFAULT: ready (tampil semua unit ready)
@@ -137,6 +139,10 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(
     undefined
   );
+  
+  // Sort states
+  const [sortBy, setSortBy] = useState("tanggal_pembelian");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const { toast } = useToast();
 
@@ -229,7 +235,14 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       item.brands?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.jenis_motor?.jenis_motor
         ?.toLowerCase()
-        .includes(searchTerm.toLowerCase());
+        .includes(searchTerm.toLowerCase()) ||
+      item.cabangs?.nama?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesBrand =
+      selectedBrand === "all" || item.brand_id?.toString() === selectedBrand;
+
+    const matchesJenisMotor =
+      selectedJenisMotor === "all" || item.jenis_motor_id?.toString() === selectedJenisMotor;
 
     const matchesCabang =
       selectedCabang === "all" || item.cabang_id.toString() === selectedCabang;
@@ -259,11 +272,51 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
 
     return (
       matchesSearch &&
+      matchesBrand &&
+      matchesJenisMotor &&
       matchesCabang &&
       matchesJenisPembelian &&
       matchesStatus &&
       matchesDate
     );
+  });
+
+  // Sort logic
+  const sortedData = [...filteredData].sort((a: any, b: any) => {
+    let compareA, compareB;
+
+    switch (sortBy) {
+      case "brand":
+        compareA = a.brands?.name?.toLowerCase() || "";
+        compareB = b.brands?.name?.toLowerCase() || "";
+        break;
+      case "jenis_motor":
+        compareA = a.jenis_motor?.jenis_motor?.toLowerCase() || "";
+        compareB = b.jenis_motor?.jenis_motor?.toLowerCase() || "";
+        break;
+      case "plat_nomor":
+        compareA = a.plat_nomor?.toLowerCase() || "";
+        compareB = b.plat_nomor?.toLowerCase() || "";
+        break;
+      case "tanggal_pembelian":
+        compareA = new Date(a.tanggal_pembelian).getTime();
+        compareB = new Date(b.tanggal_pembelian).getTime();
+        break;
+      case "harga_beli":
+        compareA = a.harga_beli || 0;
+        compareB = b.harga_beli || 0;
+        break;
+      case "cabang":
+        compareA = a.cabangs?.nama?.toLowerCase() || "";
+        compareB = b.cabangs?.nama?.toLowerCase() || "";
+        break;
+      default:
+        return 0;
+    }
+
+    if (compareA < compareB) return sortOrder === "asc" ? -1 : 1;
+    if (compareA > compareB) return sortOrder === "asc" ? 1 : -1;
+    return 0;
   });
 
   // Use pagination hook
@@ -274,7 +327,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     goToPage,
     resetPage,
     totalItems,
-  } = usePagination(filteredData, pageSize);
+  } = usePagination(sortedData, pageSize);
 
   // Calculate totals - Menggabungkan data pembelian dan penjualan
   const calculateTotals = useMemo(() => {
@@ -1239,14 +1292,15 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-                <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Search */}
+                <div className="lg:col-span-2">
                   <Label htmlFor="search">Search</Label>
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="search"
-                      placeholder="Cari plat, brand, jenis motor..."
+                      placeholder="Cari plat nomor, brand, jenis motor, cabang..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-9"
@@ -1254,6 +1308,55 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                   </div>
                 </div>
 
+                {/* Brand Filter */}
+                <div>
+                  <Label htmlFor="brand">Brand</Label>
+                  <Select
+                    value={selectedBrand}
+                    onValueChange={setSelectedBrand}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Brand" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Brand</SelectItem>
+                      {brandsData.map((brand) => (
+                        <SelectItem
+                          key={brand.id}
+                          value={brand.id.toString()}
+                        >
+                          {brand.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Jenis Motor Filter */}
+                <div>
+                  <Label htmlFor="jenisMotor">Jenis Motor</Label>
+                  <Select
+                    value={selectedJenisMotor}
+                    onValueChange={setSelectedJenisMotor}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Jenis Motor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Jenis</SelectItem>
+                      {jenisMotorData.map((jenis) => (
+                        <SelectItem
+                          key={jenis.id}
+                          value={jenis.id.toString()}
+                        >
+                          {jenis.jenis_motor}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Cabang Filter */}
                 <div>
                   <Label htmlFor="cabang">Cabang</Label>
                   <Select
@@ -1277,6 +1380,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                   </Select>
                 </div>
 
+                {/* Jenis Pembelian */}
                 <div>
                   <Label htmlFor="jenisPembelian">Jenis Pembelian</Label>
                   <Select
@@ -1296,6 +1400,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                   </Select>
                 </div>
 
+                {/* Status Filter */}
                 <div>
                   <Label htmlFor="status">Status</Label>
                   <Select
@@ -1314,42 +1419,25 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                   </Select>
                 </div>
 
+                {/* Date Filter */}
                 <div>
-                  <Label htmlFor="dateFilter">Filter Tanggal</Label>
+                  <Label htmlFor="dateFilter">Filter Periode</Label>
                   <Select value={dateFilter} onValueChange={setDateFilter}>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih Filter Tanggal" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Semua Tanggal</SelectItem>
-                      <SelectItem value="today">Today</SelectItem>
-                      <SelectItem value="tomorrow">Tommorow</SelectItem>
-                      <SelectItem value="yesterday">Yesterday</SelectItem>
-                      <SelectItem value="this_week">This Week</SelectItem>
-                      <SelectItem value="last_week">Last Week</SelectItem>
-                      <SelectItem value="this_month">This Month</SelectItem>
-                      <SelectItem value="last_month">Last Month</SelectItem>
-                      <SelectItem value="this_year">This Year</SelectItem>
-                      <SelectItem value="last_year">Last Year</SelectItem>
-                      <SelectItem value="custom">Custom</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="pageSize">Items per page</Label>
-                  <Select
-                    value={pageSize.toString()}
-                    onValueChange={(value) => setPageSize(parseInt(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="25">25</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
+                      <SelectItem value="today">Hari Ini</SelectItem>
+                      <SelectItem value="tomorrow">Besok</SelectItem>
+                      <SelectItem value="yesterday">Kemarin</SelectItem>
+                      <SelectItem value="this_week">Minggu Ini</SelectItem>
+                      <SelectItem value="last_week">Minggu Lalu</SelectItem>
+                      <SelectItem value="this_month">Bulan Ini</SelectItem>
+                      <SelectItem value="last_month">Bulan Lalu</SelectItem>
+                      <SelectItem value="this_year">Tahun Ini</SelectItem>
+                      <SelectItem value="last_year">Tahun Lalu</SelectItem>
+                      <SelectItem value="custom">Custom Range</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1366,6 +1454,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                           variant="outline"
                           className="w-full justify-start text-left font-normal"
                         >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
                           {customStartDate
                             ? format(customStartDate, "dd/MM/yyyy")
                             : "Pilih tanggal mulai"}
@@ -1391,6 +1480,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                           variant="outline"
                           className="w-full justify-start text-left font-normal"
                         >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
                           {customEndDate
                             ? format(customEndDate, "dd/MM/yyyy")
                             : "Pilih tanggal selesai"}
@@ -1398,6 +1488,87 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
+                          mode="single"
+                          selected={customEndDate}
+                          onSelect={(date) => date && setCustomEndDate(date)}
+                          initialFocus
+                          className="p-3 pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              )}
+
+              {/* Sort and Pagination Controls */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t">
+                {/* Sort By */}
+                <div>
+                  <Label htmlFor="sortBy">Urutkan Berdasarkan</Label>
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Sorting" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="tanggal_pembelian">Tanggal Pembelian</SelectItem>
+                      <SelectItem value="brand">Brand</SelectItem>
+                      <SelectItem value="jenis_motor">Jenis Motor</SelectItem>
+                      <SelectItem value="plat_nomor">Plat Nomor</SelectItem>
+                      <SelectItem value="harga_beli">Harga Beli</SelectItem>
+                      <SelectItem value="cabang">Cabang</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Sort Order */}
+                <div>
+                  <Label htmlFor="sortOrder">Urutan</Label>
+                  <Select
+                    value={sortOrder}
+                    onValueChange={(value) => setSortOrder(value as "asc" | "desc")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Urutan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="asc">
+                        {sortBy === "tanggal_pembelian" || sortBy === "harga_beli"
+                          ? "Terlama / Terendah"
+                          : "A - Z"}
+                      </SelectItem>
+                      <SelectItem value="desc">
+                        {sortBy === "tanggal_pembelian" || sortBy === "harga_beli"
+                          ? "Terbaru / Tertinggi"
+                          : "Z - A"}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Page Size */}
+                <div>
+                  <Label htmlFor="pageSize">Items per halaman</Label>
+                  <Select
+                    value={pageSize.toString()}
+                    onValueChange={(value) => {
+                      setPageSize(parseInt(value));
+                      resetPage();
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10 per halaman</SelectItem>
+                      <SelectItem value="25">25 per halaman</SelectItem>
+                      <SelectItem value="50">50 per halaman</SelectItem>
+                      <SelectItem value="100">100 per halaman</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
                           mode="single"
                           selected={customEndDate}
                           onSelect={(date) => date && setCustomEndDate(date)}
