@@ -164,15 +164,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       let penjualanQuery = supabase
         .from("penjualans")
         .select("*")
-        .eq("status", "selesai") // ✅ FIXED: Only count sold items for profit calculation
-        .gte(
-          "tanggal",
-          `${currentYear}-${currentMonth.toString().padStart(2, "0")}-01`
-        )
-        .lt(
-          "tanggal",
-          `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}-01`
-        );
+        .eq("status", "selesai"); // ✅ Get all sold items, filter by date in JS
 
       // Query terpisah untuk booked orders - ambil semua data tanpa filter waktu
       let bookedOrdersQuery = supabase
@@ -362,7 +354,21 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       const assets: Asset[] = assetsResult.data || [];
       const cabang = cabangResult.data || [];
       const pembelian = pembelianResult.data || [];
-      const penjualan = penjualanResult.data || [];
+      const penjualanRaw = penjualanResult.data || [];
+
+      // ✅ NEW: Filter penjualan berdasarkan tanggal_lunas (prioritas) atau tanggal untuk bulan ini
+      const startOfMonth = new Date(currentYear, currentMonth - 1, 1);
+      const endOfMonth = new Date(currentYear, currentMonth, 0, 23, 59, 59);
+
+      const penjualan = penjualanRaw.filter((p: any) => {
+        // Gunakan tanggal_lunas jika ada, fallback ke tanggal
+        const dateToCheck = p.tanggal_lunas || p.tanggal;
+        if (!dateToCheck) return false;
+
+        const penjualanDate = new Date(dateToCheck);
+        return penjualanDate >= startOfMonth && penjualanDate <= endOfMonth;
+      });
+
       const bookedOrders = bookedOrdersResult.data || [];
       const operational = operationalResult.data || [];
       const pembelianReady = pembelianReadyResult.data || []; // ✅ TAMBAH
@@ -461,7 +467,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
 
       // 7. Total Unit Stock Tua (> 3 bulan tapi masih ready)
       const totalUnitStokTua = pembelianStokTua.length;
-      
+
       // 8. QC processing - removed for now (table might not exist)
       const unitBelumQC = 0;
       const unitSudahQC = 0;
