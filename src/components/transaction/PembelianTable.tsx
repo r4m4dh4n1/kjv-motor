@@ -168,7 +168,7 @@ const PembelianTable = ({
   // QC permission check
   const canViewDetail = hasPermission("view_detail_pembelian");
   const canViewHistoryHarga = hasPermission("view_history_harga");
-  const canUpdateHarga = hasPermission("update_harga_pembelian");
+  const canUpdateHargaPembelian = hasPermission("update_harga_pembelian");
 
   const actions = [
     {
@@ -193,7 +193,7 @@ const PembelianTable = ({
       onClick: handleUpdateHarga,
       variant: "outline" as const,
       className: "hover:bg-orange-50 hover:text-orange-600",
-      hidden: !canUpdateHarga && !hasPermission("update_data"), // QC atau role dengan update_data bisa akses
+      hidden: !canUpdateHargaPembelian && !hasPermission("update_data"), // QC atau role dengan update_data bisa akses
     },
     {
       label: "Update QC",

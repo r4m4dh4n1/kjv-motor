@@ -30,6 +30,7 @@ export type Permission =
   | "update_qc_pembelian"
   | "view_detail_pembelian"
   | "view_history_harga"
+  | "update_harga_pembelian"
   | "view_report_qc"
   | "report_qc";
 
@@ -94,7 +95,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
 
   // QC - Can only access:
   // - Dashboard
-  // - Transaction -> Pembelian (limited buttons: Update QC, Lihat Detail, History Harga, View Report QC)
+  // - Transaction -> Pembelian (limited buttons: Lihat Detail, History Harga, Update Harga)
   // - Can search data
   qc: [
     "view_dashboard",
@@ -102,8 +103,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "search_data",
     "view_detail_pembelian",
     "view_history_harga",
-    "view_report_qc",
-    "report_qc",
+    "update_harga_pembelian",
   ],
 
   // Admin - Full access except RBAC management
