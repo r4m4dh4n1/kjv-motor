@@ -164,11 +164,11 @@ const PembelianTable = ({
     },
   ];
 
-  // QC role: hanya bisa akses Report QC, Lihat Detail, History Harga
+  // QC role: hanya bisa akses Lihat Detail, History Harga, Update Harga
   // QC permission check
-  const canReportQC = hasPermission("report_qc");
   const canViewDetail = hasPermission("view_detail_pembelian");
   const canViewHistoryHarga = hasPermission("view_history_harga");
+  const canUpdateHarga = hasPermission("update_harga_pembelian");
 
   const actions = [
     {
@@ -188,12 +188,28 @@ const PembelianTable = ({
       hidden: !canViewHistoryHarga && !hasPermission("update_data"), // QC atau role dengan update_data bisa akses
     },
     {
-      label: "Report QC",
-      icon: FileText,
+      label: "Update Harga",
+      icon: DollarSign,
+      onClick: handleUpdateHarga,
+      variant: "outline" as const,
+      className: "hover:bg-orange-50 hover:text-orange-600",
+      hidden: !canUpdateHarga && !hasPermission("update_data"), // QC atau role dengan update_data bisa akses
+    },
+    {
+      label: "Update QC",
+      icon: CheckCircle,
       onClick: handleQC,
       variant: "outline" as const,
       className: "hover:bg-purple-50 hover:text-purple-600",
-      hidden: !canReportQC && !hasPermission("update_data"), // QC atau role dengan update_data bisa akses
+      hidden: !hasPermission("update_data"), // Hanya untuk role dengan update_data (bukan QC)
+    },
+    {
+      label: "Report QC",
+      icon: FileText,
+      onClick: handleViewQcHistory,
+      variant: "outline" as const,
+      className: "hover:bg-indigo-50 hover:text-indigo-600",
+      hidden: !hasPermission("update_data"), // Hanya untuk role dengan update_data (bukan QC)
     },
     {
       label: "History QC",
@@ -210,14 +226,6 @@ const PembelianTable = ({
       variant: "outline" as const,
       className: "hover:bg-green-50 hover:text-green-600",
       hidden: !hasPermission("update_data"), // Hanya untuk role dengan update_data (bukan QC)
-    },
-    {
-      label: "Update Harga",
-      icon: DollarSign,
-      onClick: handleUpdateHarga,
-      variant: "outline" as const,
-      className: "hover:bg-orange-50 hover:text-orange-600",
-      hidden: !hasPermission("update_harga_penjualan"), // Hanya untuk role dengan permission update_harga_penjualan
     },
     {
       label: "Hapus",
