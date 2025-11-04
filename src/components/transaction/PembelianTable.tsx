@@ -27,6 +27,7 @@ interface PembelianTableProps {
   handleView: (pembelian: any) => void;
   handleUpdateHarga: (pembelian: any) => void;
   handleQC: (pembelian: any) => void;
+  handleQCReport: (pembelian: any) => void;
   handleViewQcHistory: (pembelian: any) => void;
   handleViewPriceHistory: (pembelian: any) => void;
   handleViewQcReport?: () => void;
@@ -39,6 +40,7 @@ const PembelianTable = ({
   handleView,
   handleUpdateHarga,
   handleQC,
+  handleQCReport,
   handleViewQcHistory,
   handleViewPriceHistory,
   handleViewQcReport,
@@ -206,7 +208,7 @@ const PembelianTable = ({
     {
       label: "Report QC",
       icon: FileText,
-      onClick: handleViewQcHistory,
+      onClick: handleQCReport,
       variant: "outline" as const,
       className: "hover:bg-indigo-50 hover:text-indigo-600",
       hidden: !hasPermission("update_data"), // Hanya untuk role dengan update_data (bukan QC)

@@ -1525,6 +1525,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
             handleView={handleView}
             handleUpdateHarga={handleUpdateHarga}
             handleQC={handleQC}
+            handleQCReport={handleQCReport}
             handleViewQcHistory={handleViewQcHistory}
             handleViewPriceHistory={handleViewPriceHistory}
             handleViewQcReport={handleViewQcReport}
