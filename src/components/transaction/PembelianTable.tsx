@@ -166,11 +166,9 @@ const PembelianTable = ({
     },
   ];
 
-  // QC role: hanya bisa akses Lihat Detail, History Harga, Update Harga
+  // QC role: hanya bisa akses View Report QC (header) dan Lihat Detail (action)
   // QC permission check
   const canViewDetail = hasPermission("view_detail_pembelian");
-  const canViewHistoryHarga = hasPermission("view_history_harga");
-  const canUpdateHargaPembelian = hasPermission("update_harga_pembelian");
 
   const actions = [
     {
@@ -187,7 +185,7 @@ const PembelianTable = ({
       onClick: handleViewPriceHistory,
       variant: "outline" as const,
       className: "hover:bg-amber-50 hover:text-amber-600",
-      hidden: !canViewHistoryHarga && !hasPermission("update_data"), // QC atau role dengan update_data bisa akses
+      hidden: !hasPermission("update_data"), // Hanya untuk role dengan update_data (bukan QC)
     },
     {
       label: "Update Harga",
@@ -195,7 +193,7 @@ const PembelianTable = ({
       onClick: handleUpdateHarga,
       variant: "outline" as const,
       className: "hover:bg-orange-50 hover:text-orange-600",
-      hidden: !canUpdateHargaPembelian && !hasPermission("update_data"), // QC atau role dengan update_data bisa akses
+      hidden: !hasPermission("update_data"), // Hanya untuk role dengan update_data (bukan QC)
     },
     {
       label: "Update QC",

@@ -14,15 +14,16 @@
 ### Di Menu Pembelian, QC Bisa:
 
 1. ✅ **Search** - Mencari data pembelian
-2. ✅ **Lihat Detail** - Melihat detail pembelian
-3. ✅ **History Harga** - Melihat riwayat perubahan harga
-4. ✅ **Update Harga** - Update harga pembelian
+2. ✅ **Lihat Detail** - Melihat detail pembelian (button di action tabel)
+3. ✅ **View Report QC** - Melihat semua QC report berdasarkan periode (button di header)
 
 ### Yang TIDAK Bisa Diakses oleh QC:
 
 - ❌ **Edit** - Tidak bisa edit data pembelian
+- ❌ **Update Harga** - Tidak bisa update harga pembelian
+- ❌ **History Harga** - Tidak bisa lihat history harga
 - ❌ **Update QC** - Tidak bisa update QC data
-- ❌ **Report QC** - Tidak bisa lihat report QC
+- ❌ **Report QC** - Tidak bisa lihat report QC per motor
 - ❌ **History QC** - Tidak bisa lihat history QC
 - ❌ **Hapus** - Tidak bisa delete data
 - ❌ **Tambah** - Tidak bisa create data baru

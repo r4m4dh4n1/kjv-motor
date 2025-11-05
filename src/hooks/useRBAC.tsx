@@ -95,15 +95,14 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
 
   // QC - Can only access:
   // - Dashboard
-  // - Transaction -> Pembelian (limited buttons: Lihat Detail, History Harga, Update Harga)
+  // - Transaction -> Pembelian (limited buttons: View Report QC (header), Lihat Detail (action))
   // - Can search data
   qc: [
     "view_dashboard",
     "view_pembelian",
     "search_data",
     "view_detail_pembelian",
-    "view_history_harga",
-    "update_harga_pembelian",
+    "view_report_qc",
   ],
 
   // Admin - Full access except RBAC management
