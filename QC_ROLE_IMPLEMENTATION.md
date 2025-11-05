@@ -35,9 +35,8 @@
 
 ```typescript
 export type Permission =
-  | "update_harga_pembelian" // Update harga pembelian
-  | "view_detail_pembelian" // View detail
-  | "view_history_harga"; // View price history
+  | "view_detail_pembelian" // View detail pembelian
+  | "view_report_qc" // View all QC report (header button)
 // ... other permissions
 ```
 
@@ -49,8 +48,7 @@ qc: [
   "view_pembelian",
   "search_data",
   "view_detail_pembelian",
-  "view_history_harga",
-  "update_harga_pembelian",
+  "view_report_qc",
 ];
 ```
 
@@ -77,12 +75,12 @@ Run `assign_qc_role.sql` in Supabase SQL Editor to:
    - Dashboard
    - Transaction → Pembelian
 3. In Pembelian page, verify you can only see these buttons:
-   - Lihat Detail
-   - History Harga
-   - Update Harga
+   - **View Report QC** (header, top right)
+   - **Lihat Detail** (action menu in table)
 4. Verify you CANNOT see:
    - Button Tambah (top right)
-   - Button View Report QC (top right)
+   - Button History Harga (in action menu)
+   - Button Update Harga (in action menu)
    - Button Edit (in action menu)
    - Button Update QC (in action menu)
    - Button Report QC (in action menu)
@@ -91,9 +89,9 @@ Run `assign_qc_role.sql` in Supabase SQL Editor to:
 
 ## Notes:
 
-- QC role is focused on price management and viewing details only
-- Cannot modify or delete pembelian data
+- QC role is focused on viewing QC reports and details only
+- Cannot modify, update price, or delete pembelian data
 - Cannot create new records
-- Cannot update QC data or view QC reports
-- Limited to Dashboard viewing and Pembelian price operations
+- Cannot update QC data or view per-motor QC reports
+- Limited to Dashboard viewing and Pembelian read-only operations
 - All permissions are enforced at the UI level through the RBAC system
