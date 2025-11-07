@@ -468,11 +468,50 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       // 7. Total Unit Stock Tua (> 3 bulan tapi masih ready)
       const totalUnitStokTua = pembelianStokTua.length;
 
-      // 8. QC processing - removed for now (table might not exist)
-      const unitBelumQC = 0;
-      const unitSudahQC = 0;
-      setDetailBelumQC([]);
-      setDetailSudahQC([]);
+      // 8. QC processing - hitung dari tabel qc_report (tidak tergantung bulan)
+      // Query semua qc_report dengan join ke pembelian
+      const { data: allQCReport, error: qcError } = await supabase
+        .from("qc_report")
+        .select(
+          `
+          *,
+          pembelian:pembelian_id(
+            *,
+            brands:brand_id(name),
+            jenis_motor:jenis_motor_id(jenis_motor)
+          )
+        `
+        );
+
+      if (qcError) throw qcError;
+
+      // Filter by division and cabang if needed
+      let filteredQCReport = allQCReport || [];
+      if (selectedDivision !== "all") {
+        filteredQCReport = filteredQCReport.filter(
+          (qc) => qc.pembelian?.divisi === selectedDivision
+        );
+      }
+      if (selectedCabang !== "all") {
+        filteredQCReport = filteredQCReport.filter(
+          (qc) => qc.pembelian?.cabang_id === selectedCabang
+        );
+      }
+
+      // Unit belum QC: real_nominal_qc is null, 0, or undefined
+      const qcReportBelumQC = filteredQCReport.filter(
+        (qc) => !qc.real_nominal_qc || qc.real_nominal_qc === 0
+      );
+      const unitBelumQC = qcReportBelumQC.length;
+
+      // Unit sudah QC: real_nominal_qc > 0
+      const qcReportSudahQC = filteredQCReport.filter(
+        (qc) => qc.real_nominal_qc && qc.real_nominal_qc > 0
+      );
+      const unitSudahQC = qcReportSudahQC.length;
+
+      setDetailBelumQC(qcReportBelumQC);
+      setDetailSudahQC(qcReportSudahQC);
 
       // Set detail untuk popup
       setDetailPajakMati(detailUnitPajakMati);

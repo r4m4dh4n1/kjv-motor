@@ -36,7 +36,7 @@
 ```typescript
 export type Permission =
   | "view_detail_pembelian" // View detail pembelian
-  | "view_report_qc" // View all QC report (header button)
+  | "view_report_qc"; // View all QC report (header button)
 // ... other permissions
 ```
 
