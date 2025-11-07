@@ -470,62 +470,82 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
 
       // 8. QC processing - hitung dari tabel qc_report (tidak tergantung bulan)
       // Query semua qc_report dengan join ke pembelian
-      const { data: allQCReport, error: qcError } = await supabase
-        .from("qc_report")
-        .select(
-          `
-          *,
-          pembelian:pembelian_id(
+      let allQCReport: any[] = [];
+      let unitBelumQC = 0;
+      let unitSudahQC = 0;
+      let qcReportBelumQC: any[] = [];
+      let qcReportSudahQC: any[] = [];
+
+      try {
+        const { data: qcReportData, error: qcError } = await supabase
+          .from("qc_report")
+          .select(
+            `
             *,
-            brands:brand_id(name),
-            jenis_motor:jenis_motor_id(jenis_motor)
-          )
-        `
+            pembelian:pembelian_id(
+              *,
+              brands:brand_id(name),
+              jenis_motor:jenis_motor_id(jenis_motor)
+            )
+          `
+          );
+
+        if (qcError) {
+          console.error("❌ QC Report query error:", qcError);
+          throw qcError;
+        }
+
+        allQCReport = qcReportData || [];
+
+        console.log("📊 QC Report Data:", {
+          total: allQCReport.length,
+          sample: allQCReport[0],
+        });
+
+        // Filter by division and cabang if needed
+        let filteredQCReport = allQCReport;
+        if (selectedDivision !== "all") {
+          filteredQCReport = filteredQCReport.filter(
+            (qc) => qc.pembelian?.divisi === selectedDivision
+          );
+        }
+        if (selectedCabang !== "all") {
+          const cabangIdNum = parseInt(selectedCabang, 10);
+          filteredQCReport = filteredQCReport.filter(
+            (qc) => qc.pembelian?.cabang_id === cabangIdNum
+          );
+        }
+
+        console.log("📊 Filtered QC Report:", {
+          total: filteredQCReport.length,
+          selectedDivision,
+          selectedCabang,
+        });
+
+        // Unit belum QC: real_nominal_qc is null, 0, or undefined
+        qcReportBelumQC = filteredQCReport.filter(
+          (qc) => !qc.real_nominal_qc || qc.real_nominal_qc === 0
         );
+        unitBelumQC = qcReportBelumQC.length;
 
-      if (qcError) throw qcError;
-
-      console.log("📊 QC Report Data:", {
-        total: allQCReport?.length || 0,
-        sample: allQCReport?.[0],
-      });
-
-      // Filter by division and cabang if needed
-      let filteredQCReport = allQCReport || [];
-      if (selectedDivision !== "all") {
-        filteredQCReport = filteredQCReport.filter(
-          (qc) => qc.pembelian?.divisi === selectedDivision
+        // Unit sudah QC: real_nominal_qc > 0
+        qcReportSudahQC = filteredQCReport.filter(
+          (qc) => qc.real_nominal_qc && qc.real_nominal_qc > 0
         );
+        unitSudahQC = qcReportSudahQC.length;
+
+        console.log("📊 QC Count:", {
+          belumQC: unitBelumQC,
+          sudahQC: unitSudahQC,
+        });
+      } catch (qcQueryError) {
+        console.error("❌ QC Report processing failed:", qcQueryError);
+        // Set default values if QC query fails
+        unitBelumQC = 0;
+        unitSudahQC = 0;
+        qcReportBelumQC = [];
+        qcReportSudahQC = [];
       }
-      if (selectedCabang !== "all") {
-        const cabangIdNum = parseInt(selectedCabang, 10);
-        filteredQCReport = filteredQCReport.filter(
-          (qc) => qc.pembelian?.cabang_id === cabangIdNum
-        );
-      }
-
-      console.log("📊 Filtered QC Report:", {
-        total: filteredQCReport.length,
-        selectedDivision,
-        selectedCabang,
-      });
-
-      // Unit belum QC: real_nominal_qc is null, 0, or undefined
-      const qcReportBelumQC = filteredQCReport.filter(
-        (qc) => !qc.real_nominal_qc || qc.real_nominal_qc === 0
-      );
-      const unitBelumQC = qcReportBelumQC.length;
-
-      // Unit sudah QC: real_nominal_qc > 0
-      const qcReportSudahQC = filteredQCReport.filter(
-        (qc) => qc.real_nominal_qc && qc.real_nominal_qc > 0
-      );
-      const unitSudahQC = qcReportSudahQC.length;
-
-      console.log("📊 QC Count:", {
-        belumQC: unitBelumQC,
-        sudahQC: unitSudahQC,
-      });
 
       setDetailBelumQC(qcReportBelumQC);
       setDetailSudahQC(qcReportSudahQC);
@@ -659,7 +679,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         stockDistribution,
       });
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
+      console.error("❌ Error fetching dashboard data:", error);
+      console.error("❌ Error details:", JSON.stringify(error, null, 2));
     } finally {
       setLoading(false);
     }
