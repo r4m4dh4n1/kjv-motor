@@ -551,12 +551,6 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         unitSudahQC = 0;
         qcReportBelumQC = [];
         qcReportSudahQC = [];
-      } console.error("❌ QC Report processing failed:", qcQueryError);
-        // Set default values if QC query fails
-        unitBelumQC = 0;
-        unitSudahQC = 0;
-        qcReportBelumQC = [];
-        qcReportSudahQC = [];
       }
 
       setDetailBelumQC(qcReportBelumQC);
