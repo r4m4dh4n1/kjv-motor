@@ -482,7 +482,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
           .select(
             `
             *,
-            pembelian:pembelian_id(
+            pembelian!qc_report_pembelian_id_fkey(
               *,
               brands:brand_id(name),
               jenis_motor:jenis_motor_id(jenis_motor)
