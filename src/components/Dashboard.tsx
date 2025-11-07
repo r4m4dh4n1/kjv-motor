@@ -493,8 +493,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         );
       }
       if (selectedCabang !== "all") {
+        const cabangIdNum = parseInt(selectedCabang, 10);
         filteredQCReport = filteredQCReport.filter(
-          (qc) => qc.pembelian?.cabang_id === selectedCabang
+          (qc) => qc.pembelian?.cabang_id === cabangIdNum
         );
       }
 
