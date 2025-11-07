@@ -485,6 +485,11 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
 
       if (qcError) throw qcError;
 
+      console.log("📊 QC Report Data:", {
+        total: allQCReport?.length || 0,
+        sample: allQCReport?.[0],
+      });
+
       // Filter by division and cabang if needed
       let filteredQCReport = allQCReport || [];
       if (selectedDivision !== "all") {
@@ -499,6 +504,12 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         );
       }
 
+      console.log("📊 Filtered QC Report:", {
+        total: filteredQCReport.length,
+        selectedDivision,
+        selectedCabang,
+      });
+
       // Unit belum QC: real_nominal_qc is null, 0, or undefined
       const qcReportBelumQC = filteredQCReport.filter(
         (qc) => !qc.real_nominal_qc || qc.real_nominal_qc === 0
@@ -510,6 +521,11 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         (qc) => qc.real_nominal_qc && qc.real_nominal_qc > 0
       );
       const unitSudahQC = qcReportSudahQC.length;
+
+      console.log("📊 QC Count:", {
+        belumQC: unitBelumQC,
+        sudahQC: unitSudahQC,
+      });
 
       setDetailBelumQC(qcReportBelumQC);
       setDetailSudahQC(qcReportSudahQC);
