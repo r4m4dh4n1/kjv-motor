@@ -491,7 +491,13 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
           );
 
         if (qcError) {
-          console.error("❌ QC Report query error:", qcError);
+          console.error("❌ QC Report query error:", {
+            message: qcError.message,
+            details: qcError.details,
+            hint: qcError.hint,
+            code: qcError.code,
+            full: qcError,
+          });
           throw qcError;
         }
 
@@ -532,14 +538,20 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         qcReportSudahQC = filteredQCReport.filter(
           (qc) => qc.real_nominal_qc && qc.real_nominal_qc > 0
         );
-        unitSudahQC = qcReportSudahQC.length;
-
-        console.log("📊 QC Count:", {
-          belumQC: unitBelumQC,
-          sudahQC: unitSudahQC,
+      } catch (qcQueryError: any) {
+        console.error("❌ QC Report processing failed:", {
+          message: qcQueryError?.message,
+          details: qcQueryError?.details,
+          hint: qcQueryError?.hint,
+          code: qcQueryError?.code,
+          full: qcQueryError,
         });
-      } catch (qcQueryError) {
-        console.error("❌ QC Report processing failed:", qcQueryError);
+        // Set default values if QC query fails
+        unitBelumQC = 0;
+        unitSudahQC = 0;
+        qcReportBelumQC = [];
+        qcReportSudahQC = [];
+      } console.error("❌ QC Report processing failed:", qcQueryError);
         // Set default values if QC query fails
         unitBelumQC = 0;
         unitSudahQC = 0;
