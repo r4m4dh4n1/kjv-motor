@@ -78,6 +78,16 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
   const [readyUnits, setReadyUnits] = useState<any[]>([]);
   const [bookedUnits, setBookedUnits] = useState<any[]>([]);
 
+  // Sort states for QC dialogs
+  const [sortBelumQC, setSortBelumQC] = useState<{
+    field: string;
+    order: "asc" | "desc";
+  }>({ field: "tanggal_pembelian", order: "desc" });
+  const [sortSudahQC, setSortSudahQC] = useState<{
+    field: string;
+    order: "asc" | "desc";
+  }>({ field: "tanggal_pembelian", order: "desc" });
+
   const [stats, setStats] = useState({
     totalAssets: 0,
     activeCompanies: 0,
@@ -971,13 +981,59 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
 
         {/* Unit Belum QC (popup) */}
         <Dialog open={openDialogBelumQC} onOpenChange={setOpenDialogBelumQC}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Unit Belum QC</DialogTitle>
               <DialogDescription>
                 Daftar unit yang belum melalui proses Quality Control
               </DialogDescription>
             </DialogHeader>
+
+            {/* Sort Controls */}
+            <div className="flex gap-4 items-end mb-4">
+              <div className="flex-1">
+                <label className="text-sm font-medium mb-1 block">
+                  Sort By
+                </label>
+                <Select
+                  value={sortBelumQC.field}
+                  onValueChange={(value) =>
+                    setSortBelumQC({ ...sortBelumQC, field: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tanggal_pembelian">
+                      Tanggal Pembelian
+                    </SelectItem>
+                    <SelectItem value="brand">Brand</SelectItem>
+                    <SelectItem value="jenis_motor">Jenis Motor</SelectItem>
+                    <SelectItem value="plat_nomor">Plat Nomor</SelectItem>
+                    <SelectItem value="estimasi_qc">Estimasi QC</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1">
+                <label className="text-sm font-medium mb-1 block">Order</label>
+                <Select
+                  value={sortBelumQC.order}
+                  onValueChange={(value: "asc" | "desc") =>
+                    setSortBelumQC({ ...sortBelumQC, order: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="asc">A → Z / Kecil → Besar</SelectItem>
+                    <SelectItem value="desc">Z → A / Besar → Kecil</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="mt-4">
               {detailBelumQC.length > 0 ? (
                 <div className="overflow-x-auto">
@@ -1012,11 +1068,59 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                     </thead>
                     <tbody>
                       {[...detailBelumQC]
-                        .sort(
-                          (a, b) =>
-                            new Date(b.created_at).getTime() -
-                            new Date(a.created_at).getTime()
-                        )
+                        .sort((a, b) => {
+                          let compareA: any, compareB: any;
+
+                          switch (sortBelumQC.field) {
+                            case "brand":
+                              compareA = (
+                                a.pembelian?.brands?.name || ""
+                              ).toLowerCase();
+                              compareB = (
+                                b.pembelian?.brands?.name || ""
+                              ).toLowerCase();
+                              break;
+                            case "jenis_motor":
+                              compareA = (
+                                a.pembelian?.jenis_motor?.jenis_motor || ""
+                              ).toLowerCase();
+                              compareB = (
+                                b.pembelian?.jenis_motor?.jenis_motor || ""
+                              ).toLowerCase();
+                              break;
+                            case "plat_nomor":
+                              compareA = (
+                                a.pembelian?.plat_nomor || ""
+                              ).toLowerCase();
+                              compareB = (
+                                b.pembelian?.plat_nomor || ""
+                              ).toLowerCase();
+                              break;
+                            case "estimasi_qc":
+                              compareA = a.estimasi_nominal_qc || 0;
+                              compareB = b.estimasi_nominal_qc || 0;
+                              break;
+                            case "tanggal_pembelian":
+                            default:
+                              compareA = new Date(
+                                a.pembelian?.tanggal_pembelian || 0
+                              ).getTime();
+                              compareB = new Date(
+                                b.pembelian?.tanggal_pembelian || 0
+                              ).getTime();
+                              break;
+                          }
+
+                          if (typeof compareA === "string") {
+                            return sortBelumQC.order === "asc"
+                              ? compareA.localeCompare(compareB)
+                              : compareB.localeCompare(compareA);
+                          } else {
+                            return sortBelumQC.order === "asc"
+                              ? compareA - compareB
+                              : compareB - compareA;
+                          }
+                        })
                         .map((qc, idx) => {
                           const estimasi = qc.estimasi_nominal_qc;
                           const real = qc.real_nominal_qc;
@@ -1096,13 +1200,60 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
             </CardContent>
           </Card>
 
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Unit Sudah QC</DialogTitle>
               <DialogDescription>
                 Daftar unit yang sudah selesai melalui proses Quality Control
               </DialogDescription>
             </DialogHeader>
+
+            {/* Sort Controls */}
+            <div className="flex gap-4 items-end mb-4">
+              <div className="flex-1">
+                <label className="text-sm font-medium mb-1 block">
+                  Sort By
+                </label>
+                <Select
+                  value={sortSudahQC.field}
+                  onValueChange={(value) =>
+                    setSortSudahQC({ ...sortSudahQC, field: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tanggal_pembelian">
+                      Tanggal Pembelian
+                    </SelectItem>
+                    <SelectItem value="brand">Brand</SelectItem>
+                    <SelectItem value="jenis_motor">Jenis Motor</SelectItem>
+                    <SelectItem value="plat_nomor">Plat Nomor</SelectItem>
+                    <SelectItem value="estimasi_qc">Estimasi QC</SelectItem>
+                    <SelectItem value="real_qc">Real QC</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1">
+                <label className="text-sm font-medium mb-1 block">Order</label>
+                <Select
+                  value={sortSudahQC.order}
+                  onValueChange={(value: "asc" | "desc") =>
+                    setSortSudahQC({ ...sortSudahQC, order: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="asc">A → Z / Kecil → Besar</SelectItem>
+                    <SelectItem value="desc">Z → A / Besar → Kecil</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="mt-4">
               {detailSudahQC.length > 0 ? (
                 <div className="overflow-x-auto">
@@ -1137,15 +1288,58 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                     </thead>
                     <tbody>
                       {[...detailSudahQC]
-                        .sort(
-                          (a, b) =>
-                            new Date(
-                              b.pembelian?.tanggal_pembelian || b.created_at
-                            ).getTime() -
-                            new Date(
-                              a.pembelian?.tanggal_pembelian || a.created_at
-                            ).getTime()
-                        )
+                        .sort((a, b) => {
+                          let aVal: any;
+                          let bVal: any;
+
+                          switch (sortSudahQC.field) {
+                            case "tanggal_pembelian":
+                              aVal = a.pembelian?.tanggal_pembelian || "";
+                              bVal = b.pembelian?.tanggal_pembelian || "";
+                              break;
+                            case "brand":
+                              aVal = a.pembelian?.brands?.name || "";
+                              bVal = b.pembelian?.brands?.name || "";
+                              break;
+                            case "jenis_motor":
+                              aVal =
+                                a.pembelian?.jenis_motor?.jenis_motor || "";
+                              bVal =
+                                b.pembelian?.jenis_motor?.jenis_motor || "";
+                              break;
+                            case "plat_nomor":
+                              aVal = a.pembelian?.plat_nomor || "";
+                              bVal = b.pembelian?.plat_nomor || "";
+                              break;
+                            case "estimasi_qc":
+                              aVal = Number(a.estimasi_nominal_qc || 0);
+                              bVal = Number(b.estimasi_nominal_qc || 0);
+                              break;
+                            case "real_qc":
+                              aVal = Number(a.real_nominal_qc || 0);
+                              bVal = Number(b.real_nominal_qc || 0);
+                              break;
+                            default:
+                              aVal = a.pembelian?.tanggal_pembelian || "";
+                              bVal = b.pembelian?.tanggal_pembelian || "";
+                          }
+
+                          if (
+                            sortSudahQC.field === "estimasi_qc" ||
+                            sortSudahQC.field === "real_qc"
+                          ) {
+                            return sortSudahQC.order === "asc"
+                              ? aVal - bVal
+                              : bVal - aVal;
+                          } else {
+                            const comparison = String(aVal).localeCompare(
+                              String(bVal)
+                            );
+                            return sortSudahQC.order === "asc"
+                              ? comparison
+                              : -comparison;
+                          }
+                        })
                         .map((qc, idx) => {
                           const estimasi = qc.estimasi_nominal_qc;
                           const real = qc.real_nominal_qc;
