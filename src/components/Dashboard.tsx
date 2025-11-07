@@ -538,6 +538,12 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         qcReportSudahQC = filteredQCReport.filter(
           (qc) => qc.real_nominal_qc && qc.real_nominal_qc > 0
         );
+        unitSudahQC = qcReportSudahQC.length;
+
+        console.log("📊 QC Count:", {
+          belumQC: unitBelumQC,
+          sudahQC: unitSudahQC,
+        });
       } catch (qcQueryError: any) {
         console.error("❌ QC Report processing failed:", {
           message: qcQueryError?.message,
