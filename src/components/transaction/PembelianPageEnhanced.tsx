@@ -2156,181 +2156,166 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
         open={isViewQCReportDialogOpen}
         onOpenChange={setIsViewQCReportDialogOpen}
       >
-        <DialogContent className="max-w-6xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Report QC ({getQCReportPeriodLabel()})</DialogTitle>
-            <DialogDescription>
-              Daftar semua unit yang sudah dan belum QC untuk periode{" "}
-              {getQCReportPeriodLabel().toLowerCase()}
-            </DialogDescription>
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="pb-4 border-b">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                  <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-sm font-semibold">
+                    {selectedDivision === "all" ? "Semua Divisi" : selectedDivision.toUpperCase()}
+                  </span>
+                  Report QC
+                </DialogTitle>
+                <DialogDescription className="mt-2">
+                  Periode: {getQCReportPeriodLabel()} • {viewQCReportData.length} unit total
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="mt-4 space-y-4">
+          <div className="flex-1 overflow-y-auto space-y-4 mt-4">
             {viewQCReportData.length > 0 ? (
               <>
-                {/* Search and Sort Controls */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border">
-                  <div className="md:col-span-2">
-                    <Label
-                      htmlFor="qcSearch"
-                      className="text-sm font-medium mb-2 block"
-                    >
-                      Cari Data
-                    </Label>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="qcSearch"
-                        placeholder="Cari berdasarkan brand, jenis motor, atau plat nomor..."
-                        value={qcReportSearchTerm}
-                        onChange={(e) => {
-                          setQcReportSearchTerm(e.target.value);
-                          setCurrentQCPage(1); // Reset ke halaman pertama saat search
-                        }}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label
-                        htmlFor="qcSortBy"
-                        className="text-sm font-medium mb-2 block"
-                      >
-                        Urutkan Berdasarkan
+                {/* Search and Sort Controls - Modern Design */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200 shadow-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-2">
+                      <Label htmlFor="qcSearch" className="text-sm font-semibold text-gray-700 mb-2 block">
+                        🔍 Cari Data
                       </Label>
-                      <Select
-                        value={qcReportSortBy}
-                        onValueChange={setQcReportSortBy}
-                      >
-                        <SelectTrigger id="qcSortBy">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="brand">Brand</SelectItem>
-                          <SelectItem value="jenis_motor">
-                            Jenis Motor
-                          </SelectItem>
-                          <SelectItem value="plat_nomor">Plat Nomor</SelectItem>
-                          <SelectItem value="tanggal">
-                            Tanggal Pembelian
-                          </SelectItem>
-                          <SelectItem value="estimasi_tanggal">
-                            Perkiraan Tanggal QC Selesai
-                          </SelectItem>
-                          <SelectItem value="estimasi">Estimasi QC</SelectItem>
-                          <SelectItem value="real">Real QC</SelectItem>
-                          <SelectItem value="status">Status</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-3 h-5 w-5 text-blue-500" />
+                        <Input
+                          id="qcSearch"
+                          placeholder="Ketik brand, jenis motor, atau plat nomor..."
+                          value={qcReportSearchTerm}
+                          onChange={(e) => {
+                            setQcReportSearchTerm(e.target.value);
+                            setCurrentQCPage(1);
+                          }}
+                          className="pl-11 h-11 border-blue-200 focus:border-blue-400 focus:ring-blue-400 bg-white"
+                        />
+                      </div>
                     </div>
 
-                    <div>
-                      <Label
-                        htmlFor="qcSortOrder"
-                        className="text-sm font-medium mb-2 block"
-                      >
-                        Urutan
-                      </Label>
-                      <Select
-                        value={qcReportSortOrder}
-                        onValueChange={(value: "asc" | "desc") =>
-                          setQcReportSortOrder(value)
-                        }
-                      >
-                        <SelectTrigger id="qcSortOrder">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="asc">
-                            A → Z / Kecil → Besar
-                          </SelectItem>
-                          <SelectItem value="desc">
-                            Z → A / Besar → Kecil
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label htmlFor="qcSortBy" className="text-sm font-semibold text-gray-700 mb-2 block">
+                          📊 Sort By
+                        </Label>
+                        <Select value={qcReportSortBy} onValueChange={setQcReportSortBy}>
+                          <SelectTrigger id="qcSortBy" className="h-11 border-blue-200 bg-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="brand">Brand</SelectItem>
+                            <SelectItem value="jenis_motor">Jenis Motor</SelectItem>
+                            <SelectItem value="plat_nomor">Plat Nomor</SelectItem>
+                            <SelectItem value="tanggal">Tanggal Pembelian</SelectItem>
+                            <SelectItem value="estimasi_tanggal">Estimasi Selesai</SelectItem>
+                            <SelectItem value="estimasi">Estimasi QC</SelectItem>
+                            <SelectItem value="real">Real QC</SelectItem>
+                            <SelectItem value="status">Status</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="qcSortOrder" className="text-sm font-semibold text-gray-700 mb-2 block">
+                          ⬍⬍ Urutan
+                        </Label>
+                        <Select
+                          value={qcReportSortOrder}
+                          onValueChange={(value: "asc" | "desc") => setQcReportSortOrder(value)}
+                        >
+                          <SelectTrigger id="qcSortOrder" className="h-11 border-blue-200 bg-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="asc">A → Z / ⬆</SelectItem>
+                            <SelectItem value="desc">Z → A / ⬇</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center text-sm text-gray-600">
-                  <span>
-                    Menampilkan {startQCIndex + 1}-
-                    {Math.min(endQCIndex, filteredAndSortedQCData.length)} dari{" "}
-                    {filteredAndSortedQCData.length} data
+                {/* Stats Bar */}
+                <div className="flex justify-between items-center px-4 py-3 bg-white rounded-lg border shadow-sm">
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm font-medium text-gray-700">
+                      Menampilkan <span className="font-bold text-blue-600">{startQCIndex + 1}-{Math.min(endQCIndex, filteredAndSortedQCData.length)}</span> dari{" "}
+                      <span className="font-bold text-blue-600">{filteredAndSortedQCData.length}</span> data
+                    </span>
                     {qcReportSearchTerm && (
-                      <span className="ml-2 text-blue-600">
-                        (difilter dari {viewQCReportData.length} total)
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                        Filtered dari {viewQCReportData.length} total
                       </span>
                     )}
+                  </div>
+                  <span className="text-sm font-medium">
+                    <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full">
+                      ✓ {selectedQCReports.length} dipilih
+                    </span>
                   </span>
-                  <span>{selectedQCReports.length} item dipilih</span>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="min-w-full border-collapse border border-gray-300">
-                    <thead className="bg-gray-100">
-                      <tr>
-                        <th className="border border-gray-300 px-4 py-2 text-center text-sm font-medium">
-                          <Checkbox
-                            checked={
-                              filteredAndSortedQCData.length > 0 &&
-                              selectedQCReports.length ===
-                                filteredAndSortedQCData.length &&
-                              filteredAndSortedQCData.every((item) =>
-                                selectedQCReports.includes(item.id)
-                              )
-                            }
-                            onCheckedChange={(checked) =>
-                              handleSelectAllQCReports(
-                                checked as boolean,
-                                filteredAndSortedQCData
-                              )
-                            }
-                          />
-                        </th>
-                        <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium">
-                          No
-                        </th>
-                        <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium">
-                          Brand
-                        </th>
-                        <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium">
-                          Jenis Motor
-                        </th>
-                        <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium">
-                          Plat Nomor
-                        </th>
-                        <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium">
-                          Tanggal Pembelian
-                        </th>
-                        <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium">
-                          Perkiraan Tanggal QC Selesai
-                        </th>
-                        <th className="border border-gray-300 px-4 py-2 text-right text-sm font-medium">
-                          Estimasi QC
-                        </th>
-                        <th className="border border-gray-300 px-4 py-2 text-right text-sm font-medium">
-                          Real QC
-                        </th>
-                        <th className="border border-gray-300 px-4 py-2 text-center text-sm font-medium">
-                          Status
-                        </th>
-                        <th className="border border-gray-300 px-4 py-2 text-center text-sm font-medium">
-                          Verified
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                {/* Modern Table */}
+                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gradient-to-r from-blue-500 to-indigo-600">
+                        <tr>
+                          <th className="px-4 py-3 text-center">
+                            <Checkbox
+                              checked={
+                                filteredAndSortedQCData.length > 0 &&
+                                selectedQCReports.length === filteredAndSortedQCData.length &&
+                                filteredAndSortedQCData.every((item) => selectedQCReports.includes(item.id))
+                              }
+                              onCheckedChange={(checked) =>
+                                handleSelectAllQCReports(checked as boolean, filteredAndSortedQCData)
+                              }
+                              className="border-white data-[state=checked]:bg-white data-[state=checked]:text-blue-600"
+                            />
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                            No
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                            Brand
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                            Jenis Motor
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                            Plat Nomor
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                            Tgl Pembelian
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                            Estimasi Selesai
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-bold text-white uppercase tracking-wider">
+                            Estimasi QC
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-bold text-white uppercase tracking-wider">
+                            Real QC
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
+                            Verified
+                          </th>
+                        </tr>
+                      </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
                       {currentQCData.map((item: any, idx: number) => {
                         const estimasi = item.estimasi_nominal_qc ?? 0;
                         const real = item.real_nominal_qc ?? 0;
                         const status = real !== 0 ? "Sudah QC" : "Belum QC";
-                        const statusColor =
-                          real !== 0
-                            ? "text-green-600 font-semibold"
-                            : "text-yellow-600 font-semibold";
                         const isSelected = selectedQCReports.includes(item.id);
                         const isVerified = item.verified === true;
                         const verifiedBy = item.verified_by || "";
@@ -2338,70 +2323,82 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                         return (
                           <tr
                             key={item.id || idx}
-                            className={`hover:bg-gray-50 ${
-                              isSelected ? "bg-blue-50" : ""
+                            className={`transition-colors hover:bg-blue-50 ${
+                              isSelected ? "bg-blue-100 border-l-4 border-l-blue-500" : ""
                             }`}
                           >
-                            <td className="border border-gray-300 px-4 py-2 text-center">
+                            <td className="px-4 py-3 text-center">
                               <Checkbox
                                 checked={isSelected}
                                 onCheckedChange={(checked) =>
-                                  handleSelectQCReport(
-                                    item.id,
-                                    checked as boolean
-                                  )
+                                  handleSelectQCReport(item.id, checked as boolean)
                                 }
+                                className="data-[state=checked]:bg-blue-600"
                               />
                             </td>
-                            <td className="border border-gray-300 px-4 py-2 text-sm">
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
                               {startQCIndex + idx + 1}
                             </td>
-                            <td className="border border-gray-300 px-4 py-2 text-sm">
-                              {item.pembelian?.brands?.name || "-"}
+                            <td className="px-4 py-3 text-sm">
+                              <span className="font-semibold text-gray-900">
+                                {item.pembelian?.brands?.name || "-"}
+                              </span>
                             </td>
-                            <td className="border border-gray-300 px-4 py-2 text-sm">
+                            <td className="px-4 py-3 text-sm text-gray-700">
                               {item.pembelian?.jenis_motor?.jenis_motor || "-"}
                             </td>
-                            <td className="border border-gray-300 px-4 py-2 text-sm">
-                              {item.pembelian?.plat_nomor || "-"}
+                            <td className="px-4 py-3 text-sm">
+                              <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded">
+                                {item.pembelian?.plat_nomor || "-"}
+                              </span>
                             </td>
-                            <td className="border border-gray-300 px-4 py-2 text-sm">
+                            <td className="px-4 py-3 text-sm text-gray-600">
                               {item.pembelian?.tanggal_pembelian
-                                ? new Date(
-                                    item.pembelian.tanggal_pembelian
-                                  ).toLocaleDateString("id-ID")
+                                ? new Date(item.pembelian.tanggal_pembelian).toLocaleDateString("id-ID", {
+                                    day: "2-digit",
+                                    month: "short",
+                                    year: "numeric"
+                                  })
                                 : "-"}
                             </td>
-                            <td className="border border-gray-300 px-4 py-2 text-sm">
+                            <td className="px-4 py-3 text-sm text-gray-600">
                               {item.estimasi_tanggal_selesai
-                                ? new Date(
-                                    item.estimasi_tanggal_selesai
-                                  ).toLocaleDateString("id-ID")
+                                ? new Date(item.estimasi_tanggal_selesai).toLocaleDateString("id-ID", {
+                                    day: "2-digit",
+                                    month: "short",
+                                    year: "numeric"
+                                  })
                                 : "-"}
                             </td>
-                            <td className="border border-gray-300 px-4 py-2 text-sm text-right">
-                              {estimasi.toLocaleString("id-ID")}
+                            <td className="px-4 py-3 text-sm text-right font-medium text-orange-600">
+                              Rp {estimasi.toLocaleString("id-ID")}
                             </td>
-                            <td className="border border-gray-300 px-4 py-2 text-sm text-right">
-                              {real.toLocaleString("id-ID")}
+                            <td className="px-4 py-3 text-sm text-right font-bold text-green-600">
+                              {real > 0 ? `Rp ${real.toLocaleString("id-ID")}` : "-"}
                             </td>
-                            <td
-                              className={`border border-gray-300 px-4 py-2 text-sm text-center ${statusColor}`}
-                            >
-                              {status}
+                            <td className="px-4 py-3 text-center">
+                              {real !== 0 ? (
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                  ✓ Sudah QC
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
+                                  ⏳ Belum QC
+                                </span>
+                              )}
                             </td>
-                            <td className="border border-gray-300 px-4 py-2 text-center">
+                            <td className="px-4 py-3 text-center">
                               {isVerified ? (
                                 <div className="flex flex-col items-center">
-                                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px] font-semibold">
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
                                     ✓ Verified
                                   </span>
-                                  <span className="text-[9px] text-gray-500 mt-1">
+                                  <span className="text-[10px] text-gray-500 mt-1">
                                     {verifiedBy}
                                   </span>
                                 </div>
                               ) : (
-                                <span className="text-gray-400 text-xs">-</span>
+                                <span className="text-gray-400 text-sm">-</span>
                               )}
                             </td>
                           </tr>
