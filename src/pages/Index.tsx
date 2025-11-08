@@ -19,7 +19,7 @@ import FeePenjualanPageEnhanced from "../components/transaction/FeePenjualanPage
 import PembukuanPage from "@/components/finance/PembukuanPage";
 import LabaRugiPage from "@/components/finance/LabaRugiPage";
 import KeuntunganMotorPage from "@/components/finance/KeuntunganMotorPage";
-import PencatatanAssetPage from "@/components/transaction/PencatatanAssetPage";
+import { PencatatanAssetPage } from "@/components/transaction/PencatatanAssetPage";
 import ReportsPage from "@/components/reports/ReportsPage";
 import RolesPage from "@/components/rbac/RolesPage";
 import PermissionsPage from "@/components/rbac/PermissionsPage";
