@@ -18,6 +18,8 @@ import BiroJasaPageEnhanced from "../components/transaction/BiroJasaPageEnhanced
 import FeePenjualanPageEnhanced from "../components/transaction/FeePenjualanPageEnhanced";
 import PembukuanPage from "@/components/finance/PembukuanPage";
 import LabaRugiPage from "@/components/finance/LabaRugiPage";
+import KeuntunganMotorPage from "@/components/finance/KeuntunganMotorPage";
+import PencatatanAssetPage from "@/components/transaction/PencatatanAssetPage";
 import ReportsPage from "@/components/reports/ReportsPage";
 import RolesPage from "@/components/rbac/RolesPage";
 import PermissionsPage from "@/components/rbac/PermissionsPage";
@@ -29,7 +31,6 @@ import PenjualanSoldPageEnhanced from "@/components/transaction/PenjualanSoldPag
 import PenjualanCanceledBookedPage from "@/components/transaction/PenjualanCanceledBookedPage";
 import CloseMonthPage from "@/components/finance/CloseMonthPage";
 import { ProfitDistributionPage } from "@/components/finance/ProfitDistributionPage";
-// Remove PencatatanAssetPage import (not used anymore)
 import PriceHistoryUploadPage from "@/components/transaction/PriceHistoryUploadPage";
 // Tambahkan import di bagian atas
 import ModalReductionPage from "@/components/finance/ModalReductionPage"; // ✅ Tambahkan ini
@@ -111,13 +112,13 @@ const Index = () => {
       case "breakdown-percabang":
         return <BreakdownPercabangPage selectedDivision={selectedDivision} />;
       case "keuntungan-motor":
-        return <PembukuanPage selectedDivision={selectedDivision} />;
+        return <KeuntunganMotorPage selectedDivision={selectedDivision} />;
       case "profit-distribution":
         return <ProfitDistributionPage selectedDivision={selectedDivision} />;
       case "close-month":
         return <CloseMonthPage selectedDivision={selectedDivision} />;
       case "pencatatan-asset":
-        return <AssetPage />;
+        return <PencatatanAssetPage selectedDivision={selectedDivision} />;
       case "price-history-upload":
         return <PriceHistoryUploadPage />;
       case "laba-rugi":
