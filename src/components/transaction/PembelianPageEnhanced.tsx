@@ -948,14 +948,20 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
 
       if (error) throw error;
 
-      // Ambil semua pembelian dengan join ke brands dan jenis_motor
-      const { data: pembelianAll, error: pembelianError } = await supabase.from(
-        "pembelian"
-      ).select(`
+      // Ambil pembelian dengan join ke brands dan jenis_motor, filter berdasarkan divisi
+      let pembelianQuery = supabase.from("pembelian").select(`
           *,
           brands:brand_id(name),
           jenis_motor:jenis_motor_id(jenis_motor)
         `);
+
+      // Filter berdasarkan divisi yang dipilih
+      if (selectedDivision !== "all") {
+        pembelianQuery = pembelianQuery.eq("divisi", selectedDivision);
+      }
+
+      const { data: pembelianAll, error: pembelianError } =
+        await pembelianQuery;
 
       if (pembelianError) throw pembelianError;
 
@@ -965,11 +971,11 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
         pembelianMap.set(p.id, p);
       });
 
-      // Enrich qc_report dengan data pembelian
+      // Enrich qc_report dengan data pembelian (otomatis terfilter karena hanya pembelian dari divisi terpilih)
       const enrichedData = (qcReportRaw || [])
         .map((q: any) => {
           const pembelian = pembelianMap.get(q.pembelian_id);
-          if (!pembelian) return null;
+          if (!pembelian) return null; // Skip jika pembelian tidak ada di divisi yang dipilih
           return {
             ...q,
             pembelian: pembelian,
