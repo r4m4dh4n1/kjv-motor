@@ -17,6 +17,7 @@ import OperationalPage from "@/components/transaction/OperationalPage";
 import BiroJasaPageEnhanced from "../components/transaction/BiroJasaPageEnhanced";
 import FeePenjualanPageEnhanced from "../components/transaction/FeePenjualanPageEnhanced";
 import PembukuanPage from "@/components/finance/PembukuanPage";
+import LabaRugiPage from "@/components/finance/LabaRugiPage";
 import ReportsPage from "@/components/reports/ReportsPage";
 import RolesPage from "@/components/rbac/RolesPage";
 import PermissionsPage from "@/components/rbac/PermissionsPage";
@@ -110,28 +111,17 @@ const Index = () => {
       case "breakdown-percabang":
         return <BreakdownPercabangPage selectedDivision={selectedDivision} />;
       case "keuntungan-motor":
-        return (
-          <div className="p-4">
-            Laporan Keuntungan Motor sedang dalam perbaikan
-          </div>
-        );
+        return <PembukuanPage selectedDivision={selectedDivision} />;
       case "profit-distribution":
         return <ProfitDistributionPage selectedDivision={selectedDivision} />;
       case "close-month":
         return <CloseMonthPage selectedDivision={selectedDivision} />;
       case "pencatatan-asset":
-        // Temporarily disabled - component needs to be recreated
-        return (
-          <div className="p-4">
-            Pencatatan Asset page sedang dalam perbaikan
-          </div>
-        );
+        return <AssetPage />;
       case "price-history-upload":
         return <PriceHistoryUploadPage />;
       case "laba-rugi":
-        return (
-          <div className="p-4">Laporan Laba Rugi sedang dalam perbaikan</div>
-        );
+        return <LabaRugiPage selectedDivision={selectedDivision} />;
       case "modal-reduction": // ✅ Tambahkan case ini
         return <ModalReductionPage />;
       case "modal-history": // ✅ Tambahkan case ini juga

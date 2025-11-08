@@ -125,6 +125,17 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   );
   const [isVerifyingQC, setIsVerifyingQC] = useState(false);
 
+  // State untuk Update Tanggal Selesai QC
+  const [
+    isUpdateTanggalSelesaiDialogOpen,
+    setIsUpdateTanggalSelesaiDialogOpen,
+  ] = useState(false);
+  const [tanggalSelesaiQCForm, setTanggalSelesaiQCForm] = useState<{
+    [key: string]: string;
+  }>({});
+  const [isUpdatingTanggalSelesai, setIsUpdatingTanggalSelesai] =
+    useState(false);
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedJenisPembelian, setSelectedJenisPembelian] = useState("all");
@@ -1089,6 +1100,74 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       });
     } finally {
       setIsVerifyingQC(false);
+    }
+  };
+
+  // Handler untuk membuka dialog update tanggal selesai QC
+  const handleOpenUpdateTanggalSelesai = () => {
+    if (selectedQCReports.length === 0) {
+      toast({
+        title: "Peringatan",
+        description: "Pilih minimal satu unit untuk diupdate",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Initialize form dengan tanggal hari ini untuk setiap unit yang dipilih
+    const initialForm: { [key: string]: string } = {};
+    selectedQCReports.forEach((id) => {
+      const qcData = viewQCReportData.find((item) => item.id === id);
+      // Jika sudah ada tanggal_selesai_qc, gunakan itu. Jika belum, gunakan tanggal hari ini
+      initialForm[id] =
+        qcData?.tanggal_selesai_qc || new Date().toISOString().split("T")[0];
+    });
+    setTanggalSelesaiQCForm(initialForm);
+    setIsUpdateTanggalSelesaiDialogOpen(true);
+  };
+
+  // Handler untuk save tanggal selesai QC
+  const handleSaveTanggalSelesaiQC = async () => {
+    setIsUpdatingTanggalSelesai(true);
+    try {
+      // Update setiap QC report yang dipilih
+      const updates = selectedQCReports.map((id) => {
+        return supabase
+          .from("qc_report")
+          .update({
+            tanggal_selesai_qc: tanggalSelesaiQCForm[id],
+          })
+          .eq("id", id);
+      });
+
+      const results = await Promise.all(updates);
+
+      // Check for errors
+      const errors = results.filter((result) => result.error);
+      if (errors.length > 0) {
+        throw new Error("Gagal mengupdate beberapa data");
+      }
+
+      // Refresh data
+      await handleViewQcReport();
+
+      toast({
+        title: "Sukses",
+        description: `${selectedQCReports.length} unit berhasil diupdate tanggal selesai QC`,
+      });
+
+      setIsUpdateTanggalSelesaiDialogOpen(false);
+      setSelectedQCReports([]);
+      setTanggalSelesaiQCForm({});
+    } catch (error: any) {
+      console.error("Error updating tanggal selesai QC:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Gagal mengupdate tanggal selesai QC",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingTanggalSelesai(false);
     }
   };
 
@@ -2362,29 +2441,157 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
             )}
           </div>
           <div className="flex justify-between items-center mt-4">
-            <Button
-              variant="default"
-              onClick={handleVerifiedQC}
-              disabled={selectedQCReports.length === 0 || isVerifyingQC}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              {isVerifyingQC ? (
-                <>
-                  <span className="mr-2">⏳</span>
-                  Memverifikasi...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Verified QC ({selectedQCReports.length})
-                </>
+            <div className="flex gap-2">
+              {selectedQCReports.length > 0 && (
+                <Button
+                  variant="default"
+                  onClick={handleOpenUpdateTanggalSelesai}
+                  disabled={isUpdatingTanggalSelesai}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {isUpdatingTanggalSelesai ? (
+                    <>
+                      <span className="mr-2">⏳</span>
+                      Mengupdate...
+                    </>
+                  ) : (
+                    <>
+                      <CalendarIcon className="w-4 h-4 mr-2" />
+                      Update Tanggal Selesai ({selectedQCReports.length})
+                    </>
+                  )}
+                </Button>
               )}
-            </Button>
+              <Button
+                variant="default"
+                onClick={handleVerifiedQC}
+                disabled={selectedQCReports.length === 0 || isVerifyingQC}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {isVerifyingQC ? (
+                  <>
+                    <span className="mr-2">⏳</span>
+                    Memverifikasi...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Verified QC ({selectedQCReports.length})
+                  </>
+                )}
+              </Button>
+            </div>
             <Button
               variant="outline"
               onClick={() => setIsViewQCReportDialogOpen(false)}
             >
               Tutup
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Update Tanggal Selesai QC */}
+      <Dialog
+        open={isUpdateTanggalSelesaiDialogOpen}
+        onOpenChange={setIsUpdateTanggalSelesaiDialogOpen}
+      >
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Update Tanggal Selesai QC</DialogTitle>
+            <DialogDescription>
+              Mengupdate tanggal selesai QC untuk {selectedQCReports.length}{" "}
+              unit yang dipilih
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse border border-gray-300">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium">
+                      No
+                    </th>
+                    <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium">
+                      Brand
+                    </th>
+                    <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium">
+                      Jenis Motor
+                    </th>
+                    <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium">
+                      Plat Nomor
+                    </th>
+                    <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium">
+                      Tanggal Selesai QC
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedQCReports.map((qcId, idx) => {
+                    const qcData = viewQCReportData.find(
+                      (item) => item.id === qcId
+                    );
+                    if (!qcData) return null;
+
+                    return (
+                      <tr key={qcId} className="hover:bg-gray-50">
+                        <td className="border border-gray-300 px-4 py-2 text-sm">
+                          {idx + 1}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm">
+                          {qcData.pembelian?.brands?.name || "-"}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm">
+                          {qcData.pembelian?.jenis_motor?.jenis_motor || "-"}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm font-semibold">
+                          {qcData.pembelian?.plat_nomor || "-"}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-2">
+                          <Input
+                            type="date"
+                            value={tanggalSelesaiQCForm[qcId] || ""}
+                            onChange={(e) =>
+                              setTanggalSelesaiQCForm({
+                                ...tanggalSelesaiQCForm,
+                                [qcId]: e.target.value,
+                              })
+                            }
+                            className="w-full"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsUpdateTanggalSelesaiDialogOpen(false)}
+              disabled={isUpdatingTanggalSelesai}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleSaveTanggalSelesaiQC}
+              disabled={isUpdatingTanggalSelesai}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isUpdatingTanggalSelesai ? (
+                <>
+                  <span className="mr-2">⏳</span>
+                  Menyimpan...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Simpan
+                </>
+              )}
             </Button>
           </div>
         </DialogContent>
