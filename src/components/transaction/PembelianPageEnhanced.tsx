@@ -2350,6 +2350,9 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                           <th className="px-4 py-3 text-right text-xs font-bold text-white uppercase tracking-wider">
                             Real QC
                           </th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                            Tanggal Selesai QC
+                          </th>
                           <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
                             Status
                           </th>
@@ -2435,6 +2438,17 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                               <td className="px-4 py-3 text-sm text-right font-bold text-green-600">
                                 {real > 0
                                   ? `Rp ${real.toLocaleString("id-ID")}`
+                                  : "-"}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600">
+                                {item.tanggal_selesai_qc
+                                  ? new Date(
+                                      item.tanggal_selesai_qc
+                                    ).toLocaleDateString("id-ID", {
+                                      day: "2-digit",
+                                      month: "short",
+                                      year: "numeric",
+                                    })
                                   : "-"}
                               </td>
                               <td className="px-4 py-3 text-center">
