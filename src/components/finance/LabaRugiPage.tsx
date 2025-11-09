@@ -689,14 +689,14 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           kategori.includes("kurang profit");
 
         // ✅ LOGIKA DIPERBAIKI:
-        // Untuk SEMUA periode (termasuk this_month):
+        // Untuk SEMUA transaksi:
         //   * Jika is_retroactive=TRUE dan Kurang Modal/Profit → pakai original_month
         //   * Yang lainnya → pakai tanggal
 
         let dateToCheck: Date;
         let filterReason = ""; // Untuk debugging
 
-        // ✅ PERBAIKAN: Cek is_retroactive untuk SEMUA periode (tidak ada exception untuk this_month)
+        // ✅ PERBAIKAN: Cek is_retroactive untuk kategori Kurang Modal/Profit
         if (
           item.is_retroactive === true &&
           isKurangModalOrProfit &&
@@ -714,71 +714,56 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         const itemYear = dateToCheck.getFullYear();
         const itemMonth = dateToCheck.getMonth() + 1; // 1-12
 
-        // ✅ DEBUGGING: Log keputusan filtering untuk Kurang Modal/Profit
-        if (isKurangModalOrProfit) {
-          let targetYear: number;
-          let targetMonth: number;
+        // ✅ PENTING: Dapatkan target year dan month berdasarkan selectedPeriod
+        let targetYear: number;
+        let targetMonth: number;
+        let shouldInclude = false;
 
-          if (selectedPeriod === "this_month") {
-            const currentDate = new Date();
-            targetYear = currentDate.getFullYear();
-            targetMonth = currentDate.getMonth() + 1;
-          } else if (selectedPeriod === "last_month") {
-            const lastMonthDate = new Date();
-            lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
-            targetYear = lastMonthDate.getFullYear();
-            targetMonth = lastMonthDate.getMonth() + 1;
-          } else {
-            targetYear = 0;
-            targetMonth = 0;
-          }
-
-          if (targetMonth > 0) {
-            const willInclude =
-              itemYear === targetYear && itemMonth === targetMonth;
-
-            console.log("🔍 Filtering decision:", {
-              kategori: item.kategori,
-              tanggal: item.tanggal,
-              original_month: item.original_month,
-              is_retroactive: item.is_retroactive,
-              dateToCheck: dateToCheck.toISOString().split("T")[0],
-              itemYear,
-              itemMonth,
-              targetYear,
-              targetMonth,
-              selectedPeriod,
-              filterReason,
-              willInclude,
-              verdict: willInclude ? "✅ INCLUDED" : "❌ EXCLUDED",
-              explanation: willInclude
-                ? `Month ${itemMonth} matches target ${targetMonth}`
-                : `Month ${itemMonth} does NOT match target ${targetMonth}`,
-            });
-          }
-        }
-
-        // Filter berdasarkan periode yang dipilih
         if (selectedPeriod === "this_month") {
           const currentDate = new Date();
-          return (
-            itemYear === currentDate.getFullYear() &&
-            itemMonth === currentDate.getMonth() + 1
-          );
+          targetYear = currentDate.getFullYear();
+          targetMonth = currentDate.getMonth() + 1;
+          shouldInclude = itemYear === targetYear && itemMonth === targetMonth;
         } else if (selectedPeriod === "last_month") {
           const lastMonthDate = new Date();
           lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
-          return (
-            itemYear === lastMonthDate.getFullYear() &&
-            itemMonth === lastMonthDate.getMonth() + 1
-          );
+          targetYear = lastMonthDate.getFullYear();
+          targetMonth = lastMonthDate.getMonth() + 1;
+          shouldInclude = itemYear === targetYear && itemMonth === targetMonth;
         } else if (selectedPeriod === "this_year") {
           const currentYear = new Date().getFullYear();
-          return itemYear === currentYear;
+          shouldInclude = itemYear === currentYear;
+        } else {
+          // Untuk periode lain (custom, dll), cek apakah tanggal dalam range
+          const checkDate = dateToCheck.getTime();
+          const rangeStart = new Date(startDate).getTime();
+          const rangeEnd = new Date(endDate).getTime();
+          shouldInclude = checkDate >= rangeStart && checkDate <= rangeEnd;
         }
 
-        // Untuk periode lain (custom, dll), gunakan date range dari query
-        return true;
+        // ✅ DEBUGGING: Log keputusan filtering untuk SEMUA transaksi (optional, bisa dicomment jika tidak perlu)
+        if (
+          isKurangModalOrProfit ||
+          selectedPeriod === "this_month" ||
+          selectedPeriod === "last_month"
+        ) {
+          console.log("🔍 Filtering decision:", {
+            kategori: item.kategori,
+            tanggal: item.tanggal,
+            original_month: item.original_month,
+            is_retroactive: item.is_retroactive,
+            dateToCheck: dateToCheck.toISOString().split("T")[0],
+            itemYear,
+            itemMonth,
+            selectedPeriod,
+            filterReason,
+            shouldInclude,
+            verdict: shouldInclude ? "✅ INCLUDED" : "❌ EXCLUDED",
+          });
+        }
+
+        // Return hasil filtering
+        return shouldInclude;
       });
 
       console.log("?? Filtered operational data based on category:", {
