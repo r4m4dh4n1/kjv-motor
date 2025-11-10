@@ -133,6 +133,12 @@ const PenjualanBookedPageEnhanced = ({
     ["Booked", "booked"] // ✅ NEW: Only fetch booked items
   );
 
+  // Debug: Log selectedDivision dan companiesData
+  useEffect(() => {
+    console.log("🎯 Selected Division:", selectedDivision);
+    console.log("🏢 Companies Data (filtered):", companiesData);
+  }, [selectedDivision, companiesData]);
+
   // Mutations
   const createPenjualanMutation = usePenjualanCreate();
   const deletePenjualanMutation = usePenjualanDelete();
