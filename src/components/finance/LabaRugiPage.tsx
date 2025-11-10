@@ -84,9 +84,33 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
     hargaBeliDetail: [],
   });
 
-  const shouldUseCombined = ["this_month", "last_month", "this_year"].includes(
-    selectedPeriod
-  );
+  const shouldUseCombined = useMemo(() => {
+    const periodsRequiringCombined = [
+      "this_month",
+      "last_month",
+      "this_year",
+      "last_year",
+    ];
+
+    if (periodsRequiringCombined.includes(selectedPeriod)) {
+      return true;
+    }
+
+    // ✅ FIX: Tambahkan logika custom date untuk penjualan dan biro jasa
+    if (selectedPeriod === "custom" && customStartDate && customEndDate) {
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth();
+      const currentYear = currentDate.getFullYear();
+      const startDate = new Date(customStartDate);
+
+      return (
+        startDate.getMonth() < currentMonth ||
+        startDate.getFullYear() < currentYear
+      );
+    }
+
+    return false;
+  }, [selectedPeriod, customStartDate, customEndDate]);
 
   const shouldUseOperationalCombined = useMemo(() => {
     const periodsRequiringCombined = [
