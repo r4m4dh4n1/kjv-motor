@@ -743,6 +743,7 @@ const PenjualanBookedPageEnhanced = ({
         penjualan={selectedPenjualanForCancel}
         onConfirm={handleDpCancellationConfirm}
         isLoading={dpCancellationMutation.isPending}
+        companiesData={companiesData} // ✅ Pass companies data sesuai divisi
       />
 
       <TitipOngkirPayoutModal
