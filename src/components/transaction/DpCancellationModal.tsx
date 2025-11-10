@@ -57,6 +57,13 @@ const DpCancellationModal = ({
   const [keterangan, setKeterangan] = useState("");
   const [companySumberId, setCompanySumberId] = useState<string>(""); // ✅ ID perusahaan sumber
 
+  // Debug: Log companies data
+  React.useEffect(() => {
+    if (isOpen) {
+      console.log("🏢 Companies Data in Modal:", companiesData);
+    }
+  }, [isOpen, companiesData]);
+
   const dpAmount = penjualan?.dp || 0;
   const refundAmountNum = parseFormattedNumber(refundAmount);
   const forfeitAmount = dpAmount - refundAmountNum;
