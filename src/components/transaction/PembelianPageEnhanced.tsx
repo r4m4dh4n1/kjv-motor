@@ -2182,11 +2182,11 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
         open={isViewQCReportDialogOpen}
         onOpenChange={setIsViewQCReportDialogOpen}
       >
-        <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader className="pb-4 border-b">
+        <DialogContent className="max-w-[95vw] max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader className="pb-3 border-b">
             <div className="flex items-center justify-between">
               <div>
-                <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                <DialogTitle className="text-lg font-bold flex items-center gap-2">
                   <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-sm font-semibold">
                     {selectedDivision === "all"
                       ? "Semua Divisi"
@@ -2201,21 +2201,21 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
               </div>
             </div>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto space-y-4 mt-4">
+          <div className="flex-1 overflow-y-auto space-y-3 mt-3">
             {viewQCReportData.length > 0 ? (
               <>
                 {/* Search and Sort Controls - Modern Design */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200 shadow-sm">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200 shadow-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="md:col-span-2">
                       <Label
                         htmlFor="qcSearch"
-                        className="text-sm font-semibold text-gray-700 mb-2 block"
+                        className="text-xs font-semibold text-gray-700 mb-1.5 block"
                       >
                         🔍 Cari Data
                       </Label>
                       <div className="relative">
-                        <Search className="absolute left-3 top-3 h-5 w-5 text-blue-500" />
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-blue-500" />
                         <Input
                           id="qcSearch"
                           placeholder="Ketik brand, jenis motor, atau plat nomor..."
@@ -2224,7 +2224,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                             setQcReportSearchTerm(e.target.value);
                             setCurrentQCPage(1);
                           }}
-                          className="pl-11 h-11 border-blue-200 focus:border-blue-400 focus:ring-blue-400 bg-white"
+                          className="pl-9 h-9 text-sm border-blue-200 focus:border-blue-400 focus:ring-blue-400 bg-white"
                         />
                       </div>
                     </div>
@@ -2233,7 +2233,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                       <div>
                         <Label
                           htmlFor="qcSortBy"
-                          className="text-sm font-semibold text-gray-700 mb-2 block"
+                          className="text-xs font-semibold text-gray-700 mb-1.5 block"
                         >
                           📊 Sort By
                         </Label>
@@ -2243,7 +2243,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                         >
                           <SelectTrigger
                             id="qcSortBy"
-                            className="h-11 border-blue-200 bg-white"
+                            className="h-9 text-sm border-blue-200 bg-white"
                           >
                             <SelectValue />
                           </SelectTrigger>
@@ -2273,7 +2273,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                       <div>
                         <Label
                           htmlFor="qcSortOrder"
-                          className="text-sm font-semibold text-gray-700 mb-2 block"
+                          className="text-xs font-semibold text-gray-700 mb-1.5 block"
                         >
                           ⬍⬍ Urutan
                         </Label>
@@ -2285,7 +2285,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                         >
                           <SelectTrigger
                             id="qcSortOrder"
-                            className="h-11 border-blue-200 bg-white"
+                            className="h-9 text-sm border-blue-200 bg-white"
                           >
                             <SelectValue />
                           </SelectTrigger>
@@ -2300,9 +2300,9 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                 </div>
 
                 {/* Stats Bar */}
-                <div className="flex justify-between items-center px-4 py-3 bg-white rounded-lg border shadow-sm">
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm font-medium text-gray-700">
+                <div className="flex justify-between items-center px-3 py-2 bg-white rounded-lg border shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-medium text-gray-700">
                       Menampilkan{" "}
                       <span className="font-bold text-blue-600">
                         {startQCIndex + 1}-
@@ -2315,25 +2315,25 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                       data
                     </span>
                     {qcReportSearchTerm && (
-                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                      <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
                         Filtered dari {viewQCReportData.length} total
                       </span>
                     )}
                   </div>
-                  <span className="text-sm font-medium">
-                    <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full">
+                  <span className="text-xs font-medium">
+                    <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                       ✓ {selectedQCReports.length} dipilih
                     </span>
                   </span>
                 </div>
 
                 {/* Modern Table */}
-                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gradient-to-r from-blue-500 to-indigo-600">
                         <tr>
-                          <th className="px-4 py-3 text-center">
+                          <th className="px-2 py-2 text-center">
                             <Checkbox
                               checked={
                                 filteredAndSortedQCData.length > 0 &&
@@ -2352,40 +2352,40 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                               className="border-white data-[state=checked]:bg-white data-[state=checked]:text-blue-600"
                             />
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                          <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wider">
                             No
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                          <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wider">
                             Brand
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                          <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wider">
                             Jenis Motor
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                          <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wider">
                             Plat Nomor
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                          <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wider">
                             Tgl Pembelian
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                          <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wider">
                             Estimasi Selesai
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                          <th className="px-2 py-2 text-left text-[10px] font-bold text-white uppercase tracking-wider">
                             Tanggal Selesai QC
                           </th>
-                          <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
+                          <th className="px-2 py-2 text-center text-[10px] font-bold text-white uppercase tracking-wider">
                             Total Hari
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-bold text-white uppercase tracking-wider">
+                          <th className="px-2 py-2 text-right text-[10px] font-bold text-white uppercase tracking-wider">
                             Estimasi QC
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-bold text-white uppercase tracking-wider">
+                          <th className="px-2 py-2 text-right text-[10px] font-bold text-white uppercase tracking-wider">
                             Real QC
                           </th>
-                          <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
+                          <th className="px-2 py-2 text-center text-[10px] font-bold text-white uppercase tracking-wider">
                             Status
                           </th>
-                          <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
+                          <th className="px-2 py-2 text-center text-[10px] font-bold text-white uppercase tracking-wider">
                             Verified
                           </th>
                         </tr>
@@ -2410,7 +2410,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                                   : ""
                               }`}
                             >
-                              <td className="px-4 py-3 text-center">
+                              <td className="px-2 py-2 text-center">
                                 <Checkbox
                                   checked={isSelected}
                                   onCheckedChange={(checked) =>
@@ -2422,24 +2422,24 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                                   className="data-[state=checked]:bg-blue-600"
                                 />
                               </td>
-                              <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                              <td className="px-2 py-2 text-xs font-medium text-gray-900">
                                 {startQCIndex + idx + 1}
                               </td>
-                              <td className="px-4 py-3 text-sm">
+                              <td className="px-2 py-2 text-xs">
                                 <span className="font-semibold text-gray-900">
                                   {item.pembelian?.brands?.name || "-"}
                                 </span>
                               </td>
-                              <td className="px-4 py-3 text-sm text-gray-700">
+                              <td className="px-2 py-2 text-xs text-gray-700">
                                 {item.pembelian?.jenis_motor?.jenis_motor ||
                                   "-"}
                               </td>
-                              <td className="px-4 py-3 text-sm">
-                                <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded">
+                              <td className="px-2 py-2 text-xs">
+                                <span className="font-mono font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded text-[10px]">
                                   {item.pembelian?.plat_nomor || "-"}
                                 </span>
                               </td>
-                              <td className="px-4 py-3 text-sm text-gray-600">
+                              <td className="px-2 py-2 text-xs text-gray-600">
                                 {item.pembelian?.tanggal_pembelian
                                   ? new Date(
                                       item.pembelian.tanggal_pembelian
@@ -2450,7 +2450,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                                     })
                                   : "-"}
                               </td>
-                              <td className="px-4 py-3 text-sm text-gray-600">
+                              <td className="px-2 py-2 text-xs text-gray-600">
                                 {item.estimasi_tanggal_selesai
                                   ? new Date(
                                       item.estimasi_tanggal_selesai
@@ -2461,7 +2461,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                                     })
                                   : "-"}
                               </td>
-                              <td className="px-4 py-3 text-sm text-gray-600">
+                              <td className="px-2 py-2 text-xs text-gray-600">
                                 {item.tanggal_selesai_qc
                                   ? new Date(
                                       item.tanggal_selesai_qc
@@ -2472,7 +2472,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                                     })
                                   : "-"}
                               </td>
-                              <td className="px-4 py-3 text-center">
+                              <td className="px-2 py-2 text-center">
                                 {(() => {
                                   // Hitung Total Hari: Tanggal Selesai QC - Estimasi Selesai
                                   if (
@@ -2508,43 +2508,43 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                                   }
 
                                   return (
-                                    <span className={`text-sm ${colorClass}`}>
+                                    <span className={`text-xs ${colorClass}`}>
                                       {totalHari} hari
                                     </span>
                                   );
                                 })()}
                               </td>
-                              <td className="px-4 py-3 text-sm text-right font-medium text-orange-600">
+                              <td className="px-2 py-2 text-xs text-right font-medium text-orange-600">
                                 Rp {estimasi.toLocaleString("id-ID")}
                               </td>
-                              <td className="px-4 py-3 text-sm text-right font-bold text-green-600">
+                              <td className="px-2 py-2 text-xs text-right font-bold text-green-600">
                                 {real > 0
                                   ? `Rp ${real.toLocaleString("id-ID")}`
                                   : "-"}
                               </td>
-                              <td className="px-4 py-3 text-center">
+                              <td className="px-2 py-2 text-center">
                                 {real !== 0 ? (
-                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-800">
                                     ✓ Sudah QC
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-800">
                                     ⏳ Belum QC
                                   </span>
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-center">
+                              <td className="px-2 py-2 text-center">
                                 {isVerified ? (
                                   <div className="flex flex-col items-center">
-                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
                                       ✓ Verified
                                     </span>
-                                    <span className="text-[10px] text-gray-500 mt-1">
+                                    <span className="text-[9px] text-gray-500 mt-0.5">
                                       {verifiedBy}
                                     </span>
                                   </div>
                                 ) : (
-                                  <span className="text-gray-400 text-sm">
+                                  <span className="text-gray-400 text-xs">
                                     -
                                   </span>
                                 )}
@@ -2558,7 +2558,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                 </div>
 
                 {/* Pagination Controls */}
-                <div className="flex items-center justify-between px-4 py-3 bg-white rounded-lg border shadow-sm">
+                <div className="flex items-center justify-between px-3 py-2 bg-white rounded-lg border shadow-sm">
                   <Button
                     variant="outline"
                     size="sm"
@@ -2566,11 +2566,11 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                       setCurrentQCPage((prev) => Math.max(1, prev - 1))
                     }
                     disabled={currentQCPage === 1}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-1 h-8 text-xs"
                   >
                     ← Previous
                   </Button>
-                  <span className="text-sm font-medium text-gray-700">
+                  <span className="text-xs font-medium text-gray-700">
                     Page{" "}
                     <span className="font-bold text-blue-600">
                       {currentQCPage}
@@ -2589,7 +2589,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                       )
                     }
                     disabled={currentQCPage === totalQCPages}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-1 h-8 text-xs"
                   >
                     Next →
                   </Button>
@@ -2608,7 +2608,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
             )}
           </div>
 
-          <div className="border-t pt-4 mt-4 bg-gray-50 -mx-6 -mb-6 px-6 pb-6 rounded-b-xl">
+          <div className="border-t pt-3 mt-3 bg-gray-50 -mx-6 -mb-6 px-6 pb-4 rounded-b-xl">
             <div className="flex justify-between items-center">
               <div className="flex gap-2">
                 {selectedQCReports.length > 0 && (
@@ -2616,17 +2616,19 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                     variant="default"
                     onClick={handleOpenUpdateTanggalSelesai}
                     disabled={isUpdatingTanggalSelesai}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-blue-600 hover:bg-blue-700 h-9 text-sm"
                   >
                     {isUpdatingTanggalSelesai ? (
                       <>
-                        <span className="mr-2">⏳</span>
-                        Mengupdate...
+                        <span className="mr-1 text-xs">⏳</span>
+                        <span className="text-xs">Mengupdate...</span>
                       </>
                     ) : (
                       <>
-                        <CalendarIcon className="w-4 h-4 mr-2" />
-                        Update QC ({selectedQCReports.length})
+                        <CalendarIcon className="w-3.5 h-3.5 mr-1.5" />
+                        <span className="text-xs">
+                          Update QC ({selectedQCReports.length})
+                        </span>
                       </>
                     )}
                   </Button>
@@ -2635,17 +2637,19 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                   variant="default"
                   onClick={handleVerifiedQC}
                   disabled={selectedQCReports.length === 0 || isVerifyingQC}
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-green-600 hover:bg-green-700 h-9 text-sm"
                 >
                   {isVerifyingQC ? (
                     <>
-                      <span className="mr-2">⏳</span>
-                      Memverifikasi...
+                      <span className="mr-1 text-xs">⏳</span>
+                      <span className="text-xs">Memverifikasi...</span>
                     </>
                   ) : (
                     <>
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Verified QC ({selectedQCReports.length})
+                      <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                      <span className="text-xs">
+                        Verified QC ({selectedQCReports.length})
+                      </span>
                     </>
                   )}
                 </Button>
@@ -2653,7 +2657,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
               <Button
                 variant="outline"
                 onClick={() => setIsViewQCReportDialogOpen(false)}
-                className="border-gray-300 hover:bg-gray-50"
+                className="border-gray-300 hover:bg-gray-50 h-9 text-sm"
               >
                 Tutup
               </Button>
