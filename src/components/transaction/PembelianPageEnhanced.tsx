@@ -2370,14 +2370,17 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                           <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
                             Estimasi Selesai
                           </th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                            Tanggal Selesai QC
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
+                            Total Hari
+                          </th>
                           <th className="px-4 py-3 text-right text-xs font-bold text-white uppercase tracking-wider">
                             Estimasi QC
                           </th>
                           <th className="px-4 py-3 text-right text-xs font-bold text-white uppercase tracking-wider">
                             Real QC
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                            Tanggal Selesai QC
                           </th>
                           <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
                             Status
@@ -2458,14 +2461,6 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                                     })
                                   : "-"}
                               </td>
-                              <td className="px-4 py-3 text-sm text-right font-medium text-orange-600">
-                                Rp {estimasi.toLocaleString("id-ID")}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-right font-bold text-green-600">
-                                {real > 0
-                                  ? `Rp ${real.toLocaleString("id-ID")}`
-                                  : "-"}
-                              </td>
                               <td className="px-4 py-3 text-sm text-gray-600">
                                 {item.tanggal_selesai_qc
                                   ? new Date(
@@ -2475,6 +2470,56 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                                       month: "short",
                                       year: "numeric",
                                     })
+                                  : "-"}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {(() => {
+                                  // Hitung Total Hari: Tanggal Selesai QC - Estimasi Selesai
+                                  if (
+                                    !item.tanggal_selesai_qc ||
+                                    !item.estimasi_tanggal_selesai
+                                  ) {
+                                    return (
+                                      <span className="text-gray-400">-</span>
+                                    );
+                                  }
+
+                                  const tanggalSelesai = new Date(
+                                    item.tanggal_selesai_qc
+                                  );
+                                  const estimasiSelesai = new Date(
+                                    item.estimasi_tanggal_selesai
+                                  );
+                                  const diffTime =
+                                    tanggalSelesai.getTime() -
+                                    estimasiSelesai.getTime();
+                                  const totalHari = Math.ceil(
+                                    diffTime / (1000 * 60 * 60 * 24)
+                                  );
+
+                                  // Ambil estimasi_hari_qc dari pembelian
+                                  const estimasiHariQC =
+                                    item.pembelian?.estimasi_hari_qc || 0;
+
+                                  // Tentukan warna: merah jika > estimasi, hijau jika <= estimasi
+                                  let colorClass = "text-green-600 font-bold";
+                                  if (totalHari > estimasiHariQC) {
+                                    colorClass = "text-red-600 font-bold";
+                                  }
+
+                                  return (
+                                    <span className={`text-sm ${colorClass}`}>
+                                      {totalHari} hari
+                                    </span>
+                                  );
+                                })()}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-right font-medium text-orange-600">
+                                Rp {estimasi.toLocaleString("id-ID")}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-right font-bold text-green-600">
+                                {real > 0
+                                  ? `Rp ${real.toLocaleString("id-ID")}`
                                   : "-"}
                               </td>
                               <td className="px-4 py-3 text-center">
