@@ -1,13 +1,36 @@
 import React, { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Edit, Trash2, History, DollarSign } from "lucide-react";
-import { EnhancedTable, DateCell, CurrencyCell, TextCell, ActionCell } from "./EnhancedTable";
+import {
+  EnhancedTable,
+  DateCell,
+  CurrencyCell,
+  TextCell,
+  ActionCell,
+} from "./EnhancedTable";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -54,19 +77,24 @@ interface PencatatanAssetHistoryItem {
   };
 }
 
-export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAssetTableProps) => {
+export const PencatatanAssetTable = ({
+  data,
+  onEdit,
+  onRefetch,
+}: PencatatanAssetTableProps) => {
   const { toast } = useToast();
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [selectedAssetName, setSelectedAssetName] = useState<string>("");
   const [updateNominalDialogOpen, setUpdateNominalDialogOpen] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState<PencatatanAssetItem | null>(null);
+  const [selectedAsset, setSelectedAsset] =
+    useState<PencatatanAssetItem | null>(null);
   const [companiesData, setCompaniesData] = useState<any[]>([]);
   const [nominalFormData, setNominalFormData] = useState({
     tanggal_update: "",
     nominal: "",
     jenis_transaksi: "",
     sumber_dana_id: "",
-    alasan: ""
+    alasan: "",
   });
 
   // Query untuk mengambil data companies
@@ -74,10 +102,10 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
     queryKey: ["companies"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('companies')
-        .select('id, nama_perusahaan, modal')
-        .order('nama_perusahaan');
-      
+        .from("companies")
+        .select("id, nama_perusahaan, modal")
+        .order("nama_perusahaan");
+
       if (error) throw error;
       return data || [];
     },
@@ -88,91 +116,103 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
     queryKey: ["asset_history", selectedAssetName],
     queryFn: async (): Promise<PencatatanAssetHistoryItem[]> => {
       if (!selectedAssetName) return [];
-      
+
       const { data, error } = await supabase
         .from("pencatatan_asset_history")
         .select("*")
         .eq("nama", selectedAssetName)
         .order("created_at", { ascending: false });
-      
+
       if (error) throw error;
-      
+
       // ✅ PERBAIKAN: Manual join dengan companies untuk history
       if (data && data.length > 0) {
-        const companyIds = [...new Set(data.map(item => item.sumber_dana_id))] as number[];
+        const companyIds = [
+          ...new Set(data.map((item) => item.sumber_dana_id)),
+        ] as number[];
         const { data: companiesData } = await supabase
-          .from('companies')
-          .select('id, nama_perusahaan')
-          .in('id', companyIds);
-        
+          .from("companies")
+          .select("id, nama_perusahaan")
+          .in("id", companyIds);
+
         // Merge data
-        const enrichedData = data.map(history => ({
+        const enrichedData = data.map((history) => ({
           ...history,
-          companies: companiesData?.find(company => company.id === history.sumber_dana_id)
+          companies: companiesData?.find(
+            (company) => company.id === history.sumber_dana_id
+          ),
         }));
-        
+
         return enrichedData as any;
       }
-      
+
       return (data as any) || [];
     },
-    enabled: !!selectedAssetName
+    enabled: !!selectedAssetName,
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       // 1. Ambil data asset yang akan dihapus
-      const assetToDelete = data.find(item => item.id === id);
+      const assetToDelete = data.find((item) => item.id === id);
       if (!assetToDelete) throw new Error("Asset tidak ditemukan");
 
       // 2. Kembalikan modal ke company (sumber dana) berdasarkan jenis transaksi
       if (assetToDelete.sumber_dana_id && assetToDelete.nominal > 0) {
         // Logika pengembalian modal berdasarkan jenis transaksi
         let modalAmount = assetToDelete.nominal;
-        
+
         // Jika jenis transaksi adalah 'pengeluaran', kembalikan modal (tambah modal)
         // Jika jenis transaksi adalah 'pemasukan', kurangi modal (karena saat insert modal ditambah)
-        if (assetToDelete.jenis_transaksi === 'pemasukan') {
+        if (assetToDelete.jenis_transaksi === "pemasukan") {
           modalAmount = -assetToDelete.nominal; // Kurangi modal karena saat insert modal ditambah
         }
         // Untuk 'pengeluaran', modalAmount tetap positif (tambah modal karena saat insert modal dikurangi)
-        
-        const { error: modalError } = await supabase.rpc('update_company_modal', {
-          company_id: assetToDelete.sumber_dana_id,
-          amount: modalAmount
-        });
+
+        const { error: modalError } = await supabase.rpc(
+          "update_company_modal",
+          {
+            company_id: assetToDelete.sumber_dana_id,
+            amount: modalAmount,
+          }
+        );
 
         if (modalError) {
-          console.error('Error updating company modal:', modalError);
+          console.error("Error updating company modal:", modalError);
           throw modalError;
         }
       }
 
       // 3. Hapus pembukuan terkait (jika ada)
-      const keteranganPembukuan = `${assetToDelete.jenis_transaksi === 'pengeluaran' ? 'Pengeluaran' : 'Pemasukan'} Asset - ${assetToDelete.nama}`;
+      const keteranganPembukuan = `${
+        assetToDelete.jenis_transaksi === "pengeluaran"
+          ? "Pengeluaran"
+          : "Pemasukan"
+      } Asset - ${assetToDelete.nama}`;
       const { error: pembukuanDeleteError } = await supabase
-        .from('pembukuan')
+        .from("pembukuan")
         .delete()
-        .eq('keterangan', keteranganPembukuan)
-        .eq('company_id', assetToDelete.sumber_dana_id);
+        .eq("keterangan", keteranganPembukuan)
+        .eq("company_id", assetToDelete.sumber_dana_id);
 
       if (pembukuanDeleteError) {
-        console.error('Error deleting pembukuan entry:', pembukuanDeleteError);
+        console.error("Error deleting pembukuan entry:", pembukuanDeleteError);
         // Tidak throw error karena pembukuan mungkin tidak ada
       }
 
       // 4. Hapus data asset
       const { error: deleteError } = await supabase
-        .from('pencatatan_asset')
+        .from("pencatatan_asset")
         .delete()
-        .eq('id', id);
+        .eq("id", id);
 
       if (deleteError) throw deleteError;
     },
     onSuccess: () => {
       toast({
         title: "Berhasil",
-        description: "Data asset berhasil dihapus dan modal company dikembalikan",
+        description:
+          "Data asset berhasil dihapus dan modal company dikembalikan",
       });
       onRefetch();
     },
@@ -182,8 +222,8 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
         description: error.message || "Gagal menghapus data asset",
         variant: "destructive",
       });
-      console.error('Error deleting asset:', error);
-    }
+      console.error("Error deleting asset:", error);
+    },
   });
 
   const handleDelete = (id: number) => {
@@ -200,22 +240,30 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
   const handleUpdateNominal = (asset: PencatatanAssetItem) => {
     setSelectedAsset(asset);
     setNominalFormData({
-      tanggal_update: new Date().toISOString().split('T')[0],
+      tanggal_update: new Date().toISOString().split("T")[0],
       nominal: "0", // ✅ PERBAIKAN: Default ke 0 bukan nominal saat ini
-      jenis_transaksi: asset.jenis_transaksi || 'pengeluaran',
-      sumber_dana_id: asset.sumber_dana_id?.toString() || '',
-      alasan: ""
+      jenis_transaksi: asset.jenis_transaksi || "pengeluaran",
+      sumber_dana_id: asset.sumber_dana_id?.toString() || "",
+      alasan: "",
     });
     setUpdateNominalDialogOpen(true);
   };
 
   // Update nominal mutation
   const updateNominalMutation = useMutation({
-    mutationFn: async ({ assetId, formData }: { assetId: number; formData: any }) => {
-      const nominalBaru = parseFloat(formData.nominal.replace(/[^\d]/g, ''));
+    mutationFn: async ({
+      assetId,
+      formData,
+    }: {
+      assetId: number;
+      formData: any;
+    }) => {
+      const nominalPerubahan = parseFloat(
+        formData.nominal.replace(/[^\d]/g, "")
+      );
       const jenisTransaksiBaru = formData.jenis_transaksi;
       const sumberDanaBaru = parseInt(formData.sumber_dana_id);
-      
+
       if (!selectedAsset) throw new Error("Asset tidak ditemukan");
 
       // 1. Get current asset data
@@ -227,118 +275,113 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
 
       if (fetchError) throw fetchError;
 
-      // 2. Calculate modal changes
+      // 2. Calculate new nominal based on transaction type
       const nominalLama = currentAsset.nominal;
-      const jenisTransaksiLama = currentAsset.jenis_transaksi;
-      const sumberDanaLama = currentAsset.sumber_dana_id;
+      let nominalBaru = nominalLama;
 
-      // 3. Update asset data
+      if (jenisTransaksiBaru === "pemasukan") {
+        // Pemasukan: tambah nominal asset
+        nominalBaru = nominalLama + nominalPerubahan;
+      } else if (jenisTransaksiBaru === "pengeluaran") {
+        // Pengeluaran: kurangi nominal asset
+        nominalBaru = nominalLama - nominalPerubahan;
+      }
+
+      // 3. Update asset data with new calculated nominal
       const { error: updateError } = await supabase
         .from("pencatatan_asset")
-        .update({ 
+        .update({
           nominal: nominalBaru,
           jenis_transaksi: jenisTransaksiBaru,
-          sumber_dana_id: sumberDanaBaru
+          sumber_dana_id: sumberDanaBaru,
         })
         .eq("id", assetId);
 
       if (updateError) throw updateError;
 
-      // 4. Handle modal changes for old company (restore)
-      if (sumberDanaLama && nominalLama > 0) {
-        let modalAmountLama = nominalLama;
-        if (jenisTransaksiLama === 'pemasukan') {
-          modalAmountLama = -nominalLama; // Kurangi modal karena saat insert modal ditambah
+      // 4. Handle modal changes for company
+      if (sumberDanaBaru) {
+        let modalAmount = 0;
+
+        if (jenisTransaksiBaru === "pemasukan") {
+          // Pemasukan asset = tambah modal perusahaan dengan nominal perubahan
+          modalAmount = nominalPerubahan;
+        } else if (jenisTransaksiBaru === "pengeluaran") {
+          // Pengeluaran asset = kurangi modal perusahaan dengan nominal perubahan
+          modalAmount = -nominalPerubahan;
         }
-        // Untuk 'pengeluaran', modalAmountLama tetap positif (tambah modal karena saat insert modal dikurangi)
 
-        const { error: modalRestoreError } = await supabase.rpc('update_company_modal', {
-          company_id: sumberDanaLama,
-          amount: modalAmountLama
-        });
+        const { error: modalError } = await supabase.rpc(
+          "update_company_modal",
+          {
+            company_id: sumberDanaBaru,
+            amount: modalAmount,
+          }
+        );
 
-        if (modalRestoreError) {
-          console.error('Error restoring old company modal:', modalRestoreError);
-        }
-      }
-
-      // 5. Handle modal changes for new company (apply)
-      if (sumberDanaBaru && nominalBaru > 0) {
-        let modalAmountBaru = -nominalBaru; // Default: kurangi modal
-        if (jenisTransaksiBaru === 'pemasukan') {
-          modalAmountBaru = nominalBaru; // Tambah modal karena pemasukan
-        }
-        // Untuk 'pengeluaran', modalAmountBaru tetap negatif (kurangi modal)
-
-        const { error: modalApplyError } = await supabase.rpc('update_company_modal', {
-          company_id: sumberDanaBaru,
-          amount: modalAmountBaru
-        });
-
-        if (modalApplyError) {
-          console.error('Error applying new company modal:', modalApplyError);
+        if (modalError) {
+          console.error("Error updating company modal:", modalError);
           toast({
             title: "Warning",
-            description: `Nominal asset terupdate tapi modal perusahaan gagal: ${modalApplyError.message}`,
-            variant: "destructive"
+            description: `Nominal asset terupdate tapi modal perusahaan gagal: ${modalError.message}`,
+            variant: "destructive",
           });
         }
       }
 
-      // 6. Record to pencatatan_asset_history
+      // 5. Record to pencatatan_asset_history
       const { error: historyError } = await supabase
         .from("pencatatan_asset_history")
-        .insert([{
-          pencatatan_asset_id: assetId,
-          tanggal: currentAsset.tanggal,
-          nama: currentAsset.nama,
-          jenis_transaksi: jenisTransaksiBaru,
-          nominal: nominalBaru,
-          sumber_dana_id: sumberDanaBaru,
-          keterangan: `Update Nominal: ${formData.alasan}`,
-          divisi: currentAsset.divisi,
-          cabang_id: currentAsset.cabang_id
-        }] as any);
+        .insert([
+          {
+            pencatatan_asset_id: assetId,
+            tanggal: formData.tanggal_update || currentAsset.tanggal,
+            nama: currentAsset.nama,
+            jenis_transaksi: jenisTransaksiBaru,
+            nominal: nominalPerubahan, // Record nominal perubahan, bukan nominal baru
+            sumber_dana_id: sumberDanaBaru,
+            keterangan: `Update Nominal: ${formData.alasan} (${
+              jenisTransaksiBaru === "pemasukan" ? "+" : "-"
+            }${nominalPerubahan.toLocaleString("id-ID")})`,
+            divisi: currentAsset.divisi,
+            cabang_id: currentAsset.cabang_id,
+          },
+        ] as any);
 
       if (historyError) {
-        console.error('Error recording to history:', historyError);
+        console.error("Error recording to history:", historyError);
         toast({
           title: "Warning",
           description: `Nominal asset terupdate tapi history gagal: ${historyError.message}`,
-          variant: "destructive"
+          variant: "destructive",
         });
       }
 
-      // 7. Update pembukuan entries
-      // Delete old pembukuan entry
-      const oldKeterangan = `${jenisTransaksiLama === 'pengeluaran' ? 'Pengeluaran' : 'Pemasukan'} Asset - ${currentAsset.nama}`;
-      await supabase
-        .from("pembukuan")
-        .delete()
-        .eq("keterangan", oldKeterangan)
-        .eq("company_id", sumberDanaLama);
-
-      // Insert new pembukuan entry
-      const newKeterangan = `${jenisTransaksiBaru === 'pengeluaran' ? 'Pengeluaran' : 'Pemasukan'} Asset - ${currentAsset.nama}`;
+      // 6. Insert pembukuan entry for this update
+      const keterangan = `Update ${
+        jenisTransaksiBaru === "pengeluaran" ? "Pengeluaran" : "Pemasukan"
+      } Asset - ${currentAsset.nama}: ${formData.alasan}`;
       const { error: pembukuanError } = await supabase
         .from("pembukuan")
-        .insert([{
-          tanggal: formData.tanggal_update,
-          divisi: currentAsset.divisi,
-          cabang_id: currentAsset.cabang_id,
-          keterangan: newKeterangan,
-          debit: jenisTransaksiBaru === 'pengeluaran' ? nominalBaru : 0,
-          kredit: jenisTransaksiBaru === 'pemasukan' ? nominalBaru : 0,
-          saldo: 0,
-          company_id: sumberDanaBaru
-        }]);
+        .insert([
+          {
+            tanggal: formData.tanggal_update,
+            divisi: currentAsset.divisi,
+            cabang_id: currentAsset.cabang_id,
+            keterangan: keterangan,
+            debit: jenisTransaksiBaru === "pengeluaran" ? nominalPerubahan : 0,
+            kredit: jenisTransaksiBaru === "pemasukan" ? nominalPerubahan : 0,
+            saldo: 0,
+            company_id: sumberDanaBaru,
+          },
+        ]);
 
       if (pembukuanError) {
-        console.error('Error updating pembukuan:', pembukuanError);
+        console.error("Error updating pembukuan:", pembukuanError);
         toast({
           title: "Warning",
           description: `Nominal asset terupdate tapi pembukuan gagal: ${pembukuanError.message}`,
-          variant: "destructive"
+          variant: "destructive",
         });
       }
     },
@@ -349,7 +392,13 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
       });
       setUpdateNominalDialogOpen(false);
       setSelectedAsset(null);
-      setNominalFormData({ tanggal_update: "", nominal: "", jenis_transaksi: "", sumber_dana_id: "", alasan: "" });
+      setNominalFormData({
+        tanggal_update: "",
+        nominal: "",
+        jenis_transaksi: "",
+        sumber_dana_id: "",
+        alasan: "",
+      });
       onRefetch();
     },
     onError: (error: Error) => {
@@ -358,7 +407,7 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
         description: error.message || "Gagal mengupdate nominal asset",
         variant: "destructive",
       });
-    }
+    },
   });
 
   const handleNominalSubmit = (e: React.FormEvent) => {
@@ -366,38 +415,40 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
     if (selectedAsset) {
       updateNominalMutation.mutate({
         assetId: selectedAsset.id,
-        formData: nominalFormData
+        formData: nominalFormData,
       });
     }
   };
 
   const handleCurrencyChange = (value: string) => {
     // Remove non-numeric characters
-    const numericValue = value.replace(/[^\d]/g, '');
-    const formattedValue = new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
+    const numericValue = value.replace(/[^\d]/g, "");
+    const formattedValue = new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
     }).format(parseInt(numericValue) || 0);
-    
-    setNominalFormData(prev => ({ ...prev, nominal: formattedValue }));
+
+    setNominalFormData((prev) => ({ ...prev, nominal: formattedValue }));
   };
 
   const columns = [
     {
       key: "tanggal",
       header: "Tanggal",
-      render: (value: string) => <DateCell date={value} />
+      render: (value: string) => <DateCell date={value} />,
     },
     {
-      key: "nama", 
+      key: "nama",
       header: "Nama Asset",
-      render: (value: string) => <TextCell text={value} className="font-medium" />
+      render: (value: string) => (
+        <TextCell text={value} className="font-medium" />
+      ),
     },
     {
       key: "nominal",
-      header: "Nominal", 
-      render: (value: number) => <CurrencyCell amount={value} />
+      header: "Nominal",
+      render: (value: number) => <CurrencyCell amount={value} />,
     },
     {
       // ✅ PERBAIKAN KEY: Ubah dari "companies.nama_perusahaan" ke "companies"
@@ -406,30 +457,42 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
       // ✅ PERBAIKAN RENDER: Akses nested object dari parameter row
       render: (value: any, row: PencatatanAssetItem) => (
         <TextCell text={row.companies?.nama_perusahaan || "-"} />
-      )
+      ),
     },
     {
       key: "companies.modal",
       header: "Modal Perusahaan",
       render: (value: any, row: PencatatanAssetItem) => (
         <CurrencyCell amount={(row.companies as any)?.modal || 0} />
-      )
+      ),
     },
     {
       key: "jenis_transaksi",
       header: "Jenis Transaksi",
       render: (value: string, row: PencatatanAssetItem) => (
-        <TextCell 
-          text={(row as any).jenis_transaksi === 'pengeluaran' ? 'Pengeluaran' : (row as any).jenis_transaksi === 'pemasukan' ? 'Pemasukan' : '-'} 
-          className={`font-medium ${(row as any).jenis_transaksi === 'pengeluaran' ? 'text-red-600' : (row as any).jenis_transaksi === 'pemasukan' ? 'text-green-600' : ''}`}
+        <TextCell
+          text={
+            (row as any).jenis_transaksi === "pengeluaran"
+              ? "Pengeluaran"
+              : (row as any).jenis_transaksi === "pemasukan"
+              ? "Pemasukan"
+              : "-"
+          }
+          className={`font-medium ${
+            (row as any).jenis_transaksi === "pengeluaran"
+              ? "text-red-600"
+              : (row as any).jenis_transaksi === "pemasukan"
+              ? "text-green-600"
+              : ""
+          }`}
         />
-      )
+      ),
     },
     {
       key: "keterangan",
       header: "Keterangan",
-      render: (value: string) => <TextCell text={value || "-"} />
-    }
+      render: (value: string) => <TextCell text={value || "-"} />,
+    },
   ];
 
   const actions = [
@@ -437,37 +500,37 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
       label: "Edit",
       icon: Edit,
       onClick: onEdit,
-      variant: "outline" as const
+      variant: "outline" as const,
     },
     {
       label: "Update Nominal",
       icon: DollarSign,
       onClick: handleUpdateNominal,
-      variant: "outline" as const
+      variant: "outline" as const,
     },
     {
       label: "History",
       icon: History,
       onClick: (row: PencatatanAssetItem) => handleShowHistory(row.nama),
-      variant: "outline" as const
+      variant: "outline" as const,
     },
     {
-      label: "Delete", 
+      label: "Delete",
       icon: Trash2,
       onClick: (row: PencatatanAssetItem) => handleDelete(row.id),
-      variant: "outline" as const
-    }
+      variant: "outline" as const,
+    },
   ];
 
   // Hitung total nilai asset saat ini
   const calculateCurrentAssetValue = () => {
     if (!assetHistory) return 0;
-    
+
     let total = 0;
-    assetHistory.forEach(entry => {
-      if (entry.jenis_transaksi === 'pengeluaran') {
+    assetHistory.forEach((entry) => {
+      if (entry.jenis_transaksi === "pengeluaran") {
         total -= entry.nominal;
-      } else if (entry.jenis_transaksi === 'pemasukan') {
+      } else if (entry.jenis_transaksi === "pemasukan") {
         total += entry.nominal;
       }
     });
@@ -498,11 +561,9 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
       <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              History Asset: {selectedAssetName}
-            </DialogTitle>
+            <DialogTitle>History Asset: {selectedAssetName}</DialogTitle>
           </DialogHeader>
-          
+
           {historyLoading ? (
             <div className="text-center py-8">Loading history...</div>
           ) : (
@@ -515,16 +576,28 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-muted-foreground">Total Transaksi</p>
-                      <p className="text-2xl font-bold">{assetHistory?.length || 0}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Total Transaksi
+                      </p>
+                      <p className="text-2xl font-bold">
+                        {assetHistory?.length || 0}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Nilai Asset Saat Ini</p>
-                      <p className={`text-2xl font-bold ${calculateCurrentAssetValue() >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {new Intl.NumberFormat('id-ID', {
-                          style: 'currency',
-                          currency: 'IDR',
-                          minimumFractionDigits: 0
+                      <p className="text-sm text-muted-foreground">
+                        Nilai Asset Saat Ini
+                      </p>
+                      <p
+                        className={`text-2xl font-bold ${
+                          calculateCurrentAssetValue() >= 0
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {new Intl.NumberFormat("id-ID", {
+                          style: "currency",
+                          currency: "IDR",
+                          minimumFractionDigits: 0,
                         }).format(calculateCurrentAssetValue())}
                       </p>
                     </div>
@@ -541,21 +614,33 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
                   {assetHistory && assetHistory.length > 0 ? (
                     <div className="space-y-2">
                       {assetHistory.map((entry, index) => (
-                        <div key={entry.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div
+                          key={entry.id}
+                          className="flex items-center justify-between p-3 border rounded-lg"
+                        >
                           <div className="flex-1">
                             <div className="flex items-center gap-4">
                               <div className="text-sm text-muted-foreground">
-                                {new Date(entry.created_at).toLocaleDateString('id-ID')}
+                                {new Date(entry.created_at).toLocaleDateString(
+                                  "id-ID"
+                                )}
                               </div>
-                              <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                (entry as any).jenis_transaksi === 'pengeluaran' 
-                                  ? 'bg-red-100 text-red-800' 
-                                  : 'bg-green-100 text-green-800'
-                              }`}>
-                                {(entry as any).jenis_transaksi === 'pengeluaran' ? 'Pengeluaran' : 'Pemasukan'}
+                              <div
+                                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  (entry as any).jenis_transaksi ===
+                                  "pengeluaran"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-green-100 text-green-800"
+                                }`}
+                              >
+                                {(entry as any).jenis_transaksi ===
+                                "pengeluaran"
+                                  ? "Pengeluaran"
+                                  : "Pemasukan"}
                               </div>
                               <div className="text-sm">
-                                {(entry.companies as any)?.nama_perusahaan || 'Unknown Company'}
+                                {(entry.companies as any)?.nama_perusahaan ||
+                                  "Unknown Company"}
                               </div>
                             </div>
                             {entry.keterangan && (
@@ -564,14 +649,20 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
                               </div>
                             )}
                           </div>
-                          <div className={`text-lg font-bold ${
-                            (entry as any).jenis_transaksi === 'pengeluaran' ? 'text-red-600' : 'text-green-600'
-                          }`}>
-                            {(entry as any).jenis_transaksi === 'pengeluaran' ? '-' : '+'}
-                            {new Intl.NumberFormat('id-ID', {
-                              style: 'currency',
-                              currency: 'IDR',
-                              minimumFractionDigits: 0
+                          <div
+                            className={`text-lg font-bold ${
+                              (entry as any).jenis_transaksi === "pengeluaran"
+                                ? "text-red-600"
+                                : "text-green-600"
+                            }`}
+                          >
+                            {(entry as any).jenis_transaksi === "pengeluaran"
+                              ? "-"
+                              : "+"}
+                            {new Intl.NumberFormat("id-ID", {
+                              style: "currency",
+                              currency: "IDR",
+                              minimumFractionDigits: 0,
                             }).format(entry.nominal)}
                           </div>
                         </div>
@@ -590,7 +681,10 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
       </Dialog>
 
       {/* Update Nominal Dialog */}
-      <Dialog open={updateNominalDialogOpen} onOpenChange={setUpdateNominalDialogOpen}>
+      <Dialog
+        open={updateNominalDialogOpen}
+        onOpenChange={setUpdateNominalDialogOpen}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Update Nominal Asset</DialogTitle>
@@ -603,18 +697,23 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
                   <p className="font-medium">{selectedAsset.nama}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Nominal Saat Ini:</p>
+                  <p className="text-sm text-muted-foreground">
+                    Nominal Saat Ini:
+                  </p>
                   <p className="font-medium">
-                    {new Intl.NumberFormat('id-ID', {
-                      style: 'currency',
-                      currency: 'IDR',
-                      minimumFractionDigits: 0
+                    {new Intl.NumberFormat("id-ID", {
+                      style: "currency",
+                      currency: "IDR",
+                      minimumFractionDigits: 0,
                     }).format(selectedAsset.nominal)}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Sumber Dana:</p>
-                  <p className="font-medium">{selectedAsset.companies?.nama_perusahaan || 'Unknown Company'}</p>
+                  <p className="font-medium">
+                    {selectedAsset.companies?.nama_perusahaan ||
+                      "Unknown Company"}
+                  </p>
                 </div>
               </div>
             )}
@@ -625,7 +724,12 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
                 id="tanggal_update"
                 type="date"
                 value={(nominalFormData as any).tanggal_update}
-                onChange={(e) => setNominalFormData(prev => ({ ...prev, tanggal_update: e.target.value }))}
+                onChange={(e) =>
+                  setNominalFormData((prev) => ({
+                    ...prev,
+                    tanggal_update: e.target.value,
+                  }))
+                }
                 required
               />
             </div>
@@ -645,15 +749,24 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
               <Label htmlFor="jenis_transaksi">Jenis Transaksi *</Label>
               <Select
                 value={nominalFormData.jenis_transaksi}
-                onValueChange={(value) => setNominalFormData(prev => ({ ...prev, jenis_transaksi: value }))}
+                onValueChange={(value) =>
+                  setNominalFormData((prev) => ({
+                    ...prev,
+                    jenis_transaksi: value,
+                  }))
+                }
                 required
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih Jenis Transaksi" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pengeluaran">Pengeluaran Asset (Mengurangi Modal)</SelectItem>
-                  <SelectItem value="pemasukan">Pemasukan Asset (Menambah Modal)</SelectItem>
+                  <SelectItem value="pengeluaran">
+                    Pengeluaran Asset (Mengurangi Modal)
+                  </SelectItem>
+                  <SelectItem value="pemasukan">
+                    Pemasukan Asset (Menambah Modal)
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -662,7 +775,12 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
               <Label htmlFor="sumber_dana_id">Sumber Dana *</Label>
               <Select
                 value={nominalFormData.sumber_dana_id}
-                onValueChange={(value) => setNominalFormData(prev => ({ ...prev, sumber_dana_id: value }))}
+                onValueChange={(value) =>
+                  setNominalFormData((prev) => ({
+                    ...prev,
+                    sumber_dana_id: value,
+                  }))
+                }
                 required
               >
                 <SelectTrigger>
@@ -674,10 +792,11 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
                       {company.nama_perusahaan}
                       <br />
                       <small className="text-gray-500">
-                        Modal: {new Intl.NumberFormat('id-ID', {
-                          style: 'currency',
-                          currency: 'IDR',
-                          minimumFractionDigits: 0
+                        Modal:{" "}
+                        {new Intl.NumberFormat("id-ID", {
+                          style: "currency",
+                          currency: "IDR",
+                          minimumFractionDigits: 0,
                         }).format(company.modal || 0)}
                       </small>
                     </SelectItem>
@@ -691,7 +810,12 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
               <Textarea
                 id="alasan"
                 value={nominalFormData.alasan}
-                onChange={(e) => setNominalFormData(prev => ({ ...prev, alasan: e.target.value }))}
+                onChange={(e) =>
+                  setNominalFormData((prev) => ({
+                    ...prev,
+                    alasan: e.target.value,
+                  }))
+                }
                 placeholder="Masukkan alasan update nominal"
                 required
               />
@@ -705,11 +829,10 @@ export const PencatatanAssetTable = ({ data, onEdit, onRefetch }: PencatatanAsse
               >
                 Batal
               </Button>
-              <Button
-                type="submit"
-                disabled={updateNominalMutation.isPending}
-              >
-                {updateNominalMutation.isPending ? "Mengupdate..." : "Update Nominal"}
+              <Button type="submit" disabled={updateNominalMutation.isPending}>
+                {updateNominalMutation.isPending
+                  ? "Mengupdate..."
+                  : "Update Nominal"}
               </Button>
             </div>
           </form>

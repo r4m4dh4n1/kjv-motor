@@ -1164,19 +1164,31 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
           const nominalStr = realNominalQCForm[id].replace(/\./g, "");
           const nominal = parseFloat(nominalStr);
           if (!isNaN(nominal)) {
-            updateData.real_qc = nominal;
+            updateData.real_nominal_qc = nominal;
           }
         }
 
+        console.log("🔄 Updating QC report:", { id, updateData });
         return supabase.from("qc_report").update(updateData).eq("id", id);
       });
 
       const results = await Promise.all(updates);
 
-      // Check for errors
+      // Check for errors with detailed logging
       const errors = results.filter((result) => result.error);
       if (errors.length > 0) {
-        throw new Error("Gagal mengupdate beberapa data");
+        console.error(
+          "❌ Update errors:",
+          errors.map((e) => ({
+            error: e.error,
+            message: e.error?.message,
+            details: e.error?.details,
+            hint: e.error?.hint,
+          }))
+        );
+        throw new Error(
+          errors[0].error?.message || "Gagal mengupdate beberapa data"
+        );
       }
 
       // Refresh data
