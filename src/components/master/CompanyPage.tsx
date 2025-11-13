@@ -3,26 +3,58 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Edit, Trash2, Building, DollarSign, History, Settings } from "lucide-react"; // Tambahkan Settings icon
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Building,
+  DollarSign,
+  History,
+  Settings,
+} from "lucide-react"; // Tambahkan Settings icon
 import { useToast } from "@/hooks/use-toast";
-import { usePagination } from '@/hooks/usePagination';
-import { 
+import { usePagination } from "@/hooks/usePagination";
+import {
   Pagination,
   PaginationContent,
   PaginationItem,
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-  PaginationEllipsis
-} from '@/components/ui/pagination';
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import ModalHistoryPage from "./ModalHistoryPage";
 import { Textarea } from "@/components/ui/textarea"; // Tambahkan import Textarea
-import { formatNumber, parseFormattedNumber, handleNumericInput, formatCurrency } from '@/utils/formatUtils'; // Tambahkan import utils
+import {
+  formatNumber,
+  parseFormattedNumber,
+  handleNumericInput,
+  formatCurrency,
+} from "@/utils/formatUtils"; // Tambahkan import utils
 
 type Company = Tables<"companies">;
 type ModalHistory = Tables<"modal_history">;
@@ -44,21 +76,26 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
   const [divisi, setDivisi] = useState<"" | "sport" | "start">("");
   const [status, setStatus] = useState<"" | "active" | "passive">("");
   const [loading, setLoading] = useState(true);
-  
+
   // Modal injection states
   const [isModalInjectionOpen, setIsModalInjectionOpen] = useState(false);
-  const [selectedCompanyForModal, setSelectedCompanyForModal] = useState<Company | null>(null);
+  const [selectedCompanyForModal, setSelectedCompanyForModal] =
+    useState<Company | null>(null);
   const [modalAmount, setModalAmount] = useState("");
   const [modalDescription, setModalDescription] = useState("");
 
-   // Modal adjustment states
+  // Modal adjustment states
   const [isModalAdjustmentOpen, setIsModalAdjustmentOpen] = useState(false);
-  const [selectedCompanyForAdjustment, setSelectedCompanyForAdjustment] = useState<Company | null>(null);
+  const [selectedCompanyForAdjustment, setSelectedCompanyForAdjustment] =
+    useState<Company | null>(null);
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
-  const [formattedAdjustmentAmount, setFormattedAdjustmentAmount] = useState("");
+  const [formattedAdjustmentAmount, setFormattedAdjustmentAmount] =
+    useState("");
   const [adjustmentDescription, setAdjustmentDescription] = useState("");
-  const [adjustmentType, setAdjustmentType] = useState<"increase" | "decrease">("increase");
-  
+  const [adjustmentType, setAdjustmentType] = useState<"increase" | "decrease">(
+    "increase"
+  );
+
   const { toast } = useToast();
 
   // Implementasi pagination dengan 7 items per halaman
@@ -68,7 +105,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
     paginatedData,
     goToPage,
     resetPage,
-    totalItems
+    totalItems,
   } = usePagination(companies, 7);
 
   useEffect(() => {
@@ -77,19 +114,19 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
 
   const fetchCompanies = async () => {
     try {
-      let query = supabase.from('companies').select('*');
-      
-      if (selectedDivision !== 'all') {
-        query = query.eq('divisi', selectedDivision);
+      let query = supabase.from("companies").select("*");
+
+      if (selectedDivision !== "all") {
+        query = query.eq("divisi", selectedDivision);
       }
-      
-      const { data, error } = await query.order('id', { ascending: true });
+
+      const { data, error } = await query.order("id", { ascending: true });
 
       if (error) throw error;
       setCompanies(data || []);
       resetPage();
     } catch (error) {
-      console.error('Error fetching companies:', error);
+      console.error("Error fetching companies:", error);
       toast({
         title: "Error",
         description: "Gagal memuat data perusahaan",
@@ -102,8 +139,14 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!companyName.trim() || !nomorRekening.trim() || !modal.trim() || !divisi || !status) {
+
+    if (
+      !companyName.trim() ||
+      !nomorRekening.trim() ||
+      !modal.trim() ||
+      !divisi ||
+      !status
+    ) {
       toast({
         title: "Error",
         description: "Semua field harus diisi",
@@ -125,15 +168,15 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
 
       if (editingCompany) {
         const { error } = await supabase
-          .from('companies')
-          .update({ 
+          .from("companies")
+          .update({
             nama_perusahaan: companyName,
             nomor_rekening: nomorRekening,
             modal: modalValue,
             divisi: divisi,
-            status: status
+            status: status,
           })
-          .eq('id', editingCompany.id);
+          .eq("id", editingCompany.id);
 
         if (error) throw error;
 
@@ -142,15 +185,15 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
           description: "Perusahaan berhasil diupdate",
         });
       } else {
-        const { error } = await supabase
-          .from('companies')
-          .insert([{ 
+        const { error } = await supabase.from("companies").insert([
+          {
             nama_perusahaan: companyName,
             nomor_rekening: nomorRekening,
             modal: modalValue,
             divisi: divisi,
-            status: status
-          }]);
+            status: status,
+          },
+        ]);
 
         if (error) throw error;
 
@@ -164,7 +207,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
       setIsDialogOpen(false);
       fetchCompanies();
     } catch (error) {
-      console.error('Error saving company:', error);
+      console.error("Error saving company:", error);
       toast({
         title: "Error",
         description: "Gagal menyimpan perusahaan",
@@ -185,10 +228,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
 
   const handleDelete = async (id: number) => {
     try {
-      const { error } = await supabase
-        .from('companies')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from("companies").delete().eq("id", id);
 
       if (error) throw error;
 
@@ -196,10 +236,10 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
         title: "Berhasil",
         description: "Perusahaan berhasil dihapus",
       });
-      
+
       fetchCompanies();
     } catch (error) {
-      console.error('Error deleting company:', error);
+      console.error("Error deleting company:", error);
       toast({
         title: "Error",
         description: "Gagal menghapus perusahaan",
@@ -210,8 +250,12 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
 
   const handleModalInjection = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!selectedCompanyForModal || !modalAmount.trim() || !modalDescription.trim()) {
+
+    if (
+      !selectedCompanyForModal ||
+      !modalAmount.trim() ||
+      !modalDescription.trim()
+    ) {
       toast({
         title: "Error",
         description: "Semua field harus diisi",
@@ -233,28 +277,32 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
 
       // Insert modal history
       const { error: historyError } = await supabase
-        .from('modal_history')
-        .insert([{
-          company_id: selectedCompanyForModal.id,
-          jumlah: amount,
-          keterangan: modalDescription,
-          tanggal: new Date().toISOString().split('T')[0]
-        }]);
+        .from("modal_history")
+        .insert([
+          {
+            company_id: selectedCompanyForModal.id,
+            jumlah: amount,
+            keterangan: modalDescription,
+            tanggal: new Date().toISOString().split("T")[0],
+          },
+        ]);
 
       if (historyError) throw historyError;
 
       // Update company modal
       const newModal = selectedCompanyForModal.modal + amount;
       const { error: updateError } = await supabase
-        .from('companies')
+        .from("companies")
         .update({ modal: newModal })
-        .eq('id', selectedCompanyForModal.id);
+        .eq("id", selectedCompanyForModal.id);
 
       if (updateError) throw updateError;
 
       toast({
         title: "Berhasil",
-        description: `Modal berhasil ditambahkan sebesar ${formatCurrency(amount)}`,
+        description: `Modal berhasil ditambahkan sebesar ${formatCurrency(
+          amount
+        )}`,
       });
 
       setModalAmount("");
@@ -263,7 +311,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
       setIsModalInjectionOpen(false);
       fetchCompanies();
     } catch (error) {
-      console.error('Error injecting modal:', error);
+      console.error("Error injecting modal:", error);
       toast({
         title: "Error",
         description: "Gagal menambahkan modal",
@@ -272,19 +320,25 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
     }
   };
   // Handler untuk formatting adjustment amount
-  const handleAdjustmentAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAdjustmentAmountChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const value = e.target.value;
     const numericValue = handleNumericInput(value);
     const formattedValue = formatNumber(numericValue);
-    
+
     setAdjustmentAmount(numericValue);
     setFormattedAdjustmentAmount(formattedValue);
   };
 
   const handleModalAdjustment = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!selectedCompanyForAdjustment || !adjustmentAmount.trim() || !adjustmentDescription.trim()) {
+
+    if (
+      !selectedCompanyForAdjustment ||
+      !adjustmentAmount.trim() ||
+      !adjustmentDescription.trim()
+    ) {
       toast({
         title: "Error",
         description: "Semua field harus diisi",
@@ -294,7 +348,9 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
     }
 
     try {
-      const amount = parseFormattedNumber(formattedAdjustmentAmount || adjustmentAmount);
+      const amount = parseFormattedNumber(
+        formattedAdjustmentAmount || adjustmentAmount
+      );
       if (isNaN(amount) || amount <= 0) {
         toast({
           title: "Error",
@@ -305,7 +361,10 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
       }
 
       // Validasi untuk pengurangan modal
-      if (adjustmentType === "decrease" && amount > selectedCompanyForAdjustment.modal) {
+      if (
+        adjustmentType === "decrease" &&
+        amount > selectedCompanyForAdjustment.modal
+      ) {
         toast({
           title: "Error",
           description: "Jumlah pengurangan tidak boleh melebihi modal saat ini",
@@ -315,32 +374,37 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
       }
 
       const finalAmount = adjustmentType === "decrease" ? -amount : amount;
-      const actionText = adjustmentType === "decrease" ? "Pengurangan" : "Penambahan";
+      const actionText =
+        adjustmentType === "decrease" ? "Pengurangan" : "Penambahan";
 
       // Insert modal history
       const { error: historyError } = await supabase
-        .from('modal_history')
-        .insert([{
-          company_id: selectedCompanyForAdjustment.id,
-          jumlah: finalAmount,
-          keterangan: `${actionText} Modal: ${adjustmentDescription}`,
-          tanggal: new Date().toISOString().split('T')[0]
-        }]);
+        .from("modal_history")
+        .insert([
+          {
+            company_id: selectedCompanyForAdjustment.id,
+            jumlah: finalAmount,
+            keterangan: `${actionText} Modal: ${adjustmentDescription}`,
+            tanggal: new Date().toISOString().split("T")[0],
+          },
+        ]);
 
       if (historyError) throw historyError;
 
       // Update company modal
       const newModal = selectedCompanyForAdjustment.modal + finalAmount;
       const { error: updateError } = await supabase
-        .from('companies')
+        .from("companies")
         .update({ modal: newModal })
-        .eq('id', selectedCompanyForAdjustment.id);
+        .eq("id", selectedCompanyForAdjustment.id);
 
       if (updateError) throw updateError;
 
       toast({
         title: "Berhasil",
-        description: `Modal berhasil ${adjustmentType === "decrease" ? "dikurangi" : "ditambahkan"} sebesar ${formatCurrency(amount)}`,
+        description: `Modal berhasil ${
+          adjustmentType === "decrease" ? "dikurangi" : "ditambahkan"
+        } sebesar ${formatCurrency(amount)}`,
       });
 
       setAdjustmentAmount("");
@@ -351,7 +415,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
       setIsModalAdjustmentOpen(false);
       fetchCompanies();
     } catch (error) {
-      console.error('Error adjusting modal:', error);
+      console.error("Error adjusting modal:", error);
       toast({
         title: "Error",
         description: "Gagal melakukan adjustment modal",
@@ -363,10 +427,10 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
   const handleViewHistory = async (company: Company) => {
     try {
       const { data, error } = await supabase
-        .from('modal_history')
-        .select('*')
-        .eq('company_id', company.id)
-        .order('tanggal', { ascending: false });
+        .from("modal_history")
+        .select("*")
+        .eq("company_id", company.id)
+        .order("tanggal", { ascending: false });
 
       if (error) throw error;
 
@@ -374,7 +438,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
       setModalHistory(data || []);
       setIsHistoryOpen(true);
     } catch (error) {
-      console.error('Error fetching modal history:', error);
+      console.error("Error fetching modal history:", error);
       toast({
         title: "Error",
         description: "Gagal memuat history modal",
@@ -393,9 +457,9 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
       minimumFractionDigits: 0,
     }).format(amount);
   };
@@ -409,19 +473,23 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
 
     const pages = [];
     const maxVisiblePages = 5;
-    
+
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
     const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    
+
     if (endPage - startPage + 1 < maxVisiblePages) {
       startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
 
     pages.push(
       <PaginationItem key="prev">
-        <PaginationPrevious 
+        <PaginationPrevious
           onClick={() => currentPage > 1 && goToPage(currentPage - 1)}
-          className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+          className={
+            currentPage === 1
+              ? "pointer-events-none opacity-50"
+              : "cursor-pointer"
+          }
         />
       </PaginationItem>
     );
@@ -429,7 +497,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
     if (startPage > 1) {
       pages.push(
         <PaginationItem key={1}>
-          <PaginationLink 
+          <PaginationLink
             onClick={() => goToPage(1)}
             isActive={currentPage === 1}
             className="cursor-pointer"
@@ -438,7 +506,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
           </PaginationLink>
         </PaginationItem>
       );
-      
+
       if (startPage > 2) {
         pages.push(
           <PaginationItem key="ellipsis1">
@@ -451,7 +519,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
     for (let i = startPage; i <= endPage; i++) {
       pages.push(
         <PaginationItem key={i}>
-          <PaginationLink 
+          <PaginationLink
             onClick={() => goToPage(i)}
             isActive={currentPage === i}
             className="cursor-pointer"
@@ -470,10 +538,10 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
           </PaginationItem>
         );
       }
-      
+
       pages.push(
         <PaginationItem key={totalPages}>
-          <PaginationLink 
+          <PaginationLink
             onClick={() => goToPage(totalPages)}
             isActive={currentPage === totalPages}
             className="cursor-pointer"
@@ -486,18 +554,20 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
 
     pages.push(
       <PaginationItem key="next">
-        <PaginationNext 
+        <PaginationNext
           onClick={() => currentPage < totalPages && goToPage(currentPage + 1)}
-          className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+          className={
+            currentPage === totalPages
+              ? "pointer-events-none opacity-50"
+              : "cursor-pointer"
+          }
         />
       </PaginationItem>
     );
 
     return (
       <Pagination className="mt-4">
-        <PaginationContent>
-          {pages}
-        </PaginationContent>
+        <PaginationContent>{pages}</PaginationContent>
       </Pagination>
     );
   };
@@ -514,14 +584,15 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
             <Building className="w-8 h-8 text-blue-600" />
             Master Perusahaan
           </h1>
-          <p className="text-gray-600 mt-2">
-            Kelola data perusahaan dan modal
-          </p>
+          <p className="text-gray-600 mt-2">Kelola data perusahaan dan modal</p>
         </div>
-        
+
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={resetForm} className="bg-blue-600 hover:bg-blue-700">
+            <Button
+              onClick={resetForm}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
               <Plus className="w-4 h-4 mr-2" />
               Tambah Perusahaan
             </Button>
@@ -566,7 +637,10 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
               </div>
               <div>
                 <Label htmlFor="divisi">Divisi</Label>
-                <Select value={divisi} onValueChange={(value: "sport" | "start") => setDivisi(value)}>
+                <Select
+                  value={divisi}
+                  onValueChange={(value: "sport" | "start") => setDivisi(value)}
+                >
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Pilih divisi" />
                   </SelectTrigger>
@@ -578,7 +652,12 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
               </div>
               <div>
                 <Label htmlFor="status">Status</Label>
-                <Select value={status} onValueChange={(value: "active" | "passive") => setStatus(value)}>
+                <Select
+                  value={status}
+                  onValueChange={(value: "active" | "passive") =>
+                    setStatus(value)
+                  }
+                >
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Pilih status" />
                   </SelectTrigger>
@@ -592,9 +671,9 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                 <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
                   {editingCompany ? "Update" : "Simpan"}
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setIsDialogOpen(false)}
                 >
                   Batal
@@ -605,12 +684,49 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
         </Dialog>
       </div>
 
+      {/* Card Total Modal Perusahaan */}
+      <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="bg-blue-600 p-3 rounded-lg">
+                <DollarSign className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 font-medium">
+                  Total Modal Perusahaan
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {selectedDivision === "all"
+                    ? "Semua Divisi"
+                    : `Divisi ${selectedDivision.toUpperCase()}`}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-3xl font-bold text-blue-600">
+                {formatCurrency(
+                  companies.reduce(
+                    (total, company) => total + (company.modal || 0),
+                    0
+                  )
+                )}
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                dari {companies.length} perusahaan
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Daftar Perusahaan</span>
             <span className="text-sm font-normal text-gray-500">
-              Total: {totalItems} perusahaan | Halaman {currentPage} dari {totalPages}
+              Total: {totalItems} perusahaan | Halaman {currentPage} dari{" "}
+              {totalPages}
             </span>
           </CardTitle>
         </CardHeader>
@@ -630,7 +746,10 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
             <TableBody>
               {paginatedData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  <TableCell
+                    colSpan={7}
+                    className="text-center py-8 text-gray-500"
+                  >
                     Tidak ada data perusahaan
                   </TableCell>
                 </TableRow>
@@ -638,24 +757,30 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                 paginatedData.map((company, index) => (
                   <TableRow key={company.id}>
                     <TableCell>{getRowNumber(index)}</TableCell>
-                    <TableCell className="font-medium">{company.nama_perusahaan}</TableCell>
+                    <TableCell className="font-medium">
+                      {company.nama_perusahaan}
+                    </TableCell>
                     <TableCell>{company.nomor_rekening}</TableCell>
                     <TableCell>{formatCurrency(company.modal)}</TableCell>
                     <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        company.divisi === 'sport' 
-                          ? 'bg-blue-100 text-blue-800' 
-                          : 'bg-green-100 text-green-800'
-                      }`}>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          company.divisi === "sport"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-green-100 text-green-800"
+                        }`}
+                      >
                         {company.divisi}
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        company.status === 'active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          company.status === "active"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
                         {company.status}
                       </span>
                     </TableCell>
@@ -712,13 +837,16 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
               )}
             </TableBody>
           </Table>
-          
+
           {renderPagination()}
         </CardContent>
       </Card>
 
       {/* Modal Injection Dialog */}
-      <Dialog open={isModalInjectionOpen} onOpenChange={setIsModalInjectionOpen}>
+      <Dialog
+        open={isModalInjectionOpen}
+        onOpenChange={setIsModalInjectionOpen}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -752,9 +880,9 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
               <Button type="submit" className="bg-green-600 hover:bg-green-700">
                 Suntik Modal
               </Button>
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => {
                   setIsModalInjectionOpen(false);
                   setModalAmount("");
@@ -770,7 +898,10 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
       </Dialog>
 
       {/* Modal Adjustment Dialog */}
-      <Dialog open={isModalAdjustmentOpen} onOpenChange={setIsModalAdjustmentOpen}>
+      <Dialog
+        open={isModalAdjustmentOpen}
+        onOpenChange={setIsModalAdjustmentOpen}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -782,14 +913,22 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
             {selectedCompanyForAdjustment && (
               <div className="p-3 bg-blue-50 rounded-lg">
                 <p className="text-sm text-blue-700">
-                  Modal saat ini: <span className="font-semibold">{formatCurrency(selectedCompanyForAdjustment.modal)}</span>
+                  Modal saat ini:{" "}
+                  <span className="font-semibold">
+                    {formatCurrency(selectedCompanyForAdjustment.modal)}
+                  </span>
                 </p>
               </div>
             )}
-            
+
             <div>
               <Label htmlFor="adjustmentType">Tipe Adjustment</Label>
-              <Select value={adjustmentType} onValueChange={(value: "increase" | "decrease") => setAdjustmentType(value)}>
+              <Select
+                value={adjustmentType}
+                onValueChange={(value: "increase" | "decrease") =>
+                  setAdjustmentType(value)
+                }
+              >
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Pilih tipe adjustment" />
                 </SelectTrigger>
@@ -799,7 +938,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div>
               <Label htmlFor="adjustmentAmount">Jumlah Adjustment</Label>
               <Input
@@ -812,11 +951,14 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
               />
               {formattedAdjustmentAmount && (
                 <p className="text-xs text-gray-500 mt-1">
-                  Nilai: {formatCurrency(parseFormattedNumber(formattedAdjustmentAmount))}
+                  Nilai:{" "}
+                  {formatCurrency(
+                    parseFormattedNumber(formattedAdjustmentAmount)
+                  )}
                 </p>
               )}
             </div>
-            
+
             <div>
               <Label htmlFor="adjustmentDescription">Keterangan</Label>
               <Textarea
@@ -828,17 +970,23 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                 rows={3}
               />
             </div>
-            
+
             <div className="flex gap-2 pt-4">
-              <Button 
-                type="submit" 
-                className={adjustmentType === "decrease" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
+              <Button
+                type="submit"
+                className={
+                  adjustmentType === "decrease"
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "bg-green-600 hover:bg-green-700"
+                }
               >
-                {adjustmentType === "decrease" ? "Kurangi Modal" : "Tambah Modal"}
+                {adjustmentType === "decrease"
+                  ? "Kurangi Modal"
+                  : "Tambah Modal"}
               </Button>
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => {
                   setIsModalAdjustmentOpen(false);
                   setAdjustmentAmount("");

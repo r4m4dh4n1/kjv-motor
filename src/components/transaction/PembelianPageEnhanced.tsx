@@ -2519,7 +2519,9 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                                   }
 
                                   return (
-                                    <span className={`text-[11px] ${colorClass}`}>
+                                    <span
+                                      className={`text-[11px] ${colorClass}`}
+                                    >
                                       {totalHari} hari
                                     </span>
                                   );
