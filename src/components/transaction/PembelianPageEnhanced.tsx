@@ -2667,9 +2667,6 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                 className="h-7 text-[11px] px-3"
               >
                 Tutup
-                className="border-gray-300 hover:bg-gray-50 h-9 text-sm"
-              >
-                Tutup
               </Button>
             </div>
           </div>
