@@ -125,12 +125,15 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   );
   const [isVerifyingQC, setIsVerifyingQC] = useState(false);
 
-  // State untuk Update Tanggal Selesai QC
+  // State untuk Update QC (Tanggal & Real Nominal)
   const [
     isUpdateTanggalSelesaiDialogOpen,
     setIsUpdateTanggalSelesaiDialogOpen,
   ] = useState(false);
   const [tanggalSelesaiQCForm, setTanggalSelesaiQCForm] = useState<{
+    [key: string]: string;
+  }>({});
+  const [realNominalQCForm, setRealNominalQCForm] = useState<{
     [key: string]: string;
   }>({});
   const [isUpdatingTanggalSelesai, setIsUpdatingTanggalSelesai] =
@@ -949,11 +952,16 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       if (error) throw error;
 
       // Ambil pembelian dengan join ke brands dan jenis_motor, filter berdasarkan divisi
-      let pembelianQuery = supabase.from("pembelian").select(`
+      let pembelianQuery = supabase
+        .from("pembelian")
+        .select(
+          `
           *,
           brands:brand_id(name),
           jenis_motor:jenis_motor_id(jenis_motor)
-        `);
+        `
+        )
+        .eq("status", "ready"); // Filter hanya motor dengan status ready
 
       // Filter berdasarkan divisi yang dipilih
       if (selectedDivision !== "all") {
@@ -1109,7 +1117,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     }
   };
 
-  // Handler untuk membuka dialog update tanggal selesai QC
+  // Handler untuk membuka dialog update QC (tanggal & real nominal)
   const handleOpenUpdateTanggalSelesai = () => {
     if (selectedQCReports.length === 0) {
       toast({
@@ -1120,30 +1128,47 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       return;
     }
 
-    // Initialize form dengan tanggal hari ini untuk setiap unit yang dipilih
-    const initialForm: { [key: string]: string } = {};
+    // Initialize form untuk tanggal dan real nominal
+    const initialTanggalForm: { [key: string]: string } = {};
+    const initialRealNominalForm: { [key: string]: string } = {};
+
     selectedQCReports.forEach((id) => {
       const qcData = viewQCReportData.find((item) => item.id === id);
       // Jika sudah ada tanggal_selesai_qc, gunakan itu. Jika belum, gunakan tanggal hari ini
-      initialForm[id] =
+      initialTanggalForm[id] =
         qcData?.tanggal_selesai_qc || new Date().toISOString().split("T")[0];
+      // Set real_qc yang sudah ada atau kosongkan
+      initialRealNominalForm[id] = qcData?.real_qc
+        ? String(qcData.real_qc)
+        : "";
     });
-    setTanggalSelesaiQCForm(initialForm);
+
+    setTanggalSelesaiQCForm(initialTanggalForm);
+    setRealNominalQCForm(initialRealNominalForm);
     setIsUpdateTanggalSelesaiDialogOpen(true);
   };
 
-  // Handler untuk save tanggal selesai QC
+  // Handler untuk save QC (tanggal selesai & real nominal)
   const handleSaveTanggalSelesaiQC = async () => {
     setIsUpdatingTanggalSelesai(true);
     try {
       // Update setiap QC report yang dipilih
       const updates = selectedQCReports.map((id) => {
-        return supabase
-          .from("qc_report")
-          .update({
-            tanggal_selesai_qc: tanggalSelesaiQCForm[id],
-          })
-          .eq("id", id);
+        const updateData: any = {
+          tanggal_selesai_qc: tanggalSelesaiQCForm[id],
+        };
+
+        // Tambahkan real_qc jika ada input
+        if (realNominalQCForm[id] && realNominalQCForm[id].trim() !== "") {
+          // Parse nominal, remove dots and convert to number
+          const nominalStr = realNominalQCForm[id].replace(/\./g, "");
+          const nominal = parseFloat(nominalStr);
+          if (!isNaN(nominal)) {
+            updateData.real_qc = nominal;
+          }
+        }
+
+        return supabase.from("qc_report").update(updateData).eq("id", id);
       });
 
       const results = await Promise.all(updates);
@@ -1159,17 +1184,18 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
 
       toast({
         title: "Sukses",
-        description: `${selectedQCReports.length} unit berhasil diupdate tanggal selesai QC`,
+        description: `${selectedQCReports.length} unit berhasil diupdate`,
       });
 
       setIsUpdateTanggalSelesaiDialogOpen(false);
       setSelectedQCReports([]);
       setTanggalSelesaiQCForm({});
+      setRealNominalQCForm({});
     } catch (error: any) {
-      console.error("Error updating tanggal selesai QC:", error);
+      console.error("Error updating QC:", error);
       toast({
         title: "Error",
-        description: error.message || "Gagal mengupdate tanggal selesai QC",
+        description: error.message || "Gagal mengupdate QC",
         variant: "destructive",
       });
     } finally {
@@ -2555,7 +2581,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                     ) : (
                       <>
                         <CalendarIcon className="w-4 h-4 mr-2" />
-                        Update Tanggal Selesai ({selectedQCReports.length})
+                        Update QC ({selectedQCReports.length})
                       </>
                     )}
                   </Button>
@@ -2591,17 +2617,17 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Update Tanggal Selesai QC */}
+      {/* Dialog Update QC */}
       <Dialog
         open={isUpdateTanggalSelesaiDialogOpen}
         onOpenChange={setIsUpdateTanggalSelesaiDialogOpen}
       >
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Update Tanggal Selesai QC</DialogTitle>
+            <DialogTitle>Update QC</DialogTitle>
             <DialogDescription>
-              Mengupdate tanggal selesai QC untuk {selectedQCReports.length}{" "}
-              unit yang dipilih
+              Mengupdate tanggal selesai QC dan real nominal QC untuk{" "}
+              {selectedQCReports.length} unit yang dipilih
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 space-y-4">
@@ -2623,6 +2649,9 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                     </th>
                     <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium">
                       Tanggal Selesai QC
+                    </th>
+                    <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium">
+                      Real Nominal QC
                     </th>
                   </tr>
                 </thead>
@@ -2660,6 +2689,26 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                             className="w-full"
                           />
                         </td>
+                        <td className="border border-gray-300 px-4 py-2">
+                          <Input
+                            type="text"
+                            placeholder="1.000.000"
+                            value={realNominalQCForm[qcId] || ""}
+                            onChange={(e) => {
+                              // Format input dengan titik pemisah ribuan
+                              const value = e.target.value.replace(/\D/g, "");
+                              const formatted = value.replace(
+                                /\B(?=(\d{3})+(?!\d))/g,
+                                "."
+                              );
+                              setRealNominalQCForm({
+                                ...realNominalQCForm,
+                                [qcId]: formatted,
+                              });
+                            }}
+                            className="w-full"
+                          />
+                        </td>
                       </tr>
                     );
                   })}
@@ -2670,7 +2719,11 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
           <div className="flex justify-end gap-2 mt-4">
             <Button
               variant="outline"
-              onClick={() => setIsUpdateTanggalSelesaiDialogOpen(false)}
+              onClick={() => {
+                setIsUpdateTanggalSelesaiDialogOpen(false);
+                setTanggalSelesaiQCForm({});
+                setRealNominalQCForm({});
+              }}
               disabled={isUpdatingTanggalSelesai}
             >
               Batal
