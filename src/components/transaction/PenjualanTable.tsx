@@ -81,6 +81,8 @@ const PenjualanTable = ({
 }: PenjualanTableProps) => {
   const isMobile = useIsMobile();
   const { hasPermission } = useRBAC();
+  const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
+  const [selectedPenjualan, setSelectedPenjualan] = React.useState<any>(null);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -219,7 +221,12 @@ const PenjualanTable = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => {}}>
+            <DropdownMenuItem
+              onClick={() => {
+                setSelectedPenjualan(penjualan);
+                setDetailDialogOpen(true);
+              }}
+            >
               <Eye className="w-4 h-4 mr-2" />
               Lihat Detail
             </DropdownMenuItem>
@@ -502,6 +509,129 @@ const PenjualanTable = ({
           </TableBody>
         </Table>
       </div>
+
+      {/* Detail Dialog */}
+      {selectedPenjualan && (
+        <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Detail Penjualan</DialogTitle>
+              <DialogDescription>
+                Informasi lengkap penjualan motor{" "}
+                {selectedPenjualan.brands?.name} -{" "}
+                {selectedPenjualan.jenis_motor?.jenis_motor}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-4 py-4">
+              <div className="space-y-2">
+                <div>
+                  <strong>Tanggal:</strong>{" "}
+                  {formatDate(selectedPenjualan.tanggal)}
+                </div>
+                <div>
+                  <strong>Divisi:</strong> {selectedPenjualan.divisi}
+                </div>
+                <div>
+                  <strong>Cabang:</strong>{" "}
+                  {selectedPenjualan.cabang?.nama || "-"}
+                </div>
+                <div>
+                  <strong>Jenis Transaksi:</strong>{" "}
+                  {selectedPenjualan.tt?.replace("_", " ")}
+                </div>
+                <div>
+                  <strong>Brand:</strong>{" "}
+                  {selectedPenjualan.brands?.name || "-"}
+                </div>
+                <div>
+                  <strong>Jenis Motor:</strong>{" "}
+                  {selectedPenjualan.jenis_motor?.jenis_motor || "-"}
+                </div>
+                <div>
+                  <strong>Tahun:</strong> {selectedPenjualan.tahun}
+                </div>
+                <div>
+                  <strong>Warna:</strong> {selectedPenjualan.warna}
+                </div>
+                <div>
+                  <strong>Plat Nomor:</strong> {selectedPenjualan.plat}
+                </div>
+                <div>
+                  <strong>Kilometer:</strong>{" "}
+                  {selectedPenjualan.kilometer?.toLocaleString()} km
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <strong>Harga Beli:</strong>{" "}
+                  {formatCurrency(selectedPenjualan.harga_beli)}
+                </div>
+                <div>
+                  <strong>Harga Jual:</strong>{" "}
+                  {formatCurrency(selectedPenjualan.harga_jual)}
+                </div>
+                <div>
+                  <strong>Harga Bayar:</strong>{" "}
+                  {formatCurrency(selectedPenjualan.harga_bayar)}
+                </div>
+                <div>
+                  <strong>Keuntungan:</strong>{" "}
+                  {formatCurrency(selectedPenjualan.keuntungan)}
+                </div>
+                <div>
+                  <strong>DP:</strong>{" "}
+                  {selectedPenjualan.dp
+                    ? formatCurrency(selectedPenjualan.dp)
+                    : "-"}
+                </div>
+                <div>
+                  <strong>Sisa Bayar:</strong>{" "}
+                  {formatCurrency(selectedPenjualan.sisa_bayar)}
+                </div>
+                <div>
+                  <strong>Jenis Pembayaran:</strong>{" "}
+                  {selectedPenjualan.jenis_pembayaran?.replace("_", " ")}
+                </div>
+                <div>
+                  <strong>Nama Pembeli:</strong>{" "}
+                  {selectedPenjualan.nama_pembeli || "-"}
+                </div>
+                <div>
+                  <strong>Kontak:</strong> {selectedPenjualan.kontak || "-"}
+                </div>
+                <div>
+                  <strong>Status:</strong>{" "}
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs ${
+                      selectedPenjualan.status === "selesai"
+                        ? "bg-green-100 text-green-800"
+                        : selectedPenjualan.status === "proses"
+                        ? "bg-blue-100 text-blue-800"
+                        : selectedPenjualan.status === "pending"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : selectedPenjualan.status === "cancelled_dp_hangus"
+                        ? "bg-gray-100 text-gray-800"
+                        : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {selectedPenjualan.status === "cancelled_dp_hangus"
+                      ? "DP Hangus"
+                      : selectedPenjualan.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+            {selectedPenjualan.keterangan && (
+              <div className="pt-4 border-t">
+                <strong>Keterangan:</strong>
+                <p className="mt-2 text-sm text-gray-600">
+                  {selectedPenjualan.keterangan}
+                </p>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
     </TooltipProvider>
   );
 };
