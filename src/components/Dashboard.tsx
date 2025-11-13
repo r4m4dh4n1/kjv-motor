@@ -518,8 +518,14 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
           sample: allQCReport[0],
         });
 
-        // Filter by division and cabang if needed
+        // Filter by division, cabang, and status ready
         let filteredQCReport = allQCReport;
+
+        // Filter hanya pembelian dengan status "ready"
+        filteredQCReport = filteredQCReport.filter(
+          (qc) => qc.pembelian?.status === "ready"
+        );
+
         if (selectedDivision !== "all") {
           filteredQCReport = filteredQCReport.filter(
             (qc) => qc.pembelian?.divisi === selectedDivision
@@ -532,7 +538,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
           );
         }
 
-        console.log("📊 Filtered QC Report:", {
+        console.log("📊 Filtered QC Report (ready only):", {
           total: filteredQCReport.length,
           selectedDivision,
           selectedCabang,
