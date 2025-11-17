@@ -2531,12 +2531,12 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                                 Rp {estimasi.toLocaleString("id-ID")}
                               </td>
                               <td className="px-1.5 py-1.5 text-[11px] text-right font-bold text-green-600">
-                                {real > 0
+                                {real != null
                                   ? `Rp ${real.toLocaleString("id-ID")}`
                                   : "-"}
                               </td>
                               <td className="px-1.5 py-1.5 text-center">
-                                {real !== 0 ? (
+                                {real != null ? (
                                   <span className="inline-flex items-center px-1 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-800">
                                     ✓
                                   </span>
