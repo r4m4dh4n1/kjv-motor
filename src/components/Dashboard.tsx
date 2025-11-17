@@ -1355,9 +1355,13 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                           const real = qc.real_nominal_qc;
                           const hasEstimasi =
                             estimasi != null && estimasi !== 0;
-                          const hasReal = real != null && real !== 0;
-                          // Status berdasarkan real QC: jika real > 0 maka QC selesai
-                          const isQCSelesai = hasReal;
+                          const hasReal = real != null;
+                          // Status berdasarkan real QC > 0 ATAU ada verified_at ATAU ada tanggal_selesai_qc
+                          const hasRealNominal =
+                            qc.real_nominal_qc && qc.real_nominal_qc > 0;
+                          const hasVerification =
+                            qc.verified_at || qc.tanggal_selesai_qc;
+                          const isQCSelesai = hasRealNominal || hasVerification;
                           return (
                             <tr
                               key={`${qc.id}-${qc.pembelian_id}-${idx}`}
@@ -1387,7 +1391,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                               <td className="border p-2">
                                 {isQCSelesai ? (
                                   <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-[10px]">
-                                    QC Selesai
+                                    Sudah QC
                                   </span>
                                 ) : (
                                   <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-[10px]">
