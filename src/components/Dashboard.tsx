@@ -544,17 +544,21 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
           selectedCabang,
         });
 
-        // Unit belum QC: real_nominal_qc is null, 0, or undefined
-        qcReportBelumQC = filteredQCReport.filter(
-          (qc) => !qc.real_nominal_qc || qc.real_nominal_qc === 0
-        );
-        unitBelumQC = qcReportBelumQC.length;
-
-        // Unit sudah QC: real_nominal_qc > 0
-        qcReportSudahQC = filteredQCReport.filter(
-          (qc) => qc.real_nominal_qc && qc.real_nominal_qc > 0
-        );
+        // Unit sudah QC: real_nominal_qc > 0 ATAU (real_nominal_qc null/0 tapi verified_at atau tanggal_selesai_qc ada isinya)
+        qcReportSudahQC = filteredQCReport.filter((qc) => {
+          const hasRealNominal = qc.real_nominal_qc && qc.real_nominal_qc > 0;
+          const hasVerification = qc.verified_at || qc.tanggal_selesai_qc;
+          return hasRealNominal || hasVerification;
+        });
         unitSudahQC = qcReportSudahQC.length;
+
+        // Unit belum QC: real_nominal_qc is null/0 DAN tidak ada verified_at DAN tidak ada tanggal_selesai_qc
+        qcReportBelumQC = filteredQCReport.filter((qc) => {
+          const hasRealNominal = qc.real_nominal_qc && qc.real_nominal_qc > 0;
+          const hasVerification = qc.verified_at || qc.tanggal_selesai_qc;
+          return !hasRealNominal && !hasVerification;
+        });
+        unitBelumQC = qcReportBelumQC.length;
 
         console.log("📊 QC Count:", {
           belumQC: unitBelumQC,
