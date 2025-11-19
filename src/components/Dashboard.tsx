@@ -92,7 +92,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
   const [sortReadyUnits, setSortReadyUnits] = useState<{
     field: string;
     order: "asc" | "desc";
-  }>({ field: "tanggal_pembelian", order: "desc" });
+  }>({ field: "jenis_motor", order: "asc" });
 
   const [stats, setStats] = useState({
     totalAssets: 0,
