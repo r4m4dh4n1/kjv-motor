@@ -88,6 +88,12 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
     order: "asc" | "desc";
   }>({ field: "tanggal_pembelian", order: "desc" });
 
+  // Sort state for Ready Units
+  const [sortReadyUnits, setSortReadyUnits] = useState<{
+    field: string;
+    order: "asc" | "desc";
+  }>({ field: "tanggal_pembelian", order: "desc" });
+
   const [stats, setStats] = useState({
     totalAssets: 0,
     activeCompanies: 0,
@@ -913,6 +919,52 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                 Daftar unit dengan status ready dan modal yang dibutuhkan
               </DialogDescription>
             </DialogHeader>
+
+            {/* Sort Controls */}
+            <div className="flex gap-4 items-end mb-4 mt-4">
+              <div className="flex-1">
+                <label className="text-sm font-medium mb-1 block">
+                  Sort By
+                </label>
+                <Select
+                  value={sortReadyUnits.field}
+                  onValueChange={(value) =>
+                    setSortReadyUnits({ ...sortReadyUnits, field: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tanggal_pembelian">
+                      Tanggal Pembelian
+                    </SelectItem>
+                    <SelectItem value="brand">Brand</SelectItem>
+                    <SelectItem value="jenis_motor">Jenis Motor</SelectItem>
+                    <SelectItem value="tahun">Tahun</SelectItem>
+                    <SelectItem value="harga">Harga</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1">
+                <label className="text-sm font-medium mb-1 block">Order</label>
+                <Select
+                  value={sortReadyUnits.order}
+                  onValueChange={(value: "asc" | "desc") =>
+                    setSortReadyUnits({ ...sortReadyUnits, order: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="asc">A → Z / Kecil → Besar</SelectItem>
+                    <SelectItem value="desc">Z → A / Besar → Kecil</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="mt-4">
               {readyUnits.length > 0 ? (
                 <div className="overflow-x-auto">
@@ -932,6 +984,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                           Jenis Motor
                         </th>
                         <th className="border p-2 text-left text-xs font-semibold">
+                          Tahun
+                        </th>
+                        <th className="border p-2 text-left text-xs font-semibold">
                           Harga
                         </th>
                       </tr>
@@ -939,20 +994,55 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                     <tbody>
                       {[...readyUnits]
                         .sort((a, b) => {
-                          // Primary sort: Brand name A -> Z
-                          const brandA = (a.brands?.name || "").toLowerCase();
-                          const brandB = (b.brands?.name || "").toLowerCase();
-                          const brandCompare = brandA.localeCompare(brandB);
-                          if (brandCompare !== 0) return brandCompare;
+                          let compareA: any, compareB: any;
 
-                          // Tie-breaker: Tanggal pembelian (terbaru ke terlama)
-                          const dateA = new Date(
-                            a.tanggal_pembelian || 0
-                          ).getTime();
-                          const dateB = new Date(
-                            b.tanggal_pembelian || 0
-                          ).getTime();
-                          return dateB - dateA;
+                          switch (sortReadyUnits.field) {
+                            case "brand":
+                              compareA = (a.brands?.name || "").toLowerCase();
+                              compareB = (b.brands?.name || "").toLowerCase();
+                              break;
+                            case "jenis_motor":
+                              compareA = (
+                                a.jenis_motor?.jenis_motor || ""
+                              ).toLowerCase();
+                              compareB = (
+                                b.jenis_motor?.jenis_motor || ""
+                              ).toLowerCase();
+                              break;
+                            case "tahun":
+                              compareA = Number(a.tahun || 0);
+                              compareB = Number(b.tahun || 0);
+                              break;
+                            case "harga":
+                              compareA =
+                                a.harga_final && a.harga_final > 0
+                                  ? a.harga_final
+                                  : a.harga_beli;
+                              compareB =
+                                b.harga_final && b.harga_final > 0
+                                  ? b.harga_final
+                                  : b.harga_beli;
+                              break;
+                            case "tanggal_pembelian":
+                            default:
+                              compareA = new Date(
+                                a.tanggal_pembelian || 0
+                              ).getTime();
+                              compareB = new Date(
+                                b.tanggal_pembelian || 0
+                              ).getTime();
+                              break;
+                          }
+
+                          if (typeof compareA === "string") {
+                            return sortReadyUnits.order === "asc"
+                              ? compareA.localeCompare(compareB)
+                              : compareB.localeCompare(compareA);
+                          } else {
+                            return sortReadyUnits.order === "asc"
+                              ? compareA - compareB
+                              : compareB - compareA;
+                          }
                         })
                         .map((unit, idx) => {
                           const harga =
@@ -970,6 +1060,9 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
                               </td>
                               <td className="border p-2 text-xs">
                                 {unit.jenis_motor?.jenis_motor || "-"}
+                              </td>
+                              <td className="border p-2 text-xs">
+                                {unit.tahun || "-"}
                               </td>
                               <td className="border p-2 text-xs font-semibold">
                                 {formatCurrency(harga)}
