@@ -138,11 +138,13 @@ const QCReportDialog: React.FC<QCReportDialogProps> = ({
       // Determine real nominal QC:
       // Prefer qc_report.real_nominal_qc if present and non-zero.
       // Otherwise use latestBiayaQc + qcHistoryTotal (existing behavior).
-      const realFromReport = Number(qcReport?.real_nominal_qc ?? 0);
+      const realFromReport = qcReport?.real_nominal_qc;
       const realFallback =
         Number(latestBiayaQc ?? 0) + Number(qcHistoryTotal ?? 0);
       const realNominalQC =
-        realFromReport !== 0 ? realFromReport : realFallback;
+        realFromReport !== null && realFromReport !== undefined
+          ? Number(realFromReport)
+          : realFallback;
 
       // For estimasi, prefer qc_report.estimasi_nominal_qc if available
       const estimasiFromReport = Number(qcReport?.estimasi_nominal_qc ?? 0);

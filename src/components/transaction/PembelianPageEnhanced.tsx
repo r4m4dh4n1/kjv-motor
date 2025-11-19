@@ -770,7 +770,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       parseNumericInput(qcForm.total_pengeluaran)
     );
 
-    if (isNaN(totalPengeluaran) || totalPengeluaran <= 0) {
+    if (isNaN(totalPengeluaran) || totalPengeluaran < 0) {
       toast({
         title: "Error",
         description: "Total pengeluaran harus berupa angka yang valid",
@@ -1138,9 +1138,11 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       initialTanggalForm[id] =
         qcData?.tanggal_selesai_qc || new Date().toISOString().split("T")[0];
       // Set real_qc yang sudah ada atau kosongkan
-      initialRealNominalForm[id] = qcData?.real_qc
-        ? String(qcData.real_qc)
-        : "";
+      initialRealNominalForm[id] =
+        qcData?.real_nominal_qc !== undefined &&
+        qcData?.real_nominal_qc !== null
+          ? String(qcData.real_nominal_qc)
+          : "";
     });
 
     setTanggalSelesaiQCForm(initialTanggalForm);
@@ -2404,8 +2406,11 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                       <tbody className="bg-white divide-y divide-gray-200">
                         {currentQCData.map((item: any, idx: number) => {
                           const estimasi = item.estimasi_nominal_qc ?? 0;
-                          const real = item.real_nominal_qc ?? 0;
-                          const status = real !== 0 ? "Sudah QC" : "Belum QC";
+                          const real = item.real_nominal_qc;
+                          const status =
+                            real !== null && real !== undefined
+                              ? "Sudah QC"
+                              : "Belum QC";
                           const isSelected = selectedQCReports.includes(
                             item.id
                           );
@@ -2531,12 +2536,12 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                                 Rp {estimasi.toLocaleString("id-ID")}
                               </td>
                               <td className="px-1.5 py-1.5 text-[11px] text-right font-bold text-green-600">
-                                {real != null
+                                {real !== null && real !== undefined
                                   ? `Rp ${real.toLocaleString("id-ID")}`
                                   : "-"}
                               </td>
                               <td className="px-1.5 py-1.5 text-center">
-                                {real != null ? (
+                                {real !== null && real !== undefined ? (
                                   <span className="inline-flex items-center px-1 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-800">
                                     ✓
                                   </span>
