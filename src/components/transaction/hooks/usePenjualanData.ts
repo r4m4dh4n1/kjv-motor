@@ -131,25 +131,34 @@ const fetchPenjualanWithRelations = async (
   // Filter tanggal
   if (dateFilter && dateFilter !== "all") {
     if (dateFilter === "custom" && customDateRange) {
-      // Custom date filter: menggunakan tanggal saja (tidak ada prioritas tanggal_lunas)
-      query = query.gte(
-        "tanggal",
-        customDateRange.start.toISOString().split("T")[0]
-      );
-      query = query.lte(
-        "tanggal",
-        customDateRange.end.toISOString().split("T")[0]
-      );
+      // Custom date filter
+      if (statusFilter === "selesai") {
+        // ✅ For sold items, prioritize tanggal_lunas
+        query = query.or(
+          `and(tanggal_lunas.gte.${customDateRange.start.toISOString().split("T")[0]},tanggal_lunas.lte.${customDateRange.end.toISOString().split("T")[0]}),and(tanggal_lunas.is.null,tanggal.gte.${customDateRange.start.toISOString().split("T")[0]},tanggal.lte.${customDateRange.end.toISOString().split("T")[0]})`
+        );
+      } else {
+        // For non-sold items, use regular tanggal
+        query = query.gte(
+          "tanggal",
+          customDateRange.start.toISOString().split("T")[0]
+        );
+        query = query.lte(
+          "tanggal",
+          customDateRange.end.toISOString().split("T")[0]
+        );
+      }
     } else {
       const dateRange = getDateRange(dateFilter);
       if (dateRange) {
-        // ✅ NEW: Untuk filter this_month, prioritaskan tanggal_lunas jika ada
-        if (dateFilter === "this_month") {
+        // ✅ FIXED: For sold items (status = selesai), prioritize tanggal_lunas for ALL periods
+        if (statusFilter === "selesai") {
           // Filter berdasarkan tanggal_lunas jika ada, fallback ke tanggal
           query = query.or(
             `and(tanggal_lunas.gte.${dateRange.start},tanggal_lunas.lte.${dateRange.end}),and(tanggal_lunas.is.null,tanggal.gte.${dateRange.start},tanggal.lte.${dateRange.end})`
           );
         } else {
+          // For non-sold items, use regular tanggal
           query = query.gte("tanggal", dateRange.start);
           query = query.lte("tanggal", dateRange.end);
         }
