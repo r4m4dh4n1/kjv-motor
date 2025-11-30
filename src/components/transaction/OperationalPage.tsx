@@ -554,7 +554,10 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     }
 
     // ✅ NEW: Validate sumber_dana for non-special categories
-    if (!isAssetBased && !formData.sumber_dana) {
+    // ✅ PERBAIKAN: Skip validasi sumber dana untuk kategori "Kurang Profit"
+    const isKurangProfit = isKurangProfitCategory(formData.kategori);
+    
+    if (!isAssetBased && !isKurangProfit && !formData.sumber_dana) {
       toast({
         title: "Error",
         description: "Sumber Dana harus dipilih",
