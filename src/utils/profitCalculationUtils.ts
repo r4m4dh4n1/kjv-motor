@@ -22,3 +22,18 @@ export const calculateStandardProfitTotals = (data: any[], dateRange?: { start: 
   
   return { totalKeuntungan, totalPenjualan, totalUnit };
 };
+
+// Export calculateProfitMetrics as an alias that works with any data without date filtering
+export const calculateProfitMetrics = (data: any[]) => {
+  const totalKeuntungan = data.reduce((sum, item) => {
+    return sum + (item.keuntungan || item.profit || 0);
+  }, 0);
+  
+  const totalPenjualan = data.reduce((sum, item) => {
+    return sum + (item.harga_jual || 0);
+  }, 0);
+  
+  const totalUnits = data.length;
+  
+  return { totalKeuntungan, totalPenjualan, totalUnits };
+};
