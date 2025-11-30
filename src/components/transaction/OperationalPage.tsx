@@ -582,7 +582,6 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     }
 
     // ✅ LOGIKA BARU: Cek kategori berdasarkan aturan baru
-    const isKurangProfit = isKurangProfitCategory(formData.kategori);
     const isKurangModal = isKurangModalCategory(formData.kategori);
     const isOPGlobal = isOPGlobalCategory(formData.kategori);
 
