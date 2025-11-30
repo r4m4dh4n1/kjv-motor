@@ -64,21 +64,6 @@ const ProfitAdjustmentSummary = ({ selectedDivision, dateRange }: ProfitAdjustme
       // Logic: If dateRange is strictly within current month, use 'penjualans'.
       // If it spans past months, we might need 'penjualans_combined' if it exists, 
       // but user asked for "tabel penjualan saja". 
-      // However, to match "Penjualan Sold" which uses combined for "This Month" (wait, previous analysis said Penjualan Sold uses combined for this_month? 
-      // Actually step 262 said: "PenjualanSoldPageEnhanced... for 'this_month' it explicitly *does not* use the combined table."
-      // BUT step 288 said: "Penjualan Sold uses hook usePenjualanData which automatically uses penjualans_combined (active + history) for period 'This Month'."
-      // Let's look at the requirement: "bisa nggak card total keuntungan di operational menggunakan tabel penjualan saja?"
-      // I will query 'penjualans' table directly as requested, but I will ensure I filter correctly.
-      
-      let query = supabase
-        .from('penjualans')
-        .select('keuntungan, harga_jual, status, tanggal')
-        .eq('status', 'selesai'); // Only sold items
-
-      if (selectedDivision !== 'all') {
-        query = query.eq('divisi', selectedDivision);
-      }
-
       if (dateRange?.start) {
         query = query.gte('tanggal', dateRange.start);
       }
