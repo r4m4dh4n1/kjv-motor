@@ -60,23 +60,44 @@ const ProfitAdjustmentSummary = ({ selectedDivision, dateRange }: ProfitAdjustme
 
   const fetchTotalProfit = async () => {
     try {
-      // Determine if we need to query combined table (history) or just active table
-      // Logic: If dateRange is strictly within current month, use 'penjualans'.
-      // If it spans past months, we might need 'penjualans_combined' if it exists, 
-      // but user asked for "tabel penjualan saja". 
-      if (dateRange?.start) {
-        query = query.gte('tanggal', dateRange.start);
-      }
-      if (dateRange?.end) {
-        query = query.lte('tanggal', dateRange.end);
-      }
+      // Helper function to build query for a specific table
+      const fetchFromTable = async (tableName: string) => {
+        let query = supabase
+          .from(tableName as any)
+          .select('keuntungan, harga_jual, status, tanggal')
+          .eq('status', 'selesai'); // Only sold items
 
-      const { data, error } = await query;
+        if (selectedDivision !== 'all') {
+          query = query.eq('divisi', selectedDivision);
+        }
 
-      if (error) throw error;
+        if (dateRange?.start) {
+          query = query.gte('tanggal', dateRange.start);
+        }
+        if (dateRange?.end) {
+          query = query.lte('tanggal', dateRange.end);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+          // If table doesn't exist (e.g. history table not created yet), just return empty
+          console.warn(`Error fetching from ${tableName}:`, error);
+          return [];
+        }
+        return data || [];
+      };
+
+      // Fetch from both active and history tables to ensure we get all data
+      // This matches the logic in usePenjualanData which manually combines them
+      const [activeData, historyData] = await Promise.all([
+        fetchFromTable('penjualans'),
+        fetchFromTable('penjualans_history')
+      ]);
+
+      const combinedData = [...activeData, ...historyData];
 
       // Calculate metrics using the utility to be consistent
-      const metrics = calculateProfitMetrics(data || []);
+      const metrics = calculateProfitMetrics(combinedData);
       
       setTotalProfitData({
         totalKeuntungan: metrics.totalKeuntungan,
