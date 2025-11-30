@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingDown, TrendingUp, DollarSign, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { usePenjualanData } from "@/components/transaction/hooks/usePenjualanData";
 import { calculateProfitMetrics } from "@/utils/profitCalculationUtils";
 
 interface ProfitAdjustmentSummaryProps {
@@ -27,45 +26,86 @@ const ProfitAdjustmentSummary = ({ selectedDivision, dateRange }: ProfitAdjustme
     total_restorations: 0,
     net_adjustment: 0
   });
+  
+  const [totalProfitData, setTotalProfitData] = useState({
+    totalKeuntungan: 0,
+    totalUnits: 0
+  });
+
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // ✅ PERBAIKAN: Gunakan usePenjualanData hook yang sama dengan Penjualan Sold
-  // Determine shouldUseCombined based on dateRange (similar logic to OperationalPage)
-  const currentDate = new Date();
-  const currentMonth = currentDate.getMonth();
-  const currentYear = currentDate.getFullYear();
-  
-  const shouldUseCombined = React.useMemo(() => {
-    if (!dateRange) return false;
-    
-    const startDate = new Date(dateRange.start);
-    return (
-      startDate.getMonth() < currentMonth ||
-      startDate.getFullYear() < currentYear
-    );
-  }, [dateRange, currentMonth, currentYear]);
-
-  // Use the same hook as Penjualan Sold page
-  const { penjualanData } = usePenjualanData(
-    selectedDivision,
-    shouldUseCombined,
-    "custom" as any,
-    dateRange,
-    "selesai" // Only sold items
-  );
-
-  // Calculate profit metrics using the same utility as Penjualan Sold
-  const profitMetrics = calculateProfitMetrics(penjualanData || []);
-
   useEffect(() => {
-    fetchProfitAdjustments();
+    fetchData();
   }, [selectedDivision, dateRange]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      await Promise.all([
+        fetchProfitAdjustments(),
+        fetchTotalProfit()
+      ]);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memuat data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTotalProfit = async () => {
+    try {
+      // Determine if we need to query combined table (history) or just active table
+      // Logic: If dateRange is strictly within current month, use 'penjualans'.
+      // If it spans past months, we might need 'penjualans_combined' if it exists, 
+      // but user asked for "tabel penjualan saja". 
+      // However, to match "Penjualan Sold" which uses combined for "This Month" (wait, previous analysis said Penjualan Sold uses combined for this_month? 
+      // Actually step 262 said: "PenjualanSoldPageEnhanced... for 'this_month' it explicitly *does not* use the combined table."
+      // BUT step 288 said: "Penjualan Sold uses hook usePenjualanData which automatically uses penjualans_combined (active + history) for period 'This Month'."
+      // Let's look at the requirement: "bisa nggak card total keuntungan di operational menggunakan tabel penjualan saja?"
+      // I will query 'penjualans' table directly as requested, but I will ensure I filter correctly.
+      
+      let query = supabase
+        .from('penjualans')
+        .select('keuntungan, harga_jual, status, tanggal')
+        .eq('status', 'selesai'); // Only sold items
+
+      if (selectedDivision !== 'all') {
+        query = query.eq('divisi', selectedDivision);
+      }
+
+      if (dateRange?.start) {
+        query = query.gte('tanggal', dateRange.start);
+      }
+      if (dateRange?.end) {
+        query = query.lte('tanggal', dateRange.end);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      // Calculate metrics using the utility to be consistent
+      const metrics = calculateProfitMetrics(data || []);
+      
+      setTotalProfitData({
+        totalKeuntungan: metrics.totalKeuntungan,
+        totalUnits: metrics.totalUnits
+      });
+
+    } catch (error) {
+      console.error('Error fetching total profit:', error);
+      // Don't block the UI, just show 0
+    }
+  };
 
   const fetchProfitAdjustments = async () => {
     try {
-      setLoading(true);
-      
       const { data, error } = await supabase.rpc('get_profit_adjustments_total' as any, {
         p_divisi: selectedDivision === 'all' ? null : selectedDivision,
         p_start_date: dateRange?.start || null,
@@ -79,13 +119,6 @@ const ProfitAdjustmentSummary = ({ selectedDivision, dateRange }: ProfitAdjustme
       }
     } catch (error) {
       console.error('Error fetching profit adjustments:', error);
-      toast({
-        title: "Error",
-        description: "Gagal memuat data penyesuaian profit",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -126,10 +159,10 @@ const ProfitAdjustmentSummary = ({ selectedDivision, dateRange }: ProfitAdjustme
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-purple-600">
-            {formatCurrency(profitMetrics.totalKeuntungan)}
+            {formatCurrency(totalProfitData.totalKeuntungan)}
           </div>
           <Badge variant="outline" className="mt-2">
-            {profitMetrics.totalUnits} Unit Terjual
+            {totalProfitData.totalUnits} Unit Terjual
           </Badge>
         </CardContent>
       </Card>
