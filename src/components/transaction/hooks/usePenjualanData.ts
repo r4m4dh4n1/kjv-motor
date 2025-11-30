@@ -18,6 +18,14 @@ interface DateRange {
   end: Date;
 }
 
+// Helper function to format date as YYYY-MM-DD in local time
+const formatLocalDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 // Fungsi helper untuk menghitung tanggal
 const getDateRange = (
   filter: DateFilterType
@@ -28,22 +36,22 @@ const getDateRange = (
   switch (filter) {
     case "today":
       return {
-        start: today.toISOString().split("T")[0],
-        end: today.toISOString().split("T")[0],
+        start: formatLocalDate(today),
+        end: formatLocalDate(today),
       };
     case "yesterday":
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
       return {
-        start: yesterday.toISOString().split("T")[0],
-        end: yesterday.toISOString().split("T")[0],
+        start: formatLocalDate(yesterday),
+        end: formatLocalDate(yesterday),
       };
     case "this_week":
       const startOfWeek = new Date(today);
       startOfWeek.setDate(today.getDate() - today.getDay());
       return {
-        start: startOfWeek.toISOString().split("T")[0],
-        end: today.toISOString().split("T")[0],
+        start: formatLocalDate(startOfWeek),
+        end: formatLocalDate(today),
       };
     case "last_week":
       const lastWeekEnd = new Date(today);
@@ -51,36 +59,36 @@ const getDateRange = (
       const lastWeekStart = new Date(lastWeekEnd);
       lastWeekStart.setDate(lastWeekEnd.getDate() - 6);
       return {
-        start: lastWeekStart.toISOString().split("T")[0],
-        end: lastWeekEnd.toISOString().split("T")[0],
+        start: formatLocalDate(lastWeekStart),
+        end: formatLocalDate(lastWeekEnd),
       };
     case "this_month":
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
       return {
-        start: startOfMonth.toISOString().split("T")[0],
-        end: endOfMonth.toISOString().split("T")[0],
+        start: formatLocalDate(startOfMonth),
+        end: formatLocalDate(endOfMonth),
       };
     case "last_month":
       const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
       return {
-        start: lastMonthStart.toISOString().split("T")[0],
-        end: lastMonthEnd.toISOString().split("T")[0],
+        start: formatLocalDate(lastMonthStart),
+        end: formatLocalDate(lastMonthEnd),
       };
     case "this_year":
       const startOfYear = new Date(now.getFullYear(), 0, 1);
       const endOfYear = new Date(now.getFullYear(), 11, 31);
       return {
-        start: startOfYear.toISOString().split("T")[0],
-        end: endOfYear.toISOString().split("T")[0],
+        start: formatLocalDate(startOfYear),
+        end: formatLocalDate(endOfYear),
       };
     case "last_year":
       const lastYearStart = new Date(now.getFullYear() - 1, 0, 1);
       const lastYearEnd = new Date(now.getFullYear() - 1, 11, 31);
       return {
-        start: lastYearStart.toISOString().split("T")[0],
-        end: lastYearEnd.toISOString().split("T")[0],
+        start: formatLocalDate(lastYearStart),
+        end: formatLocalDate(lastYearEnd),
       };
     default:
       return null;
@@ -135,17 +143,17 @@ const fetchPenjualanWithRelations = async (
       if (statusFilter === "selesai") {
         // ✅ For sold items, prioritize tanggal_lunas
         query = query.or(
-          `and(tanggal_lunas.gte.${customDateRange.start.toISOString().split("T")[0]},tanggal_lunas.lte.${customDateRange.end.toISOString().split("T")[0]}),and(tanggal_lunas.is.null,tanggal.gte.${customDateRange.start.toISOString().split("T")[0]},tanggal.lte.${customDateRange.end.toISOString().split("T")[0]})`
+          `and(tanggal_lunas.gte.${formatLocalDate(customDateRange.start)},tanggal_lunas.lte.${formatLocalDate(customDateRange.end)}),and(tanggal_lunas.is.null,tanggal.gte.${formatLocalDate(customDateRange.start)},tanggal.lte.${formatLocalDate(customDateRange.end)})`
         );
       } else {
         // For non-sold items, use regular tanggal
         query = query.gte(
           "tanggal",
-          customDateRange.start.toISOString().split("T")[0]
+          formatLocalDate(customDateRange.start)
         );
         query = query.lte(
           "tanggal",
-          customDateRange.end.toISOString().split("T")[0]
+          formatLocalDate(customDateRange.end)
         );
       }
     } else {
