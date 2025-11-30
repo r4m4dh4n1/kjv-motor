@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingDown, TrendingUp, DollarSign, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { usePenjualanData } from "@/components/transaction/hooks/usePenjualanData";
+import { calculateProfitMetrics } from "@/utils/profitCalculationUtils";
 
 interface ProfitAdjustmentSummaryProps {
   selectedDivision: string;
@@ -19,99 +21,72 @@ interface ProfitAdjustmentData {
   net_adjustment: number;
 }
 
-interface TotalProfitData {
-  total_profit: number;
-  total_sales: number;
-  total_units: number;
-}
-
 const ProfitAdjustmentSummary = ({ selectedDivision, dateRange }: ProfitAdjustmentSummaryProps) => {
   const [adjustmentData, setAdjustmentData] = useState<ProfitAdjustmentData>({
     total_deductions: 0,
     total_restorations: 0,
     net_adjustment: 0
   });
-  const [totalProfitData, setTotalProfitData] = useState<TotalProfitData>({
-    total_profit: 0,
-    total_sales: 0,
-    total_units: 0
-  });
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  // ✅ PERBAIKAN: Gunakan usePenjualanData hook yang sama dengan Penjualan Sold
+  // Determine shouldUseCombined based on dateRange (similar logic to OperationalPage)
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+  
+  const shouldUseCombined = React.useMemo(() => {
+    if (!dateRange) return false;
+    
+    const startDate = new Date(dateRange.start);
+    return (
+      startDate.getMonth() < currentMonth ||
+      startDate.getFullYear() < currentYear
+    );
+  }, [dateRange, currentMonth, currentYear]);
+
+  // Use the same hook as Penjualan Sold page
+  const { penjualanData } = usePenjualanData(
+    selectedDivision,
+    shouldUseCombined,
+    "custom" as any,
+    dateRange,
+    "selesai" // Only sold items
+  );
+
+  // Calculate profit metrics using the same utility as Penjualan Sold
+  const profitMetrics = calculateProfitMetrics(penjualanData || []);
+
   useEffect(() => {
-    fetchData();
+    fetchProfitAdjustments();
   }, [selectedDivision, dateRange]);
 
-  const fetchData = async () => {
+  const fetchProfitAdjustments = async () => {
     try {
       setLoading(true);
-      await Promise.all([
-        fetchProfitAdjustments(),
-        fetchTotalProfit()
-      ]);
+      
+      const { data, error } = await supabase.rpc('get_profit_adjustments_total' as any, {
+        p_divisi: selectedDivision === 'all' ? null : selectedDivision,
+        p_start_date: dateRange?.start || null,
+        p_end_date: dateRange?.end || null
+      });
+
+      if (error) throw error;
+
+      if (data && (data as any).length > 0) {
+        setAdjustmentData((data as any)[0]);
+      }
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching profit adjustments:', error);
       toast({
         title: "Error",
-        description: "Gagal memuat data",
+        description: "Gagal memuat data penyesuaian profit",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  };
-
-  const fetchProfitAdjustments = async () => {
-    const { data, error } = await supabase.rpc('get_profit_adjustments_total' as any, {
-      p_divisi: selectedDivision === 'all' ? null : selectedDivision,
-      p_start_date: dateRange?.start || null,
-      p_end_date: dateRange?.end || null
-    });
-
-    if (error) throw error;
-
-    if (data && (data as any).length > 0) {
-      setAdjustmentData((data as any)[0]);
-    }
-  };
-
-  const fetchTotalProfit = async () => {
-    // Tentukan rentang tanggal
-    const currentDate = new Date();
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth() + 1;
-    
-    // Hitung tanggal akhir bulan yang benar
-    const lastDayOfMonth = new Date(currentYear, currentMonth, 0).getDate();
-    
-    const startDate = dateRange?.start || `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`;
-    const endDate = dateRange?.end || `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${lastDayOfMonth.toString().padStart(2, '0')}`;
-
-    // Query untuk mendapatkan total keuntungan dari penjualan yang selesai
-    let query = supabase
-      .from('penjualans')
-      .select('keuntungan, harga_jual')
-      .eq('status', 'selesai')
-      .gte('tanggal', startDate)
-      .lte('tanggal', endDate);
-
-    if (selectedDivision !== 'all') {
-      query = query.eq('divisi', selectedDivision);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-
-    const totalProfit = data?.reduce((sum, item) => sum + (item.keuntungan || 0), 0) || 0;
-    const totalSales = data?.reduce((sum, item) => sum + (item.harga_jual || 0), 0) || 0;
-    const totalUnits = data?.length || 0;
-
-    setTotalProfitData({
-      total_profit: totalProfit,
-      total_sales: totalSales,
-      total_units: totalUnits
-    });
   };
 
   const formatCurrency = (amount: number) => {
@@ -151,10 +126,10 @@ const ProfitAdjustmentSummary = ({ selectedDivision, dateRange }: ProfitAdjustme
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-purple-600">
-            {formatCurrency(totalProfitData.total_profit)}
+            {formatCurrency(profitMetrics.totalKeuntungan)}
           </div>
           <Badge variant="outline" className="mt-2">
-            {totalProfitData.total_units} Unit Terjual
+            {profitMetrics.totalUnits} Unit Terjual
           </Badge>
         </CardContent>
       </Card>
