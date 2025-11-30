@@ -10,17 +10,15 @@ import AssetPage from "@/components/master/AssetPage";
 import CabangPage from "@/components/master/CabangPage";
 import EmployeesPage from "@/components/master/EmployeesPage";
 import UserApprovalPage from "@/components/master/UserApprovalPage";
-import PembelianPageEnhanced from "@/components/transaction/PembelianPageEnhanced";
+import PembelianPage from "@/components/transaction/PembelianPage";
 import PenjualanPage from "@/components/transaction/PenjualanPage";
 import CicilanPageEnhanced from "../components/transaction/CicilanPageEnhanced";
 import OperationalPage from "@/components/transaction/OperationalPage";
 import BiroJasaPageEnhanced from "../components/transaction/BiroJasaPageEnhanced";
 import FeePenjualanPageEnhanced from "../components/transaction/FeePenjualanPageEnhanced";
 import PembukuanPage from "@/components/finance/PembukuanPage";
-import LabaRugiPage from "@/components/finance/LabaRugiPage";
-import KeuntunganMotorPage from "@/components/finance/KeuntunganMotorPage";
-import { PencatatanAssetPage } from "@/components/transaction/PencatatanAssetPage";
 import ReportsPage from "@/components/reports/ReportsPage";
+import LabaRugiPage from "@/components/finance/LabaRugiPage";
 import RolesPage from "@/components/rbac/RolesPage";
 import PermissionsPage from "@/components/rbac/PermissionsPage";
 import RolePermissionsPage from "@/components/rbac/RolePermissionsPage";
@@ -76,7 +74,7 @@ const Index = () => {
       case "users":
         return <UserApprovalPage />;
       case "pembelian":
-        return <PembelianPageEnhanced selectedDivision={selectedDivision} />;
+        return <PembelianPage selectedDivision={selectedDivision} />;
       case "penjualan-booked":
         return (
           <PenjualanBookedPageEnhanced selectedDivision={selectedDivision} />
@@ -112,13 +110,13 @@ const Index = () => {
       case "breakdown-percabang":
         return <BreakdownPercabangPage selectedDivision={selectedDivision} />;
       case "keuntungan-motor":
-        return <KeuntunganMotorPage selectedDivision={selectedDivision} />;
+        return <div className="p-8 text-center text-muted-foreground">Keuntungan Motor (Under Maintenance)</div>;
       case "profit-distribution":
         return <ProfitDistributionPage selectedDivision={selectedDivision} />;
       case "close-month":
         return <CloseMonthPage selectedDivision={selectedDivision} />;
       case "pencatatan-asset":
-        return <PencatatanAssetPage selectedDivision={selectedDivision} />;
+        return <div className="p-8 text-center text-muted-foreground">Pencatatan Asset (Under Maintenance)</div>;
       case "price-history-upload":
         return <PriceHistoryUploadPage />;
       case "laba-rugi":

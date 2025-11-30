@@ -273,35 +273,39 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
     console.log("?? Fetching pendapatan data:", {
       startDate,
       endDate,
-      shouldUseCombined,
       selectedPeriod,
       startLocal: dateRange.start.toLocaleDateString("id-ID"),
       endLocal: dateRange.end.toLocaleDateString("id-ID"),
     });
 
     try {
-      if (shouldUseCombined) {
+      // ✅ ALWAYS fetch from both tables separately to properly filter by tanggal_lunas
+      // This matches ProfitAdjustmentSummary and PenjualanSoldPageEnhanced logic
+      const fetchFromTable = async (tableName: 'penjualans' | 'penjualans_history') => {
         let query = supabase
-          .from("penjualans_combined")
+          .from(tableName)
           .select(
             `
             harga_jual, 
             harga_beli, 
             keuntungan, 
             divisi, 
-            cabang_id,
-            data_source,
+            cabang_id, 
             tanggal,
-            catatan,
+            tanggal_lunas,
+            catatan, 
             id,
             plat,
             brand_id,
             jenis_id
           `
           )
-          .eq("status", "selesai")
-          .gte("tanggal", startDate)
-          .lte("tanggal", endDate);
+          .eq("status", "selesai");
+        
+        // ✅ Filter by tanggal_lunas (payment completion date), fallback to tanggal
+        query = query.or(
+          `and(tanggal_lunas.gte.${startDate},tanggal_lunas.lte.${endDate}),and(tanggal_lunas.is.null,tanggal.gte.${startDate},tanggal.lte.${endDate})`
+        );
 
         if (selectedDivision !== "all") {
           query = query.eq("divisi", selectedDivision);
@@ -312,180 +316,87 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         }
 
         const { data, error } = await query;
-
         if (error) {
-          console.error("Error fetching combined penjualan data:", error);
-          throw error;
+          console.warn(`Error fetching from ${tableName}:`, error);
+          return [];
         }
+        return data || [];
+      };
 
-        const penjualanData = data || [];
-        console.log(
-          `?? Fetched ${penjualanData.length} combined penjualan records`
-        );
+      const [activeData, historyData] = await Promise.all([
+        fetchFromTable('penjualans'),
+        fetchFromTable('penjualans_history')
+      ]);
 
-        console.log(
-          "?? Sample penjualan data (first 3):",
-          penjualanData.slice(0, 3).map((p) => ({
-            id: p.id,
-            tanggal: p.tanggal,
-            harga_jual: p.harga_jual,
-            divisi: p.divisi,
-          }))
-        );
+      const penjualanData = [...activeData, ...historyData];
+      
+      console.log(
+        `?? Fetched ${penjualanData.length} penjualan records (active: ${activeData.length}, history: ${historyData.length})`
+      );
 
-        // ✅ PERBAIKAN: Tidak perlu filter lagi karena query database sudah filter berdasarkan tanggal
-        // Query database sudah menggunakan .gte() dan .lte() dengan range yang benar
-        const filteredData = penjualanData;
+      console.log(
+        "?? Sample penjualan data (first 3):",
+        penjualanData.slice(0, 3).map((p) => ({
+          id: p.id,
+          tanggal: p.tanggal,
+          tanggal_lunas: p.tanggal_lunas,
+          harga_jual: p.harga_jual,
+          divisi: p.divisi,
+        }))
+      );
 
-        console.log(`?? After date filtering: ${filteredData.length} records`);
+      const brandIds = [
+        ...new Set(penjualanData.map((item) => item.brand_id).filter(Boolean)),
+      ];
+      const jenisIds = [
+        ...new Set(penjualanData.map((item) => item.jenis_id).filter(Boolean)),
+      ];
 
-        const brandIds = [
-          ...new Set(filteredData.map((item) => item.brand_id).filter(Boolean)),
-        ];
-        const jenisIds = [
-          ...new Set(filteredData.map((item) => item.jenis_id).filter(Boolean)),
-        ];
+      const [brandsResult, jenisMotorResult] = await Promise.all([
+        brandIds.length > 0
+          ? supabase.from("brands").select("id, name").in("id", brandIds)
+          : Promise.resolve({ data: [] }),
+        jenisIds.length > 0
+          ? supabase
+              .from("jenis_motor")
+              .select("id, jenis_motor")
+              .in("id", jenisIds)
+          : Promise.resolve({ data: [] }),
+      ]);
 
-        const [brandsResult, jenisMotorResult] = await Promise.all([
-          brandIds.length > 0
-            ? supabase.from("brands").select("id, name").in("id", brandIds)
-            : Promise.resolve({ data: [] }),
-          jenisIds.length > 0
-            ? supabase
-                .from("jenis_motor")
-                .select("id, jenis_motor")
-                .in("id", jenisIds)
-            : Promise.resolve({ data: [] }),
-        ]);
+      const brandMap = new Map(
+        (brandsResult.data || []).map((brand) => [brand.id, brand])
+      );
+      const jenisMap = new Map(
+        (jenisMotorResult.data || []).map((jenis) => [jenis.id, jenis])
+      );
 
-        const brandMap = new Map(
-          (brandsResult.data || []).map((brand) => [brand.id, brand])
-        );
-        const jenisMap = new Map(
-          (jenisMotorResult.data || []).map((jenis) => [jenis.id, jenis])
-        );
+      const enrichedData = penjualanData.map((item) => ({
+        ...item,
+        brands: brandMap.get(item.brand_id) || {
+          name: `Brand ID: ${item.brand_id}`,
+        },
+        jenis_motor: jenisMap.get(item.jenis_id) || {
+          jenis_motor: `Jenis ID: ${item.jenis_id}`,
+        },
+      }));
 
-        const enrichedData = filteredData.map((item) => ({
-          ...item,
-          brands: brandMap.get(item.brand_id) || {
-            name: `Brand ID: ${item.brand_id}`,
-          },
-          jenis_motor: jenisMap.get(item.jenis_id) || {
-            jenis_motor: `Jenis ID: ${item.jenis_id}`,
-          },
-        }));
-
-        return {
-          totalPenjualan: enrichedData.reduce(
-            (sum, item) => sum + (item.harga_jual || 0),
-            0
-          ),
-          totalHargaBeli: enrichedData.reduce(
-            (sum, item) => sum + (item.harga_beli || 0),
-            0
-          ),
-          totalKeuntungan: enrichedData.reduce(
-            (sum, item) => sum + (item.keuntungan || 0),
-            0
-          ),
-          jumlahTransaksi: enrichedData.length,
-          penjualanDetail: enrichedData,
-        };
-      } else {
-        let query = supabase
-          .from("penjualans")
-          .select(
-            `
-            harga_jual, 
-            harga_beli, 
-            keuntungan, 
-            divisi, 
-            cabang_id, 
-            tanggal, 
-            catatan, 
-            id,
-            plat,
-            brand_id,
-            jenis_id
-          `
-          )
-          .eq("status", "selesai")
-          .gte("tanggal", startDate)
-          .lte("tanggal", endDate);
-
-        if (selectedDivision !== "all") {
-          query = query.eq("divisi", selectedDivision);
-        }
-
-        if (selectedCabang !== "all") {
-          query = query.eq("cabang_id", parseInt(selectedCabang));
-        }
-
-        const { data: penjualanData, error } = await query;
-        if (error) {
-          console.error("Error fetching penjualan data:", error);
-          throw error;
-        }
-
-        console.log(`Fetched ${penjualanData?.length || 0} penjualan records`);
-
-        const brandIds = [
-          ...new Set(
-            (penjualanData || []).map((item) => item.brand_id).filter(Boolean)
-          ),
-        ];
-        const jenisIds = [
-          ...new Set(
-            (penjualanData || []).map((item) => item.jenis_id).filter(Boolean)
-          ),
-        ];
-
-        const [brandsResult, jenisMotorResult] = await Promise.all([
-          brandIds.length > 0
-            ? supabase.from("brands").select("id, name").in("id", brandIds)
-            : Promise.resolve({ data: [] }),
-          jenisIds.length > 0
-            ? supabase
-                .from("jenis_motor")
-                .select("id, jenis_motor")
-                .in("id", jenisIds)
-            : Promise.resolve({ data: [] }),
-        ]);
-
-        const brandMap = new Map(
-          (brandsResult.data || []).map((brand) => [brand.id, brand])
-        );
-        const jenisMap = new Map(
-          (jenisMotorResult.data || []).map((jenis) => [jenis.id, jenis])
-        );
-
-        const enrichedData = (penjualanData || []).map((item) => ({
-          ...item,
-          brands: brandMap.get(item.brand_id) || {
-            name: `Brand ID: ${item.brand_id}`,
-          },
-          jenis_motor: jenisMap.get(item.jenis_id) || {
-            jenis_motor: `Jenis ID: ${item.jenis_id}`,
-          },
-        }));
-
-        return {
-          totalPenjualan: enrichedData.reduce(
-            (sum, item) => sum + (item.harga_jual || 0),
-            0
-          ),
-          totalHargaBeli: enrichedData.reduce(
-            (sum, item) => sum + (item.harga_beli || 0),
-            0
-          ),
-          totalKeuntungan: enrichedData.reduce(
-            (sum, item) => sum + (item.keuntungan || 0),
-            0
-          ),
-          jumlahTransaksi: enrichedData.length,
-          penjualanDetail: enrichedData,
-        };
-      }
+      return {
+        totalPenjualan: enrichedData.reduce(
+          (sum, item) => sum + (item.harga_jual || 0),
+          0
+        ),
+        totalHargaBeli: enrichedData.reduce(
+          (sum, item) => sum + (item.harga_beli || 0),
+          0
+        ),
+        totalKeuntungan: enrichedData.reduce(
+          (sum, item) => sum + (item.keuntungan || 0),
+          0
+        ),
+        jumlahTransaksi: enrichedData.length,
+        penjualanDetail: enrichedData,
+      };
     } catch (error) {
       console.error("Error in fetchPendapatanData:", error);
       throw error;

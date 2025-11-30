@@ -37,7 +37,6 @@ import { Search, Filter, BookOpen, DollarSign } from "lucide-react";
 import PenjualanForm from "./PenjualanForm";
 import PenjualanTable from "./PenjualanTable";
 import UpdateHargaModal from "./UpdateHargaModal";
-import PriceHistoryModal from "./PriceHistoryModal";
 import DpCancellationModal from "./DpCancellationModal";
 import TitipOngkirPayoutModal from "./TitipOngkirPayoutModal";
 import { Penjualan, PenjualanFormData } from "./penjualan-types";
@@ -729,15 +728,6 @@ const PenjualanBookedPageEnhanced = ({
         onSubmit={(updateData) =>
           handleSubmitUpdateHarga(updateData, refetchPenjualan)
         }
-      />
-
-      <PriceHistoryModal
-        isOpen={isHistoryModalOpen}
-        onClose={() => {
-          setIsHistoryModalOpen(false);
-          setSelectedPenjualanForHistory(null);
-        }}
-        penjualan={selectedPenjualanForHistory}
       />
 
       <DpCancellationModal

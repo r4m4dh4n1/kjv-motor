@@ -64,18 +64,20 @@ const ProfitAdjustmentSummary = ({ selectedDivision, dateRange }: ProfitAdjustme
       const fetchFromTable = async (tableName: string) => {
         let query = supabase
           .from(tableName as any)
-          .select('keuntungan, harga_jual, status, tanggal')
+          .select('keuntungan, harga_jual, status, tanggal, tanggal_lunas')
           .eq('status', 'selesai'); // Only sold items
 
         if (selectedDivision !== 'all') {
           query = query.eq('divisi', selectedDivision);
         }
 
-        if (dateRange?.start) {
-          query = query.gte('tanggal', dateRange.start);
-        }
-        if (dateRange?.end) {
-          query = query.lte('tanggal', dateRange.end);
+        // ✅ FIXED: For sold items, filter by tanggal_lunas (payment completion date)
+        // This matches the logic in PenjualanSoldPageEnhanced
+        if (dateRange?.start && dateRange?.end) {
+          // Filter by tanggal_lunas if exists, fallback to tanggal
+          query = query.or(
+            `and(tanggal_lunas.gte.${dateRange.start},tanggal_lunas.lte.${dateRange.end}),and(tanggal_lunas.is.null,tanggal.gte.${dateRange.start},tanggal.lte.${dateRange.end})`
+          );
         }
 
         const { data, error } = await query;

@@ -1,5 +1,4 @@
 // Export components
-export { default as PriceHistoryModal } from './PriceHistoryModal';
 export { default as EditPriceHistoryModal } from './EditPriceHistoryModal';
 export { default as UpdateHargaModal } from './UpdateHargaModal';
 export { default as UpdateHargaSoldModal } from './UpdateHargaSoldModal';

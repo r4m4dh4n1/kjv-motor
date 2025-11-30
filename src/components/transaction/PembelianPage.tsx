@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/select";
 import PembelianForm from "./PembelianForm";
 import PembelianTable from "./PembelianTable";
-import PriceHistoryModal from "./PriceHistoryModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pembelian, PembelianPageProps } from "./types";
 import { ShoppingCart, CheckCircle, DollarSign } from "lucide-react";
@@ -1002,13 +1001,6 @@ const PembelianPage = ({ selectedDivision }: PembelianPageProps) => {
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Price History Modal */}
-      <PriceHistoryModal
-        isOpen={isPriceHistoryDialogOpen}
-        onClose={() => setIsPriceHistoryDialogOpen(false)}
-        pembelian={viewingPembelian}
-      />
     </div>
   );
 };

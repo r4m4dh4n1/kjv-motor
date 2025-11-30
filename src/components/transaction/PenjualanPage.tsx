@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import PenjualanForm from "./PenjualanForm";
 import PenjualanTable from "./PenjualanTable";
 import UpdateHargaModal from "./UpdateHargaModal";
-import PriceHistoryModal from "./PriceHistoryModal";
 import { Penjualan, PenjualanFormData } from "./penjualan-types";
 import { 
   usePembelianData,
@@ -273,15 +272,6 @@ const PenjualanPage = ({ selectedDivision }: PenjualanPageProps) => {
         }}
         penjualan={selectedPenjualanForUpdate}
         onSubmit={(updateData) => handleSubmitUpdateHarga(updateData, refetchPenjualan)}
-      />
-
-      <PriceHistoryModal
-        isOpen={isHistoryModalOpen}
-        onClose={() => {
-          setIsHistoryModalOpen(false);
-          setSelectedPenjualanForHistory(null);
-        }}
-        penjualan={selectedPenjualanForHistory}
       />
     </div>
   );

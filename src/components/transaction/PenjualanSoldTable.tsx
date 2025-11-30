@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import UpdateHargaSoldModal, { UpdateHargaSoldData } from "./UpdateHargaSoldModal";
-import PriceHistoryModal from "./PriceHistoryModal";
 import EditHargaJualModal from "./EditHargaJualModal";
 import { useSoldUpdateHarga } from "./hooks/useSoldUpdateHarga";
 
@@ -389,12 +388,6 @@ const PenjualanSoldTable = ({
         penjualan={selectedPenjualan}
         onConfirm={handleUpdateHargaConfirm}
         isLoading={soldUpdateHarga.isPending}
-      />
-      
-      <PriceHistoryModal
-        isOpen={isHistoryOpen}
-        onClose={handleHistoryClose}
-        penjualan={selectedPenjualanForHistory}
       />
     </>
   );

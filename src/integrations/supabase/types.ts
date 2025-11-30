@@ -986,6 +986,7 @@ export type Database = {
       }
       operational: {
         Row: {
+          asset_id: number | null
           cabang_id: number
           company_id: number | null
           created_at: string
@@ -1001,6 +1002,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          asset_id?: number | null
           cabang_id?: number
           company_id?: number | null
           created_at?: string
@@ -1016,6 +1018,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          asset_id?: number | null
           cabang_id?: number
           company_id?: number | null
           created_at?: string
@@ -1031,6 +1034,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "operational_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "pencatatan_asset"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "operational_cabang_id_fkey"
             columns: ["cabang_id"]
@@ -1056,47 +1066,56 @@ export type Database = {
       }
       operational_history: {
         Row: {
+          asset_id: number | null
           cabang_id: number
           closed_at: string | null
           closed_month: number
           closed_year: number
-          company_id: number
+          company_id: number | null
           created_at: string
           deskripsi: string
           divisi: string
           id: string
+          is_retroactive: boolean | null
           kategori: string
           nominal: number
+          original_month: string | null
           tanggal: string
           updated_at: string
         }
         Insert: {
+          asset_id?: number | null
           cabang_id?: number
           closed_at?: string | null
           closed_month: number
           closed_year: number
-          company_id: number
+          company_id?: number | null
           created_at: string
           deskripsi: string
           divisi: string
           id: string
+          is_retroactive?: boolean | null
           kategori: string
           nominal: number
+          original_month?: string | null
           tanggal: string
           updated_at: string
         }
         Update: {
+          asset_id?: number | null
           cabang_id?: number
           closed_at?: string | null
           closed_month?: number
           closed_year?: number
-          company_id?: number
+          company_id?: number | null
           created_at?: string
           deskripsi?: string
           divisi?: string
           id?: string
+          is_retroactive?: boolean | null
           kategori?: string
           nominal?: number
+          original_month?: string | null
           tanggal?: string
           updated_at?: string
         }
@@ -1701,7 +1720,7 @@ export type Database = {
           harga_bayar?: number | null
           harga_beli: number
           harga_jual: number
-          id?: never
+          id?: number
           jenis_id: number
           jenis_pembayaran?: string
           keterangan_biaya_lain?: string | null
@@ -1744,7 +1763,7 @@ export type Database = {
           harga_bayar?: number | null
           harga_beli?: number
           harga_jual?: number
-          id?: never
+          id?: number
           jenis_id?: number
           jenis_pembayaran?: string
           keterangan_biaya_lain?: string | null
@@ -1789,13 +1808,6 @@ export type Database = {
           {
             foreignKeyName: "FK_penjualans_company_1"
             columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "FK_penjualans_company_2"
-            columns: ["company_id_2"]
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
@@ -2390,7 +2402,6 @@ export type Database = {
         Row: {
           created_at: string | null
           id: number
-          jenis_qc: string
           keterangan: string | null
           pembelian_id: number | null
           tanggal_qc: string
@@ -2401,7 +2412,6 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: number
-          jenis_qc: string
           keterangan?: string | null
           pembelian_id?: number | null
           tanggal_qc: string
@@ -2412,7 +2422,6 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: number
-          jenis_qc?: string
           keterangan?: string | null
           pembelian_id?: number | null
           tanggal_qc?: string
@@ -2430,11 +2439,75 @@ export type Database = {
           },
         ]
       }
+      qc_report: {
+        Row: {
+          created_at: string
+          estimasi_nominal_qc: number
+          estimasi_tanggal_selesai: string | null
+          id: number
+          keterangan: string | null
+          pembelian_id: number
+          real_nominal_qc: number
+          tanggal_selesai_qc: string | null
+          updated_at: string
+          user_id: number | null
+          verified: boolean | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          estimasi_nominal_qc?: number
+          estimasi_tanggal_selesai?: string | null
+          id?: number
+          keterangan?: string | null
+          pembelian_id: number
+          real_nominal_qc?: number
+          tanggal_selesai_qc?: string | null
+          updated_at?: string
+          user_id?: number | null
+          verified?: boolean | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          estimasi_nominal_qc?: number
+          estimasi_tanggal_selesai?: string | null
+          id?: number
+          keterangan?: string | null
+          pembelian_id?: number
+          real_nominal_qc?: number
+          tanggal_selesai_qc?: string | null
+          updated_at?: string
+          user_id?: number | null
+          verified?: boolean | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_qc_report_pembelian"
+            columns: ["pembelian_id"]
+            isOneToOne: false
+            referencedRelation: "pembelian"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qc_report_pembelian_id_fkey"
+            columns: ["pembelian_id"]
+            isOneToOne: false
+            referencedRelation: "pembelian"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       retroactive_operational: {
         Row: {
           adjustment_date: string
           approved_at: string | null
           approved_by: string | null
+          asset_id: number | null
           auto_approved: boolean | null
           category: string
           company_id: number
@@ -2456,6 +2529,7 @@ export type Database = {
           adjustment_date?: string
           approved_at?: string | null
           approved_by?: string | null
+          asset_id?: number | null
           auto_approved?: boolean | null
           category: string
           company_id: number
@@ -2477,6 +2551,7 @@ export type Database = {
           adjustment_date?: string
           approved_at?: string | null
           approved_by?: string | null
+          asset_id?: number | null
           auto_approved?: boolean | null
           category?: string
           company_id?: number
@@ -2495,6 +2570,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "retroactive_operational_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "retroactive_operational_company_id_fkey"
             columns: ["company_id"]
@@ -2626,18 +2708,18 @@ export type Database = {
       }
       operational_combined: {
         Row: {
+          asset_id: number | null
           cabang_id: number | null
-          closed_at: string | null
-          closed_month: number | null
-          closed_year: number | null
           company_id: number | null
           created_at: string | null
           data_source: string | null
           deskripsi: string | null
           divisi: string | null
           id: string | null
+          is_retroactive: boolean | null
           kategori: string | null
           nominal: number | null
+          original_month: string | null
           tanggal: string | null
           updated_at: string | null
         }
@@ -2768,6 +2850,41 @@ export type Database = {
           },
         ]
       }
+      qc_report_summary_per_pembelian: {
+        Row: {
+          cabang_id: number | null
+          divisi: string | null
+          is_belum_qc: boolean | null
+          is_sudah_qc: boolean | null
+          max_estimasi: number | null
+          max_real: number | null
+          pembelian_id: number | null
+          status: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_qc_report_pembelian"
+            columns: ["pembelian_id"]
+            isOneToOne: false
+            referencedRelation: "pembelian"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pembelian_cabang_id_fkey"
+            columns: ["cabang_id"]
+            isOneToOne: false
+            referencedRelation: "cabang"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qc_report_pembelian_id_fkey"
+            columns: ["pembelian_id"]
+            isOneToOne: false
+            referencedRelation: "pembelian"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       assign_user_role: {
@@ -2787,10 +2904,7 @@ export type Database = {
         }
         Returns: Json
       }
-      decrement_qty: {
-        Args: { jenis_motor_id: number }
-        Returns: undefined
-      }
+      decrement_qty: { Args: { jenis_motor_id: number }; Returns: undefined }
       deduct_profit: {
         Args: {
           p_deskripsi: string
@@ -2803,7 +2917,7 @@ export type Database = {
         Returns: number
       }
       get_closed_months: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           month_year: string
         }[]
@@ -2827,39 +2941,33 @@ export type Database = {
           permission_name: string
         }[]
       }
-      get_user_role: {
-        Args: { user_id: string }
-        Returns: string
-      }
-      increment_qty: {
-        Args: { jenis_motor_id: number }
-        Returns: undefined
-      }
+      get_user_role: { Args: { user_id: string }; Returns: string }
+      increment_qty: { Args: { jenis_motor_id: number }; Returns: undefined }
+      is_admin: { Args: never; Returns: boolean }
       is_month_closed_retroactive: {
         Args: { p_month: number; p_year: number }
         Returns: boolean
       }
-      is_user_approved: {
-        Args: { user_id: string }
-        Returns: boolean
-      }
-      restore_month: {
-        Args:
-          | {
+      is_user_approved: { Args: { user_id: string }; Returns: boolean }
+      recalc_qc_report: { Args: { p_pembelian_id: number }; Returns: undefined }
+      restore_month:
+        | { Args: { target_month: number; target_year: number }; Returns: Json }
+        | {
+            Args: {
               target_division: string
               target_month: number
               target_year: number
             }
-          | { target_month: number; target_year: number }
-        Returns: Json
-      }
-      restore_profit: {
-        Args: { p_operational_id: string }
-        Returns: boolean
-      }
+            Returns: Json
+          }
+      restore_profit: { Args: { p_operational_id: string }; Returns: boolean }
       test_restore_assets_only: {
         Args: { target_month: number; target_year: number }
         Returns: Json
+      }
+      update_asset_nominal: {
+        Args: { p_amount: number; p_asset_id: number }
+        Returns: undefined
       }
       update_company_modal: {
         Args: { amount: number; company_id: number }

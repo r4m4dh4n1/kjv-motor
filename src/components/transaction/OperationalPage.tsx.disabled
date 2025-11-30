@@ -554,10 +554,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     }
 
     // ✅ NEW: Validate sumber_dana for non-special categories
-    // ✅ PERBAIKAN: Skip validasi sumber dana untuk kategori "Kurang Profit"
-    const isKurangProfit = isKurangProfitCategory(formData.kategori);
-    
-    if (!isAssetBased && !isKurangProfit && !formData.sumber_dana) {
+    if (!isAssetBased && !formData.sumber_dana) {
       toast({
         title: "Error",
         description: "Sumber Dana harus dipilih",
@@ -582,6 +579,7 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
     }
 
     // ✅ LOGIKA BARU: Cek kategori berdasarkan aturan baru
+    const isKurangProfit = isKurangProfitCategory(formData.kategori);
     const isKurangModal = isKurangModalCategory(formData.kategori);
     const isOPGlobal = isOPGlobalCategory(formData.kategori);
 
@@ -1175,23 +1173,10 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
   };
 
   const getTotalOperational = () => {
-    // ✅ UPDATED: For division "start", exclude "kurang modal" categories
-    // For other divisions, include all categories
-    if (selectedDivision === "start") {
-      return operationalData
-        .filter((item) => !isKurangModalCategory(item.kategori))
-        .reduce((total, item) => total + item.nominal, 0);
-    }
-    return operationalData.reduce((total, item) => total + item.nominal, 0);
-  };
-
-  // ✅ NEW: Calculate total OP Global (50% for display)
-  const getTotalOPGlobal = () => {
-    const totalOPGlobal = operationalData
-      .filter((item) => isOPGlobalCategory(item.kategori))
+    // ✅ Exclude kategori "Kurang Modal" dari total operasional
+    return operationalData
+      .filter((item) => !isKurangModalCategory(item.kategori))
       .reduce((total, item) => total + item.nominal, 0);
-    // Return 50% of the total
-    return totalOPGlobal / 2;
   };
 
   const getCategoryStats = () => {
@@ -1570,13 +1555,13 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
         </CardContent>
       </Card>
 
-      <div className={`grid grid-cols-1 ${selectedDivision === "start" ? "md:grid-cols-3" : "md:grid-cols-4"} gap-6`}>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">
-                  Total Biaya Operational
+                  Total Operasional
                 </p>
                 <p className="text-2xl font-bold text-red-600">
                   {formatCurrency(getTotalOperational())}
@@ -1603,69 +1588,43 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           </CardContent>
         </Card>
 
-        {/* ✅ Conditional cards based on division */}
-        {selectedDivision === "start" ? (
-          // ✅ For START division: Show Total Biaya OP Global (50% only)
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Total Biaya OP Global
-                  </p>
-                  <p className="text-2xl font-bold text-orange-600">
-                    {formatCurrency(getTotalOPGlobal())}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    50% dari total OP Global
-                  </p>
-                </div>
-                <DollarSign className="w-8 h-8 text-orange-600" />
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">
+                  Rata-rata per Transaksi
+                </p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {formatCurrency(
+                    operationalData.length > 0
+                      ? getTotalOperational() / operationalData.length
+                      : 0
+                  )}
+                </p>
               </div>
-            </CardContent>
-          </Card>
-        ) : (
-          // ✅ For other divisions: Show original cards
-          <>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      Rata-rata per Transaksi
-                    </p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {formatCurrency(
-                        operationalData.length > 0
-                          ? getTotalOperational() / operationalData.length
-                          : 0
-                      )}
-                    </p>
-                  </div>
-                  <DollarSign className="w-8 h-8 text-blue-600" />
-                </div>
-              </CardContent>
-            </Card>
+              <DollarSign className="w-8 h-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      Kategori Terbanyak
-                    </p>
-                    <p className="text-lg font-bold text-green-600">
-                      {Object.entries(getCategoryStats()).sort(
-                        ([, a], [, b]) => (b as number) - (a as number)
-                      )[0]?.[0] || "-"}
-                    </p>
-                  </div>
-                  <TrendingUp className="w-8 h-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">
+                  Kategori Terbanyak
+                </p>
+                <p className="text-lg font-bold text-green-600">
+                  {Object.entries(getCategoryStats()).sort(
+                    ([, a], [, b]) => (b as number) - (a as number)
+                  )[0]?.[0] || "-"}
+                </p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
