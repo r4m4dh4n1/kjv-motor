@@ -218,43 +218,9 @@ export const EnhancedTable = ({
                 <TableRow className="bg-muted/30 hover:bg-muted/40">
                   {columns.map((column) => (
                     <TableHead 
-                      key={column.key} 
-                      className={cn("font-medium", column.width, column.className)}
-                    >
-                      {column.header}
-                    </TableHead>
-                  ))}
-                  {actions.length > 0 && (
-                    <TableHead className="w-[120px] text-center">Aksi</TableHead>
-                  )}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.map((row, index) => (
-                  <TableRow 
-                    key={index} 
-                    className="hover:bg-muted/20 transition-colors"
                   >
                     {columns.map((column) => (
                       <TableCell 
-                        key={column.key} 
-                        className={cn("py-3", column.className)}
-                      >
-                        {column.render ? column.render(row[column.key], row) : row[column.key]}
-                      </TableCell>
-                    ))}
-                    {actions.length > 0 && (
-                      <TableCell className="text-center">
-                        {renderDesktopActions(row)}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </CardContent>
     </Card>
   );
 };
