@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatUtils";
-import { Clock, DollarSign, FileText, Trash2 } from "lucide-react";
+import { Clock, DollarSign, FileText, Trash2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useDeletePriceHistory } from "./hooks/useDeletePriceHistory";
 import {
@@ -22,6 +22,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
 
 interface PriceHistoryModalProps {
   isOpen: boolean;
@@ -45,16 +47,6 @@ const PriceHistoryModal = ({
   
   const { deletePriceHistory, isDeleting } = useDeletePriceHistory();
   
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: '2-digit', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   // Fetch price history from price_histories_pembelian table
   const fetchPriceHistory = async () => {
     setLoading(true);
@@ -199,6 +191,104 @@ const PriceHistoryModal = ({
               <CardContent>
                 {loading ? (
                   <div className="text-center py-8 text-muted-foreground">
+                    Memuat data...
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {priceHistory.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        Belum ada riwayat update harga
+                      </div>
+                    ) : (
+                      priceHistory.map((history) => (
+                        <div
+                          key={history.id}
+                          className="flex flex-col gap-2 p-3 border rounded-lg bg-gray-50/50"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-1">
+                              <div className="text-sm font-medium">
+                                {format(
+                                  new Date(history.tanggal_update || history.created_at),
+                                  "dd MMMM yyyy",
+                                  { locale: id }
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {history.reason}
+                              </div>
+                              {/* Tampilkan Perusahaan (Sumber Dana) */}
+                              {history.companies?.nama_perusahaan && (
+                                <div className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full inline-block mt-1">
+                                  Sumber Dana: {history.companies.nama_perusahaan}
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-right space-y-1">
+                              <div className="text-sm font-bold text-blue-600">
+                                {formatCurrency(history.harga_beli_baru)}
+                              </div>
+                              <div className="text-xs text-muted-foreground line-through">
+                                {formatCurrency(history.harga_beli_lama)}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Detail Biaya */}
+                          {(history.biaya_qc > 0 ||
+                            history.biaya_pajak > 0 ||
+                            history.biaya_lain_lain > 0) && (
+                            <div className="mt-2 pt-2 border-t text-xs space-y-1">
+                              {history.biaya_qc > 0 && (
+                                <div className="flex justify-between text-muted-foreground">
+                                  <span>Biaya QC:</span>
+                                  <span>+{formatCurrency(history.biaya_qc)}</span>
+                                </div>
+                              )}
+                              {history.biaya_pajak > 0 && (
+                                <div className="flex justify-between text-muted-foreground">
+                                  <span>Pajak:</span>
+                                  <span>+{formatCurrency(history.biaya_pajak)}</span>
+                                </div>
+                              )}
+                              {history.biaya_lain_lain > 0 && (
+                                <div className="flex justify-between text-muted-foreground">
+                                  <span>
+                                    Lain-lain
+                                    {history.keterangan_biaya_lain &&
+                                      ` (${history.keterangan_biaya_lain})`}
+                                    :
+                                  </span>
+                                  <span>
+                                    +{formatCurrency(history.biaya_lain_lain)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Tombol Hapus */}
+                          <div className="flex justify-end mt-2 pt-2 border-t">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleDeleteClick(history.id)}
+                              disabled={deleteLoading === history.id}
+                            >
+                              {deleteLoading === history.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <>
+                                  <Trash2 className="h-3 w-3 mr-1" />
+                                  Hapus
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 )}
               </CardContent>
