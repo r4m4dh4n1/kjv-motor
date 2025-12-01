@@ -59,7 +59,7 @@ const PriceHistoryModal = ({
   const fetchPriceHistory = async () => {
     setLoading(true);
     try {
-      let query = supabase.from('price_histories_pembelian').select('*');
+      let query = supabase.from('price_histories_pembelian').select('*, companies(nama_perusahaan)');
       
       if (isPenjualan && data.pembelian_id) {
         // For penjualan, use pembelian_id to get history
@@ -199,93 +199,6 @@ const PriceHistoryModal = ({
               <CardContent>
                 {loading ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    <Clock className="w-8 h-8 mx-auto mb-2 animate-spin opacity-50" />
-                    <p className="text-sm">Memuat riwayat...</p>
-                  </div>
-                ) : priceHistory.length > 0 ? (
-                  <div className="space-y-3">
-                    {priceHistory.map((history, index) => (
-                      <div key={`price-history-${history.id}-${index}`} className="border border-gray-200 rounded-lg p-3 relative">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                            <span className="font-medium text-sm">Update Harga #{priceHistory.length - index}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">
-                              {formatDate(history.created_at)}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => handleDeleteClick(history)}
-                              disabled={isDeleting}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-1 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Harga beli lama:</span>
-                            <span className="font-medium">{formatCurrency(history.harga_beli_lama || 0)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Harga beli baru:</span>
-                            <span className="font-medium text-blue-600">{formatCurrency(history.harga_beli_baru || 0)}</span>
-                          </div>
-                          
-                          {(history.biaya_qc || 0) > 0 && (
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Biaya QC:</span>
-                              <span className="text-red-600 font-medium">+{formatCurrency(history.biaya_qc)}</span>
-                            </div>
-                          )}
-                          
-                          {(history.biaya_pajak || 0) > 0 && (
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Biaya Pajak:</span>
-                              <span className="text-red-600 font-medium">+{formatCurrency(history.biaya_pajak)}</span>
-                            </div>
-                          )}
-                          
-                          {(history.biaya_lain_lain || 0) > 0 && (
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Biaya Lain-lain:</span>
-                              <span className="text-red-600 font-medium">+{formatCurrency(history.biaya_lain_lain)}</span>
-                            </div>
-                          )}
-                          
-                          <div className="flex justify-between border-t pt-1">
-                            <span className="text-muted-foreground">Total biaya tambahan:</span>
-                            <span className="text-red-600 font-medium">
-                              +{formatCurrency((history.biaya_qc || 0) + (history.biaya_pajak || 0) + (history.biaya_lain_lain || 0))}
-                            </span>
-                          </div>
-                          
-                          {history.reason && (
-                            <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
-                              <span className="font-medium">Alasan: </span>
-                              {history.reason}
-                            </div>
-                          )}
-                          
-                          {history.keterangan_biaya_lain && (
-                            <div className="mt-1 p-2 bg-gray-50 rounded text-xs">
-                              <span className="font-medium">Keterangan: </span>
-                              {history.keterangan_biaya_lain}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Belum ada riwayat update harga</p>
                   </div>
                 )}
               </CardContent>
