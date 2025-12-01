@@ -34,6 +34,7 @@ import PriceHistoryUploadPage from "@/components/transaction/PriceHistoryUploadP
 import ModalReductionPage from "@/components/finance/ModalReductionPage"; // ✅ Tambahkan ini
 import ModalHistoryPage from "@/components/finance/ModalHistoryPage"; // ✅ Tambahkan ini juga
 import ProfitAdjustmentSummary from "@/components/finance/ProfitAdjustmentSummary";
+import { PencatatanAssetPage } from "@/components/transaction/PencatatanAssetPage";
 
 const Index = () => {
   const [activeMenu, setActiveMenu] = useState("dashboard");
@@ -107,7 +108,7 @@ const Index = () => {
       case "close-month":
         return <CloseMonthPage selectedDivision={selectedDivision} />;
       case "pencatatan-asset":
-        return <div className="p-8 text-center text-muted-foreground">Pencatatan Asset (Under Maintenance)</div>;
+        return <PencatatanAssetPage selectedDivision={selectedDivision} />;
       case "price-history-upload":
         return <PriceHistoryUploadPage />;
       case "laba-rugi":

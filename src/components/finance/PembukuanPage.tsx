@@ -50,6 +50,7 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("all");
+  const [dateSortOrder, setDateSortOrder] = useState<"asc" | "desc">("desc"); // Default: terbaru dulu
   const [formData, setFormData] = useState({
     tanggal: new Date().toISOString().split("T")[0],
     divisi: selectedDivision !== "all" ? selectedDivision : "",
@@ -82,6 +83,7 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
     customEndDate,
     selectedDivision,
     selectedCompany,
+    dateSortOrder, // Add sort order to dependencies
   ]);
 
   useEffect(() => {
@@ -552,11 +554,12 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
           );
         }
 
-        // Sort combined data by tanggal
-        combinedData.sort(
-          (a, b) =>
-            new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
-        );
+        // Sort combined data by tanggal based on user preference
+        combinedData.sort((a, b) => {
+          const dateA = new Date(a.tanggal).getTime();
+          const dateB = new Date(b.tanggal).getTime();
+          return dateSortOrder === "asc" ? dateA - dateB : dateB - dateA;
+        });
 
         setPembukuanData(combinedData);
 
@@ -646,8 +649,8 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
       query = query
         .gte("tanggal", start)
         .lte("tanggal", end)
-        .order("tanggal", { ascending: true }) // ASCENDING seperti mutasi bank
-        .order("created_at", { ascending: true }); // Untuk urutan dalam 1 hari
+        .order("tanggal", { ascending: dateSortOrder === "asc" }) // Dynamic sort
+        .order("created_at", { ascending: dateSortOrder === "asc" }); // Untuk urutan dalam 1 hari
 
       if (selectedDivision !== "all") {
         query = query.eq("divisi", selectedDivision);
@@ -1141,7 +1144,7 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <Label htmlFor="dateFilter">Periode</Label>
               <Select value={dateFilter} onValueChange={setDateFilter}>
@@ -1185,6 +1188,22 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
                       {company.nama_perusahaan}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="dateSortOrder">Urutan Tanggal</Label>
+              <Select
+                value={dateSortOrder}
+                onValueChange={(value: "asc" | "desc") => setDateSortOrder(value)}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Pilih urutan" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="desc">🔽 Terbaru Dulu (DESC)</SelectItem>
+                  <SelectItem value="asc">🔼 Terlama Dulu (ASC)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
