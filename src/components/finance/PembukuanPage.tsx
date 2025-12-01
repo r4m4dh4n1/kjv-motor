@@ -1324,7 +1324,6 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
                 <TableRow>
                   <TableHead>No</TableHead>
                   <TableHead>Tanggal</TableHead>
-                  <TableHead>Tanggal</TableHead>
                   <TableHead>Divisi</TableHead>
                   <TableHead>Cabang</TableHead>
                   <TableHead>Keterangan</TableHead>
@@ -1386,7 +1385,7 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
                 {pembukuanData.length > 0 && (
                   <TableRow className="bg-gray-50 border-t-2 border-gray-300">
                     <TableCell
-                      colSpan={5}
+                      colSpan={6}
                       className="font-bold text-gray-700 text-right"
                     >
                       TOTAL:
