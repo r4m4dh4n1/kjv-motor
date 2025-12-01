@@ -10,7 +10,7 @@ import AssetPage from "@/components/master/AssetPage";
 import CabangPage from "@/components/master/CabangPage";
 import EmployeesPage from "@/components/master/EmployeesPage";
 import UserApprovalPage from "@/components/master/UserApprovalPage";
-import PembelianPage from "@/components/transaction/PembelianPage";
+import PembelianPageEnhanced from "@/components/transaction/PembelianPageEnhanced";
 import PenjualanPage from "@/components/transaction/PenjualanPage";
 import CicilanPageEnhanced from "../components/transaction/CicilanPageEnhanced";
 import OperationalPage from "@/components/transaction/OperationalPage";
@@ -65,16 +65,8 @@ const Index = () => {
         return <JenisMotorPage selectedDivision={selectedDivision} />;
       case "company":
         return <CompanyPage selectedDivision={selectedDivision} />;
-      case "asset":
-        return <AssetPage />;
-      case "cabang":
-        return <CabangPage />;
-      case "employees":
-        return <EmployeesPage />;
-      case "users":
-        return <UserApprovalPage />;
       case "pembelian":
-        return <PembelianPage selectedDivision={selectedDivision} />;
+        return <PembelianPageEnhanced selectedDivision={selectedDivision} />;
       case "penjualan-booked":
         return (
           <PenjualanBookedPageEnhanced selectedDivision={selectedDivision} />
@@ -83,7 +75,6 @@ const Index = () => {
         return (
           <PenjualanSoldPageEnhanced selectedDivision={selectedDivision} />
         );
-      case "penjualan-canceled-booked":
         return (
           <PenjualanCanceledBookedPage selectedDivision={selectedDivision} />
         );
