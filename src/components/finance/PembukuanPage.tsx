@@ -1385,7 +1385,7 @@ const PembukuanPage = ({ selectedDivision }: PembukuanPageProps) => {
                 {pembukuanData.length > 0 && (
                   <TableRow className="bg-gray-50 border-t-2 border-gray-300">
                     <TableCell
-                      colSpan={6}
+                      colSpan={5}
                       className="font-bold text-gray-700 text-right"
                     >
                       TOTAL:

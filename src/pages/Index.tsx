@@ -10,7 +10,7 @@ import AssetPage from "@/components/master/AssetPage";
 import CabangPage from "@/components/master/CabangPage";
 import EmployeesPage from "@/components/master/EmployeesPage";
 import UserApprovalPage from "@/components/master/UserApprovalPage";
-import PembelianPageEnhanced from "@/components/transaction/PembelianPageEnhanced";
+import PembelianPage from "@/components/transaction/PembelianPage";
 import PenjualanPage from "@/components/transaction/PenjualanPage";
 import CicilanPageEnhanced from "../components/transaction/CicilanPageEnhanced";
 import OperationalPage from "@/components/transaction/OperationalPage";
@@ -34,7 +34,7 @@ import PriceHistoryUploadPage from "@/components/transaction/PriceHistoryUploadP
 import ModalReductionPage from "@/components/finance/ModalReductionPage"; // ✅ Tambahkan ini
 import ModalHistoryPage from "@/components/finance/ModalHistoryPage"; // ✅ Tambahkan ini juga
 import ProfitAdjustmentSummary from "@/components/finance/ProfitAdjustmentSummary";
-import { PencatatanAssetPage } from "@/components/transaction/PencatatanAssetPage";
+import PencatatanAssetPage from "@/components/transaction/PencatatanAssetPage";
 
 const Index = () => {
   const [activeMenu, setActiveMenu] = useState("dashboard");
@@ -67,7 +67,7 @@ const Index = () => {
       case "company":
         return <CompanyPage selectedDivision={selectedDivision} />;
       case "pembelian":
-        return <PembelianPageEnhanced selectedDivision={selectedDivision} />;
+        return <PembelianPage selectedDivision={selectedDivision} />;
       case "penjualan-booked":
         return (
           <PenjualanBookedPageEnhanced selectedDivision={selectedDivision} />

@@ -150,8 +150,8 @@ export const PencatatanAssetForm = ({
             <SelectValue placeholder="Pilih Jenis Transaksi" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="pengeluaran">Pengeluaran Asset (Mengurangi Modal)</SelectItem>
-            <SelectItem value="pemasukan">Pemasukan Asset (Menambah Modal)</SelectItem>
+            <SelectItem value="pengurangan">Pengurangan Asset (Asset Berkurang, Modal Bertambah)</SelectItem>
+            <SelectItem value="penambahan">Penambahan Asset (Asset Bertambah, Modal Berkurang)</SelectItem>
           </SelectContent>
         </Select>
       </div>

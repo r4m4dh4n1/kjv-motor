@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -65,6 +65,14 @@ const UpdateHargaSoldModal = ({
   const [tanggalOpen, setTanggalOpen] = useState(false);
 
   const { data: companiesData = [] } = useCompaniesData(penjualan?.divisi);
+
+  // ✅ Initialize form when modal opens or penjualan changes
+  useEffect(() => {
+    if (isOpen && penjualan) {
+      setSumberDanaId(penjualan.company_id?.toString() || '');
+      setTanggalUpdate(new Date().toISOString().split('T')[0]);
+    }
+  }, [isOpen, penjualan]);
 
   const handleReset = () => {
     setBiayaTambahan('');

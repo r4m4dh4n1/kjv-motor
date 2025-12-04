@@ -421,6 +421,19 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         return sum + harga;
       }, 0);
       const totalPembelianUnit = pembelian.length;
+      
+      // 🐛 DEBUG: Log penjualan data
+      console.log("🔍 DEBUG Dashboard Penjualan:", {
+        penjualanRawCount: penjualanRaw.length,
+        penjualanFilteredCount: penjualan.length,
+        currentMonth,
+        currentYear,
+        startOfMonth: startOfMonth.toISOString(),
+        endOfMonth: endOfMonth.toISOString(),
+        samplePenjualanRaw: penjualanRaw[0],
+        samplePenjualanFiltered: penjualan[0],
+      });
+      
       const totalPenjualan = penjualan.reduce(
         (sum, p) => sum + p.harga_jual,
         0

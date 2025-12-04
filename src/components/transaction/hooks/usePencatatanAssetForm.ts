@@ -66,7 +66,7 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
     nominal: '',
     sumber_dana_id: '',
     keterangan: '',
-    jenis_transaksi: 'pengeluaran' // Default ke pengeluaran
+    jenis_transaksi: 'pengurangan' // Default ke pengeluaran
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -98,11 +98,11 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
         if (assetAmount > 0 && formData.sumber_dana_id) {
           try {
             // 1. Restore modal lama berdasarkan jenis transaksi lama
-            const jenisTransaksiLama = editingAsset.jenis_transaksi || 'pengeluaran';
-            const oldModalAmount = jenisTransaksiLama === 'pengeluaran' ? editingAsset.nominal : -editingAsset.nominal;
+            const jenisTransaksiLama = editingAsset.jenis_transaksi || 'pengurangan';
+            const oldModalAmount = jenisTransaksiLama === 'pengurangan' ? editingAsset.nominal : -editingAsset.nominal;
             
             // 2. Apply modal baru berdasarkan jenis transaksi baru
-            const newModalAmount = formData.jenis_transaksi === 'pengeluaran' ? -assetAmount : assetAmount;
+            const newModalAmount = formData.jenis_transaksi === 'pengurangan' ? assetAmount : -assetAmount;
             
             // 3. Total perubahan modal
             const totalModalChange = oldModalAmount + newModalAmount;
@@ -131,9 +131,9 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
 
           try {
             // 2. Update pembukuan entry
-            const jenisTransaksiLama = editingAsset.jenis_transaksi || 'pengeluaran';
-            const oldKeterangan = `${jenisTransaksiLama === 'pengeluaran' ? 'Pengeluaran' : 'Pemasukan'} Asset - ${editingAsset.nama}`;
-            const newKeterangan = `${formData.jenis_transaksi === 'pengeluaran' ? 'Pengeluaran' : 'Pemasukan'} Asset - ${formData.nama}${formData.keterangan ? ` - ${formData.keterangan}` : ''}`;
+            const jenisTransaksiLama = editingAsset.jenis_transaksi || 'pengurangan';
+            const oldKeterangan = `${jenisTransaksiLama === 'pengeluaran' ? 'Pengurangan' : 'Penambahan'} Asset - ${editingAsset.nama}`;
+            const newKeterangan = `${formData.jenis_transaksi === 'pengeluaran' ? 'Pengurangan' : 'Penambahan'} Asset - ${formData.nama}${formData.keterangan ? ` - ${formData.keterangan}` : ''}`;
 
             // Delete old pembukuan entry
             await supabase
@@ -148,8 +148,8 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
               divisi: selectedDivision,
               cabang_id: 1,
               keterangan: newKeterangan,
-              debit: formData.jenis_transaksi === 'pengeluaran' ? assetAmount : 0,
-              kredit: formData.jenis_transaksi === 'pemasukan' ? assetAmount : 0,
+              debit: formData.jenis_transaksi === 'penambahan' ? assetAmount : 0,
+              kredit: formData.jenis_transaksi === 'pengurangan' ? assetAmount : 0,
               saldo: 0,
               company_id: parseInt(formData.sumber_dana_id)
             };
@@ -232,7 +232,7 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
           
           try {
             // 1. Update modal perusahaan berdasarkan jenis transaksi
-            const modalAmount = formData.jenis_transaksi === 'pengeluaran' ? -assetAmount : assetAmount;
+            const modalAmount = formData.jenis_transaksi === 'pengurangan' ? assetAmount : -assetAmount;
             const { error: modalError } = await supabase.rpc('update_company_modal', {
               company_id: parseInt(formData.sumber_dana_id),
               amount: modalAmount // Pengeluaran = kurangi modal, Pemasukan = tambah modal
@@ -261,9 +261,9 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
               tanggal: convertDateToISO(formData.tanggal),
               divisi: selectedDivision,
               cabang_id: 1,
-              keterangan: `${formData.jenis_transaksi === 'pengeluaran' ? 'Pengeluaran' : 'Pemasukan'} Asset - ${formData.nama}${formData.keterangan ? ` - ${formData.keterangan}` : ''}`,
-              debit: formData.jenis_transaksi === 'pengeluaran' ? assetAmount : 0, // Pengeluaran = debit
-              kredit: formData.jenis_transaksi === 'pemasukan' ? assetAmount : 0, // Pemasukan = kredit
+              keterangan: `${formData.jenis_transaksi === 'pengeluaran' ? 'Pengurangan' : 'Penambahan'} Asset - ${formData.nama}${formData.keterangan ? ` - ${formData.keterangan}` : ''}`,
+              debit: formData.jenis_transaksi === 'penambahan' ? assetAmount : 0, // Pengeluaran = debit
+              kredit: formData.jenis_transaksi === 'pengurangan' ? assetAmount : 0, // Pemasukan = kredit
               saldo: 0,
               company_id: parseInt(formData.sumber_dana_id)
             };
