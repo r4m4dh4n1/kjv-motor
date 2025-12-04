@@ -29,7 +29,7 @@ import UpdateHargaSoldModal, {
   UpdateHargaSoldData,
 } from "./UpdateHargaSoldModal";
 import EditHargaJualModal from "./EditHargaJualModal";
-import PriceHistoryViewModalEnhanced from "./PriceHistoryViewModalEnhanced";
+import PriceHistoryViewModal from "./PriceHistoryViewModal";
 import { useSoldUpdateHarga } from "./hooks/useSoldUpdateHarga";
 
 interface PenjualanSoldTableProps {
@@ -454,7 +454,7 @@ const PenjualanSoldTable = ({
       />
 
       {/* ✅ MODAL RIWAYAT HARGA - ENHANCED dengan fitur delete */}
-      <PriceHistoryViewModalEnhanced
+      <PriceHistoryViewModal
         isOpen={isHistoryOpen}
         onClose={handleHistoryClose}
         penjualan={selectedPenjualanForHistory}
