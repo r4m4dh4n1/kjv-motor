@@ -216,14 +216,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         .from("pembelian")
         .select("*")
         .eq("status", "ready")
-        .gte(
-          "tanggal_pembelian",
-          `${currentYear}-${currentMonth.toString().padStart(2, "0")}-01`
-        )
-        .lt(
-          "tanggal_pembelian",
-          `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}-01`
-        );
+        .gte("tanggal_pembelian", currentMonthStart)
+        .lt("tanggal_pembelian", nextMonthStart);
 
       // ✅ TAMBAH: Query pembelian lama (> 3 bulan) yang masih ready - dengan join
       const threeMonthsAgo = new Date();
