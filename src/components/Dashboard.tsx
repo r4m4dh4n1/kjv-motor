@@ -163,20 +163,25 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
     try {
       const { month: currentMonth, year: currentYear } = getCurrentMonthYear();
 
+      // ✅ FIX: Helper function to get next month's first day (handles December → January next year)
+      const getNextMonthFirstDay = (month: number, year: number) => {
+        if (month === 12) {
+          return `${year + 1}-01-01`; // December → January next year
+        }
+        return `${year}-${(month + 1).toString().padStart(2, "0")}-01`;
+      };
+
+      const currentMonthStart = `${currentYear}-${currentMonth.toString().padStart(2, "0")}-01`;
+      const nextMonthStart = getNextMonthFirstDay(currentMonth, currentYear);
+
       // Build queries with division, cabang, and current month filter
       let jenisMotorQuery = supabase.from("jenis_motor").select("*");
       let companiesQuery = supabase.from("companies").select("*");
       let pembelianQuery = supabase
         .from("pembelian")
         .select("*")
-        .gte(
-          "tanggal_pembelian",
-          `${currentYear}-${currentMonth.toString().padStart(2, "0")}-01`
-        )
-        .lt(
-          "tanggal_pembelian",
-          `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}-01`
-        );
+        .gte("tanggal_pembelian", currentMonthStart)
+        .lt("tanggal_pembelian", nextMonthStart);
       let penjualanQuery = supabase
         .from("penjualans")
         .select("*")
@@ -191,14 +196,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       let operationalQuery = supabase
         .from("operational")
         .select("*")
-        .gte(
-          "tanggal",
-          `${currentYear}-${currentMonth.toString().padStart(2, "0")}-01`
-        )
-        .lt(
-          "tanggal",
-          `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}-01`
-        );
+        .gte("tanggal", currentMonthStart)
+        .lt("tanggal", nextMonthStart);
 
       // ✅ TAMBAH: Query pembelian status ready (tanpa filter periode) - dengan join untuk brand dan jenis motor
       let pembelianReadyQuery = supabase
