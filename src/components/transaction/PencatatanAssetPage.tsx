@@ -274,6 +274,32 @@ export const PencatatanAssetPage = ({ selectedDivision }: PencatatanAssetPagePro
         </Card>
       )}
 
+      {/* Summary Card */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Total Nominal Asset
+              </p>
+              <p className="text-2xl font-bold text-blue-600">
+                {new Intl.NumberFormat("id-ID", {
+                  style: "currency",
+                  currency: "IDR",
+                  minimumFractionDigits: 0,
+                }).format(
+                  assetData.reduce((sum, item) => sum + item.nominal, 0)
+                )}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Total dari {assetData.length} asset
+              </p>
+            </div>
+            <Package className="w-8 h-8 text-blue-600" />
+          </div>
+        </CardContent>
+      </Card>
+
       <PencatatanAssetTable
         data={assetData}
         onEdit={handleEdit}
