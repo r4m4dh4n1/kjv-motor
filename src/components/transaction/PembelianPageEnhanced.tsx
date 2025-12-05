@@ -881,15 +881,6 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     }
   };
 
-  const resetFilters = () => {
-    setSearchTerm("");
-    setSelectedJenisPembelian("all");
-    setDateFilter("all");
-    setCustomStartDate(undefined);
-    setCustomEndDate(undefined);
-    resetPage();
-  };
-
   // View Report QC - berdasarkan periode yang dipilih di filter pembelian
   const handleViewQcReport = async () => {
     try {
