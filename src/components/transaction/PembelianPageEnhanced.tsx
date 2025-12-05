@@ -142,6 +142,8 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedJenisPembelian, setSelectedJenisPembelian] = useState("all");
+  const [selectedStatus, setSelectedStatus] = useState("ready"); // Default: ready
+  const [selectedCabang, setSelectedCabang] = useState("all"); // Default: all
   const [dateFilter, setDateFilter] = useState("all");
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(
     undefined
@@ -237,11 +239,13 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     }
   };
 
-  // Filter and search logic - Only show ready items by default
+  // Filter and search logic
   const filteredData = pembelianDataRaw.filter((item: any) => {
-    // Only show ready status items
-    const matchesStatus = item.status === "ready";
+    // Status filter - dynamic based on selectedStatus
+    const matchesStatus =
+      selectedStatus === "all" || item.status === selectedStatus;
 
+    // Enhanced search - includes warna and kilometer
     const matchesSearch =
       !searchTerm ||
       item.plat_nomor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -249,11 +253,18 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
       item.jenis_motor?.jenis_motor
         ?.toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      item.cabangs?.nama?.toLowerCase().includes(searchTerm.toLowerCase());
+      item.cabangs?.nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.warna?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.kilometer?.toString().includes(searchTerm);
 
     const matchesJenisPembelian =
       selectedJenisPembelian === "all" ||
       item.jenis_pembelian === selectedJenisPembelian;
+
+    // Cabang filter
+    const matchesCabang =
+      selectedCabang === "all" ||
+      item.cabang_id?.toString() === selectedCabang;
 
     // Date filter logic
     let matchesDate = true;
@@ -268,7 +279,11 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     }
 
     return (
-      matchesStatus && matchesSearch && matchesJenisPembelian && matchesDate
+      matchesStatus &&
+      matchesSearch &&
+      matchesJenisPembelian &&
+      matchesCabang &&
+      matchesDate
     );
   });
 
@@ -1221,6 +1236,8 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   const resetFilters = () => {
     setSearchTerm("");
     setSelectedJenisPembelian("all");
+    setSelectedStatus("ready"); // Reset to ready (default)
+    setSelectedCabang("all"); // Reset to all cabang
     setDateFilter("all");
     setCustomStartDate(undefined);
     setCustomEndDate(undefined);
@@ -1394,15 +1411,15 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 {/* Search */}
-                <div className="lg:col-span-2">
+                <div>
                   <Label htmlFor="search">Search</Label>
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="search"
-                      placeholder="Cari plat nomor, brand, jenis motor, cabang..."
+                      placeholder="Cari plat, brand, jenis motor, warna, km..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-9"
@@ -1426,6 +1443,40 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                       <SelectItem value="Bukan Tukar Tambah">
                         Bukan Tukar Tambah
                       </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Status Filter */}
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Status</SelectItem>
+                      <SelectItem value="ready">Ready</SelectItem>
+                      <SelectItem value="booked">Booked</SelectItem>
+                      <SelectItem value="sold">Sold</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Cabang Filter */}
+                <div>
+                  <Label htmlFor="cabang">Cabang</Label>
+                  <Select value={selectedCabang} onValueChange={setSelectedCabang}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih Cabang" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Cabang</SelectItem>
+                      {cabangData.map((cabang) => (
+                        <SelectItem key={cabang.id} value={cabang.id.toString()}>
+                          {cabang.nama}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
