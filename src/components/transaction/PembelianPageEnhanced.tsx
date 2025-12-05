@@ -1217,6 +1217,18 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     }
   };
 
+  // Reset all filters to default values
+  const resetFilters = () => {
+    setSearchTerm("");
+    setSelectedJenisPembelian("all");
+    setDateFilter("all");
+    setCustomStartDate(undefined);
+    setCustomEndDate(undefined);
+    setSortBy("tanggal_pembelian");
+    setSortOrder("desc");
+    resetPage();
+  };
+
   // Helper untuk generate label periode
   const getQCReportPeriodLabel = () => {
     if (dateFilter === "today") return "Hari Ini";
