@@ -10,7 +10,7 @@ import AssetPage from "@/components/master/AssetPage";
 import CabangPage from "@/components/master/CabangPage";
 import EmployeesPage from "@/components/master/EmployeesPage";
 import UserApprovalPage from "@/components/master/UserApprovalPage";
-import PembelianPage from "@/components/transaction/PembelianPage";
+import PembelianPageEnhanced from "@/components/transaction/PembelianPageEnhanced";
 import PenjualanPage from "@/components/transaction/PenjualanPage";
 import CicilanPageEnhanced from "../components/transaction/CicilanPageEnhanced";
 import OperationalPage from "@/components/transaction/OperationalPage";
@@ -67,7 +67,7 @@ const Index = () => {
       case "company":
         return <CompanyPage selectedDivision={selectedDivision} />;
       case "pembelian":
-        return <PembelianPage selectedDivision={selectedDivision} />;
+        return <PembelianPageEnhanced selectedDivision={selectedDivision} />;
       case "penjualan-booked":
         return (
           <PenjualanBookedPageEnhanced selectedDivision={selectedDivision} />
