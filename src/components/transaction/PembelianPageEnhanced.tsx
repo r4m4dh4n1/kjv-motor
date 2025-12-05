@@ -142,7 +142,6 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedJenisPembelian, setSelectedJenisPembelian] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("ready"); // Default: ready
   const [selectedCabang, setSelectedCabang] = useState("all"); // Default: all
   const [dateFilter, setDateFilter] = useState("all");
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(
@@ -239,11 +238,10 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
     }
   };
 
-  // Filter and search logic
+  // Filter and search logic - Only show ready items by default
   const filteredData = pembelianDataRaw.filter((item: any) => {
-    // Status filter - dynamic based on selectedStatus
-    const matchesStatus =
-      selectedStatus === "all" || item.status === selectedStatus;
+    // Only show ready status items
+    const matchesStatus = item.status === "ready";
 
     // Enhanced search - includes warna and kilometer
     const matchesSearch =
@@ -1227,7 +1225,6 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   const resetFilters = () => {
     setSearchTerm("");
     setSelectedJenisPembelian("all");
-    setSelectedStatus("ready"); // Reset to ready (default)
     setSelectedCabang("all"); // Reset to all cabang
     setDateFilter("all");
     setCustomStartDate(undefined);
@@ -1402,7 +1399,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Search */}
                 <div>
                   <Label htmlFor="search">Search</Label>
@@ -1434,22 +1431,6 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
                       <SelectItem value="Bukan Tukar Tambah">
                         Bukan Tukar Tambah
                       </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Status Filter */}
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Status</SelectItem>
-                      <SelectItem value="ready">Ready</SelectItem>
-                      <SelectItem value="booked">Booked</SelectItem>
-                      <SelectItem value="sold">Sold</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
