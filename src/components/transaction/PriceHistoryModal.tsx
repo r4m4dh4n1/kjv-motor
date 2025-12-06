@@ -273,17 +273,10 @@ const PriceHistoryModal = ({
                               variant="ghost"
                               size="sm"
                               className="h-6 text-red-500 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => handleDeleteClick(history.id)}
-                              disabled={deleteLoading === history.id}
+                              onClick={() => handleDeleteClick(history)}
                             >
-                              {deleteLoading === history.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <>
-                                  <Trash2 className="h-3 w-3 mr-1" />
-                                  Hapus
-                                </>
-                              )}
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Hapus
                             </Button>
                           </div>
                         </div>
