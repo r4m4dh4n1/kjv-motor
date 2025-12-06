@@ -47,7 +47,7 @@ const BiroJasaPageEnhanced = ({
   // Enhanced Filter States
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCabang, setSelectedCabang] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("pending"); // ✅ DEFAULT: pending (tampil semua pending)
+  const [selectedStatus, setSelectedStatus] = useState("Dalam Proses"); // ✅ DEFAULT: Dalam Proses (tampil semua Dalam Proses)
   const [selectedJenisPengurusan, setSelectedJenisPengurusan] = useState("all");
   const [dateFilter, setDateFilter] = useState("all"); // ✅ Date filter (akan di-override otomatis untuk status selesai)
   const [customStartDate, setCustomStartDate] = useState("");
@@ -99,7 +99,7 @@ const BiroJasaPageEnhanced = ({
         item.jenis_pengurusan === selectedJenisPengurusan;
 
       // Date filtering (hanya jika bukan pending atau user set manual)
-      const shouldApplyDateFilter = selectedStatus !== "pending";
+      const shouldApplyDateFilter = selectedStatus !== "Dalam Proses";
       let matchesDate = true;
       if (shouldApplyDateFilter && dateFilter !== "all") {
         const itemDate = new Date(item.tanggal);
