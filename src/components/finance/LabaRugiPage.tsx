@@ -830,7 +830,16 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       let query = supabase
         .from("biro_jasa")
         .select(
-          "id, keuntungan, total_bayar, biaya_modal, tanggal, plat_nomor, jenis_pengurusan, divisi"
+          `
+          id, 
+          keuntungan, 
+          total_bayar, 
+          biaya_modal, 
+          tanggal, 
+          plat_nomor, 
+          jenis_pengurusan,
+          companies!inner(divisi)
+          `
         )
         .in("status", ["Selesai", "selesai"])
         .gte("tanggal", startDate)
@@ -838,7 +847,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         .order("tanggal", { ascending: false });
 
       if (selectedDivision !== "all") {
-        query = query.eq("divisi", selectedDivision);
+        query = query.eq("companies.divisi", selectedDivision);
       }
 
       // Note: biro_jasa tidak memiliki cabang_id, filter hanya berdasarkan divisi
@@ -855,6 +864,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
 
       const biroJasaDetail = (data || []).map((item: any) => {
         // Hitung keuntungan = total_bayar - biaya_modal
+        // Prioritas: 1. Kolom keuntungan, 2. Hitung manual
         const calculated =
           (item.keuntungan ??
             (item.total_bayar || 0) - (item.biaya_modal || 0)) ||
