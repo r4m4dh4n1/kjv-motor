@@ -277,16 +277,8 @@ const PenjualanTable = ({
     return (
       <div className="flex space-x-1">
         {/* Tombol Lihat Detail - Always visible */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div>
-              <DetailDialog penjualan={penjualan} />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Lihat Detail</p>
-          </TooltipContent>
-        </Tooltip>
+        <DetailDialog penjualan={penjualan} />
+
 
         {/* Sembunyikan tombol lain untuk cancelled_dp_hangus */}
         {penjualan.status !== "cancelled_dp_hangus" && (
