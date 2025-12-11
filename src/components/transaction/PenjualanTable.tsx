@@ -198,16 +198,7 @@ const PenjualanTable = ({
       return (
         <div className="flex space-x-1">
           {/* Hanya Tombol Lihat Detail */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div>
-                <DetailDialog penjualan={penjualan} />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Lihat Detail</p>
-            </TooltipContent>
-          </Tooltip>
+          <DetailDialog penjualan={penjualan} />
         </div>
       );
     }
