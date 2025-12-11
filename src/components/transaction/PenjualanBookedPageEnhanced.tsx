@@ -133,11 +133,7 @@ const PenjualanBookedPageEnhanced = ({
     ["Booked", "booked"] // ✅ NEW: Only fetch booked items
   );
 
-  // Debug: Log selectedDivision dan companiesData
-  useEffect(() => {
-    console.log("🎯 Selected Division:", selectedDivision);
-    console.log("🏢 Companies Data (filtered):", companiesData);
-  }, [selectedDivision, companiesData]);
+
 
   // Mutations
   const createPenjualanMutation = usePenjualanCreate();
@@ -317,11 +313,11 @@ const PenjualanBookedPageEnhanced = ({
 
   // Fetch ongkir payment status for filtered data
   useEffect(() => {
-    if (filteredData.length > 0) {
-      const penjualanIds = filteredData.map((item: any) => item.id);
+    if (penjualanData.length > 0) {
+      const penjualanIds = penjualanData.map((item: any) => item.id);
       checkOngkirPaymentStatus(penjualanIds);
     }
-  }, [filteredData.length]);
+  }, [penjualanData]);
 
   // Calculate totals
   const calculateTotals = () => {
