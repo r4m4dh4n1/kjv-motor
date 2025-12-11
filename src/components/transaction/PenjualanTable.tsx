@@ -276,7 +276,7 @@ const PenjualanTable = ({
 
     return (
       <div className="flex space-x-1">
-        {/* Tombol Lihat Detail */}
+        {/* Tombol Lihat Detail - Always visible */}
         <Tooltip>
           <TooltipTrigger asChild>
             <div>
@@ -309,7 +309,7 @@ const PenjualanTable = ({
               </Tooltip>
             )}
 
-            {/* Tombol Riwayat Harga */}
+            {/* Tombol Riwayat Harga - Hanya untuk yang punya permission */}
             {hasPermission("update_harga_penjualan") && (
               <Tooltip>
                 <TooltipTrigger asChild>

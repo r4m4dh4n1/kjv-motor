@@ -430,16 +430,7 @@ const PenjualanSoldTable = ({
             </div>
           ),
         }))}
-        columns={[
-          ...customColumns,
-          {
-            key: "actions",
-            header: "Aksi",
-            width: "w-40",
-            className: "text-center",
-            render: (value: any) => value,
-          },
-        ]}
+        columns={customColumns}
         actions={[]} // Empty since we're using custom actions
         emptyMessage="Belum ada data penjualan motor yang selesai"
         headerColor="bg-gradient-to-r from-green-50 to-emerald-50"

@@ -39,6 +39,7 @@ import PenjualanTable from "./PenjualanTable";
 import UpdateHargaModal from "./UpdateHargaModal";
 import DpCancellationModal from "./DpCancellationModal";
 import TitipOngkirPayoutModal from "./TitipOngkirPayoutModal";
+import PriceHistoryModal from "./PriceHistoryModal";
 import { Penjualan, PenjualanFormData } from "./penjualan-types";
 import { formatCurrency } from "@/utils/formatUtils";
 import { usePagination } from "@/hooks/usePagination";
@@ -750,6 +751,15 @@ const PenjualanBookedPageEnhanced = ({
         }}
         penjualan={selectedPenjualanForOngkir}
         onPayoutSuccess={handleTitipOngkirPayoutSuccess}
+      />
+
+      <PriceHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => {
+          setIsHistoryModalOpen(false);
+          setSelectedPenjualanForHistory(null);
+        }}
+        penjualan={selectedPenjualanForHistory}
       />
     </div>
   );

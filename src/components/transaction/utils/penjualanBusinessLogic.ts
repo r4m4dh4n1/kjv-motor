@@ -1,6 +1,6 @@
 import { parseFormattedNumber } from "@/utils/formatUtils";
 
-export const createPenjualanData = (submitData: any, formData: any, hargaBeli: number, hargaJual: number, keuntungan: number) => {
+export const createPenjualanData = (submitData: any, formData: any, hargaBeli: number, hargaJual: number, keuntungan: number) =\u003e {
   return {
     tanggal: submitData.tanggal_penjualan,
     divisi: submitData.divisi,
@@ -39,7 +39,7 @@ export const createPenjualanData = (submitData: any, formData: any, hargaBeli: n
   };
 };
 
-export const createPembukuanEntries = (submitData: any, formData: any, selectedMotor: any) => {
+export const createPembukuanEntries = (submitData: any, formData: any, selectedMotor: any) =\u003e {
   const brandName = selectedMotor?.brands?.name || '';
   const jenisMotor = selectedMotor?.jenis_motor?.jenis_motor || '';
   const platNomor = formData.plat_nomor;
@@ -59,7 +59,7 @@ export const createPembukuanEntries = (submitData: any, formData: any, selectedM
         debit: 0,
         kredit: totalKredit,
         saldo: 0,
-        pembelian_id: parseInt(formData.selected_motor_id),
+        pembelian_id: parseInt(formData.pembelian_id),
         company_id: submitData.company_id
       });
     } else if (submitData.jenis_pembayaran === 'cash_bertahap') {
@@ -74,7 +74,7 @@ export const createPembukuanEntries = (submitData: any, formData: any, selectedM
           debit: 0,
           kredit: dpKredit,
           saldo: 0,
-          pembelian_id: parseInt(formData.selected_motor_id),
+          pembelian_id: parseInt(formData.pembelian_id),
           company_id: submitData.company_id
         });
       }
@@ -88,9 +88,9 @@ export const createPembukuanEntries = (submitData: any, formData: any, selectedM
           cabang_id: submitData.cabang_id,
           keterangan: `Titip Ongkir - ${brandName} - ${jenisMotor} - ${platNomor}`,
           debit: 0,
-          kredit: titipOngkir, // Titip ongkir masuk KREDIT sebagai entry terpisah
+          kredit: titipOngkir,
           saldo: 0,
-          pembelian_id: parseInt(formData.selected_motor_id),
+          pembelian_id: parseInt(formData.pembelian_id),
           company_id: submitData.company_id
         });
       }
@@ -105,7 +105,7 @@ export const createPembukuanEntries = (submitData: any, formData: any, selectedM
         debit: 0,
         kredit: totalKredit,
         saldo: 0,
-        pembelian_id: parseInt(formData.selected_motor_id),
+        pembelian_id: parseInt(formData.pembelian_id),
         company_id: submitData.company_id
       });
     }
@@ -122,35 +122,35 @@ export const createPembukuanEntries = (submitData: any, formData: any, selectedM
         debit: 0,
         kredit: totalKredit,
         saldo: 0,
-        pembelian_id: parseInt(formData.selected_motor_id),
+        pembelian_id: parseInt(formData.pembelian_id),
         company_id: submitData.company_id
       });
     } else if (submitData.jenis_pembayaran === 'cash_bertahap') {
-      // ✅ DIPERBAIKI: Case 2: Cash bertahap tukar tambah - DP + subsidi ongkir + titip ongkir masuk KREDIT
+      // Case 2: Cash bertahap tukar tambah - DP + subsidi ongkir + titip ongkir masuk KREDIT
       const totalKredit = (submitData.dp || 0) + parseFormattedNumber(formData.subsidi_ongkir || "0") + parseFormattedNumber(formData.titip_ongkir || "0");
       pembukuanEntries.push({
         tanggal: submitData.tanggal_penjualan,
         divisi: submitData.divisi,
         cabang_id: submitData.cabang_id,
         keterangan: `DP Tukar Tambah dari ${brandName} - ${jenisMotor} - ${platNomor}`,
-        debit: 0,                   // ✅ BENAR: DEBIT = 0
-        kredit: totalKredit, // ✅ BENAR: DP + subsidi + titip masuk KREDIT
+        debit: 0,
+        kredit: totalKredit,
         saldo: 0,
-        pembelian_id: parseInt(formData.selected_motor_id),
+        pembelian_id: parseInt(formData.pembelian_id),
         company_id: submitData.company_id
       });
     } else if (submitData.jenis_pembayaran === 'kredit') {
-      // ✅ DIPERBAIKI: Case 3: Kredit tukar tambah - DP + subsidi ongkir + titip ongkir masuk KREDIT
+      // Case 3: Kredit tukar tambah - DP + subsidi ongkir + titip ongkir masuk KREDIT
       const totalKredit = (submitData.dp || 0) + parseFormattedNumber(formData.subsidi_ongkir || "0") + parseFormattedNumber(formData.titip_ongkir || "0");
       pembukuanEntries.push({
         tanggal: submitData.tanggal_penjualan,
         divisi: submitData.divisi,
         cabang_id: submitData.cabang_id,
         keterangan: `DP Tukar Tambah dari ${brandName} - ${jenisMotor} - ${platNomor}`,
-        debit: 0,                   // ✅ BENAR: DEBIT = 0
-        kredit: totalKredit, // ✅ BENAR: DP + subsidi + titip masuk KREDIT
+        debit: 0,
+        kredit: totalKredit,
         saldo: 0,
-        pembelian_id: parseInt(formData.selected_motor_id),
+        pembelian_id: parseInt(formData.pembelian_id),
         company_id: submitData.company_id
       });
     }
@@ -159,10 +159,10 @@ export const createPembukuanEntries = (submitData: any, formData: any, selectedM
   return pembukuanEntries;
 };
 
-export const createUpdateHargaPembukuanEntry = (updateData: any, selectedPenjualan: any) => {
+export const createUpdateHargaPembukuanEntry = (updateData: any, selectedPenjualan: any) =\u003e {
   const totalBiayaTambahan = updateData.biaya_pajak + updateData.biaya_qc + updateData.biaya_lain_lain;
   
-  if (totalBiayaTambahan <= 0) return null;
+  if (totalBiayaTambahan \u003c= 0) return null;
 
   return {
     company_id: selectedPenjualan.company_id,
