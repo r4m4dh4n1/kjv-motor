@@ -148,8 +148,8 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
               divisi: selectedDivision,
               cabang_id: 1,
               keterangan: newKeterangan,
-              debit: formData.jenis_transaksi === 'penambahan' ? assetAmount : 0,
-              kredit: formData.jenis_transaksi === 'pengurangan' ? assetAmount : 0,
+              debit: formData.jenis_transaksi === 'pengurangan' ? assetAmount : 0, // Pengurangan = debit
+              kredit: formData.jenis_transaksi === 'penambahan' ? assetAmount : 0, // Penambahan = kredit
               saldo: 0,
               company_id: parseInt(formData.sumber_dana_id)
             };
@@ -261,9 +261,9 @@ export const usePencatatanAssetForm = (onSuccess: () => void, selectedDivision: 
               tanggal: convertDateToISO(formData.tanggal),
               divisi: selectedDivision,
               cabang_id: 1,
-              keterangan: `${formData.jenis_transaksi === 'pengeluaran' ? 'Pengurangan' : 'Penambahan'} Asset - ${formData.nama}${formData.keterangan ? ` - ${formData.keterangan}` : ''}`,
-              debit: formData.jenis_transaksi === 'penambahan' ? assetAmount : 0, // Pengeluaran = debit
-              kredit: formData.jenis_transaksi === 'pengurangan' ? assetAmount : 0, // Pemasukan = kredit
+              keterangan: `${formData.jenis_transaksi === 'pengurangan' ? 'Pengurangan' : 'Penambahan'} Asset - ${formData.nama}${formData.keterangan ? ` - ${formData.keterangan}` : ''}`,
+              debit: formData.jenis_transaksi === 'pengurangan' ? assetAmount : 0, // Pengurangan = debit (pengeluaran)
+              kredit: formData.jenis_transaksi === 'penambahan' ? assetAmount : 0, // Penambahan = kredit (penerimaan)
               saldo: 0,
               company_id: parseInt(formData.sumber_dana_id)
             };
