@@ -1,6 +1,6 @@
 import { parseFormattedNumber } from "@/utils/formatUtils";
 
-export const createPenjualanData = (submitData: any, formData: any, hargaBeli: number, hargaJual: number, keuntungan: number) =\u003e {
+export const createPenjualanData = (submitData: any, formData: any, hargaBeli: number, hargaJual: number, keuntungan: number) => {
   return {
     tanggal: submitData.tanggal_penjualan,
     divisi: submitData.divisi,
@@ -39,7 +39,7 @@ export const createPenjualanData = (submitData: any, formData: any, hargaBeli: n
   };
 };
 
-export const createPembukuanEntries = (submitData: any, formData: any, selectedMotor: any) =\u003e {
+export const createPembukuanEntries = (submitData: any, formData: any, selectedMotor: any) => {
   const brandName = selectedMotor?.brands?.name || '';
   const jenisMotor = selectedMotor?.jenis_motor?.jenis_motor || '';
   const platNomor = formData.plat_nomor;
@@ -159,10 +159,10 @@ export const createPembukuanEntries = (submitData: any, formData: any, selectedM
   return pembukuanEntries;
 };
 
-export const createUpdateHargaPembukuanEntry = (updateData: any, selectedPenjualan: any) =\u003e {
+export const createUpdateHargaPembukuanEntry = (updateData: any, selectedPenjualan: any) => {
   const totalBiayaTambahan = updateData.biaya_pajak + updateData.biaya_qc + updateData.biaya_lain_lain;
   
-  if (totalBiayaTambahan \u003c= 0) return null;
+  if (totalBiayaTambahan <= 0) return null;
 
   return {
     company_id: selectedPenjualan.company_id,
