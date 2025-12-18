@@ -51,6 +51,7 @@ import {
   CalendarIcon,
   Download,
   Eye,
+  RefreshCw,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import HistoryTab from "./HistoryTab";
@@ -138,6 +139,7 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   }>({});
   const [isUpdatingTanggalSelesai, setIsUpdatingTanggalSelesai] =
     useState(false);
+  const [isReQCing, setIsReQCing] = useState(false);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -1339,6 +1341,124 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
   const totalQCPages = Math.ceil(
     filteredAndSortedQCData.length / qcReportPageSize
   );
+  // Handler for Batch Re-QC (QC Ulang)
+  const handleBatchReQC = async () => {
+    if (selectedQCReports.length === 0) return;
+
+    // Filter only items that have real_nominal_qc (already QC'd)
+    const itemsToReQC = selectedQCReports.filter((id) => {
+      const item = viewQCReportData.find((d) => d.id === id);
+      // Check if item has been QC'd (has real_nominal_qc value)
+      return (
+        item &&
+        item.real_nominal_qc !== null &&
+        item.real_nominal_qc !== undefined
+      );
+    });
+
+    if (itemsToReQC.length === 0) {
+      toast({
+        title: "Peringatan",
+        description:
+          "Tidak ada unit yang bisa di-QC ulang (pilih unit yang sudah pernah di-QC)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Apakah Anda yakin ingin melakukan QC Ulang untuk ${itemsToReQC.length} unit? History QC lama akan disimpan.`
+      )
+    ) {
+      return;
+    }
+
+    setIsReQCing(true);
+    try {
+      let successCount = 0;
+
+      for (const qcId of itemsToReQC) {
+        const item = viewQCReportData.find((d) => d.id === qcId);
+        if (!item) continue;
+
+        // 1. Archive current QC to history
+        const { error: historyError } = await supabase
+          .from("qc_report_history")
+          .insert({
+            qc_report_id: item.id,
+            pembelian_id: item.pembelian_id,
+            estimasi_nominal_qc: item.estimasi_nominal_qc,
+            real_nominal_qc: item.real_nominal_qc,
+            keterangan: item.keterangan || "QC Ulang (Batch)",
+            estimasi_tanggal_selesai: item.estimasi_tanggal_selesai,
+            iteration_number: item.iteration_number || 1,
+            created_at: new Date().toISOString(),
+          });
+
+        if (historyError) {
+          console.error(
+            `Error archiving history for ID ${qcId}:`,
+            historyError
+          );
+          continue;
+        }
+
+        // 2. Reset current QC record for new iteration
+        const { error: updateError } = await supabase
+          .from("qc_report")
+          .update({
+            // Reset fields for new QC
+            estimasi_tanggal_selesai: null,
+            estimasi_nominal_qc: 0,
+            real_nominal_qc: 0, // Reset real QC to 0 or null as per requirement
+            keterangan: null,
+            // Increment iteration
+            iteration_number: (item.iteration_number || 1) + 1,
+            updated_at: new Date().toISOString(),
+            // Remove verification status if any
+            verified: false,
+            verified_at: null,
+            verified_by: null,
+          })
+          .eq("id", qcId);
+
+        if (updateError) {
+          console.error(`Error resetting QC for ID ${qcId}:`, updateError);
+          continue;
+        }
+
+        successCount++;
+      }
+
+      // Refresh data
+      await handleViewQcReport();
+
+      if (successCount > 0) {
+        toast({
+          title: "Sukses",
+          description: `${successCount} unit berhasil di-reset untuk QC Ulang`,
+        });
+        setSelectedQCReports([]);
+      } else {
+        toast({
+          title: "Error",
+          description: "Gagal melakukan QC ulang",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error batch Re-QC:", error);
+      toast({
+        title: "Error",
+        description: "Terjadi kesalahan saat memproses QC ulang",
+        variant: "destructive",
+      });
+    } finally {
+      setIsReQCing(false);
+    }
+  };
+
   const startQCIndex = (currentQCPage - 1) * qcReportPageSize;
   const endQCIndex = startQCIndex + qcReportPageSize;
   const currentQCData = filteredAndSortedQCData.slice(startQCIndex, endQCIndex);
@@ -2665,24 +2785,45 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
             <div className="flex justify-between items-center">
               <div className="flex gap-2">
                 {selectedQCReports.length > 0 && (
-                  <Button
-                    variant="default"
-                    onClick={handleOpenUpdateTanggalSelesai}
-                    disabled={isUpdatingTanggalSelesai}
-                    className="bg-blue-600 hover:bg-blue-700 h-7 text-[11px] px-2"
-                  >
-                    {isUpdatingTanggalSelesai ? (
-                      <>
-                        <span className="mr-1">⏳</span>
-                        Updating...
-                      </>
-                    ) : (
-                      <>
-                        <CalendarIcon className="w-3 h-3 mr-1" />
-                        Update QC ({selectedQCReports.length})
-                      </>
-                    )}
-                  </Button>
+                  <>
+                    <Button
+                      variant="default"
+                      onClick={handleOpenUpdateTanggalSelesai}
+                      disabled={isUpdatingTanggalSelesai}
+                      className="bg-blue-600 hover:bg-blue-700 h-7 text-[11px] px-2"
+                    >
+                      {isUpdatingTanggalSelesai ? (
+                        <>
+                          <span className="mr-1">⏳</span>
+                          Updating...
+                        </>
+                      ) : (
+                        <>
+                          <CalendarIcon className="w-3 h-3 mr-1" />
+                          Update QC ({selectedQCReports.length})
+                        </>
+                      )}
+                    </Button>
+
+                    <Button
+                      variant="default"
+                      onClick={handleBatchReQC}
+                      disabled={isReQCing}
+                      className="bg-amber-600 hover:bg-amber-700 h-7 text-[11px] px-2"
+                    >
+                      {isReQCing ? (
+                        <>
+                          <span className="mr-1">⏳</span>
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-3 h-3 mr-1" />
+                          QC Ulang ({selectedQCReports.length})
+                        </>
+                      )}
+                    </Button>
+                  </>
                 )}
                 <Button
                   variant="default"
