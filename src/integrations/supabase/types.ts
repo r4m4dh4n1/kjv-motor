@@ -2445,6 +2445,7 @@ export type Database = {
           estimasi_nominal_qc: number
           estimasi_tanggal_selesai: string | null
           id: number
+          iteration_number: number | null
           keterangan: string | null
           pembelian_id: number
           real_nominal_qc: number
@@ -2460,6 +2461,7 @@ export type Database = {
           estimasi_nominal_qc?: number
           estimasi_tanggal_selesai?: string | null
           id?: number
+          iteration_number?: number | null
           keterangan?: string | null
           pembelian_id: number
           real_nominal_qc?: number
@@ -2475,6 +2477,7 @@ export type Database = {
           estimasi_nominal_qc?: number
           estimasi_tanggal_selesai?: string | null
           id?: number
+          iteration_number?: number | null
           keterangan?: string | null
           pembelian_id?: number
           real_nominal_qc?: number
@@ -2501,6 +2504,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      qc_report_history: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          estimasi_nominal_qc: number
+          estimasi_tanggal_selesai: string | null
+          id: number
+          iteration_number: number
+          keterangan: string | null
+          pembelian_id: number
+          qc_report_id: number
+          real_nominal_qc: number
+          tanggal_selesai_qc: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          estimasi_nominal_qc?: number
+          estimasi_tanggal_selesai?: string | null
+          id?: number
+          iteration_number?: number
+          keterangan?: string | null
+          pembelian_id: number
+          qc_report_id: number
+          real_nominal_qc?: number
+          tanggal_selesai_qc?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          estimasi_nominal_qc?: number
+          estimasi_tanggal_selesai?: string | null
+          id?: number
+          iteration_number?: number
+          keterangan?: string | null
+          pembelian_id?: number
+          qc_report_id?: number
+          real_nominal_qc?: number
+          tanggal_selesai_qc?: string | null
+        }
+        Relationships: []
       }
       retroactive_operational: {
         Row: {

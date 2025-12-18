@@ -2664,44 +2664,80 @@ const PembelianPageEnhanced = ({ selectedDivision }: PembelianPageProps) => {
           <div className="border-t pt-2 mt-2 bg-gray-50 -mx-3 -mb-3 px-3 pb-2 rounded-b-xl">
             <div className="flex justify-between items-center">
               <div className="flex gap-2">
-                {selectedQCReports.length > 0 && (
-                  <Button
-                    variant="default"
-                    onClick={handleOpenUpdateTanggalSelesai}
-                    disabled={isUpdatingTanggalSelesai}
-                    className="bg-blue-600 hover:bg-blue-700 h-7 text-[11px] px-2"
-                  >
-                    {isUpdatingTanggalSelesai ? (
-                      <>
-                        <span className="mr-1">⏳</span>
-                        Updating...
-                      </>
-                    ) : (
-                      <>
-                        <CalendarIcon className="w-3 h-3 mr-1" />
-                        Update QC ({selectedQCReports.length})
-                      </>
-                    )}
-                  </Button>
-                )}
-                <Button
-                  variant="default"
-                  onClick={handleVerifiedQC}
-                  disabled={selectedQCReports.length === 0 || isVerifyingQC}
-                  className="bg-green-600 hover:bg-green-700 h-7 text-[11px] px-2"
-                >
-                  {isVerifyingQC ? (
+                {(() => {
+                  // Check if any selected item is verified
+                  const hasVerifiedSelection = selectedQCReports.some((id) => {
+                    const item = viewQCReportData.find((d) => d.id === id);
+                    return item?.verified === true;
+                  });
+
+                  return (
                     <>
-                      <span className="mr-1">⏳</span>
-                      Verifying...
+                      {selectedQCReports.length > 0 && (
+                        <Button
+                          variant="default"
+                          onClick={handleOpenUpdateTanggalSelesai}
+                          disabled={
+                            isUpdatingTanggalSelesai || hasVerifiedSelection
+                          }
+                          className={`${
+                            hasVerifiedSelection
+                              ? "bg-gray-400 cursor-not-allowed"
+                              : "bg-blue-600 hover:bg-blue-700"
+                          } h-7 text-[11px] px-2`}
+                          title={
+                            hasVerifiedSelection
+                              ? "Item yang sudah diverifikasi tidak dapat diupdate"
+                              : ""
+                          }
+                        >
+                          {isUpdatingTanggalSelesai ? (
+                            <>
+                              <span className="mr-1">⏳</span>
+                              Updating...
+                            </>
+                          ) : (
+                            <>
+                              <CalendarIcon className="w-3 h-3 mr-1" />
+                              Update QC ({selectedQCReports.length})
+                            </>
+                          )}
+                        </Button>
+                      )}
+                      <Button
+                        variant="default"
+                        onClick={handleVerifiedQC}
+                        disabled={
+                          selectedQCReports.length === 0 ||
+                          isVerifyingQC ||
+                          hasVerifiedSelection
+                        }
+                        className={`${
+                          hasVerifiedSelection
+                            ? "bg-gray-400 cursor-not-allowed"
+                            : "bg-green-600 hover:bg-green-700"
+                        } h-7 text-[11px] px-2`}
+                        title={
+                          hasVerifiedSelection
+                            ? "Data sudah diverifikasi"
+                            : "Verifikasi data QC"
+                        }
+                      >
+                        {isVerifyingQC ? (
+                          <>
+                            <span className="mr-1">⏳</span>
+                            Verifying...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Verify ({selectedQCReports.length})
+                          </>
+                        )}
+                      </Button>
                     </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      Verify ({selectedQCReports.length})
-                    </>
-                  )}
-                </Button>
+                  );
+                })()}
               </div>
               <Button
                 variant="outline"
