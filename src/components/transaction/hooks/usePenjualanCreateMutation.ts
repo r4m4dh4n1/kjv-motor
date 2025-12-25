@@ -80,9 +80,15 @@ export const usePenjualanCreate = () => {
       }
 
       // 3. Update status in pembelian table to 'sold'
+      // 3. Update status in pembelian table
+      // Logic: If sales status is 'selesai' -> pembelian status 'sold' (hidden)
+      //        If sales status is 'booked' -> pembelian status 'booked' (visible but reserved)
+      const targetPembelianStatus =
+        submitData.status === "selesai" ? "sold" : "booked";
+
       const { error: pembelianError } = await supabase
         .from("pembelian")
-        .update({ status: "sold" })
+        .update({ status: targetPembelianStatus })
         .eq("id", parseInt(formData.selected_motor_id));
 
       if (pembelianError) {

@@ -280,11 +280,11 @@ export const PencatatanAssetTable = ({
       let nominalBaru = nominalLama;
 
       if (jenisTransaksiBaru === "pemasukan") {
-        // Pemasukan: tambah nominal asset
-        nominalBaru = nominalLama + nominalPerubahan;
-      } else if (jenisTransaksiBaru === "pengeluaran") {
-        // Pengeluaran: kurangi nominal asset
+        // Pemasukan: kurangi nominal asset (karena asset berkurang/dijual)
         nominalBaru = nominalLama - nominalPerubahan;
+      } else if (jenisTransaksiBaru === "pengeluaran") {
+        // Pengeluaran: tambah nominal asset (karena beli/tambah asset)
+        nominalBaru = nominalLama + nominalPerubahan;
       }
 
       // 3. Update asset data with new calculated nominal
