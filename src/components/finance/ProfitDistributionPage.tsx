@@ -84,8 +84,9 @@ export const ProfitDistributionPage = ({ selectedDivision }: ProfitDistributionP
 
   const calculateProfitData = async () => {
     try {
+      const lastDay = new Date(currentYear, currentMonth, 0).getDate();
       const startDate = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`;
-      const endDate = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-31`;
+      const endDate = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${lastDay}`;
 
       // Get current month's sales (sold status)
       const { data: penjualanData, error: penjualanError } = await supabase

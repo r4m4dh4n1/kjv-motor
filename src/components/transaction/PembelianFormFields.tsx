@@ -26,8 +26,9 @@ const PembelianFormFields = ({
   selectedDivision,
 }: PembelianFormFieldsProps) => {
   // Generate year options
+  const currentYear = new Date().getFullYear();
   const yearOptions = [];
-  for (let year = 2000; year <= 2025; year++) {
+  for (let year = 2000; year <= currentYear + 1; year++) {
     yearOptions.push(year);
   }
 

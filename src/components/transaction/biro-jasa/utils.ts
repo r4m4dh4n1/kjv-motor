@@ -45,6 +45,7 @@ export const handleCurrencyInput = (value: string): string => {
   return formatCurrency(numericValue);
 };
 
-// Generate year options from 2005 to 2025
-export const yearOptions = Array.from({ length: 21 }, (_, i) => 2005 + i);
+// Generate year options dynamic (from 2005 to current year + 1)
+const currentYear = new Date().getFullYear();
+export const yearOptions = Array.from({ length: currentYear - 2005 + 2 }, (_, i) => 2005 + i);
 
