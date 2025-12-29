@@ -96,101 +96,29 @@ const PenjualanTable = ({
     return new Date(dateString).toLocaleDateString("id-ID");
   };
 
-  const DetailDialog = ({ penjualan }: { penjualan: any }) => (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+  const handleShowDetail = (penjualan: any) => {
+    setSelectedPenjualan(penjualan);
+    setDetailDialogOpen(true);
+  };
+
+  const DetailButton = ({ penjualan }: { penjualan: any }) => (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => handleShowDetail(penjualan)}
+        >
           <Eye className="w-4 h-4" />
         </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Detail Penjualan</DialogTitle>
-          <DialogDescription>
-            Informasi lengkap penjualan motor {penjualan.brands?.name} -{" "}
-            {penjualan.jenis_motor?.jenis_motor}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid grid-cols-2 gap-4 py-4">
-          <div className="space-y-2">
-            <div>
-              <strong>Tanggal:</strong> {formatDate(penjualan.tanggal)}
-            </div>
-            <div>
-              <strong>Divisi:</strong> {penjualan.divisi}
-            </div>
-            <div>
-              <strong>Cabang:</strong> {penjualan.cabang?.nama || "-"}
-            </div>
-            <div>
-              <strong>Jenis Transaksi:</strong>{" "}
-              {penjualan.tt?.replace("_", " ")}
-            </div>
-            <div>
-              <strong>Brand:</strong> {penjualan.brands?.name || "-"}
-            </div>
-            <div>
-              <strong>Jenis Motor:</strong>{" "}
-              {penjualan.jenis_motor?.jenis_motor || "-"}
-            </div>
-            <div>
-              <strong>Tahun:</strong> {penjualan.tahun}
-            </div>
-            <div>
-              <strong>Warna:</strong> {penjualan.warna}
-            </div>
-            <div>
-              <strong>Plat Nomor:</strong> {penjualan.plat}
-            </div>
-            <div>
-              <strong>Kilometer:</strong>{" "}
-              {penjualan.kilometer?.toLocaleString()} km
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div>
-              <strong>Harga Beli:</strong>{" "}
-              {formatCurrency(penjualan.harga_beli)}
-            </div>
-            <div>
-              <strong>Harga Jual:</strong>{" "}
-              {formatCurrency(penjualan.harga_jual)}
-            </div>
-            <div>
-              <strong>Harga Bayar:</strong>{" "}
-              {formatCurrency(penjualan.harga_bayar)}
-            </div>
-            <div>
-              <strong>Keuntungan:</strong>{" "}
-              {formatCurrency(penjualan.keuntungan)}
-            </div>
-            <div>
-              <strong>DP:</strong>{" "}
-              {penjualan.dp ? formatCurrency(penjualan.dp) : "-"}
-            </div>
-            <div>
-              <strong>Sisa Bayar:</strong>{" "}
-              {formatCurrency(penjualan.sisa_bayar)}
-            </div>
-            <div>
-              <strong>Jenis Pembayaran:</strong>{" "}
-              {penjualan.jenis_pembayaran?.replace("_", " ")}
-            </div>
-            <div>
-              <strong>Status:</strong> {penjualan.status}
-            </div>
-            <div>
-              <strong>Company:</strong>{" "}
-              {penjualan.companies?.nama_perusahaan || "-"}
-            </div>
-            <div>
-              <strong>Catatan:</strong> {penjualan.catatan || "-"}
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Lihat Detail</p>
+      </TooltipContent>
+    </Tooltip>
   );
+
+  // DetailDialogContent is now handled by the controlled Dialog at the bottom of the component
 
   const renderActionButtons = (penjualan: any) => {
     // Jika status cancelled_dp_hangus, hanya tampilkan tombol view
@@ -198,7 +126,7 @@ const PenjualanTable = ({
       return (
         <div className="flex space-x-1">
           {/* Hanya Tombol Lihat Detail */}
-          <DetailDialog penjualan={penjualan} />
+          <DetailButton penjualan={penjualan} />
         </div>
       );
     }
@@ -268,7 +196,7 @@ const PenjualanTable = ({
     return (
       <div className="flex space-x-1">
         {/* Tombol Lihat Detail - Always visible */}
-        <DetailDialog penjualan={penjualan} />
+        <DetailButton penjualan={penjualan} />
 
 
         {/* Sembunyikan tombol lain untuk cancelled_dp_hangus */}

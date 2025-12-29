@@ -208,6 +208,8 @@ export const PencatatanAssetPage = ({ selectedDivision }: PencatatanAssetPagePro
   };
 
   const handleEdit = (asset: any) => {
+    console.log("[PencatatanAsset] handleEdit", asset);
+
     setIsEditing(true);
     setEditingId(asset.id);
     setFormData({
@@ -219,6 +221,16 @@ export const PencatatanAssetPage = ({ selectedDivision }: PencatatanAssetPagePro
       jenis_transaksi: asset.jenis_transaksi || "pengeluaran",
     });
     setShowForm(true);
+
+    // UX: pastikan user langsung melihat form yang muncul
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    toast({
+      title: "Mode edit aktif",
+      description: `Silakan update data untuk: ${asset.nama}`,
+    });
   };
 
   const handleCancel = () => {

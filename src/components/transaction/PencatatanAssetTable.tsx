@@ -499,7 +499,10 @@ export const PencatatanAssetTable = ({
     {
       label: "Edit",
       icon: Edit,
-      onClick: onEdit,
+      onClick: (row: PencatatanAssetItem) => {
+        console.log("[PencatatanAsset] click Edit", row);
+        onEdit(row);
+      },
       variant: "outline" as const,
     },
     {
