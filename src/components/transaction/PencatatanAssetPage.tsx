@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Plus, Package } from "lucide-react";
 import { PencatatanAssetForm } from "./PencatatanAssetForm";
@@ -223,9 +224,8 @@ export const PencatatanAssetPage = ({ selectedDivision }: PencatatanAssetPagePro
     setShowForm(true);
 
     // UX: pastikan user langsung melihat form yang muncul
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    });
+    // Dialog will handle focus and overlay, no need to scroll
+
 
     toast({
       title: "Mode edit aktif",
@@ -268,23 +268,21 @@ export const PencatatanAssetPage = ({ selectedDivision }: PencatatanAssetPagePro
         )}
       </div>
 
-      {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{isEditing ? "Edit Asset" : "Tambah Asset Baru"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PencatatanAssetForm
-              formData={formData}
-              setFormData={setFormData}
-              onSubmit={handleSubmit}
-              onCancel={handleCancel}
-              isEditing={isEditing}
-              selectedDivision={selectedDivision}
-            />
-          </CardContent>
-        </Card>
-      )}
+      <Dialog open={showForm} onOpenChange={(open) => !open && handleCancel()}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{isEditing ? "Edit Asset" : "Tambah Asset Baru"}</DialogTitle>
+          </DialogHeader>
+          <PencatatanAssetForm
+            formData={formData}
+            setFormData={setFormData}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+            isEditing={isEditing}
+            selectedDivision={selectedDivision}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Summary Card */}
       <Card>
