@@ -461,9 +461,8 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             .select(
               "kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month"
             )
-            // ✅ FIX: Query range dari start sampai max(today, end)
-            .gte("tanggal", startDate)
-            .lte("tanggal", queryEndDate);
+            // ✅ FIX: Query range dari start sampai masa depan (unbounded) untuk menangkap semua retroaktif
+            .gte("tanggal", startDate);
 
           if (selectedDivision !== "all") {
             operationalQuery = operationalQuery.eq("divisi", selectedDivision);
@@ -487,9 +486,8 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             .select(
               "kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month, data_source"
             )
-            // ✅ FIX: Query range dari start sampai max(today, end)
-            .gte("tanggal", startDate)
-            .lte("tanggal", queryEndDate);
+            // ✅ FIX: Query range dari start sampai masa depan (unbounded) untuk menangkap semua retroaktif
+            .gte("tanggal", startDate);
 
           if (selectedDivision !== "all") {
             operationalQuery = operationalQuery.eq("divisi", selectedDivision);
@@ -522,8 +520,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
               .select(
                 "kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month"
               )
-              .gte("tanggal", startDate)
-              .lte("tanggal", queryEndDate);
+              .gte("tanggal", startDate);
 
             if (selectedDivision !== "all") {
               fallbackQuery = fallbackQuery.eq("divisi", selectedDivision);
@@ -604,8 +601,8 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         let dateToCheck: Date;
         let filterReason = ""; // Untuk debugging
 
-        // ✅ PERBAIKAN: Cek is_retroactive untuk SEMUA kategori
-        if (item.is_retroactive === true && item.original_month) {
+        // ✅ PERBAIKAN: Cek is_retroactive untuk SEMUA kategori (relaxed check)
+        if (item.is_retroactive && item.original_month) {
           // Transaksi RETROAKTIF → pakai original_month
           dateToCheck = new Date(item.original_month);
           filterReason = "retroactive - use original_month";
