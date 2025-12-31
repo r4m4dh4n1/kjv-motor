@@ -627,6 +627,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           shouldInclude = itemYear === targetYear && itemMonth === targetMonth;
         } else if (selectedPeriod === "last_month") {
           const lastMonthDate = new Date();
+          lastMonthDate.setDate(1); // ✅ FIX: Hindari overflow tanggal 31 (misal 31 Maret -> 31 Feb -> 3 Maret)
           lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
           targetYear = lastMonthDate.getFullYear();
           targetMonth = lastMonthDate.getMonth() + 1;
