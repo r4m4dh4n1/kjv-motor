@@ -631,17 +631,13 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         let dateToCheck: Date;
         let filterReason = ""; // Untuk debugging
 
-        // ✅ PERBAIKAN: Cek is_retroactive untuk kategori Kurang Modal/Profit
-        if (
-          item.is_retroactive === true &&
-          isKurangModalOrProfit &&
-          item.original_month
-        ) {
-          // Transaksi RETROAKTIF dengan kategori Kurang Modal/Profit → pakai original_month
+        // ✅ PERBAIKAN: Cek is_retroactive untuk SEMUA kategori
+        if (item.is_retroactive === true && item.original_month) {
+          // Transaksi RETROAKTIF → pakai original_month
           dateToCheck = new Date(item.original_month);
           filterReason = "retroactive - use original_month";
         } else {
-          // Transaksi NORMAL atau kategori lainnya → pakai tanggal
+          // Transaksi NORMAL → pakai tanggal
           dateToCheck = new Date(item.tanggal);
           filterReason = "normal - use tanggal";
         }
