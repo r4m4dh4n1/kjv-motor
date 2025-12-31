@@ -417,28 +417,11 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         dateRange.end.getMonth() + 1
       ).padStart(2, "0")}-${String(dateRange.end.getDate()).padStart(2, "0")}`;
 
-      // ✅ FIX: Extend query range untuk menangkap transaksi retroaktif
-      // Query dari 2 bulan sebelumnya untuk menangkap semua kemungkinan retroaktif
-      const extendedStart = new Date(dateRange.start);
-      extendedStart.setMonth(extendedStart.getMonth() - 2);
-      const extendedStartDate = `${extendedStart.getFullYear()}-${String(
-        extendedStart.getMonth() + 1
-      ).padStart(2, "0")}-01`;
-
-      // ✅ NEW: Extend end date untuk include bulan berikutnya (untuk retroaktif yang dicatat di awal bulan depan)
-      const extendedEnd = new Date(dateRange.end);
-      extendedEnd.setDate(extendedEnd.getDate() + 7); // Tambah 7 hari untuk capture transaksi retroaktif di awal bulan depan
-      const extendedEndDate = `${extendedEnd.getFullYear()}-${String(
-        extendedEnd.getMonth() + 1
-      ).padStart(2, "0")}-${String(extendedEnd.getDate()).padStart(2, "0")}`;
-
       console.log("📅 Date Range for Query:", {
         startLocal: dateRange.start.toLocaleDateString("id-ID"),
         endLocal: dateRange.end.toLocaleDateString("id-ID"),
         startDate,
         endDate,
-        extendedStartDate,
-        extendedEndDate,
         selectedPeriod,
       });
 
@@ -446,17 +429,13 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
         ? "operational_combined"
         : "operational";
 
-      // ? PERBAIKAN UTAMA: This Month pakai tanggal, Last Month & This Year pakai tanggal juga
-      // ✅ FIX: Semua periode pakai tanggal, karena operational_history tidak punya original_month
-      // original_month hanya untuk retroactive transactions di operational table
-      const shouldQueryByOriginalMonth = false; // Always use tanggal for combined view
+      const orClause = `and(tanggal.gte.${startDate},tanggal.lte.${endDate}),and(is_retroactive.eq.true,original_month.gte.${startDate},original_month.lte.${endDate})`;
 
       console.log("?? Query Configuration:", {
         operationalTable,
         shouldUseOperationalCombined,
-        shouldQueryByOriginalMonth,
         selectedPeriod,
-        queryField: shouldQueryByOriginalMonth ? "original_month" : "tanggal",
+        orClause,
       });
 
       let operationalData: any[] = [];
@@ -471,13 +450,8 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             .select(
               "kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month"
             )
-            // ✅ FIX: Query dengan extended range untuk menangkap retroaktif (termasuk yang dicatat di awal bulan depan)
-            .gte("tanggal", extendedStartDate)
-            .lte("tanggal", extendedEndDate);
-
-          console.log(
-            "?? Query using: extended tanggal range (will filter by category later)"
-          );
+            // ✅ FIX: Gunakan OR query untuk menangkap transaksi periode ini ATAU transaksi retroaktif untuk periode ini
+            .or(orClause);
 
           if (selectedDivision !== "all") {
             operationalQuery = operationalQuery.eq("divisi", selectedDivision);
@@ -501,13 +475,8 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
             .select(
               "kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month, data_source"
             )
-            // ✅ FIX: Query dengan extended range untuk menangkap retroaktif (termasuk yang dicatat di awal bulan depan)
-            .gte("tanggal", extendedStartDate)
-            .lte("tanggal", extendedEndDate);
-
-          console.log(
-            "?? Query using: extended tanggal range (will filter by category later)"
-          );
+            // ✅ FIX: Gunakan OR query untuk menangkap transaksi periode ini ATAU transaksi retroaktif untuk periode ini
+            .or(orClause);
 
           if (selectedDivision !== "all") {
             operationalQuery = operationalQuery.eq("divisi", selectedDivision);
@@ -539,18 +508,8 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
               .from("operational")
               .select(
                 "kategori, nominal, deskripsi, tanggal, divisi, cabang_id, is_retroactive, original_month"
-              );
-
-            // Fallback juga ikuti logika yang sama
-            if (shouldQueryByOriginalMonth) {
-              fallbackQuery = fallbackQuery
-                .gte("original_month", startDate)
-                .lte("original_month", endDate);
-            } else {
-              fallbackQuery = fallbackQuery
-                .gte("tanggal", startDate)
-                .lte("tanggal", endDate);
-            }
+              )
+              .or(orClause);
 
             if (selectedDivision !== "all") {
               fallbackQuery = fallbackQuery.eq("divisi", selectedDivision);
