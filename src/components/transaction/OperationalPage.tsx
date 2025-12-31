@@ -727,45 +727,65 @@ const OperationalPage = ({ selectedDivision }: OperationalPageProps) => {
           // ✅ OP GLOBAL: Gunakan nominal penuh untuk pembukuan
           const pembukuanAmount = isOPGlobal ? nominalAmount : nominalAmount;
 
-          // Update pembukuan entry - delete old and create new
           const oldKeterangan = `${editingOperational.kategori} - ${editingOperational.deskripsi}`;
+          const newKeterangan = `${formData.kategori} - ${formData.deskripsi}${
+            isOPGlobal ? " (OP Global - Nominal Penuh)" : ""
+          }`;
 
-          const { error: deletePembukuanError } = await supabase
+          // ✅ FIX: Coba cari entry lama dulu
+          const { data: existingPembukuan, error: findError } = await supabase
             .from("pembukuan")
-            .delete()
+            .select("id")
             .eq("keterangan", oldKeterangan)
             .eq("debit", editingOperational.nominal)
-            .eq("company_id", editingOperational.company_id);
+            .eq("company_id", editingOperational.company_id)
+            .maybeSingle();
 
-          if (deletePembukuanError) {
-            console.error(
-              "Error deleting old pembukuan entry:",
-              deletePembukuanError
-            );
-          }
+          if (existingPembukuan) {
+            // ✅ FOUND: Update existing entry
+            console.log("Updating existing pembukuan:", existingPembukuan.id);
+            const { error: updatePembukuanError } = await supabase
+              .from("pembukuan")
+              .update({
+                tanggal: formData.tanggal,
+                divisi: selectedDivision !== "all" ? selectedDivision : "sport",
+                keterangan: newKeterangan,
+                debit: pembukuanAmount,
+                kredit: 0,
+                // Pastikan company_id diupdate jika berubah
+                company_id: parseInt(formData.sumber_dana),
+              })
+              .eq("id", existingPembukuan.id);
 
-          const { error: pembukuanError } = await supabase
-            .from("pembukuan")
-            .insert({
-              tanggal: formData.tanggal,
-              divisi: selectedDivision !== "all" ? selectedDivision : "sport",
-              keterangan: `${formData.kategori} - ${formData.deskripsi}${
-                isOPGlobal ? " (OP Global - Nominal Penuh)" : ""
-              }`,
-              debit: pembukuanAmount,
-              kredit: 0,
-              cabang_id: 1,
-              company_id: parseInt(formData.sumber_dana),
-            });
+            if (updatePembukuanError) {
+              console.error(
+                "Error updating pembukuan entry:",
+                updatePembukuanError
+              );
+              throw updatePembukuanError;
+            }
+          } else {
+            // ✅ NOT FOUND: Insert new entry (Fallback)
+            console.log("Existing pembukuan not found, inserting new");
+            const { error: insertPembukuanError } = await supabase
+              .from("pembukuan")
+              .insert({
+                tanggal: formData.tanggal,
+                divisi: selectedDivision !== "all" ? selectedDivision : "sport",
+                keterangan: newKeterangan,
+                debit: pembukuanAmount,
+                kredit: 0,
+                cabang_id: 1,
+                company_id: parseInt(formData.sumber_dana),
+              });
 
-          if (pembukuanError) {
-            console.error("Error updating pembukuan entry:", pembukuanError);
-            toast({
-              title: "Warning",
-              description:
-                "Data operasional berhasil diubah tapi gagal mengupdate pembukuan",
-              variant: "destructive",
-            });
+            if (insertPembukuanError) {
+              console.error(
+                "Error inserting pembukuan entry:",
+                insertPembukuanError
+              );
+              throw insertPembukuanError; // Throw so user knows something went wrong
+            }
           }
         }
 
