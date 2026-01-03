@@ -51,11 +51,22 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
+import TopBrandsChart from "@/components/dashboard/TopBrandsChart";
 
 type Company = Tables<"companies">;
 type JenisMotor = Tables<"jenis_motor">;
 type Brand = Tables<"brands">;
 type Asset = Tables<"assets">;
+
+interface BrandSalesData {
+  brand_id: number;
+  brand_name: string;
+  total_sold: number;
+  motor_types: {
+    jenis_motor: string;
+    units_sold: number;
+  }[];
+}
 
 interface DashboardProps {
   selectedDivision: string;
@@ -77,6 +88,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
   const [openDialogBookedUnit, setOpenDialogBookedUnit] = useState(false);
   const [readyUnits, setReadyUnits] = useState<any[]>([]);
   const [bookedUnits, setBookedUnits] = useState<any[]>([]);
+  const [topBrandsSales, setTopBrandsSales] = useState<BrandSalesData[]>([]);
 
   // Sort states for QC dialogs
   const [sortBelumQC, setSortBelumQC] = useState<{
@@ -689,6 +701,59 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         { name: "Motor Sport", stock: sportMotors, value: sportMotors },
         { name: "Motor Start", stock: startMotors, value: startMotors },
       ];
+
+      // ✅ Calculate Top 5 Brands Sales - dari penjualan selesai 1 tahun terakhir
+      const brandSalesMap = new Map<number, {
+        brand_id: number;
+        brand_name: string;
+        total_sold: number;
+        motor_types_map: Map<string, number>;
+      }>();
+
+      // Filter penjualan 1 tahun terakhir
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const oneYearAgoStr = oneYearAgo.toISOString().split('T')[0];
+
+      // Gunakan penjualanRaw yang difilter 1 tahun terakhir
+      penjualanRaw
+        .filter((p: any) => p.tanggal >= oneYearAgoStr)
+        .forEach((p: any) => {
+        const brandId = p.brand_id;
+        const brandName = brands.find(b => b.id === brandId)?.name || `Brand ${brandId}`;
+        const jenisMotorItem = jenisMotor.find(j => j.id === p.jenis_id);
+        const jenisMotorName = jenisMotorItem?.jenis_motor || `Jenis ${p.jenis_id}`;
+
+        if (!brandSalesMap.has(brandId)) {
+          brandSalesMap.set(brandId, {
+            brand_id: brandId,
+            brand_name: brandName,
+            total_sold: 0,
+            motor_types_map: new Map()
+          });
+        }
+
+        const brandData = brandSalesMap.get(brandId)!;
+        brandData.total_sold += 1;
+
+        const currentCount = brandData.motor_types_map.get(jenisMotorName) || 0;
+        brandData.motor_types_map.set(jenisMotorName, currentCount + 1);
+      });
+
+      // Convert to array and sort by total_sold
+      const topBrandsSalesData: BrandSalesData[] = Array.from(brandSalesMap.values())
+        .map(brand => ({
+          brand_id: brand.brand_id,
+          brand_name: brand.brand_name,
+          total_sold: brand.total_sold,
+          motor_types: Array.from(brand.motor_types_map.entries())
+            .map(([jenis_motor, units_sold]) => ({ jenis_motor, units_sold }))
+            .sort((a, b) => b.units_sold - a.units_sold)
+        }))
+        .sort((a, b) => b.total_sold - a.total_sold)
+        .slice(0, 5);
+
+      setTopBrandsSales(topBrandsSalesData);
 
       setStats({
         totalAssets: assets.length,
@@ -2044,8 +2109,57 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         </Card>
       </div>
 
+      {/* Top 5 Brand Motor Terlaris */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <TopBrandsChart data={topBrandsSales} />
+        
+        {/* Company Status - dipindah ke sini untuk balance */}
+        <Card className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
+          <CardHeader className="pb-4 bg-gradient-to-r from-purple-50 to-pink-50">
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-purple-600" />
+              Company Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-purple-600 mb-1">
+                {formatCurrency(stats.totalModal)}
+              </div>
+              <p className="text-sm text-gray-600">Total Modal</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-3 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">
+                  {stats.activeCompanies}
+                </div>
+                <p className="text-xs text-green-700">Active</p>
+              </div>
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-gray-600">
+                  {stats.passiveCompanies}
+                </div>
+                <p className="text-xs text-gray-700">Passive</p>
+              </div>
+            </div>
+
+            <div className="mt-4 p-3 bg-gradient-to-r from-indigo-100 to-indigo-200 rounded-lg">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-indigo-800">
+                  Operational Cost
+                </span>
+                <span className="font-bold text-indigo-800">
+                  {formatCurrency(stats.totalOperational)}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Performance & Analytics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Statistik Modal Performance */}
         <Card className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
           <CardHeader className="pb-4 bg-gradient-to-r from-blue-50 to-indigo-50">
@@ -2127,50 +2241,6 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
               <span className="font-bold text-orange-800">
                 {stats.totalBookedUnit} Unit
               </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Company Status */}
-        <Card className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">
-          <CardHeader className="pb-4 bg-gradient-to-r from-purple-50 to-pink-50">
-            <CardTitle className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-purple-600" />
-              Company Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4 space-y-4">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-purple-600 mb-1">
-                {formatCurrency(stats.totalModal)}
-              </div>
-              <p className="text-sm text-gray-600">Total Modal</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">
-                  {stats.activeCompanies}
-                </div>
-                <p className="text-xs text-green-700">Active</p>
-              </div>
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <div className="text-2xl font-bold text-gray-600">
-                  {stats.passiveCompanies}
-                </div>
-                <p className="text-xs text-gray-700">Passive</p>
-              </div>
-            </div>
-
-            <div className="mt-4 p-3 bg-gradient-to-r from-indigo-100 to-indigo-200 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-indigo-800">
-                  Operational Cost
-                </span>
-                <span className="font-bold text-indigo-800">
-                  {formatCurrency(stats.totalOperational)}
-                </span>
-              </div>
             </div>
           </CardContent>
         </Card>

@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { PenjualanFormData } from "../penjualan-types";
@@ -11,6 +11,7 @@ import { transformPenjualanFormDataForSubmit } from "../utils/penjualanFormUtils
 
 export const usePenjualanCreate = () => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
@@ -257,6 +258,11 @@ export const usePenjualanCreate = () => {
       return penjualanResult;
     },
     onSuccess: () => {
+      // Invalidate pembelian cache agar status ter-update di dropdown
+      queryClient.invalidateQueries({ queryKey: ["pembelian"] });
+      queryClient.invalidateQueries({ queryKey: ["penjualan"] });
+      queryClient.invalidateQueries({ queryKey: ["companies"] });
+      
       toast({
         title: "Sukses",
         description: "Data penjualan berhasil disimpan",
