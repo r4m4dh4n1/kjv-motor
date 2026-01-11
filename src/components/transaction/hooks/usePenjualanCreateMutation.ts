@@ -40,8 +40,12 @@ export const usePenjualanCreate = () => {
       const hargaBayar = parseFormattedNumber(formData.harga_bayar || "0");
       const sisaBayar = parseFormattedNumber(formData.sisa_bayar || "0");
 
-      // If payment is complete (harga_bayar >= harga_jual OR sisa_bayar = 0), set status to 'Sold'
-      if (hargaBayar >= hargaJual || sisaBayar === 0) {
+      // If payment is complete, set status to 'Sold':
+      // - cash_penuh: always sold (payment equals selling price)
+      // - cash_bertahap/kredit: sold if harga_bayar >= harga_jual OR sisa_bayar = 0
+      if (formData.jenis_pembayaran === "cash_penuh") {
+        status = "Sold"; // Cash penuh selalu langsung sold
+      } else if (hargaBayar >= hargaJual || sisaBayar === 0) {
         status = "Sold"; // ✅ Gunakan 'Sold' yang akan di-mapping ke 'selesai'
       }
 

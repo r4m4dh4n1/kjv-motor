@@ -266,6 +266,17 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         )
         .in("status", ["Booked", "booked"]);
 
+      // ✅ TAMBAH: Query penjualans_combined untuk Top 5 Brands (1 tahun terakhir)
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const oneYearAgoStr = oneYearAgo.toISOString().split('T')[0];
+      
+      let penjualansCombinedQuery = supabase
+        .from("penjualans_combined")
+        .select("*")
+        .eq("status", "selesai")
+        .gte("tanggal", oneYearAgoStr);
+
       if (selectedDivision !== "all") {
         jenisMotorQuery = jenisMotorQuery.eq("divisi", selectedDivision);
         companiesQuery = companiesQuery.eq("divisi", selectedDivision);
@@ -289,6 +300,10 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
           "divisi",
           selectedDivision
         ); // ✅ TAMBAH
+        penjualansCombinedQuery = penjualansCombinedQuery.eq(
+          "divisi",
+          selectedDivision
+        ); // ✅ TAMBAH: Filter divisi untuk top brands
       }
 
       if (selectedCabang !== "all") {
@@ -324,6 +339,10 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
           "cabang_id",
           parseInt(selectedCabang)
         ); // ✅ TAMBAH: Filter cabang untuk penjualan booked
+        penjualansCombinedQuery = penjualansCombinedQuery.eq(
+          "cabang_id",
+          parseInt(selectedCabang)
+        ); // ✅ TAMBAH: Filter cabang untuk top brands
         // NOTE: qc_report does not contain divisi/cabang directly, we'll filter client-side after fetching joined pembelian
       }
 
@@ -341,6 +360,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         penjualanBookedResult, // ✅ TAMBAH
         pembelianReadyBulanIniResult, // ✅ FIX
         pembelianStokTuaResult, // ✅ TAMBAH: Stock tua
+        penjualansCombinedResult, // ✅ TAMBAH: Untuk Top 5 Brands
       ] = await Promise.all([
         supabase.from("brands").select("*"),
         jenisMotorQuery,
@@ -355,6 +375,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         penjualanBookedQuery, // ✅ TAMBAH
         pembelianReadyBulanIniQuery, // ✅ FIX
         pembelianStokTuaQuery, // ✅ TAMBAH: Stock tua
+        penjualansCombinedQuery, // ✅ TAMBAH: Untuk Top 5 Brands
       ]);
 
       if (brandsResult.error) throw brandsResult.error;
@@ -368,6 +389,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       if (pembelianReadyBulanIniResult.error)
         throw pembelianReadyBulanIniResult.error; // ✅ FIX
       if (pembelianStokTuaResult.error) throw pembelianStokTuaResult.error; // ✅ TAMBAH
+      if (penjualansCombinedResult.error) throw penjualansCombinedResult.error; // ✅ TAMBAH
 
       const brands: Brand[] = brandsResult.data || [];
       const jenisMotor: JenisMotor[] = jenisMotorResult.data || [];
@@ -376,6 +398,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
       const cabang = cabangResult.data || [];
       const pembelian = pembelianResult.data || [];
       const penjualanRaw = penjualanResult.data || [];
+      const penjualansCombined = penjualansCombinedResult.data || []; // ✅ TAMBAH: Data untuk Top 5 Brands
 
       // ✅ NEW: Filter penjualan berdasarkan tanggal_lunas (prioritas) atau tanggal untuk bulan ini
       const startOfMonth = new Date(currentYear, currentMonth - 1, 1);
@@ -702,7 +725,7 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         { name: "Motor Start", stock: startMotors, value: startMotors },
       ];
 
-      // ✅ Calculate Top 5 Brands Sales - dari penjualan selesai 1 tahun terakhir
+      // ✅ Calculate Top 5 Brands Sales - dari penjualans_combined (1 tahun terakhir)
       const brandSalesMap = new Map<number, {
         brand_id: number;
         brand_name: string;
@@ -710,15 +733,8 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
         motor_types_map: Map<string, number>;
       }>();
 
-      // Filter penjualan 1 tahun terakhir
-      const oneYearAgo = new Date();
-      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-      const oneYearAgoStr = oneYearAgo.toISOString().split('T')[0];
-
-      // Gunakan penjualanRaw yang difilter 1 tahun terakhir
-      penjualanRaw
-        .filter((p: any) => p.tanggal >= oneYearAgoStr)
-        .forEach((p: any) => {
+      // Gunakan penjualansCombined yang sudah difilter 1 tahun terakhir dari database
+      penjualansCombined.forEach((p: any) => {
         const brandId = p.brand_id;
         const brandName = brands.find(b => b.id === brandId)?.name || `Brand ${brandId}`;
         const jenisMotorItem = jenisMotor.find(j => j.id === p.jenis_id);
@@ -2111,7 +2127,13 @@ const Dashboard = ({ selectedDivision }: DashboardProps) => {
 
       {/* Top 5 Brand Motor Terlaris */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <TopBrandsChart data={topBrandsSales} />
+        <TopBrandsChart 
+          data={topBrandsSales} 
+          dateRange={{
+            from: new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+            to: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+          }}
+        />
         
         {/* Company Status - dipindah ke sini untuk balance */}
         <Card className="shadow-lg border-0 hover:shadow-xl transition-all duration-300">

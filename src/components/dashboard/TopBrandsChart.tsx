@@ -31,11 +31,12 @@ interface BrandSalesData {
 
 interface TopBrandsChartProps {
   data: BrandSalesData[];
+  dateRange?: { from: string; to: string };
 }
 
 const COLORS = ["#8B5CF6", "#6366F1", "#3B82F6", "#0EA5E9", "#06B6D4"];
 
-const TopBrandsChart = ({ data }: TopBrandsChartProps) => {
+const TopBrandsChart = ({ data, dateRange }: TopBrandsChartProps) => {
   const [selectedBrand, setSelectedBrand] = useState<BrandSalesData | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -60,6 +61,11 @@ const TopBrandsChart = ({ data }: TopBrandsChartProps) => {
             <Trophy className="w-5 h-5 text-violet-600" />
             Top 5 Brand Motor Terlaris
           </CardTitle>
+          {dateRange && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Data 1 tahun terakhir: {dateRange.from} s/d {dateRange.to}
+            </p>
+          )}
         </CardHeader>
         <CardContent className="pt-4">
           {top5Brands.length === 0 ? (
