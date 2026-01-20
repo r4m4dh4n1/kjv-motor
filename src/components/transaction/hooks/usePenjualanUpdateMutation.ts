@@ -39,7 +39,8 @@ export const usePenjualanUpdate = () => {
       const keuntungan = hargaJual - hargaBeli;
 
       // Auto update status based on payment
-      let status = formData.status;
+      // Use mapped status from submitData as base (to handle "Booked" -> "booked" mapping)
+      let status = submitData.status;
       const hargaBayar = parseFormattedNumber(formData.harga_bayar || "0");
       const sisaBayar = parseFormattedNumber(formData.sisa_bayar || "0");
       const dp = parseFormattedNumber(formData.dp || "0");
@@ -63,6 +64,9 @@ export const usePenjualanUpdate = () => {
         keuntungan
       );
       penjualanData.status = status;
+
+      // Determine target pembelian status (sold or booked)
+      const targetPembelianStatus = status === "selesai" ? "sold" : "booked";
 
       // Check if motor has changed (brand_id or jenis_motor_id different)
       const motorChanged =
@@ -116,10 +120,10 @@ export const usePenjualanUpdate = () => {
           console.error("Error reducing new motor stock:", newStockError);
         }
 
-        // 4. Update new motor pembelian status to 'sold'
+        // 4. Update new motor pembelian status to correct status (sold/booked)
         const { error: newPembelianError } = await supabase
           .from("pembelian")
-          .update({ status: "sold" })
+          .update({ status: targetPembelianStatus })
           .eq("id", parseInt(formData.selected_motor_id));
 
         if (newPembelianError) {
@@ -127,6 +131,16 @@ export const usePenjualanUpdate = () => {
             "Error updating new pembelian status:",
             newPembelianError
           );
+        }
+      } else if (!motorChanged) {
+        // If motor hasn't changed, still update its status as it might have changed (e.g. Booked -> Sold)
+        const { error: statusUpdateError } = await supabase
+          .from("pembelian")
+          .update({ status: targetPembelianStatus })
+          .eq("id", parseInt(formData.selected_motor_id));
+
+        if (statusUpdateError) {
+          console.error("Error updating pembelian status:", statusUpdateError);
         }
       }
 

@@ -91,13 +91,21 @@ export const usePenjualanCreate = () => {
       const targetPembelianStatus =
         submitData.status === "selesai" ? "sold" : "booked";
 
-      const { error: pembelianError } = await supabase
-        .from("pembelian")
-        .update({ status: targetPembelianStatus })
-        .eq("id", parseInt(formData.selected_motor_id));
+      // Ensure we use the valid pembelian_id from submitData
+      const pembelianIdToUpdate = submitData.pembelian_id;
 
-      if (pembelianError) {
-        console.error("Pembelian Error:", pembelianError);
+      if (pembelianIdToUpdate) {
+        const { error: pembelianError } = await supabase
+          .from("pembelian")
+          .update({ status: targetPembelianStatus })
+          .eq("id", pembelianIdToUpdate);
+
+        if (pembelianError) {
+          console.error("Pembelian Error:", pembelianError);
+          // Optional: throw error if this is critical, or just log
+        }
+      } else {
+          console.error("No pembelian_id found when trying to update status");
       }
 
       // 4. Insert into pembukuan table

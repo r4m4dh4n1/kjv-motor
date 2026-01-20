@@ -561,7 +561,7 @@ const PenjualanFormFields = ({
             if (formData.jenis_pembayaran === 'cash_penuh' && hargaJual === hargaBayar && hargaJual > 0) {
               autoStatus = "Sold";
               isDisabled = true;
-            } else if ((formData.jenis_pembayaran === 'cash_bertahap' || formData.jenis_pembayaran === 'kredit') && dp > 0 && dp < sisaBayar) {
+            } else if ((formData.jenis_pembayaran === 'cash_bertahap' || formData.jenis_pembayaran === 'kredit') && dp > 0 && sisaBayar > 0) {
               autoStatus = "Booked";
               isDisabled = true;
             }
