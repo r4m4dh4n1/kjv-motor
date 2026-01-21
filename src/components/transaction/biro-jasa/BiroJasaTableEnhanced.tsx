@@ -3,13 +3,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Edit, Trash2, Eye, DollarSign, TrendingUp } from "lucide-react";
+import { Edit, Trash2, Eye, DollarSign, TrendingUp, Wallet } from "lucide-react";
 import { useState } from "react";
 import type { BiroJasaItem } from "./types";
 import { convertDateFromISO } from "./utils";
 import { formatCurrency } from "@/lib/utils";
 import { UpdateBiayaModal } from "./UpdateBiayaModal";
 import { KeuntunganModal } from "./KeuntunganModal";
+import { InputVendorDpModal } from "./InputVendorDpModal";
 
 interface BiroJasaTableEnhancedProps {
   data: BiroJasaItem[];
@@ -44,9 +45,28 @@ export const BiroJasaTableEnhanced = ({
     isOpen: false,
     item: null,
   });
+  const [inputVendorDpModal, setInputVendorDpModal] = useState<{ isOpen: boolean; item: BiroJasaItem | null }>({
+    isOpen: false,
+    item: null,
+  });
 
   const handleView = (item: BiroJasaItem) => {
-    alert(`Detail Biro Jasa:\nTanggal: ${convertDateFromISO(item.tanggal)}\nBrand: ${item.brand_name || '-'}\nJenis Motor: ${item.jenis_motor || '-'}\nWarna: ${item.warna || '-'}\nPlat Nomor: ${item.plat_nomor || '-'}\nTahun: ${item.tahun || '-'}\nJenis Pengurusan: ${item.jenis_pengurusan}\nKeterangan: ${item.keterangan || '-'}\nEstimasi Biaya: ${formatCurrency(item.estimasi_biaya?.toString() || '0')}\nEstimasi Tanggal Selesai: ${convertDateFromISO(item.estimasi_tanggal_selesai)}\nDP: ${formatCurrency(item.dp?.toString() || '0')}\nSisa: ${formatCurrency(item.sisa?.toString() || '0')}\nRekening Tujuan: ${item.companies?.nama_perusahaan || '-'}\nStatus: ${item.status}`);
+    alert(`Detail Biro Jasa:
+Tanggal: ${convertDateFromISO(item.tanggal)}
+Brand: ${item.brand_name || '-'}
+Jenis Motor: ${item.jenis_motor || '-'}
+Warna: ${item.warna || '-'}
+Plat Nomor: ${item.plat_nomor || '-'}
+Tahun: ${item.tahun || '-'}
+Jenis Pengurusan: ${item.jenis_pengurusan}
+Keterangan: ${item.keterangan || '-'}
+Estimasi Biaya: ${formatCurrency(item.estimasi_biaya?.toString() || '0')}
+Estimasi Tanggal Selesai: ${convertDateFromISO(item.estimasi_tanggal_selesai)}
+DP Customer: ${formatCurrency(item.dp?.toString() || '0')}
+Sisa Customer: ${formatCurrency(item.sisa?.toString() || '0')}
+DP ke Vendor: ${formatCurrency(item.dp_vendor?.toString() || '0')}
+Rekening Tujuan: ${item.companies?.nama_perusahaan || '-'}
+Status: ${item.status}`);
   };
 
   const showUpdateBiaya = (item: BiroJasaItem) => {
@@ -55,6 +75,12 @@ export const BiroJasaTableEnhanced = ({
 
   const showKeuntungan = (item: BiroJasaItem) => {
     return item.status === "Selesai";
+  };
+  
+  const showInputVendorDp = (item: BiroJasaItem) => {
+    // Show only if status is "Dalam Proses" and no vendor DP has been input yet (or maybe allow multiple? for now let's assume one time or check if 0)
+    // Adjust logic if multiple DPs needed. For now assume one time input.
+    return item.status === "Dalam Proses";
   };
 
   return (
@@ -90,8 +116,9 @@ export const BiroJasaTableEnhanced = ({
                 <TableHead>Plat Nomor</TableHead>
                 <TableHead>Jenis Pengurusan</TableHead>
                 <TableHead>Estimasi Biaya</TableHead>
-                <TableHead>DP</TableHead>
-                <TableHead>Sisa</TableHead>
+                <TableHead>DP Cust</TableHead>
+                <TableHead>Sisa Cust</TableHead>
+                <TableHead>DP Vendor</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Aksi</TableHead>
               </TableRow>
@@ -99,7 +126,7 @@ export const BiroJasaTableEnhanced = ({
             <TableBody>
               {data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center py-4">
+                  <TableCell colSpan={12} className="text-center py-4">
                     Tidak ada data biro jasa
                   </TableCell>
                 </TableRow>
@@ -115,6 +142,7 @@ export const BiroJasaTableEnhanced = ({
                     <TableCell>{formatCurrency(item.estimasi_biaya?.toString() || '0')}</TableCell>
                     <TableCell>{formatCurrency(item.dp?.toString() || '0')}</TableCell>
                     <TableCell>{formatCurrency(item.sisa?.toString() || '0')}</TableCell>
+                    <TableCell>{formatCurrency(item.dp_vendor?.toString() || '0')}</TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded text-xs ${
                         item.status === 'Selesai' ? 'bg-green-100 text-green-800' :
@@ -140,9 +168,19 @@ export const BiroJasaTableEnhanced = ({
                             size="sm" 
                             variant="outline" 
                             onClick={() => setUpdateBiayaModal({ isOpen: true, item })}
-                            title="Update Biaya"
+                            title="Update Biaya Pelunasan Customer"
                           >
                             <DollarSign className="w-4 h-4" />
+                          </Button>
+                        )}
+                         {showInputVendorDp(item) && (
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => setInputVendorDpModal({ isOpen: true, item })}
+                            title="Input DP ke Vendor"
+                          >
+                            <Wallet className="w-4 h-4" />
                           </Button>
                         )}
                         {showKeuntungan(item) && (
@@ -202,6 +240,14 @@ export const BiroJasaTableEnhanced = ({
         biroJasa={keuntunganModal.item}
         isOpen={keuntunganModal.isOpen}
         onClose={() => setKeuntunganModal({ isOpen: false, item: null })}
+        onSuccess={onRefresh}
+        selectedDivision={selectedDivision}
+      />
+
+      <InputVendorDpModal
+        biroJasa={inputVendorDpModal.item}
+        isOpen={inputVendorDpModal.isOpen}
+        onClose={() => setInputVendorDpModal({ isOpen: false, item: null })}
         onSuccess={onRefresh}
         selectedDivision={selectedDivision}
       />

@@ -33,6 +33,8 @@ export interface BiroJasaItem {
   biaya_modal?: number;
   keuntungan?: number;
   rekening_tujuan_id?: number;
+  dp_vendor?: number;
+  dp_vendor_date?: string;
   status: string;
   cabang?: string;
   brands?: { name: string };

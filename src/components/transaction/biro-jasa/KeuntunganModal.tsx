@@ -143,7 +143,7 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
           new Date(formData.tanggal.split('/').reverse().join('-')).toISOString().split('T')[0] : 
           formData.tanggal,
         keterangan: `Biaya Modal Biro Jasa - ${biroJasa.jenis_pengurusan} - ${biroJasa.plat_nomor || 'N/A'}`,
-        debit: biayaModal,
+        debit: biayaModal - (biroJasa.dp_vendor || 0), // Hanya catat sisa pelunasan jika ada DP vendor
         kredit: 0,
         saldo: 0,
         divisi: selectedDivision,
@@ -264,7 +264,13 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
           </div>
           
           <div>
-            <Label htmlFor="biaya_modal">Biaya Modal *</Label>
+            <Label htmlFor="biaya_modal">Biaya Modal (Total) *</Label>
+            {biroJasa?.dp_vendor && biroJasa.dp_vendor > 0 && (
+                <div className="text-xs text-blue-600 mb-1">
+                    Sudah ada DP Vendor: {formatCurrency(biroJasa.dp_vendor.toString())}. 
+                    Sisa pelunasan: {formatCurrency((parseCurrency(formData.biaya_modal) - biroJasa.dp_vendor).toString())}
+                </div>
+            )}
             <Input
               id="biaya_modal"
               type="text"
