@@ -115,6 +115,8 @@ export const usePenjualanCreate = () => {
         selectedMotor
       );
 
+      console.log('Mutation DEBUG: Pembukuan Entries content:', pembukuanEntries);
+
       if (pembukuanEntries.length > 0) {
         try {
           const { error: pembukuanError } = await supabase

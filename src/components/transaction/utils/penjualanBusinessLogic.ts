@@ -44,6 +44,15 @@ export const createPembukuanEntries = (submitData: any, formData: any, selectedM
   const jenisMotor = selectedMotor?.jenis_motor?.jenis_motor || '';
   const platNomor = formData.plat_nomor;
   
+  console.log('createPembukuanEntries DEBUG:', {
+    submitData,
+    formData,
+    selectedMotor,
+    brandName,
+    jenisMotor,
+    platNomor
+  });
+  
   const pembukuanEntries = [];
   
   if (submitData.jenis_transaksi !== 'tukar_tambah') {
