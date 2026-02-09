@@ -803,15 +803,16 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
           total_bayar, 
           biaya_modal, 
           tanggal, 
+          tanggal_pencatatan,
           plat_nomor, 
           jenis_pengurusan,
           companies!inner(divisi)
           `
         )
         .in("status", ["Selesai", "selesai"])
-        .gte("tanggal", startDate)
-        .lte("tanggal", endDate)
-        .order("tanggal", { ascending: false });
+        .gte("tanggal_pencatatan", startDate)
+        .lte("tanggal_pencatatan", endDate)
+        .order("tanggal_pencatatan", { ascending: false });
 
       if (selectedDivision !== "all") {
         query = query.eq("companies.divisi", selectedDivision);
@@ -1193,7 +1194,7 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
                                   <TableRow key={index}>
                                     <TableCell className="text-xs">
                                       {new Date(
-                                        item.tanggal
+                                        item.tanggal_pencatatan || item.tanggal
                                       ).toLocaleDateString("id-ID")}
                                     </TableCell>
                                     <TableCell className="text-xs">

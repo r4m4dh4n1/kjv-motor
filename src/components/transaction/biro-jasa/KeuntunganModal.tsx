@@ -8,7 +8,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { BiroJasaItem, KeuntunganFormData } from "./types";
-import { getCurrentDate, formatCurrency, parseCurrency, handleCurrencyInput } from "./utils";
+import { getCurrentDate, formatCurrency, parseCurrency, handleCurrencyInput, convertDateToISO } from "./utils";
 
 interface KeuntunganModalProps {
   biroJasa: BiroJasaItem | null;
@@ -127,6 +127,7 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
         .update({
           biaya_modal: biayaModal,
           keuntungan: keuntungan,
+          tanggal_pencatatan: convertDateToISO(formData.tanggal),
         })
         .eq("id", biroJasa.id);
   

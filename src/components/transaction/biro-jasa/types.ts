@@ -18,6 +18,7 @@ export interface BiroJasaFormData {
 export interface BiroJasaItem {
   id: number;
   tanggal: string;
+  tanggal_pencatatan?: string;
   brand_name?: string;
   jenis_motor?: string;
   warna?: string;
