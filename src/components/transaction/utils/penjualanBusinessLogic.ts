@@ -43,6 +43,7 @@ export const createPembukuanEntries = (submitData: any, formData: any, selectedM
   const brandName = selectedMotor?.brands?.name || '';
   const jenisMotor = selectedMotor?.jenis_motor?.jenis_motor || '';
   const platNomor = formData.plat_nomor;
+  const dpAmount = parseFormattedNumber(formData.dp || "0");
   
   console.log('createPembukuanEntries DEBUG:', {
     submitData,
@@ -50,7 +51,8 @@ export const createPembukuanEntries = (submitData: any, formData: any, selectedM
     selectedMotor,
     brandName,
     jenisMotor,
-    platNomor
+    platNomor,
+    dpAmount
   });
   
   const pembukuanEntries = [];
@@ -73,7 +75,7 @@ export const createPembukuanEntries = (submitData: any, formData: any, selectedM
       });
     } else if (submitData.jenis_pembayaran === 'cash_bertahap') {
       // Case 2: Cash bertahap - DP + subsidi ongkir + titip ongkir masuk kredit (satu entry)
-      const totalKredit = (submitData.dp || 0) + parseFormattedNumber(formData.subsidi_ongkir || "0") + parseFormattedNumber(formData.titip_ongkir || "0");
+      const totalKredit = dpAmount + parseFormattedNumber(formData.subsidi_ongkir || "0") + parseFormattedNumber(formData.titip_ongkir || "0");
       if (totalKredit > 0) {
         pembukuanEntries.push({
           tanggal: submitData.tanggal_penjualan,
@@ -89,7 +91,7 @@ export const createPembukuanEntries = (submitData: any, formData: any, selectedM
       }
     } else if (submitData.jenis_pembayaran === 'kredit') {
       // Case 3: Kredit - DP + subsidi ongkir + titip ongkir masuk kredit
-      const totalKredit = (submitData.dp || 0) + parseFormattedNumber(formData.subsidi_ongkir || "0") + parseFormattedNumber(formData.titip_ongkir || "0");
+      const totalKredit = dpAmount + parseFormattedNumber(formData.subsidi_ongkir || "0") + parseFormattedNumber(formData.titip_ongkir || "0");
       pembukuanEntries.push({
         tanggal: submitData.tanggal_penjualan,
         divisi: submitData.divisi,
@@ -120,7 +122,7 @@ export const createPembukuanEntries = (submitData: any, formData: any, selectedM
       });
     } else if (submitData.jenis_pembayaran === 'cash_bertahap') {
       // Case 2: Cash bertahap tukar tambah - DP + subsidi ongkir + titip ongkir masuk KREDIT
-      const totalKredit = (submitData.dp || 0) + parseFormattedNumber(formData.subsidi_ongkir || "0") + parseFormattedNumber(formData.titip_ongkir || "0");
+      const totalKredit = dpAmount + parseFormattedNumber(formData.subsidi_ongkir || "0") + parseFormattedNumber(formData.titip_ongkir || "0");
       pembukuanEntries.push({
         tanggal: submitData.tanggal_penjualan,
         divisi: submitData.divisi,
@@ -134,7 +136,7 @@ export const createPembukuanEntries = (submitData: any, formData: any, selectedM
       });
     } else if (submitData.jenis_pembayaran === 'kredit') {
       // Case 3: Kredit tukar tambah - DP + subsidi ongkir + titip ongkir masuk KREDIT
-      const totalKredit = (submitData.dp || 0) + parseFormattedNumber(formData.subsidi_ongkir || "0") + parseFormattedNumber(formData.titip_ongkir || "0");
+      const totalKredit = dpAmount + parseFormattedNumber(formData.subsidi_ongkir || "0") + parseFormattedNumber(formData.titip_ongkir || "0");
       pembukuanEntries.push({
         tanggal: submitData.tanggal_penjualan,
         divisi: submitData.divisi,
