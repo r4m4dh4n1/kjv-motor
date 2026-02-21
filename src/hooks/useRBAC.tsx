@@ -17,6 +17,8 @@ export type Permission =
   | "view_biro_jasa"
   | "view_upload_price_history"
   | "view_pembukuan"
+  | "view_keuntungan_motor"
+  | "view_analisis_motor"
   | "view_laba_rugi"
   | "view_breakdown_percabang"
   | "view_breakdown_perpemilik"
@@ -53,6 +55,8 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "view_biro_jasa",
     "view_upload_price_history",
     "view_pembukuan",
+    "view_keuntungan_motor",
+    "view_analisis_motor",
     "view_laba_rugi",
     "view_breakdown_percabang",
     "view_breakdown_perpemilik",
@@ -85,6 +89,8 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "view_cicilan",
     "view_biro_jasa",
     "view_pembukuan",
+    "view_keuntungan_motor",
+    "view_analisis_motor",
     "view_laba_rugi",
     "view_breakdown_percabang",
     "view_breakdown_perpemilik",
@@ -122,6 +128,8 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "view_biro_jasa",
     "view_upload_price_history",
     "view_pembukuan",
+    "view_keuntungan_motor",
+    "view_analisis_motor",
     "view_laba_rugi",
     "view_breakdown_percabang",
     "view_breakdown_perpemilik",
@@ -155,6 +163,8 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "view_biro_jasa",
     "view_upload_price_history",
     "view_pembukuan",
+    "view_keuntungan_motor",
+    "view_analisis_motor",
     "view_laba_rugi",
     "view_breakdown_percabang",
     "view_breakdown_perpemilik",

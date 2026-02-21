@@ -43,16 +43,14 @@ const Index = () => {
   const isMobile = useIsMobile();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(isMobile);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { hasPermission, loading: rbacLoading } = useRBAC();
+  const { hasPermission, loading: rbacLoading, userRole } = useRBAC();
 
   // Redirect users without dashboard access to their first available menu
   useEffect(() => {
-    if (!rbacLoading && !hasPermission("view_dashboard") && activeMenu === "dashboard") {
-      if (hasPermission("view_pembukuan")) {
-        setActiveMenu("pembukuan");
-      }
+    if (!rbacLoading && userRole && !hasPermission("view_dashboard")) {
+      setActiveMenu("pembukuan");
     }
-  }, [rbacLoading]);
+  }, [rbacLoading, userRole]);
 
   // Listen for programmatic navigation requests from dialogs/components
   useEffect(() => {

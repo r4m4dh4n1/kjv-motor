@@ -235,13 +235,13 @@ const Sidebar = ({
       id: "keuntungan-motor",
       label: "Pembukuan",
       icon: DollarSign,
-      permission: "view_pembukuan",
+      permission: "view_keuntungan_motor",
     },
     {
       id: "reports",
       label: "Analisis Motor",
       icon: FileText,
-      permission: "view_pembukuan",
+      permission: "view_analisis_motor",
     },
     {
       id: "laba-rugi",
