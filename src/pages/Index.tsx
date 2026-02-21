@@ -66,6 +66,10 @@ const Index = () => {
         return <JenisMotorPage selectedDivision={selectedDivision} />;
       case "company":
         return <CompanyPage selectedDivision={selectedDivision} />;
+      case "employees":
+        return <EmployeesPage />;
+      case "users":
+        return <UserApprovalPage />;
       case "pembelian":
         return <PembelianPageEnhanced selectedDivision={selectedDivision} />;
       case "penjualan-booked":
@@ -76,6 +80,7 @@ const Index = () => {
         return (
           <PenjualanSoldPageEnhanced selectedDivision={selectedDivision} />
         );
+      case "penjualan-canceled-booked":
         return (
           <PenjualanCanceledBookedPage selectedDivision={selectedDivision} />
         );

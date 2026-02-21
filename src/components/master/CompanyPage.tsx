@@ -400,6 +400,24 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
 
       if (updateError) throw updateError;
 
+      // Insert into pembukuan
+      const { error: pembukuanError } = await supabase
+        .from("pembukuan")
+        .insert([
+          {
+            tanggal: new Date().toISOString().split("T")[0],
+            keterangan: `Adjustment ${actionText} Modal: ${adjustmentDescription}`,
+            debit: adjustmentType === "decrease" ? amount : 0,
+            kredit: adjustmentType === "increase" ? amount : 0,
+            saldo: 0,
+            divisi: selectedCompanyForAdjustment.divisi,
+            cabang_id: 1, // Asumsi Head Office / Pusat
+            company_id: selectedCompanyForAdjustment.id,
+          },
+        ]);
+
+      if (pembukuanError) throw pembukuanError;
+
       toast({
         title: "Berhasil",
         description: `Modal berhasil ${
