@@ -35,6 +35,7 @@ import ModalReductionPage from "@/components/finance/ModalReductionPage"; // ✅
 import ModalHistoryPage from "@/components/finance/ModalHistoryPage"; // ✅ Tambahkan ini juga
 import ProfitAdjustmentSummary from "@/components/finance/ProfitAdjustmentSummary";
 import PencatatanAssetPage from "@/components/transaction/PencatatanAssetPage";
+import { useRBAC } from "@/hooks/useRBAC";
 
 const Index = () => {
   const [activeMenu, setActiveMenu] = useState("dashboard");
@@ -42,6 +43,16 @@ const Index = () => {
   const isMobile = useIsMobile();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(isMobile);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { hasPermission, loading: rbacLoading } = useRBAC();
+
+  // Redirect users without dashboard access to their first available menu
+  useEffect(() => {
+    if (!rbacLoading && !hasPermission("view_dashboard") && activeMenu === "dashboard") {
+      if (hasPermission("view_pembukuan")) {
+        setActiveMenu("pembukuan");
+      }
+    }
+  }, [rbacLoading]);
 
   // Listen for programmatic navigation requests from dialogs/components
   useEffect(() => {

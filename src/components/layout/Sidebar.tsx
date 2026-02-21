@@ -353,7 +353,8 @@ const Sidebar = ({
 
       {/* Navigation - Scrollable */}
       <nav className="flex-1 overflow-y-auto px-2 sm:px-3 py-3 sm:py-4">
-        {/* Menu Dashboard */}
+        {/* Menu Dashboard - Only show if user has view_dashboard permission */}
+        {hasPermission("view_dashboard") && (
         <div className="mb-3">
           <button
             onClick={() => setActiveMenu("dashboard")}
@@ -369,6 +370,7 @@ const Sidebar = ({
             {(!collapsed || isMobile) && "Dashboard"}
           </button>
         </div>
+        )}
 
         {/* Menu Master Data - Only show if user has at least one master permission */}
         {masterMenuItems.length > 0 && (
@@ -424,7 +426,8 @@ const Sidebar = ({
           </div>
         )}
 
-        {/* Menu Transaction */}
+        {/* Menu Transaction - Only show if user has at least one transaction permission */}
+        {transactionMenuItems.length > 0 && (
         <div className="mb-3">
           <button
             onClick={() => {
@@ -529,6 +532,7 @@ const Sidebar = ({
             </div>
           )}
         </div>
+        )}
 
         {/* Menu Finance - Only show if user has at least one finance permission */}
         {financeMenuItems.length > 0 && (

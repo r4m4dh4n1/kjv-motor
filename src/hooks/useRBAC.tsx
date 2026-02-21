@@ -171,6 +171,12 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "view_report_qc",
     "report_qc",
   ],
+
+  // Finance - Only access Mutasi Transaksi (Pembukuan)
+  finance: [
+    "view_pembukuan",
+    "search_data",
+  ],
 };
 
 // Hook to check permissions
@@ -208,12 +214,12 @@ export const useRBAC = () => {
 
     const permissions = ROLE_PERMISSIONS[role];
 
-    // If role not defined in ROLE_PERMISSIONS, default to full access (for backward compatibility)
+    // If role not defined in ROLE_PERMISSIONS, deny access by default
     if (!permissions) {
       console.warn(
-        `🔍 RBAC Debug: Role "${role}" not defined in ROLE_PERMISSIONS, defaulting to full access`
+        `🔍 RBAC Debug: Role "${role}" not defined in ROLE_PERMISSIONS, defaulting to deny access`
       );
-      return true;
+      return false;
     }
 
     const hasAccess = permissions.includes(permission);
