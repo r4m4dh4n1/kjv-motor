@@ -37,6 +37,20 @@ export const usePenjualanCreate = () => {
 
       // Auto update status based on payment
       let status = formData.status;
+
+      // Safety fallback: if status is empty (race condition with setTimeout auto-status),
+      // set default based on payment type
+      if (!status) {
+        if (formData.jenis_pembayaran === "cash_penuh") {
+          status = "Sold";
+        } else if (
+          formData.jenis_pembayaran === "cash_bertahap" ||
+          formData.jenis_pembayaran === "kredit"
+        ) {
+          status = "Booked";
+        }
+      }
+
       const hargaBayar = parseFormattedNumber(formData.harga_bayar || "0");
       const sisaBayar = parseFormattedNumber(formData.sisa_bayar || "0");
 

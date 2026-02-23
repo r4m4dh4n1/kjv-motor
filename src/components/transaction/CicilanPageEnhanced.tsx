@@ -560,6 +560,18 @@ const CicilanPageEnhanced = ({
 
       if (updateError) throw updateError;
 
+      // Update pembelian status when payment is complete
+      if (sisaBayarBaru <= 0 && selectedPenjualan.pembelian_id) {
+        const { error: pembelianStatusError } = await supabase
+          .from("pembelian")
+          .update({ status: "sold" })
+          .eq("id", selectedPenjualan.pembelian_id);
+
+        if (pembelianStatusError) {
+          console.error("Error updating pembelian status to sold:", pembelianStatusError);
+        }
+      }
+
       // Insert pembukuan entry for cicilan payment - PERBAIKAN: gunakan tujuan_pembayaran_id
       const brandName = selectedPenjualan.brands?.name || "";
       const jenisMotor = selectedPenjualan.jenis_motor?.jenis_motor || "";
