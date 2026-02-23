@@ -169,6 +169,21 @@ export const KeuntunganModal = ({ biroJasa, isOpen, onClose, onSuccess, selected
         });
       } else {
         console.log('✅ Pembukuan entry created successfully:', pembukuanResult);
+
+        // Kurangi modal company yang dipilih sebagai sumber dana
+        const sisaPelunasan = biayaModal - (biroJasa.dp_vendor || 0);
+        if (sisaPelunasan > 0) {
+          const { error: modalError } = await supabase.rpc('update_company_modal', {
+            company_id: parseInt(formData.sumber_dana),
+            amount: -sisaPelunasan // Negative to decrease modal
+          });
+          if (modalError) {
+            console.error('❌ Error updating company modal:', modalError);
+          } else {
+            console.log('✅ Company modal reduced by:', sisaPelunasan);
+          }
+        }
+
         toast({
           title: "Berhasil",
           description: "Data keuntungan dan pembukuan berhasil disimpan",

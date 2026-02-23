@@ -9,6 +9,7 @@ import {
   DollarSign,
   Clock,
   Edit,
+  Repeat,
 } from "lucide-react";
 import {
   EnhancedTable,
@@ -30,7 +31,9 @@ import UpdateHargaSoldModal, {
 } from "./UpdateHargaSoldModal";
 import EditHargaJualModal from "./EditHargaJualModal";
 import PriceHistoryViewModal from "./PriceHistoryViewModal";
+import GantiUnitModal, { GantiUnitData } from "./GantiUnitModal";
 import { useSoldUpdateHarga } from "./hooks/useSoldUpdateHarga";
+import { useGantiUnit } from "./hooks/useGantiUnit";
 
 interface PenjualanSoldTableProps {
   penjualanData: any[];
@@ -53,8 +56,12 @@ const PenjualanSoldTable = ({
     useState<any>(null);
   const [selectedPenjualanForEdit, setSelectedPenjualanForEdit] =
     useState<any>(null);
+  const [isGantiUnitOpen, setIsGantiUnitOpen] = useState(false);
+  const [selectedPenjualanForGantiUnit, setSelectedPenjualanForGantiUnit] =
+    useState<any>(null);
 
   const soldUpdateHarga = useSoldUpdateHarga();
+  const gantiUnit = useGantiUnit();
 
   const handleUpdateHarga = (penjualan: any) => {
     setSelectedPenjualan(penjualan);
@@ -105,6 +112,37 @@ const PenjualanSoldTable = ({
   const handleHistoryClose = () => {
     setIsHistoryOpen(false);
     setSelectedPenjualanForHistory(null);
+  };
+
+  const handleGantiUnit = (penjualan: any) => {
+    setSelectedPenjualanForGantiUnit(penjualan);
+    setIsGantiUnitOpen(true);
+  };
+
+  const handleGantiUnitConfirm = async (data: GantiUnitData) => {
+    if (!selectedPenjualanForGantiUnit) return;
+
+    try {
+      await gantiUnit.mutateAsync({
+        penjualanId: selectedPenjualanForGantiUnit.id,
+        oldPembelianId: selectedPenjualanForGantiUnit.pembelian_id,
+        oldHargaJual: selectedPenjualanForGantiUnit.harga_jual,
+        divisi: selectedPenjualanForGantiUnit.divisi,
+        cabangId: selectedPenjualanForGantiUnit.cabang_id,
+        ...data,
+      });
+
+      setIsGantiUnitOpen(false);
+      setSelectedPenjualanForGantiUnit(null);
+      window.location.reload();
+    } catch (error) {
+      console.error("Error ganti unit:", error);
+    }
+  };
+
+  const handleGantiUnitClose = () => {
+    setIsGantiUnitOpen(false);
+    setSelectedPenjualanForGantiUnit(null);
   };
 
   const DetailDialog = ({ penjualan }: { penjualan: any }) => (
@@ -410,6 +448,18 @@ const PenjualanSoldTable = ({
     </Button>
   );
 
+  const GantiUnitButton = ({ penjualan }: { penjualan: any }) => (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => handleGantiUnit(penjualan)}
+      className="hover:bg-indigo-50 hover:text-indigo-600"
+      title="Ganti Unit"
+    >
+      <Repeat className="w-4 h-4" />
+    </Button>
+  );
+
   // Override the actions column to use DetailDialog
   const customColumns = columns.map((col) => col);
 
@@ -427,6 +477,7 @@ const PenjualanSoldTable = ({
               <EditHargaJualButton penjualan={row} />
               <HistoryButton penjualan={row} />
               <UpdateHargaButton penjualan={row} />
+              <GantiUnitButton penjualan={row} />
             </div>
           ),
         }))}
@@ -457,6 +508,15 @@ const PenjualanSoldTable = ({
         penjualan={selectedPenjualan}
         onConfirm={handleUpdateHargaConfirm}
         isLoading={soldUpdateHarga.isPending}
+      />
+
+      {/* ✅ MODAL GANTI UNIT */}
+      <GantiUnitModal
+        isOpen={isGantiUnitOpen}
+        onClose={handleGantiUnitClose}
+        penjualan={selectedPenjualanForGantiUnit}
+        onConfirm={handleGantiUnitConfirm}
+        isLoading={gantiUnit.isPending}
       />
     </>
   );

@@ -95,6 +95,9 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
   const [adjustmentType, setAdjustmentType] = useState<"increase" | "decrease">(
     "increase"
   );
+  const [adjustmentDate, setAdjustmentDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
 
   const { toast } = useToast();
 
@@ -385,7 +388,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
             company_id: selectedCompanyForAdjustment.id,
             jumlah: finalAmount,
             keterangan: `${actionText} Modal: ${adjustmentDescription}`,
-            tanggal: new Date().toISOString().split("T")[0],
+            tanggal: adjustmentDate,
           },
         ]);
 
@@ -405,7 +408,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
         .from("pembukuan")
         .insert([
           {
-            tanggal: new Date().toISOString().split("T")[0],
+            tanggal: adjustmentDate,
             keterangan: `Adjustment ${actionText} Modal: ${adjustmentDescription}`,
             debit: adjustmentType === "decrease" ? amount : 0,
             kredit: adjustmentType === "increase" ? amount : 0,
@@ -429,6 +432,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
       setFormattedAdjustmentAmount("");
       setAdjustmentDescription("");
       setAdjustmentType("increase");
+      setAdjustmentDate(new Date().toISOString().split("T")[0]);
       setSelectedCompanyForAdjustment(null);
       setIsModalAdjustmentOpen(false);
       fetchCompanies();
@@ -958,6 +962,17 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
             </div>
 
             <div>
+              <Label htmlFor="adjustmentDate">Tanggal</Label>
+              <Input
+                id="adjustmentDate"
+                type="date"
+                value={adjustmentDate}
+                onChange={(e) => setAdjustmentDate(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+
+            <div>
               <Label htmlFor="adjustmentAmount">Jumlah Adjustment</Label>
               <Input
                 id="adjustmentAmount"
@@ -1011,6 +1026,7 @@ const CompanyPage = ({ selectedDivision }: CompanyPageProps) => {
                   setFormattedAdjustmentAmount("");
                   setAdjustmentDescription("");
                   setAdjustmentType("increase");
+                  setAdjustmentDate(new Date().toISOString().split("T")[0]);
                   setSelectedCompanyForAdjustment(null);
                 }}
               >
