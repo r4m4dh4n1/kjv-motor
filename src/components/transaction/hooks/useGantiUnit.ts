@@ -31,10 +31,10 @@ export const useGantiUnit = () => {
     try {
       const selisih = params.newHargaJual - params.oldHargaJual;
 
-      // 1. Set old pembelian status back to 'tersedia'
+      // 1. Set old pembelian status back to 'ready'
       const { error: oldPembelianError } = await supabase
         .from("pembelian")
-        .update({ status: "tersedia" })
+        .update({ status: "ready" })
         .eq("id", params.oldPembelianId);
 
       if (oldPembelianError) {

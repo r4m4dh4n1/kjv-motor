@@ -94,7 +94,7 @@ const GantiUnitModal = ({
           jenis_motor:jenis_motor_id(jenis_motor)
         `
         )
-        .eq("status", "tersedia");
+        .eq("status", "ready");
 
       if (penjualan?.divisi) {
         query = query.eq("divisi", penjualan.divisi);
