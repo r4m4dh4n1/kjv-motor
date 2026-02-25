@@ -18,11 +18,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompaniesData } from "./hooks/usePembelianData";
-import { ArrowRight, Car, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { ArrowRight, Car, TrendingUp, TrendingDown, Minus, Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface GantiUnitModalProps {
   isOpen: boolean;
@@ -67,6 +81,7 @@ const GantiUnitModal = ({
   const [loadingUnits, setLoadingUnits] = useState(false);
   const [selectedNewUnit, setSelectedNewUnit] = useState<string>("");
   const [newHargaJual, setNewHargaJual] = useState<number>(0);
+  const [unitPopoverOpen, setUnitPopoverOpen] = useState(false);
   const [companyId, setCompanyId] = useState<string>("");
   const [tanggal, setTanggal] = useState<string>(
     new Date().toISOString().split("T")[0]
@@ -221,43 +236,69 @@ const GantiUnitModal = ({
           <div className="space-y-3">
             <div>
               <Label>Unit Baru *</Label>
-              <Select
-                value={selectedNewUnit}
-                onValueChange={(val) => {
-                  setSelectedNewUnit(val);
-                  const unit = availableUnits.find(
-                    (u) => u.id === parseInt(val)
-                  );
-                  if (unit) {
-                    // Pre-fill harga jual with harga beli as suggestion
-                    setNewHargaJual(unit.harga_beli || 0);
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      loadingUnits
-                        ? "Memuat unit..."
-                        : "Pilih unit pengganti"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableUnits.map((unit) => (
-                    <SelectItem key={unit.id} value={unit.id.toString()}>
-                      {unit.brands?.name} - {unit.jenis_motor?.jenis_motor} |{" "}
-                      {unit.plat_nomor} | {unit.warna} |{" "}
-                      {formatCurrency(unit.harga_beli)}
-                    </SelectItem>
-                  ))}
-                  {availableUnits.length === 0 && !loadingUnits && (
-                    <SelectItem value="none" disabled>
-                      Tidak ada unit tersedia
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+              <Popover open={unitPopoverOpen} onOpenChange={setUnitPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={unitPopoverOpen}
+                    className="w-full justify-between font-normal"
+                  >
+                    {selectedNewUnit
+                      ? (() => {
+                          const unit = availableUnits.find(
+                            (u) => u.id === parseInt(selectedNewUnit)
+                          );
+                          return unit
+                            ? `${unit.plat_nomor} — ${unit.brands?.name} ${unit.jenis_motor?.jenis_motor}`
+                            : "Pilih unit pengganti";
+                        })()
+                      : loadingUnits
+                      ? "Memuat unit..."
+                      : "Pilih unit pengganti"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Cari plat nomor, brand, jenis..." />
+                    <CommandList>
+                      <CommandEmpty>
+                        {loadingUnits ? "Memuat..." : "Tidak ada unit ditemukan."}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {availableUnits.map((unit) => (
+                          <CommandItem
+                            key={unit.id}
+                            value={`${unit.plat_nomor} ${unit.brands?.name} ${unit.jenis_motor?.jenis_motor} ${unit.warna}`}
+                            onSelect={() => {
+                              const val = unit.id.toString();
+                              setSelectedNewUnit(val);
+                              setNewHargaJual(unit.harga_beli || 0);
+                              setUnitPopoverOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedNewUnit === unit.id.toString()
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <span className="font-medium">{unit.plat_nomor}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {unit.brands?.name} - {unit.jenis_motor?.jenis_motor} | {unit.warna} | {formatCurrency(unit.harga_beli)}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {selectedUnit && (
