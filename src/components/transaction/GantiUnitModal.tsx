@@ -342,9 +342,12 @@ const GantiUnitModal = ({
             <div>
               <Label>Harga Jual Baru *</Label>
               <Input
-                type="number"
-                value={newHargaJual || ""}
-                onChange={(e) => setNewHargaJual(Number(e.target.value))}
+                type="text"
+                value={newHargaJual ? newHargaJual.toLocaleString("id-ID") : ""}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, "");
+                  setNewHargaJual(Number(raw));
+                }}
                 placeholder="Masukkan harga jual baru"
               />
             </div>
