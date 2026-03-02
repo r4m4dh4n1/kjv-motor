@@ -708,13 +708,11 @@ const LabaRugiPage = ({ selectedDivision }: LabaRugiPageProps) => {
       filteredOperationalData.forEach((item) => {
         const kategori = item.kategori || "Lainnya";
 
-        // ✅ NEW: Skip kategori "Kurang Modal" untuk divisi START
+        // ✅ UPDATED: Skip kategori "Kurang Modal" untuk SEMUA divisi (tidak tampil di Laba Rugi)
         const isKurangModal = kategori.includes("Kurang Modal");
-        const isDivisiStart =
-          item.divisi && item.divisi.toLowerCase() === "start";
 
-        if (isKurangModal && isDivisiStart) {
-          console.log("⏭️ Skipping Kurang Modal for START divisi:", {
+        if (isKurangModal) {
+          console.log("⏭️ Skipping Kurang Modal:", {
             kategori,
             divisi: item.divisi,
             nominal: item.nominal,

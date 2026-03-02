@@ -190,10 +190,14 @@ const RetroactiveOperationalDialog = ({
     e.preventDefault();
 
     // Validation based on category type
-    if (!formData.category || !formData.company_id || formData.nominal <= 0) {
+    // ✅ FIX: Company tidak wajib untuk kategori Kurang Profit
+    const needsCompany = !isProfitReducingCategory;
+    if (!formData.category || (needsCompany && !formData.company_id) || formData.nominal <= 0) {
       toast({
         title: "Error",
-        description: "Mohon lengkapi semua field yang diperlukan",
+        description: needsCompany
+          ? "Mohon lengkapi semua field yang diperlukan"
+          : "Mohon lengkapi kategori, nominal, dan deskripsi",
         variant: "destructive",
       });
       return;
@@ -252,6 +256,14 @@ const RetroactiveOperationalDialog = ({
           : "";
 
       // Insert into operational table with retroactive flag
+      // ✅ FIX: Untuk Kurang Profit, company_id bisa null
+      const resolvedDivisi =
+        selectedDivision === "all"
+          ? (formData.company_id
+              ? companies.find((c) => c.id.toString() === formData.company_id)?.divisi
+              : undefined) || "sport"
+          : selectedDivision;
+
       const { data: operationalData, error: operationalError } = await supabase
         .from("operational")
         .insert({
@@ -259,11 +271,7 @@ const RetroactiveOperationalDialog = ({
             ? formattedTargetDate
             : formattedTransactionDate, // Modal-reducing menggunakan target date
           original_month: formattedTargetDate,
-          divisi:
-            selectedDivision === "all"
-              ? companies.find((c) => c.id.toString() === formData.company_id)
-                  ?.divisi || "sport"
-              : selectedDivision,
+          divisi: resolvedDivisi,
           kategori: formData.category,
           deskripsi: `${formData.description}${descriptionSuffix}`,
           nominal: formData.nominal,
@@ -456,7 +464,13 @@ const RetroactiveOperationalDialog = ({
             <Select
               value={formData.category}
               onValueChange={(value) => {
-                setFormData((prev) => ({ ...prev, category: value }));
+                // ✅ FIX: Reset company_id saat pindah ke Kurang Profit
+                const isNewProfitCategory = value.includes("Kurang Profit");
+                setFormData((prev) => ({
+                  ...prev,
+                  category: value,
+                  ...(isNewProfitCategory ? { company_id: "" } : {}),
+                }));
                 // Reset target month when category changes to non-retroactive
                 if (
                   !value.includes("Kurang Modal") &&
@@ -583,51 +597,81 @@ const RetroactiveOperationalDialog = ({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="company_id">Company</Label>
-              <Select
-                value={formData.company_id}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, company_id: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih company" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id.toString()}>
-                      {company.nama_perusahaan} -{" "}
-                      {formatCurrency(company.modal)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* ✅ FIX: Sembunyikan Company untuk kategori Kurang Profit */}
+          {isProfitReducingCategory ? (
+            <div className="space-y-4">
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-700">
+                  <strong>Catatan:</strong> Kategori ini hanya mengurangi keuntungan (profit), tidak memerlukan sumber dana/company dan tidak mengurangi modal perusahaan.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="nominal">Nominal</Label>
+                <Input
+                  id="nominal"
+                  type="text"
+                  value={
+                    formData.nominal > 0
+                      ? formData.nominal.toLocaleString("id-ID")
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d]/g, "");
+                    setFormData((prev) => ({
+                      ...prev,
+                      nominal: parseInt(value) || 0,
+                    }));
+                  }}
+                  placeholder="Masukkan nominal (contoh: 1.000.000)"
+                />
+              </div>
             </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="company_id">Company</Label>
+                <Select
+                  value={formData.company_id}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, company_id: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map((company) => (
+                      <SelectItem key={company.id} value={company.id.toString()}>
+                        {company.nama_perusahaan} -{" "}
+                        {formatCurrency(company.modal)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="nominal">Nominal</Label>
-              <Input
-                id="nominal"
-                type="text"
-                value={
-                  formData.nominal > 0
-                    ? formData.nominal.toLocaleString("id-ID")
-                    : ""
-                }
-                onChange={(e) => {
-                  // Remove non-numeric characters except decimal separator
-                  const value = e.target.value.replace(/[^\d]/g, "");
-                  setFormData((prev) => ({
-                    ...prev,
-                    nominal: parseInt(value) || 0,
-                  }));
-                }}
-                placeholder="Masukkan nominal (contoh: 1.000.000)"
-              />
+              <div className="space-y-2">
+                <Label htmlFor="nominal">Nominal</Label>
+                <Input
+                  id="nominal"
+                  type="text"
+                  value={
+                    formData.nominal > 0
+                      ? formData.nominal.toLocaleString("id-ID")
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d]/g, "");
+                    setFormData((prev) => ({
+                      ...prev,
+                      nominal: parseInt(value) || 0,
+                    }));
+                  }}
+                  placeholder="Masukkan nominal (contoh: 1.000.000)"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="description">Deskripsi</Label>
