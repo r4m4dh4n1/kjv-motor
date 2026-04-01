@@ -20,6 +20,7 @@ interface GantiUnitParams {
   cabangId: number;
   tanggal: string;
   keterangan: string;
+  jenisPembayaran?: string; // cash_penuh, cash_bertahap, etc.
 }
 
 export const useGantiUnit = () => {
@@ -42,10 +43,12 @@ export const useGantiUnit = () => {
         throw oldPembelianError;
       }
 
-      // 2. Set new pembelian status to 'terjual'
+      // 2. Set new pembelian status based on jenis pembayaran
+      // cash_bertahap → booked (masih cicilan), cash_penuh → terjual
+      const newPembelianStatus = params.jenisPembayaran === "cash_bertahap" ? "booked" : "terjual";
       const { error: newPembelianError } = await supabase
         .from("pembelian")
-        .update({ status: "terjual" })
+        .update({ status: newPembelianStatus })
         .eq("id", params.newPembelianId);
 
       if (newPembelianError) {
@@ -56,7 +59,11 @@ export const useGantiUnit = () => {
       // 3. Calculate new keuntungan
       const newKeuntungan = params.newHargaJual - params.newHargaBeli;
 
-      // 4. Update penjualan with new unit data
+      // 4. Determine penjualan status based on jenis pembayaran
+      // cash_bertahap → booked (masih cicilan), cash_penuh → selesai/sold
+      const newPenjualanStatus = params.jenisPembayaran === "cash_bertahap" ? "booked" : "selesai";
+
+      // Update penjualan with new unit data and correct status
       const { error: penjualanError } = await supabase
         .from("penjualans")
         .update({
@@ -72,6 +79,7 @@ export const useGantiUnit = () => {
           harga_bayar: params.newHargaJual,
           keuntungan: newKeuntungan,
           sisa_bayar: 0,
+          status: newPenjualanStatus,
         })
         .eq("id", params.penjualanId);
 

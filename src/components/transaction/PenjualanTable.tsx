@@ -17,6 +17,7 @@ import {
   MoreHorizontal,
   XCircle,
   Send,
+  Repeat,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -61,9 +62,11 @@ interface PenjualanTableProps {
   handleRiwayatHarga?: (penjualan: any) => void;
   handleCancelDp?: (penjualan: any) => void;
   handleTitipOngkirPayout?: (penjualan: any) => void;
+  handleGantiUnit?: (penjualan: any) => void;
   ongkirPaymentStatus?: Record<number, boolean>;
   showCancelDp?: boolean;
   showTitipOngkirPayout?: boolean;
+  showGantiUnit?: boolean;
 }
 
 const PenjualanTable = ({
@@ -75,9 +78,11 @@ const PenjualanTable = ({
   handleRiwayatHarga,
   handleCancelDp,
   handleTitipOngkirPayout,
+  handleGantiUnit,
   ongkirPaymentStatus = {},
   showCancelDp = false,
   showTitipOngkirPayout = false,
+  showGantiUnit = false,
 }: PenjualanTableProps) => {
   const isMobile = useIsMobile();
   const { hasPermission } = useRBAC();
@@ -275,6 +280,16 @@ const PenjualanTable = ({
                         Batalkan DP
                       </DropdownMenuItem>
                     )}
+                  {showGantiUnit &&
+                    penjualan.status === "booked" && (
+                      <DropdownMenuItem
+                        onClick={() => handleGantiUnit?.(penjualan)}
+                        className="text-indigo-600 focus:text-indigo-600"
+                      >
+                        <Repeat className="w-4 h-4 mr-2" />
+                        Ganti Unit
+                      </DropdownMenuItem>
+                    )}
                   <DropdownMenuItem onClick={() => handleEdit(penjualan)}>
                     <Edit className="w-4 h-4 mr-2" />
                     Edit
@@ -356,6 +371,26 @@ const PenjualanTable = ({
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Batalkan DP</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+
+            {/* Tombol Ganti Unit - only show for booked status */}
+            {showGantiUnit &&
+              penjualan.status === "booked" && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleGantiUnit?.(penjualan)}
+                      className="text-indigo-600 hover:text-indigo-700 border-indigo-200 hover:border-indigo-300"
+                    >
+                      <Repeat className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Ganti Unit</p>
                   </TooltipContent>
                 </Tooltip>
               )}

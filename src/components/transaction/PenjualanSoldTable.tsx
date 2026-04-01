@@ -129,6 +129,7 @@ const PenjualanSoldTable = ({
         oldHargaJual: selectedPenjualanForGantiUnit.harga_jual,
         divisi: selectedPenjualanForGantiUnit.divisi,
         cabangId: selectedPenjualanForGantiUnit.cabang_id,
+        jenisPembayaran: selectedPenjualanForGantiUnit.jenis_pembayaran,
         ...data,
       });
 

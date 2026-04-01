@@ -40,6 +40,7 @@ import UpdateHargaModal from "./UpdateHargaModal";
 import DpCancellationModal from "./DpCancellationModal";
 import TitipOngkirPayoutModal from "./TitipOngkirPayoutModal";
 import PriceHistoryModal from "./PriceHistoryModal";
+import GantiUnitModal, { GantiUnitData } from "./GantiUnitModal";
 import { Penjualan, PenjualanFormData } from "./penjualan-types";
 import { formatCurrency } from "@/utils/formatUtils";
 import { usePagination } from "@/hooks/usePagination";
@@ -56,6 +57,7 @@ import {
 import { usePenjualanEdit } from "./hooks/usePenjualanEditMutation"; // ✅ Tambahkan ini
 import { usePenjualanActions } from "./hooks/usePenjualanActions";
 import { useDpCancellation } from "./hooks/useDpCancellation";
+import { useGantiUnit } from "./hooks/useGantiUnit";
 import { supabase } from "@/integrations/supabase/client";
 import {
   createInitialPenjualanFormData,
@@ -93,6 +95,10 @@ const PenjualanBookedPageEnhanced = ({
   const [ongkirPaymentStatus, setOngkirPaymentStatus] = useState<
     Record<number, boolean>
   >({});
+
+  // Ganti Unit states
+  const [isGantiUnitModalOpen, setIsGantiUnitModalOpen] = useState(false);
+  const [selectedPenjualanForGantiUnit, setSelectedPenjualanForGantiUnit] = useState<any>(null);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -140,6 +146,7 @@ const PenjualanBookedPageEnhanced = ({
   const deletePenjualanMutation = usePenjualanDelete();
   const editPenjualanMutation = usePenjualanEdit(); // ✅ Tambahkan ini
   const dpCancellationMutation = useDpCancellation();
+  const gantiUnitMutation = useGantiUnit();
 
   const checkOngkirPaymentStatus = async (penjualanIds: number[]) => {
     try {
@@ -430,6 +437,39 @@ const PenjualanBookedPageEnhanced = ({
     refetchPenjualan();
   };
 
+  // Ganti Unit handlers
+  const handleGantiUnit = (penjualan: any) => {
+    setSelectedPenjualanForGantiUnit(penjualan);
+    setIsGantiUnitModalOpen(true);
+  };
+
+  const handleGantiUnitConfirm = async (data: GantiUnitData) => {
+    if (!selectedPenjualanForGantiUnit) return;
+
+    try {
+      await gantiUnitMutation.mutateAsync({
+        penjualanId: selectedPenjualanForGantiUnit.id,
+        oldPembelianId: selectedPenjualanForGantiUnit.pembelian_id,
+        oldHargaJual: selectedPenjualanForGantiUnit.harga_jual,
+        divisi: selectedPenjualanForGantiUnit.divisi,
+        cabangId: selectedPenjualanForGantiUnit.cabang_id,
+        jenisPembayaran: selectedPenjualanForGantiUnit.jenis_pembayaran,
+        ...data,
+      });
+
+      setIsGantiUnitModalOpen(false);
+      setSelectedPenjualanForGantiUnit(null);
+      refetchPenjualan();
+    } catch (error) {
+      // Error handling is done in the hook
+    }
+  };
+
+  const handleGantiUnitClose = () => {
+    setIsGantiUnitModalOpen(false);
+    setSelectedPenjualanForGantiUnit(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -678,9 +718,11 @@ const PenjualanBookedPageEnhanced = ({
         handleRiwayatHarga={handleRiwayatHarga}
         handleCancelDp={handleCancelDp}
         handleTitipOngkirPayout={handleTitipOngkirPayout}
+        handleGantiUnit={handleGantiUnit}
         ongkirPaymentStatus={ongkirPaymentStatus}
         showCancelDp={true}
         showTitipOngkirPayout={true}
+        showGantiUnit={true}
       />
 
       {/* Pagination Controls */}
@@ -756,6 +798,14 @@ const PenjualanBookedPageEnhanced = ({
           setSelectedPenjualanForHistory(null);
         }}
         penjualan={selectedPenjualanForHistory}
+      />
+
+      <GantiUnitModal
+        isOpen={isGantiUnitModalOpen}
+        onClose={handleGantiUnitClose}
+        penjualan={selectedPenjualanForGantiUnit}
+        onConfirm={handleGantiUnitConfirm}
+        isLoading={gantiUnitMutation.isPending}
       />
     </div>
   );
