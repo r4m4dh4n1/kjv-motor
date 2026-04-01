@@ -44,8 +44,8 @@ export const useGantiUnit = () => {
       }
 
       // 2. Set new pembelian status based on jenis pembayaran
-      // cash_bertahap → booked (masih cicilan), cash_penuh → terjual
-      const newPembelianStatus = params.jenisPembayaran === "cash_bertahap" ? "booked" : "terjual";
+      // cash_bertahap → booked (masih cicilan), cash_penuh → sold
+      const newPembelianStatus = params.jenisPembayaran === "cash_bertahap" ? "booked" : "sold";
       const { error: newPembelianError } = await supabase
         .from("pembelian")
         .update({ status: newPembelianStatus })
