@@ -81,9 +81,6 @@ const PenjualanTable = ({
 }: PenjualanTableProps) => {
   const isMobile = useIsMobile();
   const { hasPermission } = useRBAC();
-  const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
-  const [selectedPenjualan, setSelectedPenjualan] = React.useState<any>(null);
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -96,29 +93,139 @@ const PenjualanTable = ({
     return new Date(dateString).toLocaleDateString("id-ID");
   };
 
-  const handleShowDetail = (penjualan: any) => {
-    setSelectedPenjualan(penjualan);
-    setDetailDialogOpen(true);
-  };
-
-  const DetailButton = ({ penjualan }: { penjualan: any }) => (
-    <Tooltip>
-      <TooltipTrigger asChild>
+  const DetailDialog = ({ penjualan }: { penjualan: any }) => (
+    <Dialog>
+      <DialogTrigger asChild>
         <Button 
           variant="outline" 
           size="sm"
-          onClick={() => handleShowDetail(penjualan)}
+          className="hover:bg-blue-50 hover:text-blue-600"
+          title="Lihat Detail"
         >
           <Eye className="w-4 h-4" />
         </Button>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p>Lihat Detail</p>
-      </TooltipContent>
-    </Tooltip>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Detail Penjualan</DialogTitle>
+          <DialogDescription>
+            Informasi lengkap penjualan motor{" "}
+            {penjualan?.brands?.name} -{" "}
+            {penjualan?.jenis_motor?.jenis_motor}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-4 py-4">
+          <div className="space-y-2">
+            <div>
+              <strong>Tanggal:</strong>{" "}
+              {formatDate(penjualan.tanggal)}
+            </div>
+            <div>
+              <strong>Divisi:</strong> {penjualan.divisi}
+            </div>
+            <div>
+              <strong>Cabang:</strong>{" "}
+              {penjualan.cabang?.nama || "-"}
+            </div>
+            <div>
+              <strong>Jenis Transaksi:</strong>{" "}
+              {penjualan.tt?.replace("_", " ")}
+            </div>
+            <div>
+              <strong>Brand:</strong>{" "}
+              {penjualan.brands?.name || "-"}
+            </div>
+            <div>
+              <strong>Jenis Motor:</strong>{" "}
+              {penjualan.jenis_motor?.jenis_motor || "-"}
+            </div>
+            <div>
+              <strong>Tahun:</strong> {penjualan.tahun}
+            </div>
+            <div>
+              <strong>Warna:</strong> {penjualan.warna}
+            </div>
+            <div>
+              <strong>Plat Nomor:</strong> {penjualan.plat}
+            </div>
+            <div>
+              <strong>Kilometer:</strong>{" "}
+              {penjualan.kilometer?.toLocaleString()} km
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div>
+              <strong>Harga Beli:</strong>{" "}
+              {formatCurrency(penjualan.harga_beli)}
+            </div>
+            <div>
+              <strong>Harga Jual:</strong>{" "}
+              {formatCurrency(penjualan.harga_jual)}
+            </div>
+            <div>
+              <strong>Harga Bayar:</strong>{" "}
+              {formatCurrency(penjualan.harga_bayar)}
+            </div>
+            <div>
+              <strong>Keuntungan:</strong>{" "}
+              {formatCurrency(penjualan.keuntungan)}
+            </div>
+            <div>
+              <strong>DP:</strong>{" "}
+              {penjualan.dp
+                ? formatCurrency(penjualan.dp)
+                : "-"}
+            </div>
+            <div>
+              <strong>Sisa Bayar:</strong>{" "}
+              {formatCurrency(penjualan.sisa_bayar)}
+            </div>
+            <div>
+              <strong>Jenis Pembayaran:</strong>{" "}
+              {penjualan.jenis_pembayaran?.replace("_", " ")}
+            </div>
+            <div>
+              <strong>Nama Pembeli:</strong>{" "}
+              {penjualan.nama_pembeli || "-"}
+            </div>
+            <div>
+              <strong>Kontak:</strong> {penjualan.kontak || "-"}
+            </div>
+            <div>
+              <strong>Status:</strong>{" "}
+              <span
+                className={`px-2 py-1 rounded-full text-xs ${
+                  penjualan.status === "selesai"
+                    ? "bg-green-100 text-green-800"
+                    : penjualan.status === "proses"
+                    ? "bg-blue-100 text-blue-800"
+                    : penjualan.status === "pending"
+                    ? "bg-yellow-100 text-yellow-800"
+                    : penjualan.status === "cancelled_dp_hangus"
+                    ? "bg-gray-100 text-gray-800"
+                    : "bg-red-100 text-red-800"
+                }`}
+              >
+                {penjualan.status === "cancelled_dp_hangus"
+                  ? "DP Hangus"
+                  : penjualan.status}
+              </span>
+            </div>
+          </div>
+        </div>
+        {penjualan.keterangan && (
+          <div className="pt-4 border-t">
+            <strong>Keterangan:</strong>
+            <p className="mt-2 text-sm text-gray-600">
+              {penjualan.keterangan}
+            </p>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 
-  // DetailDialogContent is now handled by the controlled Dialog at the bottom of the component
+
 
   const renderActionButtons = (penjualan: any) => {
     // Jika status cancelled_dp_hangus, hanya tampilkan tombol view
@@ -126,77 +233,71 @@ const PenjualanTable = ({
       return (
         <div className="flex space-x-1">
           {/* Hanya Tombol Lihat Detail */}
-          <DetailButton penjualan={penjualan} />
+          <DetailDialog penjualan={penjualan} />
         </div>
       );
     }
 
     if (isMobile) {
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => {
-                setSelectedPenjualan(penjualan);
-                setDetailDialogOpen(true);
-              }}
-            >
-              <Eye className="w-4 h-4 mr-2" />
-              Lihat Detail
-            </DropdownMenuItem>
-            {/* Sembunyikan tombol lain untuk cancelled_dp_hangus */}
-            {penjualan.status !== "cancelled_dp_hangus" && (
-              <>
-                <DropdownMenuItem
-                  onClick={() => handleUpdateHarga?.(penjualan)}
-                >
-                  <DollarSign className="w-4 h-4 mr-2" />
-                  Update Harga
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleRiwayatHarga?.(penjualan)}
-                >
-                  <History className="w-4 h-4 mr-2" />
-                  Riwayat Harga
-                </DropdownMenuItem>
-                {showCancelDp &&
-                  penjualan.dp > 0 &&
-                  penjualan.status === "booked" && (
-                    <DropdownMenuItem
-                      onClick={() => handleCancelDp?.(penjualan)}
-                      className="text-orange-600 focus:text-orange-600"
-                    >
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Batalkan DP
-                    </DropdownMenuItem>
-                  )}
-                <DropdownMenuItem onClick={() => handleEdit(penjualan)}>
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => deleteMutation.mutate(penjualan.id)}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Hapus
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex space-x-1">
+          <DetailDialog penjualan={penjualan} />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {/* Sembunyikan tombol lain untuk cancelled_dp_hangus */}
+              {penjualan.status !== "cancelled_dp_hangus" && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => handleUpdateHarga?.(penjualan)}
+                  >
+                    <DollarSign className="w-4 h-4 mr-2" />
+                    Update Harga
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleRiwayatHarga?.(penjualan)}
+                  >
+                    <History className="w-4 h-4 mr-2" />
+                    Riwayat Harga
+                  </DropdownMenuItem>
+                  {showCancelDp &&
+                    penjualan.dp > 0 &&
+                    penjualan.status === "booked" && (
+                      <DropdownMenuItem
+                        onClick={() => handleCancelDp?.(penjualan)}
+                        className="text-orange-600 focus:text-orange-600"
+                      >
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Batalkan DP
+                      </DropdownMenuItem>
+                    )}
+                  <DropdownMenuItem onClick={() => handleEdit(penjualan)}>
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => deleteMutation.mutate(penjualan.id)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Hapus
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       );
     }
 
     return (
       <div className="flex space-x-1">
         {/* Tombol Lihat Detail - Always visible */}
-        <DetailButton penjualan={penjualan} />
+        <DetailDialog penjualan={penjualan} />
 
 
         {/* Sembunyikan tombol lain untuk cancelled_dp_hangus */}
@@ -421,131 +522,7 @@ const PenjualanTable = ({
         </Table>
       </div>
 
-      {/* Detail Dialog */}
-      {/* Detail Dialog */}
-      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Detail Penjualan</DialogTitle>
-            <DialogDescription>
-              Informasi lengkap penjualan motor{" "}
-              {selectedPenjualan?.brands?.name} -{" "}
-              {selectedPenjualan?.jenis_motor?.jenis_motor}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedPenjualan && (
-            <>
-              <div className="grid grid-cols-2 gap-4 py-4">
-                <div className="space-y-2">
-                  <div>
-                    <strong>Tanggal:</strong>{" "}
-                    {formatDate(selectedPenjualan.tanggal)}
-                  </div>
-                  <div>
-                    <strong>Divisi:</strong> {selectedPenjualan.divisi}
-                  </div>
-                  <div>
-                    <strong>Cabang:</strong>{" "}
-                    {selectedPenjualan.cabang?.nama || "-"}
-                  </div>
-                  <div>
-                    <strong>Jenis Transaksi:</strong>{" "}
-                    {selectedPenjualan.tt?.replace("_", " ")}
-                  </div>
-                  <div>
-                    <strong>Brand:</strong>{" "}
-                    {selectedPenjualan.brands?.name || "-"}
-                  </div>
-                  <div>
-                    <strong>Jenis Motor:</strong>{" "}
-                    {selectedPenjualan.jenis_motor?.jenis_motor || "-"}
-                  </div>
-                  <div>
-                    <strong>Tahun:</strong> {selectedPenjualan.tahun}
-                  </div>
-                  <div>
-                    <strong>Warna:</strong> {selectedPenjualan.warna}
-                  </div>
-                  <div>
-                    <strong>Plat Nomor:</strong> {selectedPenjualan.plat}
-                  </div>
-                  <div>
-                    <strong>Kilometer:</strong>{" "}
-                    {selectedPenjualan.kilometer?.toLocaleString()} km
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div>
-                    <strong>Harga Beli:</strong>{" "}
-                    {formatCurrency(selectedPenjualan.harga_beli)}
-                  </div>
-                  <div>
-                    <strong>Harga Jual:</strong>{" "}
-                    {formatCurrency(selectedPenjualan.harga_jual)}
-                  </div>
-                  <div>
-                    <strong>Harga Bayar:</strong>{" "}
-                    {formatCurrency(selectedPenjualan.harga_bayar)}
-                  </div>
-                  <div>
-                    <strong>Keuntungan:</strong>{" "}
-                    {formatCurrency(selectedPenjualan.keuntungan)}
-                  </div>
-                  <div>
-                    <strong>DP:</strong>{" "}
-                    {selectedPenjualan.dp
-                      ? formatCurrency(selectedPenjualan.dp)
-                      : "-"}
-                  </div>
-                  <div>
-                    <strong>Sisa Bayar:</strong>{" "}
-                    {formatCurrency(selectedPenjualan.sisa_bayar)}
-                  </div>
-                  <div>
-                    <strong>Jenis Pembayaran:</strong>{" "}
-                    {selectedPenjualan.jenis_pembayaran?.replace("_", " ")}
-                  </div>
-                  <div>
-                    <strong>Nama Pembeli:</strong>{" "}
-                    {selectedPenjualan.nama_pembeli || "-"}
-                  </div>
-                  <div>
-                    <strong>Kontak:</strong> {selectedPenjualan.kontak || "-"}
-                  </div>
-                  <div>
-                    <strong>Status:</strong>{" "}
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs ${
-                        selectedPenjualan.status === "selesai"
-                          ? "bg-green-100 text-green-800"
-                          : selectedPenjualan.status === "proses"
-                          ? "bg-blue-100 text-blue-800"
-                          : selectedPenjualan.status === "pending"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : selectedPenjualan.status === "cancelled_dp_hangus"
-                          ? "bg-gray-100 text-gray-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {selectedPenjualan.status === "cancelled_dp_hangus"
-                        ? "DP Hangus"
-                        : selectedPenjualan.status}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              {selectedPenjualan.keterangan && (
-                <div className="pt-4 border-t">
-                  <strong>Keterangan:</strong>
-                  <p className="mt-2 text-sm text-gray-600">
-                    {selectedPenjualan.keterangan}
-                  </p>
-                </div>
-              )}
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+
     </TooltipProvider>
   );
 };

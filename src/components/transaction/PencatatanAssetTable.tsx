@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Edit, Trash2, History, DollarSign } from "lucide-react";
+import { Edit, Trash2, History, DollarSign, XCircle } from "lucide-react";
 import {
   EnhancedTable,
   DateCell,
@@ -226,9 +226,43 @@ export const PencatatanAssetTable = ({
     },
   });
 
+  // Mutation untuk Penghapusan Asset (tanpa kembalikan modal & tanpa hapus pembukuan)
+  const penghapusanMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const { error } = await supabase
+        .from("pencatatan_asset")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Berhasil",
+        description:
+          "Data asset berhasil dihapus (tanpa pengembalian modal & pembukuan tetap)",
+      });
+      onRefetch();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Gagal menghapus data asset",
+        variant: "destructive",
+      });
+      console.error("Error penghapusan asset:", error);
+    },
+  });
+
   const handleDelete = (id: number) => {
-    if (window.confirm("Apakah Anda yakin ingin menghapus asset ini?")) {
+    if (window.confirm("Apakah Anda yakin ingin menghapus asset ini?\n\nPerhatian: Modal company akan dikembalikan dan pembukuan terkait akan dihapus.")) {
       deleteMutation.mutate(id);
+    }
+  };
+
+  const handlePenghapusan = (id: number) => {
+    if (window.confirm("Apakah Anda yakin ingin menghapus asset ini?\n\nCatatan: Modal company TIDAK akan dikembalikan dan pembukuan TIDAK akan dihapus.")) {
+      penghapusanMutation.mutate(id);
     }
   };
 
@@ -515,6 +549,12 @@ export const PencatatanAssetTable = ({
       label: "History",
       icon: History,
       onClick: (row: PencatatanAssetItem) => handleShowHistory(row.nama),
+      variant: "outline" as const,
+    },
+    {
+      label: "Penghapusan",
+      icon: XCircle,
+      onClick: (row: PencatatanAssetItem) => handlePenghapusan(row.id),
       variant: "outline" as const,
     },
     {
