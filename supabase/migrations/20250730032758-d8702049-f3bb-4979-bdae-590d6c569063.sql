@@ -1,0 +1,223 @@
+-- Completely drop and recreate all combined views without SECURITY DEFINER
+DROP VIEW IF EXISTS public.assets_combined CASCADE;
+DROP VIEW IF EXISTS public.pembelian_combined CASCADE;
+DROP VIEW IF EXISTS public.pembukuan_combined CASCADE;
+DROP VIEW IF EXISTS public.penjualans_combined CASCADE;
+
+-- Create simple views that just select from tables without SECURITY DEFINER
+-- These views will use the normal RLS policies from the underlying tables
+CREATE VIEW public.assets_combined AS
+SELECT 
+    id,
+    jenis_asset,
+    tanggal_perolehan,
+    harga_asset,
+    tanggal_jual,
+    harga_jual,
+    keuntungan,
+    status,
+    created_at,
+    updated_at,
+    NULL::integer as closed_month,
+    NULL::integer as closed_year,
+    'active'::text as data_source
+FROM public.assets
+UNION ALL
+SELECT 
+    id,
+    jenis_asset,
+    tanggal_perolehan,
+    harga_asset,
+    tanggal_jual,
+    harga_jual,
+    keuntungan,
+    status,
+    created_at,
+    updated_at,
+    closed_month,
+    closed_year,
+    'history'::text as data_source
+FROM public.assets_history;
+
+CREATE VIEW public.pembelian_combined AS
+SELECT 
+    id,
+    tanggal_pembelian,
+    divisi,
+    cabang_id,
+    jenis_pembelian,
+    brand_id,
+    jenis_motor_id,
+    tahun,
+    warna,
+    kilometer,
+    plat_nomor,
+    tanggal_pajak,
+    harga_beli,
+    harga_final,
+    sumber_dana_1_id,
+    nominal_dana_1,
+    sumber_dana_2_id,
+    nominal_dana_2,
+    keterangan,
+    status,
+    created_at,
+    updated_at,
+    NULL::integer as closed_month,
+    NULL::integer as closed_year,
+    'active'::text as data_source
+FROM public.pembelian
+UNION ALL
+SELECT 
+    id,
+    tanggal_pembelian,
+    divisi,
+    cabang_id,
+    jenis_pembelian,
+    brand_id,
+    jenis_motor_id,
+    tahun,
+    warna,
+    kilometer,
+    plat_nomor,
+    tanggal_pajak,
+    harga_beli,
+    harga_final,
+    sumber_dana_1_id,
+    nominal_dana_1,
+    sumber_dana_2_id,
+    nominal_dana_2,
+    keterangan,
+    status,
+    created_at,
+    updated_at,
+    closed_month,
+    closed_year,
+    'history'::text as data_source
+FROM public.pembelian_history;
+
+CREATE VIEW public.pembukuan_combined AS
+SELECT 
+    id,
+    tanggal,
+    divisi,
+    keterangan,
+    debit,
+    kredit,
+    saldo,
+    cabang_id,
+    company_id,
+    pembelian_id,
+    created_at,
+    updated_at,
+    NULL::integer as closed_month,
+    NULL::integer as closed_year,
+    'active'::text as data_source
+FROM public.pembukuan
+UNION ALL
+SELECT 
+    id,
+    tanggal,
+    divisi,
+    keterangan,
+    debit,
+    kredit,
+    saldo,
+    cabang_id,
+    company_id,
+    pembelian_id,
+    created_at,
+    updated_at,
+    closed_month,
+    closed_year,
+    'history'::text as data_source
+FROM public.pembukuan_history;
+
+CREATE VIEW public.penjualans_combined AS
+SELECT 
+    id,
+    tanggal,
+    cabang_id,
+    brand_id,
+    jenis_id,
+    tahun,
+    kilometer,
+    pajak,
+    harga_beli,
+    harga_jual,
+    harga_bayar,
+    keuntungan,
+    sisa_bayar,
+    titip_ongkir,
+    ongkir_dibayar,
+    total_ongkir,
+    dp,
+    cicilan,
+    company_id,
+    nominal_dana_1,
+    company_id_2,
+    nominal_dana_2,
+    pembelian_id,
+    biaya_qc,
+    biaya_pajak,
+    biaya_lain_lain,
+    catatan,
+    keterangan_biaya_lain,
+    reason_update_harga,
+    divisi,
+    tt,
+    warna,
+    plat,
+    status,
+    jenis_pembayaran,
+    sisa_ongkir,
+    created_at,
+    updated_at,
+    NULL::integer as closed_month,
+    NULL::integer as closed_year,
+    'active'::text as data_source
+FROM public.penjualans
+UNION ALL
+SELECT 
+    id,
+    tanggal,
+    cabang_id,
+    brand_id,
+    jenis_id,
+    tahun,
+    kilometer,
+    pajak,
+    harga_beli,
+    harga_jual,
+    harga_bayar,
+    keuntungan,
+    sisa_bayar,
+    titip_ongkir,
+    ongkir_dibayar,
+    total_ongkir,
+    dp,
+    cicilan,
+    company_id,
+    nominal_dana_1,
+    company_id_2,
+    nominal_dana_2,
+    pembelian_id,
+    biaya_qc,
+    biaya_pajak,
+    biaya_lain_lain,
+    catatan,
+    keterangan_biaya_lain,
+    reason_update_harga,
+    divisi,
+    tt,
+    warna,
+    plat,
+    status,
+    jenis_pembayaran,
+    sisa_ongkir,
+    created_at,
+    updated_at,
+    closed_month,
+    closed_year,
+    'history'::text as data_source
+FROM public.penjualans_history;
