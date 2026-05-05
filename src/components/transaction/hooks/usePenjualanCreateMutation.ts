@@ -66,6 +66,51 @@ export const usePenjualanCreate = () => {
       // Update formData status untuk transformasi
       const updatedFormData = { ...formData, status };
       const submitData = transformPenjualanFormDataForSubmit(updatedFormData);
+      const targetPembelianStatus =
+        submitData.status === "selesai" ? "sold" : "booked";
+      const pembelianIdToUpdate = submitData.pembelian_id;
+
+      if (!pembelianIdToUpdate) {
+        throw new Error("Unit pembelian belum dipilih");
+      }
+
+      const { data: existingPenjualan, error: existingPenjualanError } =
+        await supabase
+          .from("penjualans")
+          .select("id, status, pembelian_id")
+          .eq("pembelian_id", pembelianIdToUpdate)
+          .neq("status", "cancelled_dp_hangus")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+      if (existingPenjualanError) {
+        console.error(
+          "Error checking existing penjualan:",
+          existingPenjualanError
+        );
+        throw existingPenjualanError;
+      }
+
+      if (existingPenjualan) {
+        const existingPembelianStatus =
+          existingPenjualan.status === "selesai" ? "sold" : "booked";
+        const { error: syncPembelianError } = await supabase
+          .from("pembelian")
+          .update({ status: existingPembelianStatus })
+          .eq("id", pembelianIdToUpdate);
+
+        if (syncPembelianError) {
+          console.error(
+            "Error syncing pembelian status for duplicate penjualan:",
+            syncPembelianError
+          );
+        }
+
+        throw new Error(
+          `Unit ini sudah tercatat di penjualan (ID ${existingPenjualan.id}). Data tidak disimpan ulang agar tidak double.`
+        );
+      }
 
       // Prepare penjualan data
       const penjualanData = createPenjualanData(
@@ -102,24 +147,14 @@ export const usePenjualanCreate = () => {
       // 3. Update status in pembelian table
       // Logic: If sales status is 'selesai' -> pembelian status 'sold' (hidden)
       //        If sales status is 'booked' -> pembelian status 'booked' (visible but reserved)
-      const targetPembelianStatus =
-        submitData.status === "selesai" ? "sold" : "booked";
+      const { error: pembelianError } = await supabase
+        .from("pembelian")
+        .update({ status: targetPembelianStatus })
+        .eq("id", pembelianIdToUpdate);
 
-      // Ensure we use the valid pembelian_id from submitData
-      const pembelianIdToUpdate = submitData.pembelian_id;
-
-      if (pembelianIdToUpdate) {
-        const { error: pembelianError } = await supabase
-          .from("pembelian")
-          .update({ status: targetPembelianStatus })
-          .eq("id", pembelianIdToUpdate);
-
-        if (pembelianError) {
-          console.error("Pembelian Error:", pembelianError);
-          // Optional: throw error if this is critical, or just log
-        }
-      } else {
-          console.error("No pembelian_id found when trying to update status");
+      if (pembelianError) {
+        console.error("Pembelian Error:", pembelianError);
+        // Optional: throw error if this is critical, or just log
       }
 
       // 4. Insert into pembukuan table
@@ -300,7 +335,10 @@ export const usePenjualanCreate = () => {
       console.error("Error saving penjualan:", error);
       toast({
         title: "Error",
-        description: "Gagal menyimpan data penjualan",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Gagal menyimpan data penjualan",
         variant: "destructive",
       });
     },

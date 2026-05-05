@@ -61,6 +61,24 @@ interface PenjualanSoldPageEnhancedProps {
   selectedDivision: string;
 }
 
+const getSaleTimestamp = (item: any) =>
+  new Date(item.created_at || item.tanggal_lunas || item.tanggal || 0).getTime();
+
+const deduplicateSoldByPembelian = (data: any[]) => {
+  const salesByUnit = new Map<string, any>();
+
+  data.forEach((item) => {
+    const key = item.pembelian_id ? `pembelian-${item.pembelian_id}` : `sale-${item.id}`;
+    const existing = salesByUnit.get(key);
+
+    if (!existing || getSaleTimestamp(item) > getSaleTimestamp(existing)) {
+      salesByUnit.set(key, item);
+    }
+  });
+
+  return Array.from(salesByUnit.values());
+};
+
 const PenjualanSoldPageEnhanced = ({
   selectedDivision,
 }: PenjualanSoldPageEnhancedProps) => {
@@ -156,7 +174,7 @@ const PenjualanSoldPageEnhanced = ({
   };
 
   // ✅ PERBAIKAN: Simplifikasi filter - filtering tanggal sudah dilakukan di hook
-  const filteredData = penjualanData
+  const filteredData = deduplicateSoldByPembelian(penjualanData)
     .filter((item: any) => {
       // Filter utama: hanya yang sudah selesai (Sold)
       if (item.status !== "selesai") {

@@ -9,6 +9,24 @@ interface PenjualanSoldPageProps {
 
 type FilterTukarTambah = 'semua' | 'tukar_tambah' | 'bukan_tukar_tambah';
 
+const getSaleTimestamp = (item: any) =>
+  new Date(item.created_at || item.tanggal_lunas || item.tanggal || 0).getTime();
+
+const deduplicateSoldByPembelian = (data: any[]) => {
+  const salesByUnit = new Map<string, any>();
+
+  data.forEach((item) => {
+    const key = item.pembelian_id ? `pembelian-${item.pembelian_id}` : `sale-${item.id}`;
+    const existing = salesByUnit.get(key);
+
+    if (!existing || getSaleTimestamp(item) > getSaleTimestamp(existing)) {
+      salesByUnit.set(key, item);
+    }
+  });
+
+  return Array.from(salesByUnit.values());
+};
+
 const PenjualanSoldPage = ({ selectedDivision }: PenjualanSoldPageProps) => {
   // State untuk filter
   const [filterTukarTambah, setFilterTukarTambah] = useState<FilterTukarTambah>('semua');
@@ -17,7 +35,9 @@ const PenjualanSoldPage = ({ selectedDivision }: PenjualanSoldPageProps) => {
   const { penjualanData } = usePenjualanData(selectedDivision);
 
   // Filter dan sort data penjualan - hanya yang statusnya 'selesai' (Sold)
-  const filteredPenjualanData = penjualanData.filter((penjualan: any) => {
+  const deduplicatedPenjualanData = deduplicateSoldByPembelian(penjualanData);
+
+  const filteredPenjualanData = deduplicatedPenjualanData.filter((penjualan: any) => {
     // Filter utama: hanya yang sudah selesai (Sold)
     if (penjualan.status !== 'selesai') {
       return false;
@@ -87,7 +107,7 @@ const PenjualanSoldPage = ({ selectedDivision }: PenjualanSoldPageProps) => {
 
         {/* Filter Summary */}
         <div className="mt-2 text-sm text-gray-600">
-          Menampilkan {filteredPenjualanData.length} dari {penjualanData.length} data penjualan (Status: Sold)
+          Menampilkan {filteredPenjualanData.length} dari {deduplicatedPenjualanData.length} data penjualan (Status: Sold)
         </div>
       </div>
 
