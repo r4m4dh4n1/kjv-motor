@@ -202,13 +202,24 @@ const CicilanPage = ({ selectedDivision }: CicilanPageProps) => {
       const { error: updateError } = await supabase
         .from('penjualans')
         .update({ 
-          sisa_bayar: sisaBayarBaru,
-          status: sisaBayarBaru <= 0 ? 'selesai' : 'proses',
+          sisa_bayar: Math.max(0, sisaBayarBaru),
+          status: sisaBayarBaru <= 0 ? 'selesai' : 'booked',
           ...(sisaBayarBaru <= 0 && { tanggal_lunas: formData.tanggal_bayar })
         })
         .eq('id', parseInt(formData.penjualan_id));
 
       if (updateError) throw updateError;
+
+      if (sisaBayarBaru <= 0 && selectedPenjualan.pembelian_id) {
+        const { error: pembelianStatusError } = await supabase
+          .from('pembelian')
+          .update({ status: 'sold' })
+          .eq('id', selectedPenjualan.pembelian_id);
+
+        if (pembelianStatusError) {
+          console.error('Error updating pembelian status to sold:', pembelianStatusError);
+        }
+      }
 
       // Insert pembukuan entry for cicilan payment
       const brandName = selectedPenjualan.brands?.name || '';

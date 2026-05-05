@@ -84,20 +84,31 @@ const EditCicilanDialog = ({ cicilan, isOpen, onClose, onSuccess, companiesData 
 
       const newHargaBayar = (penjualanData.harga_bayar || 0) + selisihPembayaran;
       const newSisaBayar = penjualanData.harga_jual - newHargaBayar;
-      const newStatus = newSisaBayar <= 0 ? 'selesai' : penjualanData.status;
+      const newStatus = newSisaBayar <= 0 ? 'selesai' : 'booked';
 
       const { error: penjualanUpdateError } = await supabase
         .from('penjualans')
         .update({
           harga_bayar: newHargaBayar,
-          sisa_bayar: newSisaBayar,
+          sisa_bayar: Math.max(0, newSisaBayar),
           status: newStatus,
           updated_at: new Date().toISOString(),
-          ...(newStatus === 'selesai' && { tanggal_lunas: formData.tanggal_bayar })
+          tanggal_lunas: newStatus === 'selesai' ? formData.tanggal_bayar : null
         })
         .eq('id', cicilan.penjualan_id);
 
       if (penjualanUpdateError) throw penjualanUpdateError;
+
+      if (penjualanData.pembelian_id) {
+        const { error: pembelianStatusError } = await supabase
+          .from('pembelian')
+          .update({ status: newStatus === 'selesai' ? 'sold' : 'booked' })
+          .eq('id', penjualanData.pembelian_id);
+
+        if (pembelianStatusError) {
+          console.error('Error updating pembelian status:', pembelianStatusError);
+        }
+      }
 
       // PERBAIKAN: Update pembukuan entry
       // 1. Hapus pembukuan lama berdasarkan keterangan dan tanggal asli
