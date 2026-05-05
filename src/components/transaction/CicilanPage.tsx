@@ -203,7 +203,8 @@ const CicilanPage = ({ selectedDivision }: CicilanPageProps) => {
         .from('penjualans')
         .update({ 
           sisa_bayar: sisaBayarBaru,
-          status: sisaBayarBaru === 0 ? 'selesai' : 'proses'
+          status: sisaBayarBaru <= 0 ? 'selesai' : 'proses',
+          ...(sisaBayarBaru <= 0 && { tanggal_lunas: formData.tanggal_bayar })
         })
         .eq('id', parseInt(formData.penjualan_id));
 

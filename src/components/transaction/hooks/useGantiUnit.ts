@@ -80,6 +80,7 @@ export const useGantiUnit = () => {
           keuntungan: newKeuntungan,
           sisa_bayar: 0,
           status: newPenjualanStatus,
+          tanggal_lunas: newPenjualanStatus === "selesai" ? params.tanggal : null,
         })
         .eq("id", params.penjualanId);
 
