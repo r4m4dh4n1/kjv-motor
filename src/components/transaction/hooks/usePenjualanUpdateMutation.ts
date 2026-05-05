@@ -64,6 +64,13 @@ export const usePenjualanUpdate = () => {
         keuntungan
       );
       penjualanData.status = status;
+      if (originalStatus !== "selesai" && status === "selesai") {
+        penjualanData.tanggal_lunas = new Date().toISOString().split("T")[0];
+      } else if (originalStatus === "selesai" && originalPenjualan.tanggal_lunas) {
+        penjualanData.tanggal_lunas = originalPenjualan.tanggal_lunas;
+      } else if (status !== "selesai") {
+        penjualanData.tanggal_lunas = null;
+      }
 
       // Determine target pembelian status (sold or booked)
       const targetPembelianStatus = status === "selesai" ? "sold" : "booked";

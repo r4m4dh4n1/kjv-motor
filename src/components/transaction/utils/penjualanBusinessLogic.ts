@@ -24,6 +24,7 @@ export const createPenjualanData = (submitData: any, formData: any, hargaBeli: n
     subsidi_ongkir: parseFormattedNumber(formData.subsidi_ongkir),
     sisa_ongkir: parseFormattedNumber(formData.sisa_ongkir),
     status: submitData.status,
+    tanggal_lunas: submitData.status === "selesai" ? submitData.tanggal_penjualan : null,
     dp: submitData.dp ? parseFormattedNumber(formData.dp) : null,
     cicilan: false,
     jenis_pembayaran: submitData.jenis_pembayaran,

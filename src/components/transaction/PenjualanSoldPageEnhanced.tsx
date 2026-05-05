@@ -62,7 +62,7 @@ interface PenjualanSoldPageEnhancedProps {
 }
 
 const getSaleTimestamp = (item: any) =>
-  new Date(item.created_at || item.tanggal_lunas || item.tanggal || 0).getTime();
+  new Date(item.tanggal_lunas || item.tanggal || item.created_at || 0).getTime();
 
 const deduplicateSoldByPembelian = (data: any[]) => {
   const salesByUnit = new Map<string, any>();

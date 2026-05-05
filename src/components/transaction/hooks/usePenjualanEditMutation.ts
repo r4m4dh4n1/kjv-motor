@@ -41,6 +41,18 @@ export const usePenjualanEdit = () => {
       const updatedFormData = { ...formData };
       const submitData = transformPenjualanFormDataForSubmit(updatedFormData);
       const penjualanData = createPenjualanData(submitData, updatedFormData, hargaBeli, hargaJual, keuntungan);
+      const isMarkingSold =
+        originalPenjualan.status !== 'selesai' &&
+        (submitData.status === 'selesai' || hargaBayar >= hargaJual);
+
+      if (isMarkingSold) {
+        penjualanData.status = 'selesai';
+        penjualanData.tanggal_lunas = new Date().toISOString().split('T')[0];
+      } else if (originalPenjualan.status === 'selesai' && originalPenjualan.tanggal_lunas) {
+        penjualanData.tanggal_lunas = originalPenjualan.tanggal_lunas;
+      } else if (submitData.status !== 'selesai') {
+        penjualanData.tanggal_lunas = null;
+      }
 
       // Check if company changed
       const companyChanged = originalPenjualan.company_id !== submitData.company_id;
